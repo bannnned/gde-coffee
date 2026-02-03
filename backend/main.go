@@ -254,6 +254,9 @@ func main() {
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+	r.GET("/healthz", func(c *gin.Context) {
+		c.String(http.StatusOK, "ok")
+	})
 
 	r.NoRoute(func(c *gin.Context) {
 		serveStaticOrIndex(c, cfg.PublicDir)
