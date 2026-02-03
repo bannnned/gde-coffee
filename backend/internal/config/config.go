@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -75,6 +76,8 @@ func Load() (Config, error) {
 		DefaultResults: defaultResults,
 		MaxResults:     maxResults,
 	}
+
+	log.Printf("config: port=%q public_dir=%q cors_origins=%v", cfg.Port, cfg.PublicDir, cfg.CORS.AllowOrigins)
 
 	if cfg.Port == "" {
 		return cfg, fmt.Errorf("PORT must not be empty")

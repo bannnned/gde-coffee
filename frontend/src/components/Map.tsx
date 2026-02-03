@@ -1,7 +1,6 @@
-﻿import { useEffect, useMemo, useRef } from "react";
-import {
-  useComputedColorScheme,
-} from "@mantine/core";
+import { useEffect, useMemo, useRef } from "react";
+import { useComputedColorScheme } from "@mantine/core";
+import { IconMinus, IconPlus } from "@tabler/icons-react";
 import maplibregl, {
   GeoJSONSource,
   Map as MLMap,
@@ -245,11 +244,6 @@ export default function Map({
       zoom,
     });
 
-    map.addControl(
-      new maplibregl.NavigationControl({ visualizePitch: true }),
-      "top-right",
-    );
-
     const handleClick = (e: maplibregl.MapLayerMouseEvent) => {
       const f = e.features?.[0];
       const id = f?.properties?.id as string | undefined;
@@ -319,5 +313,41 @@ export default function Map({
     applyTheme(map, scheme);
   }, [scheme]);
 
-  return <div ref={containerRef} className="map-shell" style={{ width: "100%", height: "100%" }} />;
+  const handleZoomIn = () => {
+    mapRef.current?.zoomIn({ duration: 220 });
+  };
+
+  const handleZoomOut = () => {
+    mapRef.current?.zoomOut({ duration: 220 });
+  };
+
+  return (
+    <div className="map-wrapper">
+      <div
+        ref={containerRef}
+        className="map-shell"
+        style={{ width: "100%", height: "100%" }}
+      />
+      <div className="map-zoom-controls">
+        <button
+          type="button"
+          className="map-zoom-button"
+          aria-label="Zoom in"
+          onClick={handleZoomIn}
+        >
+          <IconPlus size={18} stroke={1.8} />
+        </button>
+        <button
+          type="button"
+          className="map-zoom-button"
+          aria-label="Zoom out"
+          onClick={handleZoomOut}
+        >
+          <IconMinus size={18} stroke={1.8} />
+        </button>
+      </div>
+    </div>
+  );
 }
+
+

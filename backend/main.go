@@ -21,47 +21,68 @@ import (
 
 func getCafes(cfg config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		const maxRadiusM = 50000.0
+
 		latStr := strings.TrimSpace(c.Query("lat"))
 		lngStr := strings.TrimSpace(c.Query("lng"))
 		radiusStr := strings.TrimSpace(c.Query("radius_m"))
 
 		if latStr == "" || lngStr == "" || radiusStr == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "lat, lng, and radius_m are required"})
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lat, lng, and radius_m are required", nil)
 			return
 		}
 
 		lat, err := parseFloat(latStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid lat"})
+			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid lat", nil)
+			return
+		}
+		if lat < -90 || lat > 90 {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lat must be between -90 and 90", nil)
 			return
 		}
 
 		lng, err := parseFloat(lngStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid lng"})
+			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid lng", nil)
+			return
+		}
+		if lng < -180 || lng > 180 {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lng must be between -180 and 180", nil)
 			return
 		}
 
 		radiusM, err := parseFloat(radiusStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid radius_m"})
+			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid radius_m", nil)
 			return
 		}
 
 		if radiusM < 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "radius_m must be >= 0"})
+			respondError(c, http.StatusBadRequest, "invalid_argument", "radius_m must be >= 0", nil)
+			return
+		}
+
+		if radiusM > maxRadiusM {
+			respondError(
+				c,
+				http.StatusBadRequest,
+				"invalid_argument",
+				"radius_m must be <= 50000",
+				gin.H{"max_radius_m": maxRadiusM},
+			)
 			return
 		}
 
 		sortBy := strings.TrimSpace(c.DefaultQuery("sort", config.DefaultSort))
 		if sortBy != config.SortByDistance && sortBy != config.SortByWork {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "sort must be 'work' or 'distance'"})
+			respondError(c, http.StatusBadRequest, "invalid_argument", "sort must be 'work' or 'distance'", nil)
 			return
 		}
 
 		limit, err := parseLimit(c.Query("limit"), cfg.Limits)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 			return
 		}
 
@@ -206,10 +227,24 @@ func haversineMeters(lat1, lng1, lat2, lng2 float64) float64 {
 	return config.EarthRadiusM * c
 }
 
+type apiError struct {
+	Message string      `json:"message"`
+	Code    string      `json:"code"`
+	Details interface{} `json:"details,omitempty"`
+}
+
+func respondError(c *gin.Context, status int, code, message string, details interface{}) {
+	c.JSON(status, apiError{
+		Message: message,
+		Code:    code,
+		Details: details,
+	})
+}
+
 func serveStaticOrIndex(c *gin.Context, publicDir string) {
 	requestPath := c.Request.URL.Path
 	if strings.HasPrefix(requestPath, "/api/") || requestPath == "/api" {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		respondError(c, http.StatusNotFound, "not_found", "not found", nil)
 		return
 	}
 
@@ -225,7 +260,7 @@ func serveStaticOrIndex(c *gin.Context, publicDir string) {
 
 	indexPath := filepath.Join(publicDir, "index.html")
 	if _, err := os.Stat(indexPath); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "index.html not found"})
+		respondError(c, http.StatusNotFound, "not_found", "index.html not found", nil)
 		return
 	}
 	c.File(indexPath)

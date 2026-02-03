@@ -4,6 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { getCafes } from "../../../api/cafes";
 import type { Amenity, SortBy } from "../types";
 
+// Map moves can fire rapidly; debounce before hitting the API.
+const QUERY_DEBOUNCE_MS = 400;
+// React Query cache window for identical params.
+const CAFES_CACHE_STALE_MS = 20_000;
+const CAFES_CACHE_GC_MS = 30_000;
+
 type UseCafesParams = {
   lat: number;
   lng: number;
@@ -12,6 +18,34 @@ type UseCafesParams = {
   amenities: Amenity[];
 };
 
+type CafesQueryParams = {
+  lat: number;
+  lng: number;
+  radiusM: number;
+  sortBy: SortBy;
+  amenities: Amenity[];
+  amenitiesKey: string;
+};
+
+function buildCafesKey({
+  lat,
+  lng,
+  radiusM,
+  sortBy,
+  amenitiesKey,
+}: Pick<CafesQueryParams, "lat" | "lng" | "radiusM" | "sortBy" | "amenitiesKey">) {
+  return `${lat}|${lng}|${radiusM}|${sortBy}|${amenitiesKey}`;
+}
+
+function linkAbortSignal(signal: AbortSignal, controller: AbortController) {
+  if (signal.aborted) {
+    controller.abort();
+    return;
+  }
+
+  signal.addEventListener("abort", () => controller.abort(), { once: true });
+}
+
 export default function useCafes({
   lat,
   lng,
@@ -19,23 +53,147 @@ export default function useCafes({
   sortBy,
   amenities,
 }: UseCafesParams) {
+  // Stable ordering so query key doesn't change for the same set.
   const normalizedAmenities = useMemo(
     () => [...amenities].sort(),
     [amenities],
   );
+  const amenitiesKey = useMemo(
+    () => normalizedAmenities.join(","),
+    [normalizedAmenities],
+  );
 
-  const cafesQuery = useQuery({
-    queryKey: ["cafes", { lat, lng, radiusM, sortBy, amenities: normalizedAmenities }],
-    queryFn: ({ signal }) =>
-      getCafes({
+  // Debounced params drive the query key & actual request.
+  const [debouncedParams, setDebouncedParams] = useState<CafesQueryParams>(() => ({
+    lat,
+    lng,
+    radiusM,
+    sortBy,
+    amenities: normalizedAmenities,
+    amenitiesKey,
+  }));
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Explicitly cancel the previous in-flight request when a new one starts.
+  const abortRef = useRef<AbortController | null>(null);
+
+  const currentKey = useMemo(
+    () =>
+      buildCafesKey({
         lat,
         lng,
-        radius_m: radiusM,
-        sort: sortBy,
-        amenities: normalizedAmenities,
-        signal,
+        radiusM,
+        sortBy,
+        amenitiesKey,
       }),
-    staleTime: 15_000,
+    [lat, lng, radiusM, sortBy, amenitiesKey],
+  );
+  const debouncedKey = useMemo(
+    () =>
+      buildCafesKey({
+        lat: debouncedParams.lat,
+        lng: debouncedParams.lng,
+        radiusM: debouncedParams.radiusM,
+        sortBy: debouncedParams.sortBy,
+        amenitiesKey: debouncedParams.amenitiesKey,
+      }),
+    [
+      debouncedParams.lat,
+      debouncedParams.lng,
+      debouncedParams.radiusM,
+      debouncedParams.sortBy,
+      debouncedParams.amenitiesKey,
+    ],
+  );
+
+  useEffect(() => {
+    // Only schedule a debounce when the params actually changed.
+    if (currentKey === debouncedKey) return;
+
+    if (debounceRef.current != null) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      setDebouncedParams({
+        lat,
+        lng,
+        radiusM,
+        sortBy,
+        amenities: normalizedAmenities,
+        amenitiesKey,
+      });
+    }, QUERY_DEBOUNCE_MS);
+
+    return () => {
+      if (debounceRef.current != null) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+    };
+  }, [
+    currentKey,
+    debouncedKey,
+    lat,
+    lng,
+    radiusM,
+    sortBy,
+    normalizedAmenities,
+    amenitiesKey,
+  ]);
+
+  useEffect(() => {
+    // Cleanup timers/requests on unmount.
+    return () => {
+      if (debounceRef.current != null) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      if (abortRef.current != null) {
+        abortRef.current.abort();
+        abortRef.current = null;
+      }
+    };
+  }, []);
+
+  const cafesQuery = useQuery({
+    queryKey: [
+      "cafes",
+      {
+        lat: debouncedParams.lat,
+        lng: debouncedParams.lng,
+        radiusM: debouncedParams.radiusM,
+        sortBy: debouncedParams.sortBy,
+        amenities: debouncedParams.amenitiesKey,
+      },
+    ],
+    queryFn: async ({ signal }) => {
+      // Abort any prior request so only the latest result wins.
+      if (abortRef.current != null) {
+        abortRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      // Tie React Query cancellation to our controller.
+      linkAbortSignal(signal, controller);
+
+      try {
+        return await getCafes({
+          lat: debouncedParams.lat,
+          lng: debouncedParams.lng,
+          radius_m: debouncedParams.radiusM,
+          sort: debouncedParams.sortBy,
+          amenities: debouncedParams.amenities,
+          signal: controller.signal,
+        });
+      } finally {
+        if (abortRef.current === controller) {
+          abortRef.current = null;
+        }
+      }
+    },
+    staleTime: CAFES_CACHE_STALE_MS,
+    gcTime: CAFES_CACHE_GC_MS,
   });
 
   const cafes = cafesQuery.data ?? [];

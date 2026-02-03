@@ -9,8 +9,9 @@ export function ColorSchemeToggle() {
 
   return (
     <ActionIcon
-      variant="default"
-      size="lg"
+      variant="transparent"
+      size={42}
+      className="glass-action glass-action--square"
       aria-label="Toggle color scheme"
       onClick={() => setColorScheme(next)}
     >

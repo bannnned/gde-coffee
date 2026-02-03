@@ -46,14 +46,18 @@ export default function FiltersBar({
     paddingInline: 10,
     paddingBlock: 6,
     border: `1px solid ${
-      scheme === "dark" ? theme.colors.dark[4] : theme.colors.gray[3]
+      scheme === "dark" ? "rgba(2, 6, 23, 0.7)" : theme.colors.gray[3]
     }`,
-    backdropFilter: "blur(20px)",
-    backgroundColor:
+    backdropFilter: "blur(18px) saturate(180%)",
+    WebkitBackdropFilter: "blur(18px) saturate(180%)",
+    background:
       scheme === "dark"
-        ? "rgba(0,0,0,0.30)"
-        : "rgba(255,255,255,0.78)",
-    boxShadow: "none",
+        ? "linear-gradient(135deg, rgba(15,23,42,0.55), rgba(15,23,42,0.3))"
+        : "linear-gradient(135deg, rgba(255,255,255,0.82), rgba(255,255,255,0.58))",
+    boxShadow:
+      scheme === "dark"
+        ? "0 6px 18px rgba(2, 6, 23, 0.45)"
+        : "0 6px 16px rgba(15, 23, 42, 0.14)",
     outline: "none",
     "&:active": {
       transform: "none",
@@ -61,28 +65,33 @@ export default function FiltersBar({
   } as const;
 
   const amenityChipLabelCheckedStyles = {
-    backgroundColor:
+    background:
       scheme === "dark"
-        ? "rgba(34,139,230,0.28)"
-        : "rgba(34,139,230,0.22)",
+        ? "linear-gradient(135deg, rgba(56,189,248,0.3), rgba(14,116,144,0.35))"
+        : "linear-gradient(135deg, rgba(59,130,246,0.28), rgba(56,189,248,0.22))",
     borderColor:
       scheme === "dark"
-        ? "rgba(34,139,230,0.40)"
-        : "rgba(34,139,230,0.35)",
-    boxShadow: "none",
+        ? "rgba(125,211,252,0.45)"
+        : "rgba(59,130,246,0.35)",
+    boxShadow:
+      scheme === "dark"
+        ? "0 8px 20px rgba(2, 6, 23, 0.5)"
+        : "0 8px 18px rgba(30, 64, 175, 0.22)",
     transform: "none",
   } as const;
 
   return (
     <Box pos="absolute" top={0} left={0} right={0} p="sm" className={classes.root}>
       <Group justify="space-between" className={classes.header}>
-        <Title order={4} style={{ margin: 0 }}>
+        <Title order={4} className={classes.logo} style={{ margin: 0 }}>
           {WORK_UI_TEXT.title}
         </Title>
 
         <Group gap="xs">
           <ActionIcon
-            variant="filled"
+            variant="transparent"
+            size={42}
+            className="glass-action glass-action--square"
             aria-label={WORK_UI_TEXT.settingsAria}
             onClick={onOpenSettings}
           >

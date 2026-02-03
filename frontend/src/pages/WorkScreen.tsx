@@ -1,4 +1,4 @@
-﻿import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Box } from "@mantine/core";
 
 import Map from "../components/Map";
@@ -23,13 +23,37 @@ import useGeolocation from "../features/work/hooks/useGeolocation";
 export default function WorkScreen() {
   const [radiusM, setRadiusM] = useState<number>(DEFAULT_RADIUS_M);
   const [sortBy, setSortBy] = useState<SortBy>(DEFAULT_SORT_BY);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>(
     DEFAULT_AMENITIES,
   );
 
   const sheetRef = useRef<HTMLDivElement | null>(null);
+  const listViewportRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const sheetEl = sheetRef.current;
+    if (!sheetEl) return;
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
+    const updateSheetHeight = () => {
+      const height = sheetEl.getBoundingClientRect().height;
+      document.documentElement.style.setProperty(
+        "--sheet-height",
+        `${Math.round(height)}px`,
+      );
+    };
+
+    updateSheetHeight();
+
+    const observer =
+      "ResizeObserver" in window ? new ResizeObserver(updateSheetHeight) : null;
+    observer?.observe(sheetEl);
+    window.addEventListener("resize", updateSheetHeight);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateSheetHeight);
+    };
+  }, []);
 
   function resetFilters() {
     setRadiusM(0);
@@ -103,6 +127,7 @@ export default function WorkScreen() {
 
       <BottomSheet
         sheetRef={sheetRef}
+        scrollRef={listViewportRef}
         isError={cafesQuery.isError && cafes.length === 0}
         errorText={WORK_UI_TEXT.errorLoad}
       >
@@ -121,6 +146,7 @@ export default function WorkScreen() {
           selectedCafeId={selectedCafeId}
           onSelectCafe={selectCafe}
           itemRefs={itemRefs}
+          viewportRef={listViewportRef}
           onResetFilters={resetFilters}
           onRetry={() => cafesQuery.refetch()}
           onLocate={() => locateMe(true)}

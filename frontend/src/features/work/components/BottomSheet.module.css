@@ -1,7 +1,41 @@
-﻿.wrapper {
+.wrapper {
   pointer-events: none;
 }
 
-.paper {
+.sheet {
   pointer-events: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: height 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: height;
+  touch-action: pan-y;
+}
+
+.grabber {
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  margin-bottom: 6px;
+}
+
+:global([data-mantine-color-scheme="dark"]) .grabber {
+  background: rgba(148, 163, 184, 0.35);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.sheet[data-state="peek"] .content {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
 }

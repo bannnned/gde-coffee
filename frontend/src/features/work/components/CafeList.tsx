@@ -15,6 +15,7 @@ type CafeListProps = {
   selectedCafeId: string | null;
   onSelectCafe: (id: string) => void;
   itemRefs: MutableRefObject<Record<string, HTMLButtonElement | null>>;
+  viewportRef?: MutableRefObject<HTMLDivElement | null>;
   onResetFilters: () => void;
   onRetry: () => void;
   onLocate: () => void;
@@ -28,13 +29,15 @@ export default function CafeList({
   selectedCafeId,
   onSelectCafe,
   itemRefs,
+  viewportRef,
   onResetFilters,
   onRetry,
   onLocate,
 }: CafeListProps) {
   return (
-    <ScrollArea h={180} type="auto">
-      <Stack gap="xs">
+    <div style={{ flex: 1, minHeight: 0 }}>
+      <ScrollArea h="100%" type="auto" viewportRef={viewportRef}>
+        <Stack gap="xs">
         {isLoading ? (
           <Text size="sm">{WORK_UI_TEXT.loading}</Text>
         ) : cafes.length === 0 ? (
@@ -102,7 +105,8 @@ export default function CafeList({
             </Button>
           ))
         )}
-      </Stack>
-    </ScrollArea>
+        </Stack>
+      </ScrollArea>
+    </div>
   );
 }

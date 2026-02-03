@@ -19,6 +19,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server .
 FROM alpine:3.19
 WORKDIR /app
 
+ENV GIN_MODE=release
+
 # важно: curl для healthcheck + certs
 RUN apk add --no-cache ca-certificates curl && update-ca-certificates
 
