@@ -234,14 +234,41 @@ func serveStaticOrIndex(c *gin.Context, publicDir string) {
 
 func main() {
 	log.Println("app starting")
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Println("config loaded, publicDir=", cfg.PublicDir)
 
-	r := gin.Default()
+	// ❗ НЕ gin.Default() — нам нужен полный контроль
+	r := gin.New()
 
+	// базовые middleware
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+
+	// ====== HEALTHCHECKS (ОБЯЗАТЕЛЬНО ПЕРВЫМИ) ======
+
+	// Timeweb реально ходит сюда
+	r.GET("/_health", func(c *gin.Context) {
+		log.Println("/_health GET")
+		c.String(http.StatusOK, "ok")
+	})
+	r.HEAD("/_health", func(c *gin.Context) {
+		log.Println("/_health HEAD")
+		c.Status(http.StatusOK)
+	})
+
+	// на всякий случай — root (port scan / head check)
+	r.GET("/", func(c *gin.Context) {
+		c.String(http.StatusOK, "ok")
+	})
+	r.HEAD("/", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	// ====== CORS ======
 	r.Use(cors.New(cors.Config{
 		AllowAllOrigins:  cfg.CORS.AllowAllOrigins,
 		AllowOrigins:     cfg.CORS.AllowOrigins,
@@ -251,29 +278,19 @@ func main() {
 		MaxAge:           cfg.CORS.MaxAge,
 	}))
 
-	// супер-простой health endpoint (не трогает фронтовый /)
-	r.GET("/_health", func(c *gin.Context) {
-		c.String(http.StatusOK, "ok")
-	})
-	r.HEAD("/_health", func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
+	// ====== API ======
 	api := r.Group("/api")
 	api.GET("/cafes", getCafes(cfg))
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// можно оставить для ручной проверки
-	r.GET("/healthz", func(c *gin.Context) {
-		c.String(http.StatusOK, "ok")
-	})
-
+	// ====== FRONTEND (SPA) ======
 	r.NoRoute(func(c *gin.Context) {
 		serveStaticOrIndex(c, cfg.PublicDir)
 	})
 
+	// ====== START ======
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
