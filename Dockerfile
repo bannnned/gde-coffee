@@ -18,14 +18,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server .
 # 3) runtime
 FROM alpine:3.19
 WORKDIR /app
-
 COPY --from=backend-build /app/server /app/server
 COPY --from=frontend-build /app/frontend/dist /app/public
-
-# сертификаты без apk (берём из golang-стейджа)
 COPY --from=backend-build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
-ENV PORT=8080
-EXPOSE 8080
 CMD ["/app/server"]
 

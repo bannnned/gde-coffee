@@ -261,11 +261,11 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = cfg.Port
-	}
-	if port == "" {
 		port = "8080"
 	}
 
-	r.Run("0.0.0.0:" + port)
+	log.Printf("listening on 0.0.0.0:%s", port)
+	if err := r.Run("0.0.0.0:" + port); err != nil {
+		log.Fatal(err)
+	}
 }
