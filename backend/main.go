@@ -251,6 +251,13 @@ func main() {
 		MaxAge:           cfg.CORS.MaxAge,
 	}))
 
+	r.GET("/", func(c *gin.Context) {
+		c.String(http.StatusOK, "ok")
+	})
+	r.HEAD("/", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
 	api := r.Group("/api")
 	api.GET("/cafes", getCafes(cfg))
 	api.GET("/health", func(c *gin.Context) {
