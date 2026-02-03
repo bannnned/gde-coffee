@@ -127,7 +127,7 @@
 
 .map-zoom-controls {
   position: absolute;
-  bottom: calc(var(--sheet-height, 240px) + 66px);
+  bottom: calc(var(--sheet-height, 240px) + 78px);
   right: 12px;
   display: flex;
   flex-direction: column;
@@ -198,6 +198,17 @@
 
 * {
   box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  overflow: hidden;
 }
 
 body {

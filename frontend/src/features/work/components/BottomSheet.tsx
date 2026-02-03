@@ -1,24 +1,35 @@
-import { Box, Paper, Stack, Text, useComputedColorScheme } from "@mantine/core";
-import type { PointerEvent, PropsWithChildren, RefObject, TouchEvent } from "react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { Box, Paper, Text, useComputedColorScheme } from "@mantine/core";
+import {
+  animate,
+  motion,
+  useDragControls,
+  useMotionValue,
+  useMotionValueEvent,
+} from "framer-motion";
+import type {
+  PointerEvent as ReactPointerEvent,
+  PropsWithChildren,
+  RefObject,
+} from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 
 import classes from "./BottomSheet.module.css";
 
 type BottomSheetProps = PropsWithChildren<{
   sheetRef: RefObject<HTMLDivElement | null>;
-  scrollRef?: RefObject<HTMLDivElement | null>;
   isError: boolean;
   errorText: string;
 }>;
 
 type SheetState = "peek" | "mid" | "expanded";
 
-const SWIPE_THRESHOLD_PX = 60;
+const SWIPE_VELOCITY = 900;
 const PEEK_HEIGHT_PX = 64;
+
+const MotionPaper = motion(Paper);
 
 export default function BottomSheet({
   sheetRef,
-  scrollRef,
   isError,
   errorText,
   children,
@@ -26,16 +37,9 @@ export default function BottomSheet({
   const scheme = useComputedColorScheme("light", {
     getInitialValueInEffect: true,
   });
+  const dragControls = useDragControls();
   const [sheetState, setSheetState] = useState<SheetState>("mid");
   const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
-  const dragState = useRef({
-    active: false,
-    startY: 0,
-    lastY: 0,
-    moved: false,
-    originIsGrabber: false,
-  });
-  const dragPointerId = useRef<number | null>(null);
 
   useLayoutEffect(() => {
     const update = () => setViewportHeight(window.innerHeight);
@@ -44,121 +48,85 @@ export default function BottomSheet({
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  const midHeight = Math.round(viewportHeight * 0.33);
-  const expandedHeight = Math.round(viewportHeight * 0.66);
-  const sheetHeight =
-    sheetState === "peek"
-      ? PEEK_HEIGHT_PX
-      : sheetState === "expanded"
-        ? expandedHeight
-        : midHeight;
+  const heights = useMemo(() => {
+    const chromeReserve = 24;
+    const safeViewport = Math.max(0, viewportHeight - chromeReserve);
+    const expanded = Math.max(PEEK_HEIGHT_PX + 120, Math.round(safeViewport * 0.66));
+    const mid = Math.max(PEEK_HEIGHT_PX + 80, Math.round(safeViewport * 0.33));
+    return { mid, expanded, peek: PEEK_HEIGHT_PX };
+  }, [viewportHeight]);
 
-  const setNextUp = () => {
-    setSheetState((prev) =>
-      prev === "peek" ? "mid" : prev === "mid" ? "expanded" : prev,
+  const height = useMotionValue(heights.mid);
+
+  useLayoutEffect(() => {
+    const target =
+      sheetState === "expanded"
+        ? heights.expanded
+        : sheetState === "peek"
+          ? heights.peek
+          : heights.mid;
+    const controls = animate(height, target, {
+      type: "spring",
+      stiffness: 300,
+      damping: 34,
+    });
+    return () => controls.stop();
+  }, [height, heights, sheetState]);
+
+  useMotionValueEvent(height, "change", (latest) => {
+    const visibleHeight = Math.max(heights.peek, latest);
+    document.documentElement.style.setProperty(
+      "--sheet-height",
+      `${Math.round(visibleHeight)}px`,
+    );
+  });
+
+  useLayoutEffect(() => {
+    const visibleHeight = Math.max(heights.peek, height.get());
+    document.documentElement.style.setProperty(
+      "--sheet-height",
+      `${Math.round(visibleHeight)}px`,
+    );
+  }, [heights, height]);
+
+  const pickClosest = (value: number) => {
+    const points = [heights.expanded, heights.mid, heights.peek];
+    return points.reduce((prev, point) =>
+      Math.abs(point - value) < Math.abs(prev - value) ? point : prev,
     );
   };
 
-  const setNextDown = () => {
-    setSheetState((prev) =>
-      prev === "expanded" ? "mid" : prev === "mid" ? "peek" : prev,
-    );
-  };
-
-  const beginDrag = (clientY: number, target: EventTarget | null) => {
-    dragState.current = {
-      active: true,
-      startY: clientY,
-      lastY: clientY,
-      moved: false,
-      originIsGrabber:
-        target instanceof HTMLElement &&
-        target.closest(`.${classes.grabber}`) != null,
-    };
-  };
-
-  const updateDrag = (clientY: number) => {
-    if (!dragState.current.active) return false;
-    const delta = clientY - dragState.current.startY;
-    if (Math.abs(delta) < 6) return false;
-    const scrollTop = scrollRef?.current?.scrollTop ?? 0;
-    const atTop =
-      scrollTop <= 0 || sheetState === "peek" || dragState.current.originIsGrabber;
-    if (!atTop) return false;
-    const movingUp = delta < 0 && sheetState !== "expanded";
-    const movingDown = delta > 0 && sheetState !== "peek";
-    if (!movingUp && !movingDown) return false;
-    dragState.current.moved = true;
-    dragState.current.lastY = clientY;
-    return true;
-  };
-
-  const finishDrag = () => {
-    if (!dragState.current.active) return;
-    const delta = dragState.current.lastY - dragState.current.startY;
-    const moved = dragState.current.moved;
-    dragState.current.active = false;
-    if (!moved) return;
-    const scrollTop = scrollRef?.current?.scrollTop ?? 0;
-    const atTop =
-      scrollTop <= 0 || sheetState === "peek" || dragState.current.originIsGrabber;
-    if (!atTop) return;
-    if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return;
-    if (delta < 0) {
-      setNextUp();
-    } else {
-      setNextDown();
-    }
-  };
-
-  const handlePointerDown = (event: PointerEvent) => {
+  const handlePointerDown = (event: ReactPointerEvent) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    beginDrag(event.clientY, event.target);
-    dragPointerId.current = event.pointerId;
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // no-op if pointer capture isn't available
+    const target = event.target as HTMLElement | null;
+    const isGrabber = target?.closest(`.${classes.grabber}`) != null;
+    if (isGrabber) {
+      dragControls.start(event);
     }
   };
 
-  const handlePointerMove = (event: PointerEvent) => {
-    if (updateDrag(event.clientY)) {
-      event.preventDefault();
-    }
+  const handleDrag = (
+    _: MouseEvent | TouchEvent | PointerEvent,
+    info: { delta: { y: number } },
+  ) => {
+    const next = height.get() - info.delta.y;
+    const clamped = Math.max(heights.peek, Math.min(heights.expanded, next));
+    height.set(clamped);
   };
 
-  const handlePointerEnd = (event: PointerEvent) => {
-    if (dragPointerId.current != null) {
-      try {
-        event.currentTarget.releasePointerCapture(dragPointerId.current);
-      } catch {
-        // no-op if capture was not set
-      }
-      dragPointerId.current = null;
-    }
-    finishDrag();
-  };
-
-  const handleTouchStart = (event: TouchEvent) => {
-    if ("PointerEvent" in window) return;
-    const touch = event.touches[0];
-    if (!touch) return;
-    beginDrag(touch.clientY, event.target);
-  };
-
-  const handleTouchMove = (event: TouchEvent) => {
-    if ("PointerEvent" in window) return;
-    const touch = event.touches[0];
-    if (!touch) return;
-    if (updateDrag(touch.clientY)) {
-      event.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if ("PointerEvent" in window) return;
-    finishDrag();
+  const handleDragEnd = (
+    _: MouseEvent | TouchEvent | PointerEvent,
+    info: { offset: { y: number }; velocity: { y: number } },
+  ) => {
+    const current = height.get();
+    const projected =
+      Math.abs(info.velocity.y) > SWIPE_VELOCITY
+        ? current - info.velocity.y * 0.2
+        : current - info.offset.y * 0.2;
+    const snap = pickClosest(projected);
+    if (snap === heights.expanded) setSheetState("expanded");
+    else if (snap === heights.peek) setSheetState("peek");
+    else setSheetState("mid");
   };
 
   return (
@@ -172,22 +140,24 @@ export default function BottomSheet({
       pb="sm"
       className={classes.wrapper}
     >
-      <Paper
+      <MotionPaper
         withBorder
         radius="lg"
         p="sm"
         className={classes.sheet}
-        data-state={sheetState}
+        drag="y"
+        dragListener={false}
+        dragControls={dragControls}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0}
+        dragMomentum={false}
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerEnd}
-        onPointerCancel={handlePointerEnd}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
+        onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
         style={{
-          height: sheetHeight,
+          y: 0,
+          height,
+          maxHeight: "100%",
           background:
             scheme === "dark"
               ? "rgba(15,18,22,0.60)"
@@ -205,15 +175,15 @@ export default function BottomSheet({
         }}
       >
         <div className={classes.grabber} />
-        <Stack gap="xs" className={classes.content}>
+        <div className={classes.content}>
           {isError && (
             <Text c="red" size="sm">
               {errorText}
             </Text>
           )}
           {children}
-        </Stack>
-      </Paper>
+        </div>
+      </MotionPaper>
     </Box>
   );
 }

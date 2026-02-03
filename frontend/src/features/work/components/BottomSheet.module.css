@@ -1,5 +1,11 @@
 .wrapper {
   pointer-events: none;
+  top: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
 .sheet {
@@ -7,22 +13,54 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: height 240ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: height;
+  overscroll-behavior: contain;
   touch-action: pan-y;
+  will-change: transform;
+  max-height: 100%;
+  width: 100%;
 }
 
 .grabber {
-  align-self: center;
-  width: 40px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.55);
+  width: 100%;
+  height: 18px;
+  position: relative;
   margin-bottom: 6px;
 }
 
+.grabber::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 50%;
+  height: 5px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.65),
+    rgba(255, 255, 255, 0.15)
+  );
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.5),
+    0 6px 14px rgba(15, 23, 42, 0.16);
+}
+
 :global([data-mantine-color-scheme="dark"]) .grabber {
-  background: rgba(148, 163, 184, 0.35);
+  color: rgba(148, 163, 184, 0.6);
+}
+
+:global([data-mantine-color-scheme="dark"]) .grabber::before {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.12),
+    rgba(226, 232, 240, 0.55),
+    rgba(148, 163, 184, 0.12)
+  );
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08),
+    0 6px 16px rgba(2, 6, 23, 0.6);
 }
 
 .content {
@@ -31,11 +69,12 @@
   gap: 8px;
   flex: 1;
   min-height: 0;
-  transition: opacity 200ms ease, transform 200ms ease;
+  width: 100%;
+  overflow: hidden;
 }
 
-.sheet[data-state="peek"] .content {
-  opacity: 0;
-  transform: translateY(8px);
-  pointer-events: none;
+@media (min-width: 900px) {
+  .sheet {
+    max-width: 720px;
+  }
 }

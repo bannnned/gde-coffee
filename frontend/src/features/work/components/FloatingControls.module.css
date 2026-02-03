@@ -1,7 +1,7 @@
 .wrapper {
   pointer-events: auto;
   right: 12px;
-  bottom: calc(var(--sheet-height, 240px) + 12px);
+  bottom: calc(var(--sheet-height, 240px) + 24px);
   transition: bottom 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
