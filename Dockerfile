@@ -18,11 +18,19 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server .
 # 3) runtime
 FROM alpine:3.19
 WORKDIR /app
-EXPOSE 8080
+
 COPY --from=backend-build /app/server /app/server
 COPY --from=frontend-build /app/frontend/dist /app/public
 COPY --from=backend-build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+EXPOSE 8080
+
+# Проверяем себя изнутри контейнера
+HEALTHCHECK --interval=10s --timeout=2s --start-period=10s --retries=12 \
+  CMD wget -qO- http://127.0.0.1:8080/_health >/dev/null 2>&1 || exit 1
+
 CMD ["/app/server"]
+
 
 
 
