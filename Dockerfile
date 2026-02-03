@@ -23,7 +23,7 @@ COPY --from=backend-build /app/server /app/server
 COPY --from=frontend-build /app/frontend/dist /app/public
 COPY --from=backend-build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-GIN_MODE=release
+ENV GIN_MODE=release
 
 # чтобы платформа/healthcheck могли использовать $PORT
 ENV PORT=8080
