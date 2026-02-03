@@ -1,0 +1,14 @@
+﻿.root {
+  pointer-events: none;
+}
+
+.header {
+  pointer-events: auto;
+}
+
+.chipsRow {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

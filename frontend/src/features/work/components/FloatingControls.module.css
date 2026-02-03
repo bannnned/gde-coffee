@@ -1,0 +1,5 @@
+﻿.wrapper {
+  pointer-events: auto;
+  right: 12px;
+  top: calc(50% + 72px);
+}

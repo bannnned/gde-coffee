@@ -1,0 +1,7 @@
+﻿.wrapper {
+  pointer-events: none;
+}
+
+.paper {
+  pointer-events: auto;
+}
