@@ -7,7 +7,7 @@ import {
   useMotionValueEvent,
 } from "framer-motion";
 import type {
-  PointerEvent as ReactPointerEvent,
+  // PointerEvent as ReactPointerEvent,
   PropsWithChildren,
   RefObject,
 } from "react";
@@ -26,7 +26,7 @@ type SheetState = "peek" | "mid" | "expanded";
 const SWIPE_VELOCITY = 900;
 const PEEK_HEIGHT_PX = 64;
 
-const MotionPaper = motion(Paper);
+const MotionPaper = motion(Paper as any);
 
 export default function BottomSheet({
   sheetRef,
@@ -96,14 +96,14 @@ export default function BottomSheet({
     );
   };
 
-  const handlePointerDown = (event: ReactPointerEvent) => {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    const target = event.target as HTMLElement | null;
-    const isGrabber = target?.closest(`.${classes.grabber}`) != null;
-    if (isGrabber) {
-      dragControls.start(event);
-    }
-  };
+  // const handlePointerDown = (event: ReactPointerEvent) => {
+  //   if (event.pointerType === "mouse" && event.button !== 0) return;
+  //   const target = event.target as HTMLElement | null;
+  //   const isGrabber = target?.closest(`.${classes.grabber}`) != null;
+  //   if (isGrabber) {
+  //     dragControls.start(event);
+  //   }
+  // };
 
   const handleDrag = (
     _: MouseEvent | TouchEvent | PointerEvent,
@@ -151,7 +151,7 @@ export default function BottomSheet({
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={0}
         dragMomentum={false}
-        onPointerDown={handlePointerDown}
+        //  onPointerDown={handlePointerDown}
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
         style={{
