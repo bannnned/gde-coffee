@@ -251,10 +251,11 @@ func main() {
 		MaxAge:           cfg.CORS.MaxAge,
 	}))
 
-	r.GET("/", func(c *gin.Context) {
+	// супер-простой health endpoint (не трогает фронтовый /)
+	r.GET("/_health", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
-	r.HEAD("/", func(c *gin.Context) {
+	r.HEAD("/_health", func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
 
@@ -263,6 +264,8 @@ func main() {
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+
+	// можно оставить для ручной проверки
 	r.GET("/healthz", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
