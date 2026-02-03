@@ -233,10 +233,12 @@ func serveStaticOrIndex(c *gin.Context, publicDir string) {
 }
 
 func main() {
+	log.Println("app starting")
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("config loaded, publicDir=", cfg.PublicDir)
 
 	r := gin.Default()
 
