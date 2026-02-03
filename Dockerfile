@@ -19,15 +19,17 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server .
 FROM alpine:3.19
 WORKDIR /app
 
+# (важно) подсказать платформе порт
+EXPOSE 8080
+
 COPY --from=backend-build /app/server /app/server
 COPY --from=frontend-build /app/frontend/dist /app/public
 COPY --from=backend-build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-ENV GIN_MODE=release
-
-# чтобы платформа/healthcheck могли использовать $PORT
-ENV PORT=8080
-EXPOSE 8080
+# Healthcheck: быстрый GET на localhost (2 сек таймаут), нужен только код 2xx
+# BusyBox wget обычно есть в alpine.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+  CMD sh -c 'wget -q -T 2 -t 1 -O - "http://127.0.0.1:${PORT:-8080}/api/health" >/dev/null 2>&1 || exit 1'
 
 CMD ["/app/server"]
 
