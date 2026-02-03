@@ -23,12 +23,9 @@ COPY --from=backend-build /app/server /app/server
 COPY --from=frontend-build /app/frontend/dist /app/public
 COPY --from=backend-build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# инструменты для healthcheck внутри контейнера
-RUN apk add --no-cache ca-certificates wget
-
-# ЯВНЫЙ docker healthcheck (Timeweb его точно увидит)
-HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
-  CMD wget -qO- "http://127.0.0.1:${PORT:-8080}/healthz" >/dev/null 2>&1 || exit 1
+# чтобы платформа/healthcheck могли использовать $PORT
+ENV PORT=8080
+EXPOSE 8080
 
 CMD ["/app/server"]
 
