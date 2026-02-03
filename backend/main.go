@@ -237,35 +237,26 @@ func main() {
 		log.Fatal(err)
 	}
 
-	gin.SetMode(gin.ReleaseMode)
+	r := gin.Default()
 
-	r := gin.New()
-	r.Use(gin.Logger(), gin.Recovery())
+	// healthcheck
+	r.GET("/_health", func(c *gin.Context) {
+		c.String(http.StatusOK, "ok")
+	})
+	r.HEAD("/_health", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
 
-	// Health endpoints
-	r.GET("/_health", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
-	r.HEAD("/_health", func(c *gin.Context) { c.Status(http.StatusOK) })
-
-	r.GET("/", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
-	r.HEAD("/", func(c *gin.Context) { c.Status(http.StatusOK) })
-
-	// API
 	api := r.Group("/api")
 	api.GET("/cafes", getCafes(cfg))
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// SPA
 	r.NoRoute(func(c *gin.Context) {
 		serveStaticOrIndex(c, cfg.PublicDir)
 	})
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	log.Printf("listening on 0.0.0.0:%s", port)
-	log.Fatal(r.Run("0.0.0.0:" + port))
+	log.Printf("listening on 0.0.0.0:%s", cfg.Port)
+	r.Run("0.0.0.0:" + cfg.Port)
 }
