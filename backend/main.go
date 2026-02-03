@@ -259,5 +259,13 @@ func main() {
 		serveStaticOrIndex(c, cfg.PublicDir)
 	})
 
-	r.Run("0.0.0.0:" + cfg.Port)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = cfg.Port
+	}
+	if port == "" {
+		port = "8080"
+	}
+
+	r.Run("0.0.0.0:" + port)
 }
