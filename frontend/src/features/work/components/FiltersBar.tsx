@@ -204,31 +204,6 @@ export default function FiltersBar({
         </Group>
       </Group>
 
-      {showFetchingBadge && (
-        <Box mt="xs" className={classes.fetchRow}>
-          <Badge
-            className={classes.fetchBadge}
-            variant="filled"
-            styles={{
-              root: {
-                backdropFilter: "blur(10px)",
-                background:
-                  scheme === "dark"
-                    ? "rgba(69,126,115,0.6)"
-                    : "rgba(69,126,115,0.85)",
-                color: "#FFFFF0",
-                border:
-                  scheme === "dark"
-                    ? "1px solid rgba(69,126,115,0.5)"
-                    : "1px solid rgba(69,126,115,0.35)",
-              },
-            }}
-          >
-            {WORK_UI_TEXT.fetching}
-          </Badge>
-        </Box>
-      )}
-
       <Group mt="xs" gap="xs" wrap="nowrap" className={classes.chipsRow}>
         <div
           className={classes.chipsScroller}
@@ -265,8 +240,32 @@ export default function FiltersBar({
             })}
           </Chip.Group>
         </div>
-
       </Group>
+
+      {showFetchingBadge && (
+        <Box mt="xs" className={classes.fetchRow}>
+          <Badge
+            className={classes.fetchBadge}
+            variant="filled"
+            styles={{
+              root: {
+                backdropFilter: "blur(10px)",
+                background:
+                  scheme === "dark"
+                    ? "rgba(69,126,115,0.6)"
+                    : "rgba(69,126,115,0.85)",
+                color: "#FFFFF0",
+                border:
+                  scheme === "dark"
+                    ? "1px solid rgba(69,126,115,0.5)"
+                    : "1px solid rgba(69,126,115,0.35)",
+              },
+            }}
+          >
+            {WORK_UI_TEXT.fetching}
+          </Badge>
+        </Box>
+      )}
 
       <div className={classes.chipsMeasure} aria-hidden="true">
         {allAmenities.map((a) => {

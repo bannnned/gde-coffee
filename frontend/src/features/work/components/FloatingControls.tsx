@@ -22,6 +22,18 @@ export default function FloatingControls({
         onClick={onLocate}
         loading={isLocating}
         disabled={isLocating}
+        styles={{
+          loader: {
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          },
+          icon: {
+            opacity: isLocating ? 0 : 1,
+          },
+        }}
       >
         <WORK_ICONS.locate size={18} />
       </ActionIcon>
