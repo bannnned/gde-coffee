@@ -7,11 +7,12 @@ import {
   useMotionValueEvent,
 } from "framer-motion";
 import type {
-  // PointerEvent as ReactPointerEvent,
+  PointerEvent as ReactPointerEvent,
   PropsWithChildren,
+  ReactNode,
   RefObject,
 } from "react";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import classes from "./BottomSheet.module.css";
 
@@ -19,12 +20,14 @@ type BottomSheetProps = PropsWithChildren<{
   sheetRef: RefObject<HTMLDivElement | null>;
   isError: boolean;
   errorText: string;
+  header?: ReactNode;
 }>;
 
 type SheetState = "peek" | "mid" | "expanded";
 
 const SWIPE_VELOCITY = 900;
 const PEEK_HEIGHT_PX = 64;
+const SHEET_PADDING_PX = 12;
 
 const MotionPaper = motion(Paper as any);
 
@@ -32,6 +35,7 @@ export default function BottomSheet({
   sheetRef,
   isError,
   errorText,
+  header,
   children,
 }: BottomSheetProps) {
   const scheme = useComputedColorScheme("light", {
@@ -40,6 +44,24 @@ export default function BottomSheet({
   const dragControls = useDragControls();
   const [sheetState, setSheetState] = useState<SheetState>("mid");
   const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
+  const [topReserved, setTopReserved] = useState(0);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(PEEK_HEIGHT_PX);
+
+  useLayoutEffect(() => {
+    const node = headerRef.current;
+    if (!node) return undefined;
+
+    const update = () => {
+      const next = Math.max(PEEK_HEIGHT_PX, node.getBoundingClientRect().height);
+      setHeaderHeight(next);
+    };
+
+    update();
+    const observer = new ResizeObserver(() => update());
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   useLayoutEffect(() => {
     const update = () => setViewportHeight(window.innerHeight);
@@ -48,13 +70,43 @@ export default function BottomSheet({
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  useLayoutEffect(() => {
+    const node = document.querySelector('[data-ui="filters-bar"]') as
+      | HTMLElement
+      | null;
+    if (!node) return undefined;
+
+    const update = () => {
+      const rect = node.getBoundingClientRect();
+      setTopReserved(Math.max(0, rect.bottom + 12));
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
   const heights = useMemo(() => {
     const chromeReserve = 24;
     const safeViewport = Math.max(0, viewportHeight - chromeReserve);
-    const expanded = Math.max(PEEK_HEIGHT_PX + 120, Math.round(safeViewport * 0.66));
-    const mid = Math.max(PEEK_HEIGHT_PX + 80, Math.round(safeViewport * 0.33));
-    return { mid, expanded, peek: PEEK_HEIGHT_PX };
-  }, [viewportHeight]);
+    const available = Math.max(0, safeViewport - topReserved);
+    const maxPeek = Math.round(safeViewport * 0.9);
+    const peek = Math.min(
+      maxPeek,
+      Math.round(headerHeight + SHEET_PADDING_PX * 2),
+    );
+    const expanded = Math.max(peek, Math.round(available));
+    const mid = Math.min(
+      expanded,
+      Math.max(peek + 120, Math.round(available * 0.33)),
+    );
+    return { mid, expanded, peek };
+  }, [headerHeight, topReserved, viewportHeight]);
 
   const height = useMotionValue(heights.mid);
 
@@ -89,6 +141,15 @@ export default function BottomSheet({
     );
   }, [heights, height]);
 
+  useLayoutEffect(() => {
+    document.documentElement.dataset.sheetState = sheetState;
+    return () => {
+      if (document.documentElement.dataset.sheetState === sheetState) {
+        delete document.documentElement.dataset.sheetState;
+      }
+    };
+  }, [sheetState]);
+
   const pickClosest = (value: number) => {
     const points = [heights.expanded, heights.mid, heights.peek];
     return points.reduce((prev, point) =>
@@ -96,14 +157,10 @@ export default function BottomSheet({
     );
   };
 
-  // const handlePointerDown = (event: ReactPointerEvent) => {
-  //   if (event.pointerType === "mouse" && event.button !== 0) return;
-  //   const target = event.target as HTMLElement | null;
-  //   const isGrabber = target?.closest(`.${classes.grabber}`) != null;
-  //   if (isGrabber) {
-  //     dragControls.start(event);
-  //   }
-  // };
+  const handlePointerDown = (event: ReactPointerEvent) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    dragControls.start(event);
+  };
 
   const handleDrag = (
     _: MouseEvent | TouchEvent | PointerEvent,
@@ -145,13 +202,13 @@ export default function BottomSheet({
         radius="lg"
         p="sm"
         className={classes.sheet}
+        data-state={sheetState}
         drag="y"
         dragListener={false}
         dragControls={dragControls}
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={0}
         dragMomentum={false}
-        //  onPointerDown={handlePointerDown}
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
         style={{
@@ -174,13 +231,16 @@ export default function BottomSheet({
           backdropFilter: "blur(14px)",
         }}
       >
-        <div className={classes.grabber} />
-        <div className={classes.content}>
+        <div ref={headerRef} className={classes.header}>
+          <div className={classes.grabber} onPointerDown={handlePointerDown} />
           {isError && (
             <Text c="red" size="sm">
               {errorText}
             </Text>
           )}
+          {header}
+        </div>
+        <div className={classes.list} aria-hidden={sheetState === "peek"}>
           {children}
         </div>
       </MotionPaper>

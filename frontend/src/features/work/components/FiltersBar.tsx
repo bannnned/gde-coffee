@@ -81,7 +81,15 @@ export default function FiltersBar({
   } as const;
 
   return (
-    <Box pos="absolute" top={0} left={0} right={0} p="sm" className={classes.root}>
+    <Box
+      pos="absolute"
+      top={0}
+      left={0}
+      right={0}
+      p="sm"
+      className={classes.root}
+      data-ui="filters-bar"
+    >
       <Group justify="space-between" className={classes.header}>
         <Title order={4} className={classes.logo} style={{ margin: 0 }}>
           {WORK_UI_TEXT.title}

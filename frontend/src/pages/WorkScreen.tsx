@@ -104,14 +104,16 @@ export default function WorkScreen() {
         sheetRef={sheetRef}
         isError={cafesQuery.isError && cafes.length === 0}
         errorText={WORK_UI_TEXT.errorLoad}
+        header={
+          selectedCafe ? (
+            <CafeCard
+              cafe={selectedCafe}
+              onOpen2gis={open2gisRoute}
+              onOpenYandex={openYandexRoute}
+            />
+          ) : null
+        }
       >
-        {selectedCafe && (
-          <CafeCard
-            cafe={selectedCafe}
-            onOpen2gis={open2gisRoute}
-            onOpenYandex={openYandexRoute}
-          />
-        )}
         <CafeList
           cafes={cafes}
           isLoading={cafesQuery.isLoading}

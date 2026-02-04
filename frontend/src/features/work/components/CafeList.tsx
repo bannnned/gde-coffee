@@ -1,4 +1,4 @@
-﻿import { Button, ScrollArea, Stack, Text } from "@mantine/core";
+﻿import { Button, Stack, Text } from "@mantine/core";
 import type { MutableRefObject } from "react";
 
 import type { Cafe } from "../types";
@@ -33,84 +33,74 @@ export default function CafeList({
   onLocate,
 }: CafeListProps) {
   return (
-    <div style={{ flex: 1, minHeight: 0, display: "flex" }}>
-      <ScrollArea
-        type="auto"
-        style={{ flex: 1, minHeight: 0 }}
-        styles={{
-          viewport: { overscrollBehavior: "contain", height: "100%" },
-        }}
-      >
-        <Stack gap="xs">
-          {isLoading ? (
-            <Text size="sm">{WORK_UI_TEXT.loading}</Text>
-          ) : cafes.length === 0 ? (
-            <Stack gap={6} align="center" py="md">
-              {isError || emptyState === "error" ? (
-                <>
-                  <Text size="sm" c="dimmed" ta="center">
-                    {WORK_UI_TEXT.emptyErrorTitle}
-                  </Text>
-                  <Text size="xs" c="dimmed" ta="center">
-                    {WORK_UI_TEXT.emptyErrorSubtitle}
-                  </Text>
-                  <Button size="xs" variant="light" onClick={onRetry}>
-                    {WORK_UI_TEXT.retry}
-                  </Button>
-                </>
-              ) : emptyState === "no-geo" ? (
-                <>
-                  <Text size="sm" c="dimmed" ta="center">
-                    {WORK_UI_TEXT.emptyNoGeoTitle}
-                  </Text>
-                  <Text size="xs" c="dimmed" ta="center">
-                    {WORK_UI_TEXT.emptyNoGeoSubtitle}
-                  </Text>
-                  <Button size="xs" variant="light" onClick={onLocate}>
-                    {WORK_UI_TEXT.locate}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Text size="sm" c="dimmed" ta="center">
-                    {WORK_UI_TEXT.emptyTitle}
-                  </Text>
-                  <Text size="xs" c="dimmed" ta="center">
-                    {WORK_UI_TEXT.emptySubtitle}
-                  </Text>
-                  <Button size="xs" variant="light" onClick={onResetFilters}>
-                    {WORK_UI_TEXT.resetFilters}
-                  </Button>
-                </>
-              )}
-            </Stack>
-          ) : (
-            cafes.map((c) => (
-              <Button
-                key={c.id}
-                ref={(el) => {
-                  itemRefs.current[c.id] = el;
-                }}
-                onClick={() => onSelectCafe(c.id)}
-                variant={c.id === selectedCafeId ? "filled" : "default"}
-                styles={{ inner: { justifyContent: "space-between" } }}
-                size="sm"
-                fullWidth
-              >
-                <span>
-                  {c.name}{" "}
-                  <span style={{ opacity: 0.7 }}>
-                    — {formatDistance(c.distance_m)}
-                  </span>
-                </span>
-                <span style={{ opacity: 0.8 }}>
-                  {WORK_UI_TEXT.workScorePrefix} {Math.round(c.work_score)}
-                </span>
+    <Stack gap="xs">
+      {isLoading ? (
+        <Text size="sm">{WORK_UI_TEXT.loading}</Text>
+      ) : cafes.length === 0 ? (
+        <Stack gap={6} align="center" py="md">
+          {isError || emptyState === "error" ? (
+            <>
+              <Text size="sm" c="dimmed" ta="center">
+                {WORK_UI_TEXT.emptyErrorTitle}
+              </Text>
+              <Text size="xs" c="dimmed" ta="center">
+                {WORK_UI_TEXT.emptyErrorSubtitle}
+              </Text>
+              <Button size="xs" variant="light" onClick={onRetry}>
+                {WORK_UI_TEXT.retry}
               </Button>
-            ))
+            </>
+          ) : emptyState === "no-geo" ? (
+            <>
+              <Text size="sm" c="dimmed" ta="center">
+                {WORK_UI_TEXT.emptyNoGeoTitle}
+              </Text>
+              <Text size="xs" c="dimmed" ta="center">
+                {WORK_UI_TEXT.emptyNoGeoSubtitle}
+              </Text>
+              <Button size="xs" variant="light" onClick={onLocate}>
+                {WORK_UI_TEXT.locate}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Text size="sm" c="dimmed" ta="center">
+                {WORK_UI_TEXT.emptyTitle}
+              </Text>
+              <Text size="xs" c="dimmed" ta="center">
+                {WORK_UI_TEXT.emptySubtitle}
+              </Text>
+              <Button size="xs" variant="light" onClick={onResetFilters}>
+                {WORK_UI_TEXT.resetFilters}
+              </Button>
+            </>
           )}
         </Stack>
-      </ScrollArea>
-    </div>
+      ) : (
+        cafes.map((c) => (
+          <Button
+            key={c.id}
+            ref={(el) => {
+              itemRefs.current[c.id] = el;
+            }}
+            onClick={() => onSelectCafe(c.id)}
+            variant={c.id === selectedCafeId ? "filled" : "default"}
+            styles={{ inner: { justifyContent: "space-between" } }}
+            size="sm"
+            fullWidth
+          >
+            <span>
+              {c.name}{" "}
+              <span style={{ opacity: 0.7 }}>
+                — {formatDistance(c.distance_m)}
+              </span>
+            </span>
+            <span style={{ opacity: 0.8 }}>
+              {WORK_UI_TEXT.workScorePrefix} {Math.round(c.work_score)}
+            </span>
+          </Button>
+        ))
+      )}
+    </Stack>
   );
 }

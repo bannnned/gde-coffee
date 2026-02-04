@@ -9,7 +9,7 @@ type FloatingControlsProps = {
 
 export default function FloatingControls({ onLocate }: FloatingControlsProps) {
   return (
-    <Box pos="absolute" className={classes.wrapper}>
+    <Box pos="absolute" className={`floating-controls ${classes.wrapper}`}>
       <ActionIcon
         size={42}
         variant="transparent"
