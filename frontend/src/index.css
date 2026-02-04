@@ -199,8 +199,8 @@
   );
 }
 
-:root[data-sheet-state='expanded'] .map-zoom-controls,
-:root[data-sheet-state='expanded'] .floating-controls {
+[data-sheet-state='expanded'] .map-zoom-controls,
+[data-sheet-state='expanded'] .floating-controls {
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;

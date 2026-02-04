@@ -2,11 +2,10 @@ import { useRef, useState } from "react";
 import { Box } from "@mantine/core";
 
 import Map from "../components/Map";
-import type { Amenity, Cafe, SortBy } from "../types";
+import type { Amenity, Cafe } from "../types";
 import {
   DEFAULT_AMENITIES,
   DEFAULT_RADIUS_M,
-  DEFAULT_SORT_BY,
   SPB_CENTER,
   WORK_UI_TEXT,
 } from "../features/work/constants";
@@ -19,20 +18,20 @@ import SettingsDrawer from "../features/work/components/SettingsDrawer";
 import useCafeSelection from "../features/work/hooks/useCafeSelection";
 import useCafes from "../features/work/hooks/useCafes";
 import useGeolocation from "../features/work/hooks/useGeolocation";
+import { useLayoutMetrics } from "../features/work/layout/LayoutMetricsContext";
 
 export default function WorkScreen() {
   const [radiusM, setRadiusM] = useState<number>(DEFAULT_RADIUS_M);
-  const [sortBy, setSortBy] = useState<SortBy>(DEFAULT_SORT_BY);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>(
     DEFAULT_AMENITIES,
   );
+  const { sheetHeight, sheetState } = useLayoutMetrics();
 
   const sheetRef = useRef<HTMLDivElement | null>(null);
 
   function resetFilters() {
     setRadiusM(0);
-    setSortBy(DEFAULT_SORT_BY);
     setSelectedAmenities([]);
   }
 
@@ -44,7 +43,6 @@ export default function WorkScreen() {
     lat,
     lng,
     radiusM,
-    sortBy,
     amenities: selectedAmenities,
   });
   const { selectedCafeId, selectedCafe, selectCafe, itemRefs } =
@@ -77,7 +75,13 @@ export default function WorkScreen() {
   }
 
   return (
-    <Box pos="relative" h="100vh" w="100%">
+    <Box
+      pos="relative"
+      h="100vh"
+      w="100%"
+      data-sheet-state={sheetState}
+      style={{ ["--sheet-height" as string]: `${sheetHeight}px` }}
+    >
       {/* MAP full screen */}
       <Box pos="absolute" inset={0}>
         <Map
@@ -104,6 +108,7 @@ export default function WorkScreen() {
         sheetRef={sheetRef}
         isError={cafesQuery.isError && cafes.length === 0}
         errorText={WORK_UI_TEXT.errorLoad}
+        isListEmpty={cafes.length === 0}
         header={
           selectedCafe ? (
             <CafeCard
@@ -133,8 +138,8 @@ export default function WorkScreen() {
         onClose={() => setSettingsOpen(false)}
         radiusM={radiusM}
         onRadiusChange={setRadiusM}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
+        selectedAmenities={selectedAmenities}
+        onChangeAmenities={setSelectedAmenities}
       />
     </Box>
   );

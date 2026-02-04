@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getCafes } from "../../../api/cafes";
-import type { Amenity, SortBy } from "../types";
+import type { Amenity } from "../types";
 
 // Map moves can fire rapidly; debounce before hitting the API.
 const QUERY_DEBOUNCE_MS = 400;
@@ -14,7 +14,6 @@ type UseCafesParams = {
   lat: number;
   lng: number;
   radiusM: number;
-  sortBy: SortBy;
   amenities: Amenity[];
 };
 
@@ -22,7 +21,6 @@ type CafesQueryParams = {
   lat: number;
   lng: number;
   radiusM: number;
-  sortBy: SortBy;
   amenities: Amenity[];
   amenitiesKey: string;
 };
@@ -31,10 +29,9 @@ function buildCafesKey({
   lat,
   lng,
   radiusM,
-  sortBy,
   amenitiesKey,
-}: Pick<CafesQueryParams, "lat" | "lng" | "radiusM" | "sortBy" | "amenitiesKey">) {
-  return `${lat}|${lng}|${radiusM}|${sortBy}|${amenitiesKey}`;
+}: Pick<CafesQueryParams, "lat" | "lng" | "radiusM" | "amenitiesKey">) {
+  return `${lat}|${lng}|${radiusM}|${amenitiesKey}`;
 }
 
 function linkAbortSignal(signal: AbortSignal, controller: AbortController) {
@@ -50,7 +47,6 @@ export default function useCafes({
   lat,
   lng,
   radiusM,
-  sortBy,
   amenities,
 }: UseCafesParams) {
   // Stable ordering so query key doesn't change for the same set.
@@ -68,7 +64,6 @@ export default function useCafes({
     lat,
     lng,
     radiusM,
-    sortBy,
     amenities: normalizedAmenities,
     amenitiesKey,
   }));
@@ -82,10 +77,9 @@ export default function useCafes({
         lat,
         lng,
         radiusM,
-        sortBy,
         amenitiesKey,
       }),
-    [lat, lng, radiusM, sortBy, amenitiesKey],
+    [lat, lng, radiusM, amenitiesKey],
   );
   const debouncedKey = useMemo(
     () =>
@@ -93,14 +87,12 @@ export default function useCafes({
         lat: debouncedParams.lat,
         lng: debouncedParams.lng,
         radiusM: debouncedParams.radiusM,
-        sortBy: debouncedParams.sortBy,
         amenitiesKey: debouncedParams.amenitiesKey,
       }),
     [
       debouncedParams.lat,
       debouncedParams.lng,
       debouncedParams.radiusM,
-      debouncedParams.sortBy,
       debouncedParams.amenitiesKey,
     ],
   );
@@ -118,7 +110,6 @@ export default function useCafes({
         lat,
         lng,
         radiusM,
-        sortBy,
         amenities: normalizedAmenities,
         amenitiesKey,
       });
@@ -136,7 +127,6 @@ export default function useCafes({
     lat,
     lng,
     radiusM,
-    sortBy,
     normalizedAmenities,
     amenitiesKey,
   ]);
@@ -162,7 +152,6 @@ export default function useCafes({
         lat: debouncedParams.lat,
         lng: debouncedParams.lng,
         radiusM: debouncedParams.radiusM,
-        sortBy: debouncedParams.sortBy,
         amenities: debouncedParams.amenitiesKey,
       },
     ],
@@ -182,7 +171,6 @@ export default function useCafes({
           lat: debouncedParams.lat,
           lng: debouncedParams.lng,
           radius_m: debouncedParams.radiusM,
-          sort: debouncedParams.sortBy,
           amenities: debouncedParams.amenities,
           signal: controller.signal,
         });
@@ -194,6 +182,7 @@ export default function useCafes({
     },
     staleTime: CAFES_CACHE_STALE_MS,
     gcTime: CAFES_CACHE_GC_MS,
+    placeholderData: (previous) => previous,
   });
 
   const cafes = cafesQuery.data ?? [];

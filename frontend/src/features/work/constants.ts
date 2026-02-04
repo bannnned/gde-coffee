@@ -1,14 +1,16 @@
 ﻿import { IconAdjustments, IconCurrentLocation } from "@tabler/icons-react";
 
-import type { Amenity, SortBy } from "./types";
+import type { Amenity } from "./types";
 
 export const SPB_CENTER: [number, number] = [30.3158, 59.9343];
 export const DEFAULT_RADIUS_M = 2500;
-export const DEFAULT_SORT_BY: SortBy = "work";
 export const DEFAULT_AMENITIES: Amenity[] = ["wifi", "power"];
 
 export const AMENITY_LABELS: Record<Amenity, string> = {
   wifi: "Wi-Fi",
+  robusta: "Робуста",
+  arabica: "Арабика",
+  vortex: "воронка",
   power: "Розетки",
   quiet: "Тихо",
   toilet: "Туалет",
@@ -36,9 +38,7 @@ export const WORK_UI_TEXT = {
   workScorePrefix: "work",
   radiusTitle: "Радиус",
   radiusAll: "Весь",
-  sortTitle: "Сортировка",
-  sortWork: "Работа",
-  sortDistance: "Ближе",
+  filtersTitle: "Фильтры",
 } as const;
 
 export const WORK_ICONS = {

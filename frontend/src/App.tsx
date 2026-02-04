@@ -1,5 +1,10 @@
-import WorkScreen from './pages/WorkScreen'
+import { LayoutMetricsProvider } from "./features/work/layout/LayoutMetricsContext";
+import WorkScreen from "./pages/WorkScreen";
 
 export default function App() {
-  return <WorkScreen />
+  return (
+    <LayoutMetricsProvider>
+      <WorkScreen />
+    </LayoutMetricsProvider>
+  );
 }

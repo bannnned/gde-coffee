@@ -1,4 +1,12 @@
-﻿export type Amenity = "wifi" | "power" | "quiet" | "toilet" | "laptop";
+﻿export type Amenity =
+  | "wifi"
+  | "power"
+  | "quiet"
+  | "toilet"
+  | "laptop"
+  | "robusta"
+  | "arabica"
+  | "vortex";
 
 export type Cafe = {
   id: string;
@@ -10,5 +18,3 @@ export type Cafe = {
   distance_m: number;
   work_score: number;
 };
-
-export type SortBy = "distance" | "work";
