@@ -407,7 +407,7 @@ export default function Map({
 
     const top =
       filtersBarHeight > 0 ? Math.max(0, filtersBarHeight + 12) : 0;
-    const bottom = Math.max(0, sheetHeight);
+    const bottom = 0;
     const prev = paddingRef.current;
     if (
       Math.abs(prev.top - top) < 1 &&
@@ -422,7 +422,7 @@ export default function Map({
       left: 0,
       right: 0,
     });
-  }, [filtersBarHeight, isMapReady, sheetHeight]);
+  }, [filtersBarHeight, isMapReady]);
 
   const selectedCafeLngLat = useMemo(() => {
     if (!selectedCafeId) return null;
