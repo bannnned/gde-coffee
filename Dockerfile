@@ -24,6 +24,7 @@ ENV GIN_MODE=release
 # важно: curl для healthcheck + certs
 RUN apk add --no-cache ca-certificates curl && update-ca-certificates
 
+COPY backend/ca.crt /app/ca.crt
 COPY --from=backend-build /app/server /app/server
 COPY --from=frontend-build /app/frontend/dist /app/public
 
