@@ -209,7 +209,6 @@ export default function FiltersBar({
           style={{ display: "flex", justifyContent: "center", gap: '4px' }}
         >
           <Chip.Group
-            className={classes.chipsGroup}
             multiple
             value={selectedAmenities}
             onChange={(v) => onChangeAmenities(v as Amenity[])}
