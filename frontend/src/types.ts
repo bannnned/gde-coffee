@@ -1,6 +1,1 @@
-export type {
-  Amenity,
-  Cafe,
-  CafePhoto,
-  CafePhotoKind,
-} from "./entities/cafe/model/types";
+export type { Amenity, Cafe } from "./features/work/types";

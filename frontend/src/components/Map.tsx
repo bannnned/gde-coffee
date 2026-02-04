@@ -6,33 +6,14 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Cafe } from "../types";
-import { useLayoutMetrics } from "../features/discovery/layout/LayoutMetricsContext";
+import { useLayoutMetrics } from "../features/work/layout/LayoutMetricsContext";
 import pinUrl from "../assets/pin.png";
 import cupUrl from "../assets/cup.png";
-import { APP_PALETTES, DEFAULT_PALETTE } from "../theme/palettes";
 
 const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const USER_ICON_ID = "user-pin";
 const CAFE_ICON_ID = "cafe-cup";
-const DEFAULT_PALETTE_TOKENS = APP_PALETTES[DEFAULT_PALETTE].light;
-
-type MapColors = {
-  userMarker: string;
-  cafeMarker: string;
-  labelText: string;
-  labelHalo: string;
-  strokeSoft: string;
-  strokeStrong: string;
-};
-
-const DEFAULT_MAP_COLORS: MapColors = {
-  userMarker: DEFAULT_PALETTE_TOKENS.mapUserMarker,
-  cafeMarker: DEFAULT_PALETTE_TOKENS.mapCafeMarker,
-  labelText: DEFAULT_PALETTE_TOKENS.mapLabelText,
-  labelHalo: DEFAULT_PALETTE_TOKENS.mapLabelHalo,
-  strokeSoft: DEFAULT_PALETTE_TOKENS.borderSoft,
-  strokeStrong: DEFAULT_PALETTE_TOKENS.borderStrong,
-};
+const MARKER_FALLBACK = { user: "#38bdf8", cafe: "#f59e0b" };
 
 type Props = {
   center: [number, number];
@@ -46,7 +27,6 @@ type Props = {
   paddingEnabled?: boolean;
   userLocation?: [number, number] | null;
   focusLngLat?: [number, number] | null;
-  centerProbeOffsetY?: number;
 };
 
 const FOCUS_EPS = 1e-6;
@@ -80,33 +60,6 @@ function loadImage(map: MLMap, id: string, url: string) {
   });
 }
 
-function readCssVar(name: string, fallback: string) {
-  if (typeof window === "undefined") return fallback;
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(name)
-    .trim();
-  return value || fallback;
-}
-
-function resolveMapColors(): MapColors {
-  return {
-    userMarker: readCssVar("--color-map-user-marker", DEFAULT_MAP_COLORS.userMarker),
-    cafeMarker: readCssVar("--color-map-cafe-marker", DEFAULT_MAP_COLORS.cafeMarker),
-    labelText: readCssVar("--color-map-label-text", DEFAULT_MAP_COLORS.labelText),
-    labelHalo: readCssVar("--color-map-label-halo", DEFAULT_MAP_COLORS.labelHalo),
-    strokeSoft: readCssVar("--color-border-soft", DEFAULT_MAP_COLORS.strokeSoft),
-    strokeStrong: readCssVar("--color-border-strong", DEFAULT_MAP_COLORS.strokeStrong),
-  };
-}
-
-function removeBottomRightControls(map: MLMap) {
-  const container = map.getContainer();
-  const nodes = container.querySelectorAll(".maplibregl-ctrl-bottom-right");
-  for (const node of nodes) {
-    node.remove();
-  }
-}
-
 function addSources(map: MLMap, geojson: GeoJSON.FeatureCollection) {
   if (!map.getSource("user")) {
     map.addSource("user", {
@@ -126,11 +79,7 @@ function addSources(map: MLMap, geojson: GeoJSON.FeatureCollection) {
   }
 }
 
-function addLayers(
-  map: MLMap,
-  selectedCafeId: string | null,
-  colors: MapColors,
-) {
+function addLayers(map: MLMap, selectedCafeId: string | null) {
   const hasUserIcon = map.hasImage(USER_ICON_ID);
   const hasCafeIcon = map.hasImage(CAFE_ICON_ID);
 
@@ -155,9 +104,9 @@ function addLayers(
         source: "cafes",
         paint: {
           "circle-radius": 6,
-          "circle-color": colors.cafeMarker,
+          "circle-color": MARKER_FALLBACK.cafe,
           "circle-opacity": 0.95,
-          "circle-stroke-color": colors.strokeSoft,
+          "circle-stroke-color": "rgba(0,0,0,0.2)",
           "circle-stroke-width": 1,
         },
       });
@@ -176,14 +125,13 @@ function addLayers(
         "text-font": ["Noto Sans Regular", "Open Sans Regular"],
         "text-allow-overlap": false,
         "text-ignore-placement": false,
-        "text-anchor": "top",
-        "text-offset": [0, 0.8],
-        "text-keep-upright": true,
-        "text-padding": 6,
+        "text-variable-anchor": ["top", "bottom", "left", "right"],
+        "text-radial-offset": 0.8,
+        "text-padding": 4,
       },
       paint: {
-        "text-color": colors.labelText,
-        "text-halo-color": colors.labelHalo,
+        "text-color": "#111827",
+        "text-halo-color": "rgba(255, 255, 255, 0.85)",
         "text-halo-width": 1.2,
         "text-halo-blur": 0.3,
       },
@@ -199,7 +147,7 @@ function addLayers(
         filter: ["==", ["get", "id"], selectedCafeId ?? ""],
         layout: {
           "icon-image": CAFE_ICON_ID,
-          "icon-size": 0.14,
+          "icon-size": 0.12,
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
           "icon-anchor": "bottom",
@@ -212,10 +160,10 @@ function addLayers(
         source: "cafes",
         filter: ["==", ["get", "id"], selectedCafeId ?? ""],
         paint: {
-          "circle-radius": 11,
-          "circle-color": colors.cafeMarker,
+          "circle-radius": 9,
+          "circle-color": MARKER_FALLBACK.cafe,
           "circle-opacity": 1,
-          "circle-stroke-color": colors.strokeStrong,
+          "circle-stroke-color": "rgba(255,255,255,0.85)",
           "circle-stroke-width": 2,
         },
       });
@@ -243,9 +191,9 @@ function addLayers(
         source: "user",
         paint: {
           "circle-radius": 7,
-          "circle-color": colors.userMarker,
+          "circle-color": MARKER_FALLBACK.user,
           "circle-opacity": 0.95,
-          "circle-stroke-color": colors.strokeSoft,
+          "circle-stroke-color": "rgba(0,0,0,0.25)",
           "circle-stroke-width": 2,
         },
       });
@@ -253,16 +201,12 @@ function addLayers(
   }
 }
 
-function rebuildLayers(
-  map: MLMap,
-  selectedCafeId: string | null,
-  colors: MapColors,
-) {
+function rebuildLayers(map: MLMap, selectedCafeId: string | null) {
   if (map.getLayer("cafes-layer")) map.removeLayer("cafes-layer");
   if (map.getLayer("cafes-labels")) map.removeLayer("cafes-labels");
   if (map.getLayer("cafes-selected")) map.removeLayer("cafes-selected");
   if (map.getLayer("user-layer")) map.removeLayer("user-layer");
-  addLayers(map, selectedCafeId, colors);
+  addLayers(map, selectedCafeId);
   updateSelected(map, selectedCafeId);
 }
 
@@ -315,44 +259,16 @@ export default function Map({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const onCafeSelectRef = useRef(onCafeSelect);
-  const onMapClickRef = useRef(onMapClick);
-  const onCenterChangeRef = useRef(onCenterChange);
-  const centerProbeOffsetYRef = useRef(centerProbeOffsetY);
   const focusRef = useRef<[number, number] | null>(focusLngLat ?? null);
   const selectedCafeRef = useRef<string | null>(selectedCafeId ?? null);
-  const mapColorsRef = useRef<MapColors>(DEFAULT_MAP_COLORS);
   const geojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const paddingRef = useRef({ top: 0, bottom: 0 });
   const [isMapReady, setIsMapReady] = useState(false);
-  const [mapColors, setMapColors] = useState<MapColors>(() => resolveMapColors());
-  const { filtersBarHeight } = useLayoutMetrics();
-
-  useEffect(() => {
-    const syncMapColors = () => setMapColors(resolveMapColors());
-    syncMapColors();
-    const observer = new MutationObserver(syncMapColors);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["style", "data-mantine-color-scheme", "data-app-palette"],
-    });
-    return () => observer.disconnect();
-  }, []);
+  const { sheetHeight, filtersBarHeight } = useLayoutMetrics();
 
   useEffect(() => {
     onCafeSelectRef.current = onCafeSelect;
   }, [onCafeSelect]);
-
-  useEffect(() => {
-    onMapClickRef.current = onMapClick;
-  }, [onMapClick]);
-
-  useEffect(() => {
-    onCenterChangeRef.current = onCenterChange;
-  }, [onCenterChange]);
-
-  useEffect(() => {
-    centerProbeOffsetYRef.current = centerProbeOffsetY;
-  }, [centerProbeOffsetY]);
 
   useEffect(() => {
     focusRef.current = focusLngLat ?? null;
@@ -361,10 +277,6 @@ export default function Map({
   useEffect(() => {
     selectedCafeRef.current = selectedCafeId ?? null;
   }, [selectedCafeId]);
-
-  useEffect(() => {
-    mapColorsRef.current = mapColors;
-  }, [mapColors]);
 
   const geojson = useMemo(() => {
     return {
@@ -447,38 +359,24 @@ export default function Map({
         map,
         geojsonRef.current ?? (geojson as unknown as GeoJSON.FeatureCollection),
       );
-      addLayers(map, selectedCafeRef.current ?? null, mapColorsRef.current);
+      addLayers(map, selectedCafeRef.current ?? null);
       updateUserLocation(map, userLocation);
       updateSelected(map, selectedCafeRef.current ?? null);
       if (focusRef.current) {
         map.easeTo({ center: focusRef.current, duration: 450 });
       }
       setIsMapReady(true);
-      removeBottomRightControls(map);
-      // MapLibre can re-create control wrappers after style/layer updates.
-      // Keep removing the bottom-right controls to match product requirement.
-      controlsObserver = new MutationObserver(() => {
-        removeBottomRightControls(map);
-      });
-      controlsObserver.observe(map.getContainer(), { childList: true, subtree: true });
 
-      if (!disableCafeClick) {
-        map.on("click", "cafes-layer", handleClick);
-        map.on("mouseenter", "cafes-layer", handleMouseEnter);
-        map.on("mouseleave", "cafes-layer", handleMouseLeave);
-      }
-
-      if (onMapClickRef.current) {
-        map.on("click", handleMapClick);
-      }
-      map.on("moveend", handleMoveEnd);
+      map.on("click", "cafes-layer", handleClick);
+      map.on("mouseenter", "cafes-layer", handleMouseEnter);
+      map.on("mouseleave", "cafes-layer", handleMouseLeave);
 
       const [userLoaded, cafeLoaded] = await Promise.all([
         loadImage(map, USER_ICON_ID, pinUrl),
         loadImage(map, CAFE_ICON_ID, cupUrl),
       ]);
       if (userLoaded || cafeLoaded) {
-        rebuildLayers(map, selectedCafeRef.current ?? null, mapColorsRef.current);
+        rebuildLayers(map, selectedCafeRef.current ?? null);
       }
     };
 
@@ -503,53 +401,13 @@ export default function Map({
   }, []);
 
   useEffect(() => {
-    const map = mapRef.current;
-    const onCenterChange = onCenterChangeRef.current;
-    if (!map || !isMapReady || !onCenterChange) return;
-    const container = map.getContainer();
-    const probeOffsetY = centerProbeOffsetYRef.current;
-    if (container && Math.abs(probeOffsetY) > 0.01) {
-      const sampled = map.unproject([
-        container.clientWidth / 2,
-        container.clientHeight / 2 + probeOffsetY,
-      ]);
-      onCenterChange([sampled.lng, sampled.lat]);
-      return;
-    }
-    const next = map.getCenter();
-    onCenterChange([next.lng, next.lat]);
-  }, [centerProbeOffsetY, isMapReady, onCenterChange]);
-
-  useEffect(() => {
     if (!isMapReady) return;
     const map = mapRef.current;
     if (!map) return;
-    rebuildLayers(map, selectedCafeRef.current ?? null, mapColors);
-  }, [isMapReady, mapColors]);
-
-  useEffect(() => {
-    if (!isMapReady) return;
-    const map = mapRef.current;
-    if (!map) return;
-
-    if (!paddingEnabled) {
-      const prev = paddingRef.current;
-      if (Math.abs(prev.top) < 1 && Math.abs(prev.bottom) < 1) {
-        return;
-      }
-      paddingRef.current = { top: 0, bottom: 0 };
-      map.setPadding({
-        top: 0,
-        bottom: 0,
-        left: 0,
-        right: 0,
-      });
-      return;
-    }
 
     const top =
       filtersBarHeight > 0 ? Math.max(0, filtersBarHeight + 12) : 0;
-    const bottom = 0;
+    const bottom = Math.max(0, sheetHeight);
     const prev = paddingRef.current;
     if (
       Math.abs(prev.top - top) < 1 &&
@@ -564,7 +422,7 @@ export default function Map({
       left: 0,
       right: 0,
     });
-  }, [filtersBarHeight, isMapReady, paddingEnabled]);
+  }, [filtersBarHeight, isMapReady, sheetHeight]);
 
   const selectedCafeLngLat = useMemo(() => {
     if (!selectedCafeId) return null;

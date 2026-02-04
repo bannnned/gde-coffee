@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getCafes } from "../../../api/cafes";
-import type { Amenity } from "../../../entities/cafe/model/types";
+import type { Amenity } from "../types";
 
 // Map moves can fire rapidly; debounce before hitting the API.
 const QUERY_DEBOUNCE_MS = 400;
@@ -33,9 +33,8 @@ function buildCafesKey({
   lng,
   radiusM,
   amenitiesKey,
-  favoritesOnly,
-}: Pick<CafesQueryParams, "lat" | "lng" | "radiusM" | "amenitiesKey" | "favoritesOnly">) {
-  return `${lat}|${lng}|${radiusM}|${amenitiesKey}|${favoritesOnly ? "fav" : "all"}`;
+}: Pick<CafesQueryParams, "lat" | "lng" | "radiusM" | "amenitiesKey">) {
+  return `${lat}|${lng}|${radiusM}|${amenitiesKey}`;
 }
 
 function linkAbortSignal(signal: AbortSignal, controller: AbortController) {
@@ -87,7 +86,7 @@ export default function useCafes({
         amenitiesKey,
         favoritesOnly,
       }),
-    [lat, lng, radiusM, amenitiesKey, favoritesOnly],
+    [lat, lng, radiusM, amenitiesKey],
   );
   const debouncedKey = useMemo(
     () =>

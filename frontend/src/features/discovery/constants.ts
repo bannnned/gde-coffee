@@ -1,6 +1,6 @@
 import { IconAdjustments, IconCurrentLocation } from "@tabler/icons-react";
 
-import type { Amenity } from "../../entities/cafe/model/types";
+import type { Amenity } from "./types";
 
 export const SPB_CENTER: [number, number] = [30.3158, 59.9343];
 export const MOSCOW_CENTER: [number, number] = [37.6173, 55.7558];
@@ -37,7 +37,7 @@ export const DISCOVERY_UI_TEXT = {
   route2gis: "2GIS",
   routeYandex: "Яндекс",
   radiusTitle: "Радиус",
-  radiusAll: "Город",
+  radiusAll: "Весь",
   filtersTitle: "Фильтры",
 } as const;
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -16,19 +17,241 @@ import (
 
 	"backend/internal/auth"
 	"backend/internal/config"
-	"backend/internal/domains/cafes"
-	"backend/internal/domains/favorites"
-	"backend/internal/domains/moderation"
-	"backend/internal/domains/photos"
-	"backend/internal/domains/reviews"
-	"backend/internal/mailer"
-	"backend/internal/media"
-	"backend/internal/shared/httpx"
-	dbmigrations "backend/migrations"
+	"backend/internal/model"
 )
 
-func connectDB(dbURL string) (*pgxpool.Pool, error) {
-	cfgPool, err := pgxpool.ParseConfig(dbURL)
+func queryCafes(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	lat, lng, radiusM float64,
+	requiredAmenities []string,
+	sortBy string,
+	limit int,
+	cfg config.Config,
+) ([]model.CafeResponse, error) {
+
+	// если сортировка work — выгодно взять побольше из БД, потом отсортировать в Go
+	dbLimit := limit
+	if sortBy == config.SortByWork {
+		// чтобы было из чего выбирать
+		if cfg.Limits.MaxResults > 0 {
+			dbLimit = cfg.Limits.MaxResults
+		} else if limit > 0 {
+			dbLimit = limit * 5
+		} else {
+			dbLimit = 200
+		}
+	}
+	if dbLimit <= 0 {
+		dbLimit = cfg.Limits.DefaultResults
+	}
+
+	var amenitiesParam []string
+	if len(requiredAmenities) > 0 {
+		amenitiesParam = requiredAmenities
+	} else {
+		amenitiesParam = nil // важно: будет NULL
+	}
+
+	// haversine в SQL (без PostGIS)
+	const sqlDistance = `
+WITH q AS (
+  SELECT
+    id::text,
+    name,
+    address,
+    lat,
+    lng,
+    amenities,
+    (2 * 6371000 * asin(
+      sqrt(
+        power(sin(radians(($1 - lat) / 2)), 2) +
+        cos(radians(lat)) * cos(radians($1)) *
+        power(sin(radians(($2 - lng) / 2)), 2)
+      )
+    )) AS distance_m
+  FROM public.cafes
+  WHERE ($4::text[] IS NULL OR amenities @> $4::text[])
+)
+SELECT id, name, address, lat, lng, amenities, distance_m
+FROM q
+WHERE ($3 = 0 OR distance_m <= $3)
+ORDER BY distance_m ASC
+LIMIT $5;
+`
+
+	rows, err := pool.Query(ctx, sqlDistance, lat, lng, radiusM, amenitiesParam, dbLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]model.CafeResponse, 0, 32)
+	for rows.Next() {
+		var (
+			id      string
+			name    string
+			address string
+			latDB   float64
+			lngDB   float64
+			ams     []string
+			dist    float64
+		)
+
+		if err := rows.Scan(&id, &name, &address, &latDB, &lngDB, &ams, &dist); err != nil {
+			return nil, err
+		}
+
+		out = append(out, model.CafeResponse{
+			ID:        id,
+			Name:      name,
+			Address:   address,
+			Latitude:  latDB,
+			Longitude: lngDB,
+			Amenities: ams,
+			DistanceM: dist,
+			WorkScore: computeWorkScore(ams), // как у тебя уже есть
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// если просили сортировку по work — сортируем тут (distance уже посчитана)
+	if sortBy == config.SortByWork {
+		sort.Slice(out, func(i, j int) bool {
+			if out[i].WorkScore == out[j].WorkScore {
+				return out[i].DistanceM < out[j].DistanceM
+			}
+			return out[i].WorkScore > out[j].WorkScore
+		})
+		if limit > 0 && len(out) > limit {
+			out = out[:limit]
+		}
+	} else {
+		// distance сортировка уже в SQL, просто обрежем
+		if limit > 0 && len(out) > limit {
+			out = out[:limit]
+		}
+	}
+
+	return out, nil
+}
+
+func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		const maxRadiusM = 50000.0
+
+		latStr := strings.TrimSpace(c.Query("lat"))
+		lngStr := strings.TrimSpace(c.Query("lng"))
+		radiusStr := strings.TrimSpace(c.Query("radius_m"))
+
+		if latStr == "" || lngStr == "" || radiusStr == "" {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lat, lng, and radius_m are required", nil)
+			return
+		}
+
+		lat, err := parseFloat(latStr)
+		if err != nil {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid lat", nil)
+			return
+		}
+		if lat < -90 || lat > 90 {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lat must be between -90 and 90", nil)
+			return
+		}
+
+		lng, err := parseFloat(lngStr)
+		if err != nil {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid lng", nil)
+			return
+		}
+		if lng < -180 || lng > 180 {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lng must be between -180 and 180", nil)
+			return
+		}
+
+		radiusM, err := parseFloat(radiusStr)
+		if err != nil {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid radius_m", nil)
+			return
+		}
+
+		if radiusM < 0 {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "radius_m must be >= 0", nil)
+			return
+		}
+
+		if radiusM > maxRadiusM {
+			respondError(
+				c,
+				http.StatusBadRequest,
+				"invalid_argument",
+				"radius_m must be <= 50000",
+				gin.H{"max_radius_m": maxRadiusM},
+			)
+			return
+		}
+
+		sortBy := strings.TrimSpace(c.DefaultQuery("sort", config.DefaultSort))
+		if sortBy != config.SortByDistance && sortBy != config.SortByWork {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "sort must be 'work' or 'distance'", nil)
+			return
+		}
+
+		limit, err := parseLimit(c.Query("limit"), cfg.Limits)
+		if err != nil {
+			respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+			return
+		}
+
+		requiredAmenities := parseAmenities(c.Query("amenities"))
+
+		// таймаут на запрос
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+		defer cancel()
+
+		cafes, err := queryCafes(ctx, pool, lat, lng, radiusM, requiredAmenities, sortBy, limit, cfg)
+		if err != nil {
+			respondError(c, http.StatusInternalServerError, "internal", "db query failed", gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, cafes)
+	}
+}
+
+func parseFloat(value string) (float64, error) {
+	return strconv.ParseFloat(value, 64)
+}
+
+func parseAmenities(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+
+	parts := strings.Split(raw, ",")
+	amenities := make([]string, 0, len(parts))
+	for _, part := range parts {
+		amenity := strings.ToLower(strings.TrimSpace(part))
+		if amenity == "" {
+			continue
+		}
+		amenities = append(amenities, amenity)
+	}
+
+	return amenities
+}
+
+func parseLimit(raw string, limits config.LimitsConfig) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return limits.DefaultResults, nil
+	}
+
+	limit, err := strconv.Atoi(raw)
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +376,48 @@ func main() {
 	}
 	log.Println("db migrations applied")
 
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL is required")
+	}
+
+	cfgPool, err := pgxpool.ParseConfig(dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cfgPool.MinConns = 2
+	cfgPool.MaxConns = 10
+
+	// Важно: явный connect timeout на уровне драйвера
+	cfgPool.ConnConfig.ConnectTimeout = 15 * time.Second
+
+	ctxNew, cancelNew := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancelNew()
+
+	pool, err := pgxpool.NewWithConfig(ctxNew, cfgPool)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pool.Close()
+
+	ctxPing, cancelPing := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelPing()
+
+	if err := pool.Ping(ctxPing); err != nil {
+		log.Fatal(err)
+	}
+
+	ctxWarm, cancelWarm := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelWarm()
+
+	var one int
+	if err := pool.QueryRow(ctxWarm, "select 1").Scan(&one); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("db warmup OK")
+
 	r := gin.Default()
 
 	r.GET("/_health", func(c *gin.Context) {
@@ -212,73 +477,7 @@ func main() {
 	go reviewsHandler.Service().StartRatingRebuildWorker(context.Background(), 15*time.Minute)
 
 	api := r.Group("/api")
-	api.GET("/geocode", cafesHandler.GeocodeLookup)
-	api.GET("/drinks", reviewsHandler.ListDrinks)
-	api.GET("/cafes", auth.OptionalAuth(pool), cafesHandler.List)
-	api.POST("/cafes/:id/favorite", auth.RequireAuth(pool), favoritesHandler.Add)
-	api.DELETE("/cafes/:id/favorite", auth.RequireAuth(pool), favoritesHandler.Remove)
-	api.PATCH("/cafes/:id/description", auth.RequireRole(pool, "admin", "moderator"), cafesHandler.UpdateDescription)
-	api.POST("/reviews", auth.RequireAuth(pool), reviewsHandler.Create)
-	api.PATCH("/reviews/:id", auth.RequireAuth(pool), reviewsHandler.Update)
-	api.DELETE("/reviews/:id", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.DeleteReview)
-	api.POST("/reviews/photos/presign", auth.RequireAuth(pool), reviewsHandler.PresignPhoto)
-	api.POST("/reviews/photos/confirm", auth.RequireAuth(pool), reviewsHandler.ConfirmPhoto)
-	api.GET("/reviews/photos/:id/status", auth.RequireAuth(pool), reviewsHandler.GetPhotoStatus)
-	api.POST("/reviews/:id/helpful", auth.RequireAuth(pool), reviewsHandler.AddHelpful)
-	api.POST("/cafes/:id/check-in/start", auth.RequireAuth(pool), reviewsHandler.StartCheckIn)
-	api.POST("/reviews/:id/visit/verify", auth.RequireAuth(pool), reviewsHandler.VerifyVisit)
-	api.POST("/reviews/:id/abuse", auth.RequireAuth(pool), reviewsHandler.ReportAbuse)
-	api.POST("/abuse-reports/:id/confirm", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.ConfirmAbuse)
-	api.GET("/cafes/:id/rating", reviewsHandler.GetCafeRating)
-	api.GET("/cafes/:id/reviews", reviewsHandler.ListCafeReviews)
-	api.GET("/reputation/me", auth.RequireAuth(pool), reviewsHandler.GetMyReputation)
-	api.GET("/reputation/me/events", auth.RequireAuth(pool), reviewsHandler.GetMyReputationEvents)
-	api.GET("/reputation/users/:id/events", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.GetUserReputationEvents)
-
-	adminDrinksGroup := api.Group("/admin/drinks")
-	adminDrinksGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
-	adminDrinksGroup.GET("", reviewsHandler.ListAdminDrinks)
-	adminDrinksGroup.POST("", reviewsHandler.CreateDrink)
-	adminDrinksGroup.PATCH("/:id", reviewsHandler.UpdateDrink)
-	adminDrinksGroup.GET("/unknown", reviewsHandler.ListUnknownDrinks)
-	adminDrinksGroup.POST("/unknown/:id/map", reviewsHandler.MapUnknownDrink)
-	adminDrinksGroup.POST("/unknown/:id/ignore", reviewsHandler.IgnoreUnknownDrink)
-
-	adminCafesGroup := api.Group("/admin/cafes")
-	adminCafesGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
-	adminCafesGroup.GET("/:id/rating-diagnostics", reviewsHandler.GetCafeRatingDiagnostics)
-
-	adminReviewsGroup := api.Group("/admin/reviews")
-	adminReviewsGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
-	adminReviewsGroup.GET("/versioning", reviewsHandler.GetVersioningStatus)
-	adminReviewsGroup.GET("/dlq", reviewsHandler.ListDLQ)
-	adminReviewsGroup.POST("/dlq/replay-open", reviewsHandler.ReplayAllOpenDLQ)
-	adminReviewsGroup.POST("/dlq/resolve-open", reviewsHandler.ResolveOpenDLQWithoutReplay)
-	adminReviewsGroup.POST("/dlq/:id/replay", reviewsHandler.ReplayDLQEvent)
-
-	api.GET("/cafes/:id/photos", photosHandler.List)
-	api.POST("/cafes/:id/photos/presign", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Presign)
-	api.POST("/cafes/:id/photos/confirm", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Confirm)
-	api.PATCH("/cafes/:id/photos/order", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Reorder)
-	api.PATCH("/cafes/:id/photos/:photoID/cover", auth.RequireRole(pool, "admin", "moderator"), photosHandler.SetCover)
-	api.DELETE("/cafes/:id/photos/:photoID", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Delete)
-
-	submissionsGroup := api.Group("/submissions")
-	submissionsGroup.Use(auth.RequireAuth(pool))
-	submissionsGroup.POST("/photos/presign", moderationHandler.PresignPhoto)
-	submissionsGroup.POST("/cafes", moderationHandler.SubmitCafeCreate)
-	submissionsGroup.POST("/cafes/:id/description", moderationHandler.SubmitCafeDescription)
-	submissionsGroup.POST("/cafes/:id/photos", moderationHandler.SubmitCafePhotos)
-	submissionsGroup.POST("/cafes/:id/menu-photos", moderationHandler.SubmitMenuPhotos)
-	submissionsGroup.GET("/mine", moderationHandler.ListMine)
-
-	moderationGroup := api.Group("/moderation")
-	moderationGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
-	moderationGroup.GET("/submissions", moderationHandler.ListModeration)
-	moderationGroup.GET("/submissions/:id", moderationHandler.GetModerationItem)
-	moderationGroup.POST("/submissions/:id/approve", moderationHandler.Approve)
-	moderationGroup.POST("/submissions/:id/reject", moderationHandler.Reject)
-
+	api.GET("/cafes", getCafes(cfg, pool))
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
