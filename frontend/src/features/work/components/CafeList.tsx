@@ -76,20 +76,20 @@ export default function CafeList({
   const emptyCardStyles = {
     border:
       scheme === "dark"
-        ? "1px solid rgba(148, 163, 184, 0.18)"
-        : "1px solid rgba(15, 23, 42, 0.08)",
+        ? "1px solid rgba(255, 255, 240, 0.16)"
+        : "1px solid rgba(26, 26, 26, 0.1)",
   } as const;
 
   const emptyIconStyles = {
     background:
       scheme === "dark"
-        ? "linear-gradient(135deg, rgba(59,130,246,0.35), rgba(14,116,144,0.45))"
-        : "linear-gradient(135deg, rgba(59,130,246,0.22), rgba(56,189,248,0.25))",
-    color: scheme === "dark" ? "rgba(248, 250, 252, 0.95)" : "#1f2937",
+        ? "linear-gradient(135deg, rgba(69,126,115,0.45), rgba(69,126,115,0.28))"
+        : "linear-gradient(135deg, rgba(69,126,115,0.28), rgba(69,126,115,0.18))",
+    color: scheme === "dark" ? "rgba(255, 255, 240, 0.95)" : "#1A1A1A",
     boxShadow:
       scheme === "dark"
-        ? "0 10px 20px rgba(2, 6, 23, 0.45)"
-        : "0 10px 20px rgba(15, 23, 42, 0.14)",
+        ? "0 10px 20px rgba(0, 0, 0, 0.5)"
+        : "0 10px 20px rgba(26, 26, 26, 0.14)",
   } as const;
 
   const EmptyIcon = emptyConfig.icon;
