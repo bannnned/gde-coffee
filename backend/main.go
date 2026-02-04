@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math"
@@ -11,15 +12,136 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 
 	"backend/internal/config"
-	"backend/internal/data"
 	"backend/internal/model"
 )
 
-func getCafes(cfg config.Config) gin.HandlerFunc {
+func queryCafes(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	lat, lng, radiusM float64,
+	requiredAmenities []string,
+	sortBy string,
+	limit int,
+	cfg config.Config,
+) ([]model.CafeResponse, error) {
+
+	// если сортировка work — выгодно взять побольше из БД, потом отсортировать в Go
+	dbLimit := limit
+	if sortBy == config.SortByWork {
+		// чтобы было из чего выбирать
+		if cfg.Limits.MaxResults > 0 {
+			dbLimit = cfg.Limits.MaxResults
+		} else if limit > 0 {
+			dbLimit = limit * 5
+		} else {
+			dbLimit = 200
+		}
+	}
+	if dbLimit <= 0 {
+		dbLimit = cfg.Limits.DefaultResults
+	}
+
+	var amenitiesParam []string
+	if len(requiredAmenities) > 0 {
+		amenitiesParam = requiredAmenities
+	} else {
+		amenitiesParam = nil // важно: будет NULL
+	}
+
+	// haversine в SQL (без PostGIS)
+	const sqlDistance = `
+WITH q AS (
+  SELECT
+    id::text,
+    name,
+    address,
+    lat,
+    lng,
+    amenities,
+    (2 * 6371000 * asin(
+      sqrt(
+        power(sin(radians(($1 - lat) / 2)), 2) +
+        cos(radians(lat)) * cos(radians($1)) *
+        power(sin(radians(($2 - lng) / 2)), 2)
+      )
+    )) AS distance_m
+  FROM public.cafes
+  WHERE ($4::text[] IS NULL OR amenities @> $4::text[])
+)
+SELECT id, name, address, lat, lng, amenities, distance_m
+FROM q
+WHERE ($3 = 0 OR distance_m <= $3)
+ORDER BY distance_m ASC
+LIMIT $5;
+`
+
+	rows, err := pool.Query(ctx, sqlDistance, lat, lng, radiusM, amenitiesParam, dbLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]model.CafeResponse, 0, 32)
+	for rows.Next() {
+		var (
+			id      string
+			name    string
+			address string
+			latDB   float64
+			lngDB   float64
+			ams     []string
+			dist    float64
+		)
+
+		if err := rows.Scan(&id, &name, &address, &latDB, &lngDB, &ams, &dist); err != nil {
+			return nil, err
+		}
+
+		out = append(out, model.CafeResponse{
+			ID:        id,
+			Name:      name,
+			Address:   address,
+			Latitude:  latDB,
+			Longitude: lngDB,
+			Amenities: ams,
+			DistanceM: dist,
+			WorkScore: computeWorkScore(ams), // как у тебя уже есть
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// если просили сортировку по work — сортируем тут (distance уже посчитана)
+	if sortBy == config.SortByWork {
+		sort.Slice(out, func(i, j int) bool {
+			if out[i].WorkScore == out[j].WorkScore {
+				return out[i].DistanceM < out[j].DistanceM
+			}
+			return out[i].WorkScore > out[j].WorkScore
+		})
+		if limit > 0 && len(out) > limit {
+			out = out[:limit]
+		}
+	} else {
+		// distance сортировка уже в SQL, просто обрежем
+		if limit > 0 && len(out) > limit {
+			out = out[:limit]
+		}
+	}
+
+	return out, nil
+}
+
+func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		const maxRadiusM = 50000.0
 
@@ -88,36 +210,17 @@ func getCafes(cfg config.Config) gin.HandlerFunc {
 
 		requiredAmenities := parseAmenities(c.Query("amenities"))
 
-		results := make([]model.CafeResponse, 0, len(data.Cafes))
-		for _, cafe := range data.Cafes {
-			if len(requiredAmenities) > 0 && !hasAllAmenities(cafe.Amenities, requiredAmenities) {
-				continue
-			}
+		// таймаут на запрос
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+		defer cancel()
 
-			distanceM := haversineMeters(lat, lng, cafe.Latitude, cafe.Longitude)
-			if radiusM > 0 && distanceM > radiusM {
-				continue
-			}
-
-			results = append(results, model.CafeResponse{
-				ID:        cafe.ID,
-				Name:      cafe.Name,
-				Address:   cafe.Address,
-				Latitude:  cafe.Latitude,
-				Longitude: cafe.Longitude,
-				Amenities: cafe.Amenities,
-				DistanceM: distanceM,
-				WorkScore: computeWorkScore(cafe.Amenities),
-			})
+		cafes, err := queryCafes(ctx, pool, lat, lng, radiusM, requiredAmenities, sortBy, limit, cfg)
+		if err != nil {
+			respondError(c, http.StatusInternalServerError, "internal", "db query failed", gin.H{"error": err.Error()})
+			return
 		}
 
-		sortCafes(results, sortBy)
-
-		if limit > 0 && len(results) > limit {
-			results = results[:limit]
-		}
-
-		c.JSON(http.StatusOK, results)
+		c.JSON(http.StatusOK, cafes)
 	}
 }
 
@@ -267,10 +370,54 @@ func serveStaticOrIndex(c *gin.Context, publicDir string) {
 }
 
 func main() {
+	_ = godotenv.Load()
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL is required")
+	}
+
+	cfgPool, err := pgxpool.ParseConfig(dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cfgPool.MinConns = 2
+	cfgPool.MaxConns = 10
+
+	// Важно: явный connect timeout на уровне драйвера
+	cfgPool.ConnConfig.ConnectTimeout = 15 * time.Second
+
+	ctxNew, cancelNew := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancelNew()
+
+	pool, err := pgxpool.NewWithConfig(ctxNew, cfgPool)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pool.Close()
+
+	ctxPing, cancelPing := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelPing()
+
+	if err := pool.Ping(ctxPing); err != nil {
+		log.Fatal(err)
+	}
+
+	ctxWarm, cancelWarm := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelWarm()
+
+	var one int
+	if err := pool.QueryRow(ctxWarm, "select 1").Scan(&one); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("db warmup OK")
 
 	r := gin.Default()
 
@@ -283,7 +430,7 @@ func main() {
 	})
 
 	api := r.Group("/api")
-	api.GET("/cafes", getCafes(cfg))
+	api.GET("/cafes", getCafes(cfg, pool))
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})

@@ -1,4 +1,4 @@
-import {
+﻿import {
   ActionIcon,
   Badge,
   Box,
@@ -8,11 +8,14 @@ import {
   useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { ColorSchemeToggle } from "../../../components/ColorSchemeToggle";
+import logoUrl from "../../../assets/logo.png";
 import type { Amenity } from "../types";
 import { AMENITY_LABELS, WORK_ICONS, WORK_UI_TEXT } from "../constants";
 import classes from "./FiltersBar.module.css";
+import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
 
 type FiltersBarProps = {
   selectedAmenities: Amenity[];
@@ -20,6 +23,8 @@ type FiltersBarProps = {
   onOpenSettings: () => void;
   showFetchingBadge: boolean;
 };
+
+const CHIP_GAP_PX = 4;
 
 export default function FiltersBar({
   selectedAmenities,
@@ -31,6 +36,20 @@ export default function FiltersBar({
     getInitialValueInEffect: true,
   });
   const theme = useMantineTheme();
+  const chipsScrollerRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const chipMeasureRefs = useRef<Record<string, HTMLSpanElement | null>>({});
+  const allAmenities = useMemo(
+    () => Object.keys(AMENITY_LABELS) as Amenity[],
+    [],
+  );
+  const [visibleAmenities, setVisibleAmenities] =
+    useState<Amenity[]>(allAmenities);
+  const selectedKey = useMemo(
+    () => selectedAmenities.slice().sort().join(","),
+    [selectedAmenities],
+  );
+  const { setFiltersBarHeight } = useLayoutMetrics();
 
   const amenityChipLabelBaseStyles = {
     boxSizing: "border-box",
@@ -70,15 +89,82 @@ export default function FiltersBar({
         ? "linear-gradient(135deg, rgba(56,189,248,0.3), rgba(14,116,144,0.35))"
         : "linear-gradient(135deg, rgba(59,130,246,0.28), rgba(56,189,248,0.22))",
     borderColor:
-      scheme === "dark"
-        ? "rgba(125,211,252,0.45)"
-        : "rgba(59,130,246,0.35)",
+      scheme === "dark" ? "rgba(125,211,252,0.45)" : "rgba(59,130,246,0.35)",
     boxShadow:
       scheme === "dark"
         ? "0 8px 20px rgba(2, 6, 23, 0.5)"
         : "0 8px 18px rgba(30, 64, 175, 0.22)",
     transform: "none",
   } as const;
+
+  useLayoutEffect(() => {
+    const container = chipsScrollerRef.current;
+    if (!container) return;
+    let raf = 0;
+
+    const update = () => {
+      const available = container.clientWidth;
+      if (available <= 0) return;
+      let used = 0;
+      const next: Amenity[] = [];
+
+      for (const amenity of allAmenities) {
+        const node = chipMeasureRefs.current[amenity];
+        if (!node) continue;
+        const width = node.offsetWidth;
+        const nextUsed = next.length === 0 ? width : used + CHIP_GAP_PX + width;
+
+        if (nextUsed <= available) {
+          next.push(amenity);
+          used = nextUsed;
+        } else {
+          break;
+        }
+      }
+
+      setVisibleAmenities((prev) => {
+        if (
+          prev.length === next.length &&
+          prev.every((v, i) => v === next[i])
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
+
+    const schedule = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(update);
+    };
+
+    schedule();
+    const observer = new ResizeObserver(schedule);
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [allAmenities, selectedKey, scheme, theme.fontSizes.xs]);
+
+  useLayoutEffect(() => {
+    const node = headerRef.current;
+    if (!node) return;
+    const update = () => {
+      const rect = node.getBoundingClientRect();
+      setFiltersBarHeight(rect.bottom);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+      setFiltersBarHeight(0);
+    };
+  }, [setFiltersBarHeight]);
 
   return (
     <Box
@@ -90,9 +176,15 @@ export default function FiltersBar({
       className={classes.root}
       data-ui="filters-bar"
     >
-      <Group justify="space-between" className={classes.header}>
+      <Group
+        justify="space-between"
+        className={classes.header}
+        data-ui="filters-bar-header"
+        ref={headerRef}
+      >
         <Title order={4} className={classes.logo} style={{ margin: 0 }}>
-          {WORK_UI_TEXT.title}
+          <img src={logoUrl} alt="" className={classes.logoMark} />
+          <span>{WORK_UI_TEXT.title}</span>
         </Title>
 
         <Group gap="xs">
@@ -110,18 +202,72 @@ export default function FiltersBar({
         </Group>
       </Group>
 
-      <Group mt="xs" gap="xs" wrap="wrap" className={classes.chipsRow}>
-        <Chip.Group
-          multiple
-          value={selectedAmenities}
-          onChange={(v) => onChangeAmenities(v as Amenity[])}
+      <Group mt="xs" gap="xs" wrap="nowrap" className={classes.chipsRow}>
+        <div
+          className={classes.chipsScroller}
+          ref={chipsScrollerRef}
+          style={{ display: "flex", justifyContent: "center", gap: '4px' }}
         >
-          {(Object.keys(AMENITY_LABELS) as Amenity[]).map((a) => {
-            const isChecked = selectedAmenities.includes(a);
-            return (
+          <Chip.Group
+            className={classes.chipsGroup}
+            multiple
+            value={selectedAmenities}
+            onChange={(v) => onChangeAmenities(v as Amenity[])}
+          >
+            {visibleAmenities.map((a) => {
+              const isChecked = selectedAmenities.includes(a);
+              return (
+                <Chip
+                  className="main-filters"
+                  key={a}
+                  value={a}
+                  size="xs"
+                  radius="xl"
+                  variant="filled"
+                  icon={null}
+                  styles={{
+                    iconWrapper: { display: "none" },
+                    label: {
+                      ...amenityChipLabelBaseStyles,
+                      ...(isChecked ? amenityChipLabelCheckedStyles : null),
+                    },
+                  }}
+                >
+                  {AMENITY_LABELS[a]}
+                </Chip>
+              );
+            })}
+          </Chip.Group>
+        </div>
+
+        {showFetchingBadge && (
+          <Badge
+            className={classes.fetchBadge}
+            variant="filled"
+            styles={{
+              root: {
+                backdropFilter: "blur(8px)",
+                background: "rgba(0,0,0,0.65)",
+              },
+            }}
+          >
+            {WORK_UI_TEXT.fetching}
+          </Badge>
+        )}
+      </Group>
+
+      <div className={classes.chipsMeasure} aria-hidden="true">
+        {allAmenities.map((a) => {
+          const isChecked = selectedAmenities.includes(a);
+          return (
+            <span
+              key={a}
+              ref={(el) => {
+                chipMeasureRefs.current[a] = el;
+              }}
+              className={classes.chipMeasureItem}
+            >
               <Chip
-                className="main-filters"
-                key={a}
                 value={a}
                 size="xs"
                 radius="xl"
@@ -137,24 +283,10 @@ export default function FiltersBar({
               >
                 {AMENITY_LABELS[a]}
               </Chip>
-            );
-          })}
-        </Chip.Group>
-
-        {showFetchingBadge && (
-          <Badge
-            variant="filled"
-            styles={{
-              root: {
-                backdropFilter: "blur(8px)",
-                background: "rgba(0,0,0,0.65)",
-              },
-            }}
-          >
-            {WORK_UI_TEXT.fetching}
-          </Badge>
-        )}
-      </Group>
+            </span>
+          );
+        })}
+      </div>
     </Box>
   );
 }

@@ -9,9 +9,10 @@
 .logo {
   display: inline-flex;
   align-items: center;
-  padding: 6px 12px;
+  gap: 10px;
+  padding: 7px 14px;
   border-radius: 14px;
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   background: rgba(255, 255, 255, 0.6);
@@ -19,6 +20,13 @@
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+.logoMark {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
 }
 
 :global([data-mantine-color-scheme="dark"]) .logo {
@@ -32,5 +40,36 @@
   pointer-events: auto;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
+.chipsScroller {
+  flex: 1;
+  min-width: 0;
+}
+
+.chipsGroup {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.fetchBadge {
+  flex-shrink: 0;
+}
+
+.chipsMeasure {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+  height: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.chipMeasureItem {
+  display: inline-flex;
 }

@@ -2,12 +2,10 @@ import { Box, Paper, Text, useComputedColorScheme } from "@mantine/core";
 import {
   animate,
   motion,
-  useDragControls,
   useMotionValue,
   useMotionValueEvent,
 } from "framer-motion";
 import type {
-  PointerEvent as ReactPointerEvent,
   PropsWithChildren,
   ReactNode,
   RefObject,
@@ -15,12 +13,14 @@ import type {
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import classes from "./BottomSheet.module.css";
+import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
 
 type BottomSheetProps = PropsWithChildren<{
   sheetRef: RefObject<HTMLDivElement | null>;
   isError: boolean;
   errorText: string;
   header?: ReactNode;
+  isListEmpty?: boolean;
 }>;
 
 type SheetState = "peek" | "mid" | "expanded";
@@ -36,17 +36,23 @@ export default function BottomSheet({
   isError,
   errorText,
   header,
+  isListEmpty,
   children,
 }: BottomSheetProps) {
   const scheme = useComputedColorScheme("light", {
     getInitialValueInEffect: true,
   });
-  const dragControls = useDragControls();
+  const {
+    filtersBarHeight,
+    safeViewportHeight,
+    setSheetHeight,
+    setSheetState: setLayoutSheetState,
+  } = useLayoutMetrics();
   const [sheetState, setSheetState] = useState<SheetState>("mid");
-  const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
-  const [topReserved, setTopReserved] = useState(0);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [headerHeight, setHeaderHeight] = useState(PEEK_HEIGHT_PX);
+  const sheetHeightRafRef = useRef<number | null>(null);
+  const pendingSheetHeightRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -63,37 +69,11 @@ export default function BottomSheet({
     return () => observer.disconnect();
   }, []);
 
-  useLayoutEffect(() => {
-    const update = () => setViewportHeight(window.innerHeight);
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  useLayoutEffect(() => {
-    const node = document.querySelector('[data-ui="filters-bar"]') as
-      | HTMLElement
-      | null;
-    if (!node) return undefined;
-
-    const update = () => {
-      const rect = node.getBoundingClientRect();
-      setTopReserved(Math.max(0, rect.bottom + 12));
-    };
-
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(node);
-    window.addEventListener("resize", update);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, []);
-
   const heights = useMemo(() => {
     const chromeReserve = 24;
-    const safeViewport = Math.max(0, viewportHeight - chromeReserve);
+    const safeViewport = Math.max(0, safeViewportHeight - chromeReserve);
+    const topReserved =
+      filtersBarHeight > 0 ? Math.max(0, filtersBarHeight + 12) : 0;
     const available = Math.max(0, safeViewport - topReserved);
     const maxPeek = Math.round(safeViewport * 0.9);
     const peek = Math.min(
@@ -106,7 +86,7 @@ export default function BottomSheet({
       Math.max(peek + 120, Math.round(available * 0.33)),
     );
     return { mid, expanded, peek };
-  }, [headerHeight, topReserved, viewportHeight]);
+  }, [filtersBarHeight, headerHeight, safeViewportHeight]);
 
   const height = useMotionValue(heights.mid);
 
@@ -125,41 +105,44 @@ export default function BottomSheet({
     return () => controls.stop();
   }, [height, heights, sheetState]);
 
+  const scheduleSheetHeight = (value: number) => {
+    pendingSheetHeightRef.current = value;
+    if (sheetHeightRafRef.current != null) return;
+    sheetHeightRafRef.current = window.requestAnimationFrame(() => {
+      sheetHeightRafRef.current = null;
+      const pending = pendingSheetHeightRef.current;
+      if (pending == null) return;
+      pendingSheetHeightRef.current = null;
+      setSheetHeight(pending);
+    });
+  };
+
   useMotionValueEvent(height, "change", (latest) => {
     const visibleHeight = Math.max(heights.peek, latest);
-    document.documentElement.style.setProperty(
-      "--sheet-height",
-      `${Math.round(visibleHeight)}px`,
-    );
+    scheduleSheetHeight(visibleHeight);
   });
 
   useLayoutEffect(() => {
     const visibleHeight = Math.max(heights.peek, height.get());
-    document.documentElement.style.setProperty(
-      "--sheet-height",
-      `${Math.round(visibleHeight)}px`,
-    );
-  }, [heights, height]);
+    scheduleSheetHeight(visibleHeight);
+    return () => {
+      if (sheetHeightRafRef.current != null) {
+        cancelAnimationFrame(sheetHeightRafRef.current);
+        sheetHeightRafRef.current = null;
+      }
+      pendingSheetHeightRef.current = null;
+    };
+  }, [heights, height, setSheetHeight]);
 
   useLayoutEffect(() => {
-    document.documentElement.dataset.sheetState = sheetState;
-    return () => {
-      if (document.documentElement.dataset.sheetState === sheetState) {
-        delete document.documentElement.dataset.sheetState;
-      }
-    };
-  }, [sheetState]);
+    setLayoutSheetState(sheetState);
+  }, [setLayoutSheetState, sheetState]);
 
   const pickClosest = (value: number) => {
     const points = [heights.expanded, heights.mid, heights.peek];
     return points.reduce((prev, point) =>
       Math.abs(point - value) < Math.abs(prev - value) ? point : prev,
     );
-  };
-
-  const handlePointerDown = (event: ReactPointerEvent) => {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    dragControls.start(event);
   };
 
   const handleDrag = (
@@ -203,18 +186,11 @@ export default function BottomSheet({
         p="sm"
         className={classes.sheet}
         data-state={sheetState}
-        drag="y"
-        dragListener={false}
-        dragControls={dragControls}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0}
-        dragMomentum={false}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
         style={{
           y: 0,
           height,
           maxHeight: "100%",
+          ["--sheet-header-height" as string]: `${Math.round(headerHeight)}px`,
           background:
             scheme === "dark"
               ? "rgba(15,18,22,0.60)"
@@ -232,7 +208,15 @@ export default function BottomSheet({
         }}
       >
         <div ref={headerRef} className={classes.header}>
-          <div className={classes.grabber} onPointerDown={handlePointerDown} />
+          <motion.div
+            className={classes.grabber}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0}
+            dragMomentum={false}
+            onDrag={handleDrag}
+            onDragEnd={handleDragEnd}
+          />
           {isError && (
             <Text c="red" size="sm">
               {errorText}
@@ -240,7 +224,11 @@ export default function BottomSheet({
           )}
           {header}
         </div>
-        <div className={classes.list} aria-hidden={sheetState === "peek"}>
+        <div
+          className={classes.list}
+          data-empty={isListEmpty ? "true" : "false"}
+          aria-hidden={sheetState === "peek"}
+        >
           {children}
         </div>
       </MotionPaper>
