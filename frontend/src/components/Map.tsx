@@ -121,9 +121,10 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         "text-font": ["Noto Sans Regular", "Open Sans Regular"],
         "text-allow-overlap": false,
         "text-ignore-placement": false,
-        "text-variable-anchor": ["top", "bottom", "left", "right"],
-        "text-radial-offset": 0.8,
-        "text-padding": 4,
+        "text-anchor": "top",
+        "text-offset": [0, 0.8],
+        "text-keep-upright": true,
+        "text-padding": 6,
       },
       paint: {
         "text-color": "#111827",
