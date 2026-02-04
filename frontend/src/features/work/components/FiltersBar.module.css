@@ -44,6 +44,12 @@
   flex-wrap: nowrap;
 }
 
+.fetchRow {
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+}
+
 .chipsScroller {
   flex: 1;
   min-width: 0;

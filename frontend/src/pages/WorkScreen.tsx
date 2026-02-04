@@ -35,8 +35,14 @@ export default function WorkScreen() {
     setSelectedAmenities([]);
   }
 
-  const { userCenter, focusLngLat, setFocusLngLat, locateMe, geoStatus } =
-    useGeolocation(SPB_CENTER);
+  const {
+    userCenter,
+    focusLngLat,
+    setFocusLngLat,
+    locateMe,
+    geoStatus,
+    isLocating,
+  } = useGeolocation(SPB_CENTER);
 
   const [lng, lat] = userCenter;
   const { cafes, cafesQuery, showFetchingBadge } = useCafes({
@@ -102,7 +108,10 @@ export default function WorkScreen() {
         showFetchingBadge={showFetchingBadge}
       />
 
-      <FloatingControls onLocate={() => locateMe(true)} />
+      <FloatingControls
+        onLocate={() => locateMe(true)}
+        isLocating={isLocating}
+      />
 
       <BottomSheet
         sheetRef={sheetRef}
@@ -124,6 +133,7 @@ export default function WorkScreen() {
           isLoading={cafesQuery.isLoading}
           isError={cafesQuery.isError}
           emptyState={emptyState}
+          isLocating={isLocating}
           selectedCafeId={selectedCafeId}
           onSelectCafe={selectCafe}
           itemRefs={itemRefs}

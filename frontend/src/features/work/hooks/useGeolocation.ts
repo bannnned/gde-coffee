@@ -2,7 +2,7 @@
 
 type LngLat = [number, number];
 
-type GeoStatus = "idle" | "ok" | "unavailable" | "error";
+type GeoStatus = "idle" | "loading" | "ok" | "unavailable" | "error";
 
 export default function useGeolocation(initialCenter: LngLat) {
   const [userCenter, setUserCenter] = useState<LngLat>(initialCenter);
@@ -10,11 +10,18 @@ export default function useGeolocation(initialCenter: LngLat) {
   const [geoStatus, setGeoStatus] = useState<GeoStatus>(() =>
     "geolocation" in navigator ? "idle" : "unavailable",
   );
+  const [isLocating, setIsLocating] = useState(false);
 
-  function locateMe(forceFocus: boolean) {
+  function locateMe(forceFocus: boolean, showLoading = true) {
     if (!("geolocation" in navigator)) {
       setGeoStatus("unavailable");
+      setIsLocating(false);
       return;
+    }
+
+    if (showLoading) {
+      setGeoStatus("loading");
+      setIsLocating(true);
     }
 
     navigator.geolocation.getCurrentPosition(
@@ -23,18 +30,27 @@ export default function useGeolocation(initialCenter: LngLat) {
         setUserCenter(next);
         if (forceFocus) setFocusLngLat(next);
         setGeoStatus("ok");
+        setIsLocating(false);
       },
       () => {
         setGeoStatus("error");
+        setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 8000 },
     );
   }
 
   useEffect(() => {
-    locateMe(false);
+    locateMe(false, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { userCenter, focusLngLat, setFocusLngLat, locateMe, geoStatus };
+  return {
+    userCenter,
+    focusLngLat,
+    setFocusLngLat,
+    locateMe,
+    geoStatus,
+    isLocating,
+  };
 }

@@ -40,23 +40,6 @@ func connectDB(dbURL string) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	ctxPing, cancelPing := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelPing()
-
-	if err := pool.Ping(ctxPing); err != nil {
-		pool.Close()
-		return nil, err
-	}
-
-	ctxWarm, cancelWarm := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelWarm()
-
-	var one int
-	if err := pool.QueryRow(ctxWarm, "select 1").Scan(&one); err != nil {
-		pool.Close()
-		return nil, err
-	}
-
 	return pool, nil
 }
 
@@ -442,8 +425,6 @@ func main() {
 	}
 	defer pool.Close()
 
-	log.Println("db warmup OK")
-
 	r := gin.Default()
 
 	// healthcheck
@@ -453,6 +434,26 @@ func main() {
 	r.HEAD("/_health", func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
+	r.GET("/_health/deep", func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+
+		if err := pool.Ping(ctx); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "db_down", "error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := pool.Ping(ctx); err != nil {
+			log.Printf("db ping failed on startup: %v", err)
+		} else {
+			log.Println("db ping ok")
+		}
+	}()
 
 	api := r.Group("/api")
 	api.GET("/cafes", getCafes(cfg, pool))
