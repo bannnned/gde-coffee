@@ -15,9 +15,9 @@
   font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 240, 0.75);
+  border: 1px solid rgba(255, 255, 240, 0.85);
+  box-shadow: 0 8px 24px rgba(26, 26, 26, 0.16);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
 }
@@ -30,10 +30,10 @@
 }
 
 :global([data-mantine-color-scheme="dark"]) .logo {
-  background: rgba(15, 23, 42, 0.45);
-  border-color: rgba(148, 163, 184, 0.35);
-  color: rgba(248, 250, 252, 0.96);
-  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.45);
+  background: rgba(255, 255, 240, 0.08);
+  border-color: rgba(255, 255, 240, 0.2);
+  color: rgba(255, 255, 240, 0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 .chipsRow {

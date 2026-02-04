@@ -193,17 +193,17 @@ export default function BottomSheet({
           ["--sheet-header-height" as string]: `${Math.round(headerHeight)}px`,
           background:
             scheme === "dark"
-              ? "rgba(15,18,22,0.60)"
-              : "rgba(255,255,255,0.72)",
+              ? "rgba(26,26,26,0.78)"
+              : "rgba(255,255,240,0.78)",
           border: `1px solid ${
             scheme === "dark"
-              ? "rgba(255,255,255,0.12)"
-              : "rgba(255,255,255,0.55)"
+              ? "rgba(255,255,240,0.16)"
+              : "rgba(255,255,240,0.7)"
           }`,
           boxShadow:
             scheme === "dark"
-              ? "0 18px 45px rgba(0,0,0,0.45)"
-              : "0 18px 45px rgba(20,20,20,0.12)",
+              ? "0 18px 45px rgba(0,0,0,0.6)"
+              : "0 18px 45px rgba(26,26,26,0.16)",
           backdropFilter: "blur(14px)",
         }}
       >

@@ -32,16 +32,16 @@ export default function CafeCard({
     zIndex: 1,
     background:
       scheme === "dark"
-        ? "linear-gradient(135deg, rgba(15,23,42,0.72), rgba(2,6,23,0.62))"
-        : "linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.68))",
+        ? "linear-gradient(135deg, rgba(26,26,26,0.78), rgba(26,26,26,0.6))"
+        : "linear-gradient(135deg, rgba(255,255,240,0.94), rgba(255,255,240,0.72))",
     border:
       scheme === "dark"
-        ? "1px solid rgba(148, 163, 184, 0.2)"
-        : "1px solid rgba(15, 23, 42, 0.08)",
+        ? "1px solid rgba(255, 255, 240, 0.16)"
+        : "1px solid rgba(26, 26, 26, 0.1)",
     boxShadow:
       scheme === "dark"
-        ? "0 18px 40px rgba(2, 6, 23, 0.5), 0 8px 20px rgba(2, 6, 23, 0.35)"
-        : "0 18px 40px rgba(15, 23, 42, 0.12), 0 8px 18px rgba(15, 23, 42, 0.1)",
+        ? "0 18px 40px rgba(0, 0, 0, 0.6), 0 8px 20px rgba(0, 0, 0, 0.45)"
+        : "0 18px 40px rgba(26, 26, 26, 0.14), 0 8px 18px rgba(26, 26, 26, 0.12)",
     backdropFilter: "blur(18px) saturate(160%)",
     WebkitBackdropFilter: "blur(18px) saturate(160%)",
   } as const;
@@ -50,13 +50,13 @@ export default function CafeCard({
     root: {
       background:
         scheme === "dark"
-          ? "rgba(148, 163, 184, 0.15)"
-          : "rgba(255, 255, 255, 0.6)",
+          ? "rgba(255, 255, 240, 0.08)"
+          : "rgba(255, 255, 240, 0.7)",
       border:
         scheme === "dark"
-          ? "1px solid rgba(148, 163, 184, 0.22)"
-          : "1px solid rgba(15, 23, 42, 0.08)",
-      color: scheme === "dark" ? "rgba(226, 232, 240, 0.95)" : "#1f2937",
+          ? "1px solid rgba(255, 255, 240, 0.18)"
+          : "1px solid rgba(26, 26, 26, 0.12)",
+      color: scheme === "dark" ? "rgba(255, 255, 240, 0.95)" : "#1A1A1A",
       backdropFilter: "blur(12px)",
       WebkitBackdropFilter: "blur(12px)",
     },

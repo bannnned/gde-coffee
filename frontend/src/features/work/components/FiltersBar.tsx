@@ -65,18 +65,20 @@ export default function FiltersBar({
     paddingInline: 10,
     paddingBlock: 6,
     border: `1px solid ${
-      scheme === "dark" ? "rgba(2, 6, 23, 0.7)" : theme.colors.gray[3]
+      scheme === "dark"
+        ? "rgba(255, 255, 240, 0.18)"
+        : "rgba(26, 26, 26, 0.12)"
     }`,
     backdropFilter: "blur(18px) saturate(180%)",
     WebkitBackdropFilter: "blur(18px) saturate(180%)",
     background:
       scheme === "dark"
-        ? "linear-gradient(135deg, rgba(15,23,42,0.55), rgba(15,23,42,0.3))"
-        : "linear-gradient(135deg, rgba(255,255,255,0.82), rgba(255,255,255,0.58))",
+        ? "linear-gradient(135deg, rgba(26,26,26,0.7), rgba(26,26,26,0.5))"
+        : "linear-gradient(135deg, rgba(255,255,240,0.92), rgba(255,255,240,0.68))",
     boxShadow:
       scheme === "dark"
-        ? "0 6px 18px rgba(2, 6, 23, 0.45)"
-        : "0 6px 16px rgba(15, 23, 42, 0.14)",
+        ? "0 6px 18px rgba(0, 0, 0, 0.5)"
+        : "0 6px 16px rgba(26, 26, 26, 0.14)",
     outline: "none",
     "&:active": {
       transform: "none",
@@ -86,14 +88,14 @@ export default function FiltersBar({
   const amenityChipLabelCheckedStyles = {
     background:
       scheme === "dark"
-        ? "linear-gradient(135deg, rgba(56,189,248,0.3), rgba(14,116,144,0.35))"
-        : "linear-gradient(135deg, rgba(59,130,246,0.28), rgba(56,189,248,0.22))",
+        ? "linear-gradient(135deg, rgba(69,126,115,0.45), rgba(69,126,115,0.3))"
+        : "linear-gradient(135deg, rgba(69,126,115,0.35), rgba(69,126,115,0.2))",
     borderColor:
-      scheme === "dark" ? "rgba(125,211,252,0.45)" : "rgba(59,130,246,0.35)",
+      scheme === "dark" ? "rgba(69,126,115,0.55)" : "rgba(69,126,115,0.45)",
     boxShadow:
       scheme === "dark"
-        ? "0 8px 20px rgba(2, 6, 23, 0.5)"
-        : "0 8px 18px rgba(30, 64, 175, 0.22)",
+        ? "0 8px 20px rgba(69, 126, 115, 0.35)"
+        : "0 8px 18px rgba(69, 126, 115, 0.25)",
     transform: "none",
   } as const;
 
