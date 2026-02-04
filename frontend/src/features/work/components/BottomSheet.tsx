@@ -2,6 +2,7 @@ import { Box, Paper, Text, useComputedColorScheme } from "@mantine/core";
 import {
   animate,
   motion,
+  useDragControls,
   useMotionValue,
   useMotionValueEvent,
 } from "framer-motion";
@@ -53,6 +54,7 @@ export default function BottomSheet({
   const [headerHeight, setHeaderHeight] = useState(PEEK_HEIGHT_PX);
   const sheetHeightRafRef = useRef<number | null>(null);
   const pendingSheetHeightRef = useRef<number | null>(null);
+  const dragControls = useDragControls();
 
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -169,6 +171,21 @@ export default function BottomSheet({
     else setSheetState("mid");
   };
 
+  const handleHeaderPointerDown = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    if (
+      target.closest(
+        'button, a, input, textarea, select, [data-no-drag="true"]',
+      )
+    ) {
+      return;
+    }
+    dragControls.start(event);
+  };
+
   return (
     <Box
       pos="absolute"
@@ -186,6 +203,14 @@ export default function BottomSheet({
         p="sm"
         className={classes.sheet}
         data-state={sheetState}
+        drag="y"
+        dragControls={dragControls}
+        dragListener={false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={0}
+        dragMomentum={false}
+        onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
         style={{
           y: 0,
           height,
@@ -207,16 +232,12 @@ export default function BottomSheet({
           backdropFilter: "blur(14px)",
         }}
       >
-        <div ref={headerRef} className={classes.header}>
-          <motion.div
-            className={classes.grabber}
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0}
-            dragMomentum={false}
-            onDrag={handleDrag}
-            onDragEnd={handleDragEnd}
-          />
+        <div
+          ref={headerRef}
+          className={classes.header}
+          onPointerDown={handleHeaderPointerDown}
+        >
+          <div className={classes.grabber} />
           {isError && (
             <Text c="red" size="sm">
               {errorText}
