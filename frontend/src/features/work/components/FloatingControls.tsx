@@ -5,9 +5,13 @@ import classes from "./FloatingControls.module.css";
 
 type FloatingControlsProps = {
   onLocate: () => void;
+  isLocating?: boolean;
 };
 
-export default function FloatingControls({ onLocate }: FloatingControlsProps) {
+export default function FloatingControls({
+  onLocate,
+  isLocating,
+}: FloatingControlsProps) {
   return (
     <Box pos="absolute" className={`floating-controls ${classes.wrapper}`}>
       <ActionIcon
@@ -16,6 +20,8 @@ export default function FloatingControls({ onLocate }: FloatingControlsProps) {
         className="glass-action glass-action--square"
         aria-label={WORK_UI_TEXT.locateAria}
         onClick={onLocate}
+        loading={isLocating}
+        disabled={isLocating}
       >
         <WORK_ICONS.locate size={18} />
       </ActionIcon>

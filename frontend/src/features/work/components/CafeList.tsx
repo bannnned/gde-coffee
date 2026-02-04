@@ -24,6 +24,7 @@ type CafeListProps = {
   isLoading: boolean;
   isError: boolean;
   emptyState: EmptyState;
+  isLocating?: boolean;
   selectedCafeId: string | null;
   onSelectCafe: (id: string) => void;
   itemRefs: MutableRefObject<Record<string, HTMLButtonElement | null>>;
@@ -37,6 +38,7 @@ export default function CafeList({
   isLoading,
   isError,
   emptyState,
+  isLocating,
   selectedCafeId,
   onSelectCafe,
   itemRefs,
@@ -110,7 +112,13 @@ export default function CafeList({
             <Text size="xs" c="dimmed" ta="center">
               {emptyConfig.subtitle}
             </Text>
-            <Button size="xs" variant="light" onClick={emptyConfig.onAction}>
+            <Button
+              size="xs"
+              variant="light"
+              onClick={emptyConfig.onAction}
+              loading={emptyState === "no-geo" && isLocating}
+              disabled={emptyState === "no-geo" && isLocating}
+            >
               {emptyConfig.actionLabel}
             </Button>
           </Stack>
