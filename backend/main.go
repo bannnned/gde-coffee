@@ -400,9 +400,10 @@ func main() {
 
 	dbURL1 := os.Getenv("DATABASE_URL")
 	dbURL2 := os.Getenv("DATABASE_URL_2")
+	dbURL3 := os.Getenv("DATABASE_URL_3")
 
-	if dbURL1 == "" && dbURL2 == "" {
-		log.Fatal("DATABASE_URL or DATABASE_URL_2 is required")
+	if dbURL1 == "" && dbURL2 == "" && dbURL3 == "" {
+		log.Fatal("DATABASE_URL or DATABASE_URL_2 or DATABASE_URL_3 is required")
 	}
 
 	var pool *pgxpool.Pool
@@ -417,6 +418,13 @@ func main() {
 		pool, err = connectDB(dbURL2)
 		if err != nil {
 			log.Printf("secondary db connect failed: %v", err)
+		}
+	}
+
+	if pool == nil && dbURL3 != "" {
+		pool, err = connectDB(dbURL3)
+		if err != nil {
+			log.Printf("tertiary db connect failed: %v", err)
 		}
 	}
 
