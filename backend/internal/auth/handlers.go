@@ -21,8 +21,10 @@ const (
 )
 
 type Handler struct {
-	Pool         *pgxpool.Pool
-	CookieSecure bool
+	Pool                *pgxpool.Pool
+	CookieSecure        bool
+	SlidingRefreshHours int
+	LoginLimiter        *RateLimiter
 }
 
 type User struct {
@@ -52,10 +54,6 @@ func respondError(c *gin.Context, status int, code, message string, details inte
 	c.JSON(status, apiError{Message: message, Code: code, Details: details})
 }
 
-func normalizeEmail(value string) string {
-	return strings.ToLower(strings.TrimSpace(value))
-}
-
 func (h Handler) Register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -63,7 +61,7 @@ func (h Handler) Register(c *gin.Context) {
 		return
 	}
 
-	email := normalizeEmail(req.Email)
+	email := NormalizeEmail(req.Email)
 	if email == "" {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "email is required", nil)
 		return
@@ -115,6 +113,27 @@ func (h Handler) Register(c *gin.Context) {
 		return
 	}
 
+	identity := Identity{
+		UserID:         user.ID,
+		Provider:       ProviderLocal,
+		ProviderUserID: user.ID,
+	}
+	if email != "" {
+		emailCopy := email
+		identity.Email = &emailCopy
+		identity.EmailNormalized = &emailCopy
+	}
+	if req.DisplayName != nil {
+		identity.DisplayName = req.DisplayName
+	}
+
+	if err := CreateIdentity(ctx, tx, identity); err != nil {
+		if !isUniqueViolation(err) {
+			respondError(c, http.StatusInternalServerError, "internal", "identity create failed", nil)
+			return
+		}
+	}
+
 	sessionID, expiresAt, err := createSession(ctx, tx, user.ID, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "session create failed", nil)
@@ -140,10 +159,17 @@ func (h Handler) Login(c *gin.Context) {
 		return
 	}
 
-	email := normalizeEmail(req.Email)
+	email := NormalizeEmail(req.Email)
 	if email == "" || strings.TrimSpace(req.Password) == "" {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "email and password are required", nil)
 		return
+	}
+
+	if h.LoginLimiter != nil {
+		if !h.LoginLimiter.Allow(c.ClientIP()) {
+			respondError(c, http.StatusTooManyRequests, "rate_limited", "too many login attempts", nil)
+			return
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), queryTimeout)
@@ -208,7 +234,7 @@ func (h Handler) Me(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), queryTimeout)
 	defer cancel()
 
-	user, err := getUserBySession(ctx, h.Pool, sid)
+	user, expiresAt, err := getUserBySession(ctx, h.Pool, sid)
 	if err != nil {
 		if errors.Is(err, errUnauthorized) {
 			respondError(c, http.StatusUnauthorized, "unauthorized", "invalid session", nil)
@@ -218,30 +244,43 @@ func (h Handler) Me(c *gin.Context) {
 		return
 	}
 
+	if h.SlidingRefreshHours > 0 {
+		interval := time.Duration(h.SlidingRefreshHours) * time.Hour
+		lastRefresh := expiresAt.Add(-sessionTTL)
+		if time.Since(lastRefresh) >= interval {
+			newExpires := time.Now().Add(sessionTTL)
+			if err := refreshSession(ctx, h.Pool, sid, newExpires); err == nil {
+				setSessionCookie(c, sid, h.CookieSecure)
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
 var errUnauthorized = errors.New("unauthorized")
 
-func getUserBySession(ctx context.Context, pool queryer, sid string) (User, error) {
+func getUserBySession(ctx context.Context, pool queryer, sid string) (User, time.Time, error) {
 	var user User
+	var expiresAt time.Time
 	row := pool.QueryRow(ctx, `
-		select u.id::text, u.email_normalized, u.display_name
+		select u.id::text, u.email_normalized, u.display_name, s.expires_at
 		from sessions s
 		join users u on u.id = s.user_id
 		where s.id = $1 and s.revoked_at is null and s.expires_at > now()
 	`, sid)
-	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &expiresAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return User{}, errUnauthorized
+			return User{}, time.Time{}, errUnauthorized
 		}
-		return User{}, err
+		return User{}, time.Time{}, err
 	}
-	return user, nil
+	return user, expiresAt, nil
 }
 
 type queryer interface {
 	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
+	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
 }
 
 func createSession(ctx context.Context, execer execer, userID, ip, userAgent string) (string, time.Time, error) {
@@ -266,6 +305,11 @@ func createSession(ctx context.Context, execer execer, userID, ip, userAgent str
 	}
 
 	return sessionID, expiresAt, nil
+}
+
+func refreshSession(ctx context.Context, execer execer, sid string, expiresAt time.Time) error {
+	_, err := execer.Exec(ctx, `update sessions set expires_at = $2 where id = $1 and revoked_at is null`, sid, expiresAt)
+	return err
 }
 
 type execer interface {

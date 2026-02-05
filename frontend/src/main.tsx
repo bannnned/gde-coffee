@@ -53,3 +53,27 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 )
+
+const hideSplash = () => {
+  document.body.classList.add('app-loaded')
+  const splash = document.getElementById('app-splash')
+  if (splash) {
+    window.setTimeout(() => splash.remove(), 400)
+  }
+}
+
+if (document.readyState === 'complete') {
+  hideSplash()
+} else {
+  window.addEventListener('load', hideSplash, { once: true })
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener(
+    'load',
+    () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => undefined)
+    },
+    { once: true },
+  )
+}

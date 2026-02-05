@@ -1,17 +1,21 @@
-﻿import {
+import {
   ActionIcon,
   Badge,
   Box,
+  Button,
   Chip,
   Group,
-  Title,
+  Text,
+  UnstyledButton,
   useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { IconLogin } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 
 import { ColorSchemeToggle } from "../../../components/ColorSchemeToggle";
-import logoUrl from "../../../assets/logo.png";
+import { useAuth } from "../../../components/AuthGate";
 import type { Amenity } from "../types";
 import { AMENITY_LABELS, WORK_ICONS, WORK_UI_TEXT } from "../constants";
 import classes from "./FiltersBar.module.css";
@@ -50,6 +54,8 @@ export default function FiltersBar({
     [selectedAmenities],
   );
   const { setFiltersBarHeight } = useLayoutMetrics();
+  const { user, status, openAuthModal } = useAuth();
+  const navigate = useNavigate();
 
   const amenityChipLabelBaseStyles = {
     boxSizing: "border-box",
@@ -69,6 +75,7 @@ export default function FiltersBar({
         ? "rgba(255, 255, 240, 0.18)"
         : "rgba(26, 26, 26, 0.12)"
     }`,
+    color: scheme === "dark" ? "rgba(255, 255, 240, 0.95)" : "#1A1A1A",
     backdropFilter: "blur(18px) saturate(180%)",
     WebkitBackdropFilter: "blur(18px) saturate(180%)",
     background:
@@ -184,10 +191,33 @@ export default function FiltersBar({
         data-ui="filters-bar-header"
         ref={headerRef}
       >
-        <Title order={4} className={classes.logo} style={{ margin: 0 }}>
-          <img src={logoUrl} alt="" className={classes.logoMark} />
-          <span>{WORK_UI_TEXT.title}</span>
-        </Title>
+        {user ? (
+          <UnstyledButton
+            className={classes.userBadge}
+            aria-label="Open profile"
+            type="button"
+            onClick={() => navigate("/profile")}
+            title={user.displayName ?? user.email ?? ""}
+          >
+            <Text fw={700}>
+              {(user.displayName || user.email || "?")
+                .trim()
+                .charAt(0)
+                .toUpperCase()}
+            </Text>
+          </UnstyledButton>
+        ) : (
+          <Button
+            size="xs"
+            variant="transparent"
+            className={classes.loginButton}
+            leftSection={<IconLogin size={16} />}
+            onClick={() => openAuthModal("login")}
+            disabled={status === "loading"}
+          >
+            Войти
+          </Button>
+        )}
 
         <Group gap="xs">
           <ActionIcon
@@ -208,9 +238,10 @@ export default function FiltersBar({
         <div
           className={classes.chipsScroller}
           ref={chipsScrollerRef}
-          style={{ display: "flex", justifyContent: "center", gap: '4px' }}
+          style={{ display: "flex", justifyContent: "center", gap: "4px" }}
         >
           <Chip.Group
+            className={classes.chipsGroup}
             multiple
             value={selectedAmenities}
             onChange={(v) => onChangeAmenities(v as Amenity[])}

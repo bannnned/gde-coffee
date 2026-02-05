@@ -32,7 +32,10 @@ type LimitsConfig struct {
 }
 
 type AuthConfig struct {
-	CookieSecure bool
+	CookieSecure        bool
+	SlidingRefreshHours int
+	LoginRateLimit      int
+	LoginRateWindow     time.Duration
 }
 
 func Load() (Config, error) {
@@ -66,6 +69,21 @@ func Load() (Config, error) {
 		return cfg, err
 	}
 
+	slidingHours, err := getEnvInt("SESSION_SLIDING_HOURS", 12)
+	if err != nil {
+		return cfg, err
+	}
+
+	loginRateLimit, err := getEnvInt("LOGIN_RATE_LIMIT", 10)
+	if err != nil {
+		return cfg, err
+	}
+
+	loginRateWindow, err := getEnvDuration("LOGIN_RATE_WINDOW", 5*time.Minute)
+	if err != nil {
+		return cfg, err
+	}
+
 	cfg.CORS = CORSConfig{
 		AllowOrigins:     splitEnvList("CORS_ALLOW_ORIGINS", []string{"http://localhost:3001", "http://localhost:5173"}),
 		AllowMethods:     splitEnvList("CORS_ALLOW_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
@@ -88,10 +106,21 @@ func Load() (Config, error) {
 	}
 
 	cfg.Auth = AuthConfig{
-		CookieSecure: cookieSecure,
+		CookieSecure:        cookieSecure,
+		SlidingRefreshHours: slidingHours,
+		LoginRateLimit:      loginRateLimit,
+		LoginRateWindow:     loginRateWindow,
 	}
 
-	log.Printf("config: port=%q public_dir=%q cors_origins=%v cookie_secure=%v", cfg.Port, cfg.PublicDir, cfg.CORS.AllowOrigins, cfg.Auth.CookieSecure)
+	log.Printf("config: port=%q public_dir=%q cors_origins=%v cookie_secure=%v sliding_hours=%d login_rate_limit=%d login_rate_window=%s",
+		cfg.Port,
+		cfg.PublicDir,
+		cfg.CORS.AllowOrigins,
+		cfg.Auth.CookieSecure,
+		cfg.Auth.SlidingRefreshHours,
+		cfg.Auth.LoginRateLimit,
+		cfg.Auth.LoginRateWindow,
+	)
 
 	if cfg.Port == "" {
 		return cfg, fmt.Errorf("PORT must not be empty")
@@ -104,6 +133,15 @@ func Load() (Config, error) {
 	}
 	if cfg.Limits.MaxResults > 0 && cfg.Limits.DefaultResults > cfg.Limits.MaxResults {
 		return cfg, fmt.Errorf("LIMIT_DEFAULT must be <= LIMIT_MAX")
+	}
+	if cfg.Auth.SlidingRefreshHours < 0 {
+		return cfg, fmt.Errorf("SESSION_SLIDING_HOURS must be >= 0")
+	}
+	if cfg.Auth.LoginRateLimit < 0 {
+		return cfg, fmt.Errorf("LOGIN_RATE_LIMIT must be >= 0")
+	}
+	if cfg.Auth.LoginRateWindow < 0 {
+		return cfg, fmt.Errorf("LOGIN_RATE_WINDOW must be >= 0")
 	}
 
 	return cfg, nil
