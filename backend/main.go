@@ -185,6 +185,10 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid lat", nil)
 			return
 		}
+		if !isFinite(lat) {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lat must be a finite number", nil)
+			return
+		}
 		if lat < -90 || lat > 90 {
 			respondError(c, http.StatusBadRequest, "invalid_argument", "lat must be between -90 and 90", nil)
 			return
@@ -195,6 +199,10 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid lng", nil)
 			return
 		}
+		if !isFinite(lng) {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lng must be a finite number", nil)
+			return
+		}
 		if lng < -180 || lng > 180 {
 			respondError(c, http.StatusBadRequest, "invalid_argument", "lng must be between -180 and 180", nil)
 			return
@@ -203,6 +211,10 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 		radiusM, err := parseFloat(radiusStr)
 		if err != nil {
 			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid radius_m", nil)
+			return
+		}
+		if !isFinite(radiusM) {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "radius_m must be a finite number", nil)
 			return
 		}
 
@@ -252,6 +264,10 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 
 func parseFloat(value string) (float64, error) {
 	return strconv.ParseFloat(value, 64)
+}
+
+func isFinite(value float64) bool {
+	return !math.IsNaN(value) && !math.IsInf(value, 0)
 }
 
 func parseAmenities(raw string) []string {
@@ -468,20 +484,25 @@ func main() {
 		}
 	}()
 
+	auth.StartSessionCleanup(pool, 6*time.Hour)
+
 	api := r.Group("/api")
 	api.GET("/cafes", getCafes(cfg, pool))
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 	authHandler := auth.Handler{
-		Pool:         pool,
-		CookieSecure: cfg.Auth.CookieSecure,
+		Pool:                pool,
+		CookieSecure:        cfg.Auth.CookieSecure,
+		SlidingRefreshHours: cfg.Auth.SlidingRefreshHours,
+		LoginLimiter:        auth.NewRateLimiter(cfg.Auth.LoginRateLimit, cfg.Auth.LoginRateWindow),
 	}
 	authGroup := api.Group("/auth")
 	authGroup.POST("/register", authHandler.Register)
 	authGroup.POST("/login", authHandler.Login)
 	authGroup.POST("/logout", authHandler.Logout)
 	authGroup.GET("/me", authHandler.Me)
+	authGroup.GET("/identities", auth.RequireAuth(pool), authHandler.Identities)
 
 	r.NoRoute(func(c *gin.Context) {
 		serveStaticOrIndex(c, cfg.PublicDir)

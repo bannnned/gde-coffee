@@ -11,6 +11,7 @@ import {
 
 import type { Amenity } from "../types";
 import { AMENITY_LABELS, WORK_UI_TEXT } from "../constants";
+import { useAuth } from "../../../components/AuthGate";
 
 type SettingsDrawerProps = {
   opened: boolean;
@@ -35,6 +36,7 @@ export default function SettingsDrawer({
     getInitialValueInEffect: true,
   });
   const theme = useMantineTheme();
+  const { logout } = useAuth();
 
   const drawerStyles = {
     content: {
@@ -238,6 +240,16 @@ export default function SettingsDrawer({
             ))}
           </Group>
         </Group>
+
+        <Button
+          variant="light"
+          onClick={async () => {
+            await logout();
+            onClose();
+          }}
+        >
+          Выйти
+        </Button>
 
       </Stack>
     </Drawer>

@@ -144,7 +144,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         filter: ["==", ["get", "id"], selectedCafeId ?? ""],
         layout: {
           "icon-image": CAFE_ICON_ID,
-          "icon-size": 0.12,
+          "icon-size": 0.14,
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
           "icon-anchor": "bottom",
@@ -157,7 +157,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         source: "cafes",
         filter: ["==", ["get", "id"], selectedCafeId ?? ""],
         paint: {
-          "circle-radius": 9,
+          "circle-radius": 11,
           "circle-color": MARKER_FALLBACK.cafe,
           "circle-opacity": 1,
           "circle-stroke-color": "rgba(255,255,240,0.9)",

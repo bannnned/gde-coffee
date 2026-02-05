@@ -23,7 +23,7 @@ func RequireAuth(pool *pgxpool.Pool) gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
 		defer cancel()
 
-		user, err := getUserBySession(ctx, pool, sid)
+		user, _, err := getUserBySession(ctx, pool, sid)
 		if err != nil {
 			respondError(c, http.StatusUnauthorized, "unauthorized", "invalid session", nil)
 			c.Abort()

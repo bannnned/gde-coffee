@@ -10,6 +10,7 @@ type NormalizedApiError = {
 export const http = axios.create({
   baseURL,
   timeout: 15000,
+  withCredentials: true,
 })
 
 function normalizeError(error: any): NormalizedApiError {
