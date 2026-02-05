@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Box } from "@mantine/core";
 
 import Map from "../components/Map";
@@ -12,6 +12,8 @@ import {
 import BottomSheet from "../features/work/components/BottomSheet";
 import CafeCard from "../features/work/components/CafeCard";
 import CafeList from "../features/work/components/CafeList";
+import CafeDetailsScreen from "../features/work/components/CafeDetailsScreen";
+import EmptyStateCard from "../features/work/components/EmptyStateCard";
 import FiltersBar from "../features/work/components/FiltersBar";
 import FloatingControls from "../features/work/components/FloatingControls";
 import SettingsDrawer from "../features/work/components/SettingsDrawer";
@@ -23,6 +25,7 @@ import { useLayoutMetrics } from "../features/work/layout/LayoutMetricsContext";
 export default function WorkScreen() {
   const [radiusM, setRadiusM] = useState<number>(DEFAULT_RADIUS_M);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>(
     DEFAULT_AMENITIES,
   );
@@ -59,6 +62,7 @@ export default function WorkScreen() {
     : cafes.length === 0 && geoStatus !== "ok"
       ? "no-geo"
       : "no-results";
+  const showEmptyState = !cafesQuery.isLoading && cafes.length === 0;
 
   function open2gisRoute(cafe: Cafe) {
     const from = `${userCenter[0]},${userCenter[1]}`; // lon,lat
@@ -79,6 +83,10 @@ export default function WorkScreen() {
       "noopener,noreferrer",
     );
   }
+
+  useEffect(() => {
+    if (!selectedCafe) setDetailsOpen(false);
+  }, [selectedCafe]);
 
   return (
     <Box
@@ -124,6 +132,16 @@ export default function WorkScreen() {
               cafe={selectedCafe}
               onOpen2gis={open2gisRoute}
               onOpenYandex={openYandexRoute}
+              onOpenDetails={() => setDetailsOpen(true)}
+            />
+          ) : showEmptyState ? (
+            <EmptyStateCard
+              emptyState={emptyState}
+              isError={cafesQuery.isError}
+              isLocating={isLocating}
+              onResetFilters={resetFilters}
+              onRetry={() => cafesQuery.refetch()}
+              onLocate={() => locateMe(true)}
             />
           ) : null
         }
@@ -131,15 +149,9 @@ export default function WorkScreen() {
         <CafeList
           cafes={cafes}
           isLoading={cafesQuery.isLoading}
-          isError={cafesQuery.isError}
-          emptyState={emptyState}
-          isLocating={isLocating}
           selectedCafeId={selectedCafeId}
           onSelectCafe={selectCafe}
           itemRefs={itemRefs}
-          onResetFilters={resetFilters}
-          onRetry={() => cafesQuery.refetch()}
-          onLocate={() => locateMe(true)}
         />
       </BottomSheet>
 
@@ -150,6 +162,12 @@ export default function WorkScreen() {
         onRadiusChange={setRadiusM}
         selectedAmenities={selectedAmenities}
         onChangeAmenities={setSelectedAmenities}
+      />
+
+      <CafeDetailsScreen
+        opened={detailsOpen}
+        cafe={selectedCafe ?? null}
+        onClose={() => setDetailsOpen(false)}
       />
     </Box>
   );

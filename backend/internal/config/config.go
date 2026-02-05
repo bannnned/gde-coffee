@@ -14,6 +14,7 @@ type Config struct {
 	PublicDir string
 	CORS      CORSConfig
 	Limits    LimitsConfig
+	Auth      AuthConfig
 }
 
 type CORSConfig struct {
@@ -28,6 +29,10 @@ type CORSConfig struct {
 type LimitsConfig struct {
 	DefaultResults int
 	MaxResults     int
+}
+
+type AuthConfig struct {
+	CookieSecure bool
 }
 
 func Load() (Config, error) {
@@ -56,6 +61,11 @@ func Load() (Config, error) {
 		return cfg, err
 	}
 
+	cookieSecure, err := getCookieSecure()
+	if err != nil {
+		return cfg, err
+	}
+
 	cfg.CORS = CORSConfig{
 		AllowOrigins:     splitEnvList("CORS_ALLOW_ORIGINS", []string{"http://localhost:3001", "http://localhost:5173"}),
 		AllowMethods:     splitEnvList("CORS_ALLOW_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
@@ -77,7 +87,11 @@ func Load() (Config, error) {
 		MaxResults:     maxResults,
 	}
 
-	log.Printf("config: port=%q public_dir=%q cors_origins=%v", cfg.Port, cfg.PublicDir, cfg.CORS.AllowOrigins)
+	cfg.Auth = AuthConfig{
+		CookieSecure: cookieSecure,
+	}
+
+	log.Printf("config: port=%q public_dir=%q cors_origins=%v cookie_secure=%v", cfg.Port, cfg.PublicDir, cfg.CORS.AllowOrigins, cfg.Auth.CookieSecure)
 
 	if cfg.Port == "" {
 		return cfg, fmt.Errorf("PORT must not be empty")
@@ -93,6 +107,31 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func getCookieSecure() (bool, error) {
+	raw := strings.TrimSpace(os.Getenv("COOKIE_SECURE"))
+	if raw == "" {
+		return isProdEnv(), nil
+	}
+	value, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, fmt.Errorf("COOKIE_SECURE must be a boolean")
+	}
+	return value, nil
+}
+
+func isProdEnv() bool {
+	env := strings.ToLower(strings.TrimSpace(os.Getenv("ENV")))
+	if env == "production" {
+		return true
+	}
+	appEnv := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
+	if appEnv == "production" {
+		return true
+	}
+	ginMode := strings.ToLower(strings.TrimSpace(os.Getenv("GIN_MODE")))
+	return ginMode == "release"
 }
 
 func getEnvTrim(key, def string) string {

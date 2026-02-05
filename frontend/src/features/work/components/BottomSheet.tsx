@@ -183,6 +183,7 @@ export default function BottomSheet({
     ) {
       return;
     }
+    event.preventDefault();
     dragControls.start(event);
   };
 
@@ -235,7 +236,7 @@ export default function BottomSheet({
         <div
           ref={headerRef}
           className={classes.header}
-          onPointerDown={handleHeaderPointerDown}
+          onPointerDownCapture={handleHeaderPointerDown}
         >
           <div className={classes.grabber} />
           {isError && (
