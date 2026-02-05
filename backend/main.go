@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
+	"backend/internal/auth"
 	"backend/internal/config"
 	"backend/internal/model"
 )
@@ -80,12 +81,12 @@ func queryCafes(
 	const sqlDistance = `
 WITH q AS (
   SELECT
-    id::text,
+    id::text AS id,
     name,
     address,
     lat,
     lng,
-    amenities,
+    COALESCE(amenities, '{}'::text[]) AS amenities,
     (2 * 6371000 * asin(
       sqrt(
         power(sin(radians(($1 - lat) / 2)), 2) +
@@ -94,7 +95,11 @@ WITH q AS (
       )
     )) AS distance_m
   FROM public.cafes
-  WHERE ($4::text[] IS NULL OR amenities @> $4::text[])
+  WHERE (
+    $4::text[] IS NULL
+    OR cardinality($4::text[]) = 0
+    OR COALESCE(amenities, '{}'::text[]) @> $4::text[]
+  )
 )
 SELECT id, name, address, lat, lng, amenities, distance_m
 FROM q
@@ -429,7 +434,7 @@ func main() {
 	}
 
 	if pool == nil {
-		log.Fatal("db connect failed for both DATABASE_URL and DATABASE_URL_2")
+		log.Fatal("db connect failed for DATABASE_URL, DATABASE_URL_2, and DATABASE_URL_3")
 	}
 	defer pool.Close()
 
@@ -468,6 +473,15 @@ func main() {
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+	authHandler := auth.Handler{
+		Pool:         pool,
+		CookieSecure: cfg.Auth.CookieSecure,
+	}
+	authGroup := api.Group("/auth")
+	authGroup.POST("/register", authHandler.Register)
+	authGroup.POST("/login", authHandler.Login)
+	authGroup.POST("/logout", authHandler.Logout)
+	authGroup.GET("/me", authHandler.Me)
 
 	r.NoRoute(func(c *gin.Context) {
 		serveStaticOrIndex(c, cfg.PublicDir)
