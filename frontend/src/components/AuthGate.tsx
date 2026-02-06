@@ -16,6 +16,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -68,6 +69,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [mode, setMode] = useState<AuthFormMode>("login");
   const [isAuthModalOpen, setAuthModalOpen] = useState(false);
+  const meRequestId = useRef(0);
 
   const isRegister = mode === "register";
   const {
@@ -82,13 +84,16 @@ export default function AuthGate({ children }: PropsWithChildren) {
   });
 
   const loadMe = useCallback(async () => {
+    const requestId = ++meRequestId.current;
     try {
       setStatus("loading");
       setSubmitError(null);
       const me = await authApi.me();
+      if (requestId !== meRequestId.current) return;
       setUser(me);
       setStatus("authed");
     } catch (err: any) {
+      if (requestId !== meRequestId.current) return;
       const statusCode = err?.response?.status ?? err?.normalized?.status;
       if (statusCode === 401) {
         setUser(null);
@@ -110,20 +115,25 @@ export default function AuthGate({ children }: PropsWithChildren) {
       const email = values.email.trim();
       const password = values.password;
       const displayName = values.name?.trim() ?? "";
+      let nextUser: AuthUser | null = null;
 
       if (mode === "login") {
         const payload: LoginPayload = {
           email,
           password,
         };
-        await authApi.login(payload);
+        nextUser = await authApi.login(payload);
       } else {
         const payload: RegisterPayload = {
           email,
           password,
           displayName,
         };
-        await authApi.register(payload);
+        nextUser = await authApi.register(payload);
+      }
+      if (nextUser) {
+        setUser(nextUser);
+        setStatus("authed");
       }
       await loadMe();
       setAuthModalOpen(false);
@@ -145,6 +155,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
   });
 
   const logout = useCallback(async () => {
+    meRequestId.current += 1;
     try {
       await authApi.logout();
     } finally {

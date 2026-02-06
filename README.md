@@ -31,8 +31,16 @@ The backend serves:
 - `POST /api/auth/logout` — revoke session and clear cookie
 - `GET /api/auth/me` — current user by session
 - `GET /api/auth/identities` — linked providers (requires auth)
+- `POST /api/auth/email/verify/request` — send email verification (requires auth)
+- `GET /api/auth/email/verify/confirm` — confirm verification by token
+- `POST /api/auth/password/reset/request` — request password reset
+- `POST /api/auth/password/reset/confirm` — confirm password reset
 
-See `backend/docs/auth.md` and `backend/docs/auth-identities.md` for curl examples and identities details.
+### Account
+- `POST /api/account/email/change/request` — request email change (requires auth)
+- `GET /api/account/email/change/confirm` — confirm email change by token
+
+See `backend/docs/auth.md`, `backend/docs/auth-identities.md`, and `backend/docs/account-security.md` for curl examples and details.
 
 ## Environment
 Common env vars (backend):
@@ -43,6 +51,17 @@ Common env vars (backend):
 - `SESSION_SLIDING_HOURS` (default `12`)
 - `LOGIN_RATE_LIMIT` (default `10`)
 - `LOGIN_RATE_WINDOW` (default `5m`)
+- `PUBLIC_BASE_URL` (default `https://gde-kofe.ru`)
+- `TOKEN_TTL_MINUTES_VERIFY` (default `60`)
+- `TOKEN_TTL_MINUTES_EMAIL_CHANGE` (default `60`)
+- `TOKEN_TTL_MINUTES_PASSWORD_RESET` (default `30`)
+- `SMTP_HOST` (default `smtp.timeweb.ru`)
+- `SMTP_PORT` (default `465`)
+- `SMTP_USER`
+- `SMTP_PASS`
+- `MAIL_FROM`
+- `MAIL_REPLY_TO` (optional)
+- `SMTP_TIMEOUT` (default `10s`)
 
 CORS:
 - `CORS_ALLOW_ORIGINS`

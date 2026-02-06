@@ -17,7 +17,7 @@ import {
   IconMail,
   IconUser,
 } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
@@ -30,6 +30,14 @@ export default function ProfileScreen() {
   const { user, logout, openAuthModal, status } = useAuth();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "auto";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   const profile = useMemo(() => {
     const name =

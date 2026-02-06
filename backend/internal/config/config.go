@@ -15,6 +15,7 @@ type Config struct {
 	CORS      CORSConfig
 	Limits    LimitsConfig
 	Auth      AuthConfig
+	Mailer    MailerConfig
 }
 
 type CORSConfig struct {
@@ -36,6 +37,20 @@ type AuthConfig struct {
 	SlidingRefreshHours int
 	LoginRateLimit      int
 	LoginRateWindow     time.Duration
+	PublicBaseURL       string
+	VerifyTokenTTL      time.Duration
+	EmailChangeTTL      time.Duration
+	PasswordResetTTL    time.Duration
+}
+
+type MailerConfig struct {
+	Host    string
+	Port    int
+	User    string
+	Pass    string
+	From    string
+	ReplyTo string
+	Timeout time.Duration
 }
 
 func Load() (Config, error) {
@@ -84,6 +99,31 @@ func Load() (Config, error) {
 		return cfg, err
 	}
 
+	publicBaseURL := getEnvTrim("PUBLIC_BASE_URL", "https://gde-kofe.ru")
+
+	verifyTTL, err := getEnvDuration("TOKEN_TTL_MINUTES_VERIFY", 60*time.Minute)
+	if err != nil {
+		return cfg, err
+	}
+	emailChangeTTL, err := getEnvDuration("TOKEN_TTL_MINUTES_EMAIL_CHANGE", 60*time.Minute)
+	if err != nil {
+		return cfg, err
+	}
+	passwordResetTTL, err := getEnvDuration("TOKEN_TTL_MINUTES_PASSWORD_RESET", 30*time.Minute)
+	if err != nil {
+		return cfg, err
+	}
+
+	smtpPort, err := getEnvInt("SMTP_PORT", 465)
+	if err != nil {
+		return cfg, err
+	}
+
+	mailerTimeout, err := getEnvDuration("SMTP_TIMEOUT", 10*time.Second)
+	if err != nil {
+		return cfg, err
+	}
+
 	cfg.CORS = CORSConfig{
 		AllowOrigins:     splitEnvList("CORS_ALLOW_ORIGINS", []string{"http://localhost:3001", "http://localhost:5173"}),
 		AllowMethods:     splitEnvList("CORS_ALLOW_METHODS", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
@@ -110,6 +150,20 @@ func Load() (Config, error) {
 		SlidingRefreshHours: slidingHours,
 		LoginRateLimit:      loginRateLimit,
 		LoginRateWindow:     loginRateWindow,
+		PublicBaseURL:       publicBaseURL,
+		VerifyTokenTTL:      verifyTTL,
+		EmailChangeTTL:      emailChangeTTL,
+		PasswordResetTTL:    passwordResetTTL,
+	}
+
+	cfg.Mailer = MailerConfig{
+		Host:    getEnvTrim("SMTP_HOST", "smtp.timeweb.ru"),
+		Port:    smtpPort,
+		User:    getEnvTrim("SMTP_USER", ""),
+		Pass:    getEnvTrim("SMTP_PASS", ""),
+		From:    getEnvTrim("MAIL_FROM", ""),
+		ReplyTo: getEnvTrim("MAIL_REPLY_TO", ""),
+		Timeout: mailerTimeout,
 	}
 
 	log.Printf("config: port=%q public_dir=%q cors_origins=%v cookie_secure=%v sliding_hours=%d login_rate_limit=%d login_rate_window=%s",
@@ -142,6 +196,18 @@ func Load() (Config, error) {
 	}
 	if cfg.Auth.LoginRateWindow < 0 {
 		return cfg, fmt.Errorf("LOGIN_RATE_WINDOW must be >= 0")
+	}
+	if cfg.Auth.VerifyTokenTTL <= 0 {
+		return cfg, fmt.Errorf("TOKEN_TTL_MINUTES_VERIFY must be > 0")
+	}
+	if cfg.Auth.EmailChangeTTL <= 0 {
+		return cfg, fmt.Errorf("TOKEN_TTL_MINUTES_EMAIL_CHANGE must be > 0")
+	}
+	if cfg.Auth.PasswordResetTTL <= 0 {
+		return cfg, fmt.Errorf("TOKEN_TTL_MINUTES_PASSWORD_RESET must be > 0")
+	}
+	if cfg.Mailer.Port <= 0 {
+		return cfg, fmt.Errorf("SMTP_PORT must be > 0")
 	}
 
 	return cfg, nil
@@ -228,6 +294,10 @@ func getEnvDuration(key string, def time.Duration) (time.Duration, error) {
 	raw := strings.TrimSpace(os.Getenv(key))
 	if raw == "" {
 		return def, nil
+	}
+	if _, err := strconv.Atoi(raw); err == nil && !strings.ContainsAny(raw, "nsuµmh") {
+		mins, _ := strconv.Atoi(raw)
+		return time.Duration(mins) * time.Minute, nil
 	}
 	value, err := time.ParseDuration(raw)
 	if err != nil {

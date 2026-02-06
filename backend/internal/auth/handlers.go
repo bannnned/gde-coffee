@@ -25,6 +25,8 @@ type Handler struct {
 	CookieSecure        bool
 	SlidingRefreshHours int
 	LoginLimiter        *RateLimiter
+	Mailer              Mailer
+	Security            SecurityConfig
 }
 
 type User struct {
