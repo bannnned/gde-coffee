@@ -20,6 +20,7 @@ import (
 
 	"backend/internal/auth"
 	"backend/internal/config"
+	"backend/internal/mailer"
 	"backend/internal/model"
 )
 
@@ -496,6 +497,21 @@ func main() {
 		CookieSecure:        cfg.Auth.CookieSecure,
 		SlidingRefreshHours: cfg.Auth.SlidingRefreshHours,
 		LoginLimiter:        auth.NewRateLimiter(cfg.Auth.LoginRateLimit, cfg.Auth.LoginRateWindow),
+		Mailer: mailer.New(mailer.Config{
+			Host:    cfg.Mailer.Host,
+			Port:    cfg.Mailer.Port,
+			User:    cfg.Mailer.User,
+			Pass:    cfg.Mailer.Pass,
+			From:    cfg.Mailer.From,
+			ReplyTo: cfg.Mailer.ReplyTo,
+			Timeout: cfg.Mailer.Timeout,
+		}),
+		Security: auth.SecurityConfig{
+			BaseURL:          cfg.Auth.PublicBaseURL,
+			VerifyTTL:        cfg.Auth.VerifyTokenTTL,
+			EmailChangeTTL:   cfg.Auth.EmailChangeTTL,
+			PasswordResetTTL: cfg.Auth.PasswordResetTTL,
+		},
 	}
 	authGroup := api.Group("/auth")
 	authGroup.POST("/register", authHandler.Register)
@@ -503,6 +519,14 @@ func main() {
 	authGroup.POST("/logout", authHandler.Logout)
 	authGroup.GET("/me", authHandler.Me)
 	authGroup.GET("/identities", auth.RequireAuth(pool), authHandler.Identities)
+	authGroup.POST("/email/verify/request", auth.RequireAuth(pool), authHandler.EmailVerifyRequest)
+	authGroup.GET("/email/verify/confirm", authHandler.EmailVerifyConfirm)
+	authGroup.POST("/password/reset/request", authHandler.PasswordResetRequest)
+	authGroup.POST("/password/reset/confirm", authHandler.PasswordResetConfirm)
+
+	accountGroup := api.Group("/account")
+	accountGroup.POST("/email/change/request", auth.RequireAuth(pool), authHandler.EmailChangeRequest)
+	accountGroup.GET("/email/change/confirm", authHandler.EmailChangeConfirm)
 
 	r.NoRoute(func(c *gin.Context) {
 		serveStaticOrIndex(c, cfg.PublicDir)

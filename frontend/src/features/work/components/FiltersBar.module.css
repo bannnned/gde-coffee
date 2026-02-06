@@ -24,22 +24,19 @@
 
 .loginButton {
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 240, 0.85);
-  background: rgba(255, 255, 240, 0.75);
-  box-shadow: 0 8px 24px rgba(26, 26, 26, 0.16);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  color: #1a1a1a;
+  border: 1px solid rgba(255, 255, 240, 0.4);
+  box-shadow: 0 10px 24px rgba(32, 201, 151, 0.25);
+  color: #ffffff;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 8px 14px;
+  height: 42px;
 }
 
 :global([data-mantine-color-scheme="dark"]) .userBadge,
 :global([data-mantine-color-scheme="dark"]) .loginButton {
-  background: rgba(26, 26, 26, 0.75);
-  border-color: rgba(255, 255, 240, 0.14);
+  border-color: rgba(255, 255, 240, 0.18);
   color: rgba(255, 255, 240, 0.96);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
 }
 
 .chipsRow {
