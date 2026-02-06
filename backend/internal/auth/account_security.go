@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -91,6 +92,7 @@ func (h Handler) EmailVerifyRequest(c *gin.Context) {
 	textBody := "Verify your email: " + verifyURL
 	htmlBody := "<p>Verify your email: <a href=\"" + verifyURL + "\">" + verifyURL + "</a></p>"
 	if err := h.Mailer.SendEmail(ctx, email, "Verify your email", textBody, htmlBody); err != nil {
+		log.Printf("sendEmail failed: %v", err)
 		respondError(c, http.StatusInternalServerError, "internal", "email send failed", nil)
 		return
 	}
@@ -241,6 +243,7 @@ func (h Handler) EmailChangeRequest(c *gin.Context) {
 	textBody := "Confirm your email change: " + confirmURL
 	htmlBody := "<p>Confirm your email change: <a href=\"" + confirmURL + "\">" + confirmURL + "</a></p>"
 	if err := h.Mailer.SendEmail(ctx, newEmail, "Confirm email change", textBody, htmlBody); err != nil {
+		log.Printf("sendEmail failed: %v", err)
 		respondError(c, http.StatusInternalServerError, "internal", "email send failed", nil)
 		return
 	}
@@ -392,6 +395,7 @@ func (h Handler) PasswordResetRequest(c *gin.Context) {
 	textBody := "Password reset link: " + resetURL
 	htmlBody := "<p>Password reset link: <a href=\"" + resetURL + "\">" + resetURL + "</a></p>"
 	if err := h.Mailer.SendEmail(ctx, email, "Password reset", textBody, htmlBody); err != nil {
+		log.Printf("sendEmail failed: %v", err)
 		respondError(c, http.StatusInternalServerError, "internal", "email send failed", nil)
 		return
 	}

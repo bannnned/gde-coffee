@@ -50,11 +50,11 @@ func (m *Mailer) SendEmail(ctx context.Context, to string, subject string, textB
 		return err
 	}
 
-	addr := fmt.Sprintf("%s:%d", m.cfg.Host, m.cfg.Port)
+	addr := net.JoinHostPort(m.cfg.Host, fmt.Sprintf("%d", m.cfg.Port))
 	dialer := net.Dialer{Timeout: m.cfg.Timeout}
 
 	if m.cfg.Port == 465 {
-		conn, err := tls.DialWithDialer(&dialer, "tcp", addr, &tls.Config{ServerName: m.cfg.Host})
+		conn, err := tls.DialWithDialer(&dialer, "tcp4", addr, &tls.Config{ServerName: m.cfg.Host})
 		if err != nil {
 			return err
 		}
@@ -67,7 +67,7 @@ func (m *Mailer) SendEmail(ctx context.Context, to string, subject string, textB
 		return sendSMTP(client, m.cfg, to, msg)
 	}
 
-	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	conn, err := dialer.DialContext(ctx, "tcp4", addr)
 	if err != nil {
 		return err
 	}
