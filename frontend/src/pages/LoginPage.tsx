@@ -36,7 +36,7 @@ export default function LoginPage() {
   const oauthIconProps = {
     size: 42,
     variant: "transparent" as const,
-    className: `${classes.oauthButton} glass-action glass-action--square`,
+    className: "oauth-button",
   };
 
   useEffect(() => {

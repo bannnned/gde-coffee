@@ -190,7 +190,7 @@ func (h Handler) Login(c *gin.Context) {
 	var passwordHash string
 	err := h.Pool.QueryRow(
 		ctx,
-		`select u.id::text, u.email_normalized, u.display_name, u.avatar_url, u.email_verified_at, lc.password_hash
+		`select u.id::text, coalesce(u.email_normalized, ''), u.display_name, u.avatar_url, u.email_verified_at, lc.password_hash
 		 from users u
 		 join local_credentials lc on lc.user_id = u.id
 		 where u.email_normalized = $1`,
@@ -279,7 +279,7 @@ func getUserBySession(ctx context.Context, pool queryer, sid string) (User, time
 	var user User
 	var expiresAt time.Time
 	row := pool.QueryRow(ctx, `
-		select u.id::text, u.email_normalized, u.display_name, u.avatar_url, u.email_verified_at, s.expires_at
+		select u.id::text, coalesce(u.email_normalized, ''), u.display_name, u.avatar_url, u.email_verified_at, s.expires_at
 		from sessions s
 		join users u on u.id = s.user_id
 		where s.id = $1 and s.revoked_at is null and s.expires_at > now()

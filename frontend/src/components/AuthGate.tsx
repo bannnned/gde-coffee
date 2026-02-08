@@ -19,6 +19,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type FocusEvent,
   type PropsWithChildren,
 } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -221,6 +222,13 @@ export default function AuthGate({ children }: PropsWithChildren) {
     [isDark],
   );
 
+  const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
+    const target = event.currentTarget;
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, []);
+
   const githubAuthUrl = useMemo(() => {
     const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
     return base ? `${base}/api/auth/github/start` : "/api/auth/github/start";
@@ -243,7 +251,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
   const oauthIconProps = {
     size: 42,
     variant: "transparent" as const,
-    className: "glass-action glass-action--square",
+    className: "oauth-button",
   };
 
   return (
@@ -318,6 +326,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
                   value={field.value ?? ""}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
+                  onFocus={handleFieldFocus}
                   name={field.name}
                   ref={field.ref}
                   error={errors.email?.message}
@@ -346,6 +355,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
                   value={field.value ?? ""}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
+                  onFocus={handleFieldFocus}
                   name={field.name}
                   ref={field.ref}
                   error={errors.password?.message}
@@ -383,6 +393,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
                     value={field.value ?? ""}
                     onChange={field.onChange}
                     onBlur={field.onBlur}
+                    onFocus={handleFieldFocus}
                     name={field.name}
                     ref={field.ref}
                     error={errors.name?.message}

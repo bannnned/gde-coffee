@@ -214,6 +214,27 @@
   border-radius: 12px;
 }
 
+.oauth-button {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  box-shadow: none;
+}
+
+.oauth-button:hover {
+  background: rgba(69, 126, 115, 0.12);
+}
+
+:root[data-mantine-color-scheme='dark'] .oauth-button {
+  border-color: rgba(255, 255, 240, 0.18);
+}
+
+:root[data-mantine-color-scheme='dark'] .oauth-button:hover {
+  background: rgba(255, 255, 240, 0.08);
+}
+
 :root[data-mantine-color-scheme='dark'] .map-zoom-button::before {
   background: linear-gradient(
     135deg,

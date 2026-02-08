@@ -20,7 +20,7 @@ import {
   IconMail,
   IconShieldCheck,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FocusEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -65,6 +65,13 @@ export default function SettingsScreen() {
   );
 
   const emailValue = user?.email ?? "—";
+
+  const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
+    const target = event.currentTarget;
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, []);
 
   const githubAuthUrl = useMemo(() => {
     const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -442,16 +449,17 @@ export default function SettingsScreen() {
                       },
                     }}
                     render={({ field }) => (
-                      <TextInput
-                        label="Новый email"
-                        placeholder="new@example.com"
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        ref={field.ref}
-                        error={emailErrors.newEmail?.message}
-                      />
-                    )}
+                        <TextInput
+                          label="Новый email"
+                          placeholder="new@example.com"
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          onFocus={handleFieldFocus}
+                          ref={field.ref}
+                          error={emailErrors.newEmail?.message}
+                        />
+                      )}
                   />
                   <Controller
                     name="currentPassword"
@@ -461,15 +469,16 @@ export default function SettingsScreen() {
                       minLength: { value: 8, message: "Минимум 8 символов" },
                     }}
                     render={({ field }) => (
-                      <PasswordInput
-                        label="Текущий пароль"
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        ref={field.ref}
-                        error={emailErrors.currentPassword?.message}
-                      />
-                    )}
+                        <PasswordInput
+                          label="Текущий пароль"
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          onFocus={handleFieldFocus}
+                          ref={field.ref}
+                          error={emailErrors.currentPassword?.message}
+                        />
+                      )}
                   />
                 </div>
                 <Group className={classes.actionsRow} mt="md">
@@ -518,16 +527,17 @@ export default function SettingsScreen() {
                       },
                     }}
                     render={({ field }) => (
-                      <TextInput
-                        label="Email"
-                        placeholder="name@example.com"
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        ref={field.ref}
-                        error={resetErrors.email?.message}
-                      />
-                    )}
+                        <TextInput
+                          label="Email"
+                          placeholder="name@example.com"
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          onFocus={handleFieldFocus}
+                          ref={field.ref}
+                          error={resetErrors.email?.message}
+                        />
+                      )}
                   />
                 </div>
                 <Group className={classes.actionsRow} mt="md">

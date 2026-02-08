@@ -65,11 +65,15 @@ func (h Handler) EmailVerifyRequest(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), queryTimeout)
 	defer cancel()
 
-	var email string
+	var email *string
 	err := h.Pool.QueryRow(ctx, `select email_normalized from users where id = $1`, userID).Scan(&email)
 	if err != nil {
 		log.Printf("email verify request db query failed: %v", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
+		return
+	}
+	if email == nil || strings.TrimSpace(*email) == "" {
+		respondError(c, http.StatusBadRequest, "email_required", "email is required", nil)
 		return
 	}
 
@@ -101,7 +105,7 @@ func (h Handler) EmailVerifyRequest(c *gin.Context) {
 	verifyURL := strings.TrimRight(h.Security.BaseURL, "/") + "/verify-email?token=" + rawToken
 	textBody := "Verify your email: " + verifyURL
 	htmlBody := "<p>Verify your email: <a href=\"" + verifyURL + "\">" + verifyURL + "</a></p>"
-	if err := h.Mailer.SendEmail(ctx, email, "Verify your email", textBody, htmlBody); err != nil {
+	if err := h.Mailer.SendEmail(ctx, *email, "Verify your email", textBody, htmlBody); err != nil {
 		log.Printf("sendEmail failed: %v", err)
 		respondError(c, http.StatusInternalServerError, "internal", "email send failed", nil)
 		return

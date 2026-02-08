@@ -45,7 +45,9 @@ func (p *VKProvider) AuthURL(state, redirectURI string) string {
 	params.Set("client_id", p.ClientID)
 	params.Set("redirect_uri", redirectURI)
 	params.Set("response_type", "code")
-	params.Set("scope", p.Scope)
+	if strings.TrimSpace(p.Scope) != "" {
+		params.Set("scope", p.Scope)
+	}
 	params.Set("state", state)
 	params.Set("display", "page")
 	if p.APIVersion != "" {

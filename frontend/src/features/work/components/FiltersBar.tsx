@@ -221,8 +221,7 @@ export default function FiltersBar({
           <Button
             size="sm"
             radius="lg"
-            variant="gradient"
-            gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
+            variant="filled"
             className={classes.loginButton}
             leftSection={<IconLogin size={16} />}
             onClick={() => openAuthModal("login")}

@@ -126,7 +126,7 @@ func Load() (Config, error) {
 	}
 	githubScope := getEnvTrim("GITHUB_OAUTH_SCOPE", "read:user user:email")
 	yandexScope := getEnvTrim("YANDEX_OAUTH_SCOPE", "login:email login:info")
-	vkScope := getEnvTrim("VK_OAUTH_SCOPE", "email")
+	vkScope := getEnvTrim("VK_OAUTH_SCOPE", "")
 	vkAPIVersion := getEnvTrim("VK_API_VERSION", "5.131")
 	vkRedirectBase := getEnvTrim("VK_REDIRECT_URI_BASE", "")
 

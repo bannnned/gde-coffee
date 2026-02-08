@@ -1,4 +1,4 @@
-﻿.screen {
+.screen {
   min-height: 100vh;
   display: flex;
   justify-content: center;
@@ -6,6 +6,10 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+  background:
+    radial-gradient(circle at top left, var(--bg-accent-1), transparent 45%),
+    radial-gradient(circle at 80% 20%, var(--bg-accent-2), transparent 40%),
+    var(--bg);
 }
 
 .container {
@@ -244,6 +248,12 @@
 
 :global([data-mantine-color-scheme="dark"]) .verifiedBadge {
   color: rgba(255, 255, 240, 0.95);
+}
+
+:global([data-mantine-color-scheme="dark"]) .placeholderCard,
+:global([data-mantine-color-scheme="dark"]) .levelCard {
+  background: rgba(255, 255, 240, 0.08);
+  border-color: rgba(255, 255, 240, 0.12);
 }
 
 @media (max-width: 720px) {

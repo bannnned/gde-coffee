@@ -32,20 +32,23 @@
 }
 
 .loginButton {
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 240, 0.4);
-  box-shadow: 0 10px 24px rgba(32, 201, 151, 0.25);
-  color: #ffffff;
-  font-weight: 600;
-  padding: 8px 14px;
   height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  background: var(--glass-bg);
+  color: var(--text);
+  font-weight: 600;
+  padding: 0 14px;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
 }
 
 :global([data-mantine-color-scheme="dark"]) .userBadge,
 :global([data-mantine-color-scheme="dark"]) .loginButton {
-  border-color: rgba(255, 255, 240, 0.18);
-  color: rgba(255, 255, 240, 0.96);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  border-color: var(--glass-border);
+  color: var(--text);
+  box-shadow: var(--glass-shadow);
 }
 
 .chipsRow {
