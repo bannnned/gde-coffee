@@ -38,7 +38,13 @@ func (h Handler) oauthStart(c *gin.Context, provider Provider, flow string, user
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	redirectURI := strings.TrimRight(h.Security.BaseURL, "/") + redirectPath
+	redirectBase := strings.TrimRight(h.Security.BaseURL, "/")
+	if h.OAuthRedirectBase != nil {
+		if override := strings.TrimSpace(h.OAuthRedirectBase[provider]); override != "" {
+			redirectBase = strings.TrimRight(override, "/")
+		}
+	}
+	redirectURI := redirectBase + redirectPath
 	state, err := CreateOAuthState(ctx, h.Pool, provider, flow, userID, redirectURI)
 	if err != nil {
 		log.Printf("oauth %s: create state failed: %v", provider, err)
@@ -91,9 +97,14 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 		h.oauthRedirect(c, provider, dest, "invalid_state", "")
 		return
 	}
-	expected := strings.TrimRight(h.Security.BaseURL, "/") + c.FullPath()
-	if !strings.EqualFold(stateRec.RedirectURI, expected) {
-		log.Printf("oauth %s: redirect uri mismatch expected=%s got=%s", provider, expected, stateRec.RedirectURI)
+	parsedRedirect, err := url.Parse(stateRec.RedirectURI)
+	if err != nil || parsedRedirect.Path == "" {
+		log.Printf("oauth %s: invalid redirect uri: %v", provider, err)
+		h.oauthRedirect(c, provider, dest, "invalid_state", "")
+		return
+	}
+	if !strings.EqualFold(parsedRedirect.Path, c.FullPath()) {
+		log.Printf("oauth %s: redirect uri mismatch expected path=%s got=%s", provider, c.FullPath(), parsedRedirect.Path)
 		h.oauthRedirect(c, provider, dest, "invalid_state", "")
 		return
 	}
@@ -112,18 +123,38 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 		return
 	}
 
-	token, err := p.Exchange(ctx, code, stateRec.RedirectURI)
-	if err != nil {
-		log.Printf("oauth %s: exchange failed: %v", provider, err)
-		h.oauthRedirect(c, provider, dest, "exchange_failed", "")
-		return
+	tokenValue := ""
+	var tokenEmail *string
+	tokenEmailVerified := false
+	if withMeta, ok := p.(OAuthProviderWithMeta); ok {
+		meta, err := withMeta.ExchangeWithMeta(ctx, code, stateRec.RedirectURI)
+		if err != nil {
+			log.Printf("oauth %s: exchange failed: %v", provider, err)
+			h.oauthRedirect(c, provider, dest, "exchange_failed", "")
+			return
+		}
+		tokenValue = meta.AccessToken
+		tokenEmail = meta.Email
+		tokenEmailVerified = meta.EmailVerified
+	} else {
+		token, err := p.Exchange(ctx, code, stateRec.RedirectURI)
+		if err != nil {
+			log.Printf("oauth %s: exchange failed: %v", provider, err)
+			h.oauthRedirect(c, provider, dest, "exchange_failed", "")
+			return
+		}
+		tokenValue = token
 	}
 
-	profile, err := p.FetchProfile(ctx, token)
+	profile, err := p.FetchProfile(ctx, tokenValue)
 	if err != nil {
 		log.Printf("oauth %s: profile fetch failed: %v", provider, err)
 		h.oauthRedirect(c, provider, dest, "profile_failed", "")
 		return
+	}
+	if profile.Email == nil && tokenEmail != nil {
+		profile.Email = tokenEmail
+		profile.EmailVerified = tokenEmailVerified
 	}
 
 	identity := identityFromProfile(provider, profile)

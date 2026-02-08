@@ -1,4 +1,4 @@
-import { notifications } from "@mantine/notifications";
+﻿import { notifications } from "@mantine/notifications";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -16,21 +16,33 @@ type OauthErrorCode =
   | "profile_failed"
   | "internal";
 
-const errorMessages: Record<OauthErrorCode, string> = {
-  cancelled: "Вы отменили вход через GitHub",
-  invalid_state: "Ссылка устарела, попробуйте ещё раз",
-  already_linked: "Этот GitHub уже привязан к другому аккаунту",
-  exchange_failed: "Не удалось войти через GitHub",
-  profile_failed: "Не удалось получить профиль GitHub",
-  internal: "Ошибка входа, попробуйте позже",
-};
-
 const formatProvider = (providerRaw?: string, fallback = "GitHub") => {
   if (!providerRaw) return fallback;
   const normalized = providerRaw.toString().trim().toLowerCase();
   if (!normalized) return fallback;
   if (normalized === "github") return "GitHub";
+  if (normalized === "yandex") return "Яндекс";
+  if (normalized === "vk") return "VK";
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
+const getErrorMessage = (
+  code: OauthErrorCode,
+  providerLabel: string,
+): string => {
+  switch (code) {
+    case "cancelled":
+      return `Вы отменили вход через ${providerLabel}`;
+    case "invalid_state":
+      return "Ссылка устарела, попробуйте ещё раз";
+    case "already_linked":
+      return `Этот ${providerLabel} уже привязан к другому аккаунту`;
+    case "exchange_failed":
+    case "profile_failed":
+    case "internal":
+    default:
+      return `Не удалось войти через ${providerLabel}, попробуйте ещё раз`;
+  }
 };
 
 export default function useOauthRedirect({
@@ -83,7 +95,7 @@ export default function useOauthRedirect({
 
     if (errorParam) {
       const key = errorParam.toLowerCase() as OauthErrorCode;
-      showError(errorMessages[key] ?? "Ошибка входа, попробуйте позже");
+      showError(getErrorMessage(key, providerLabel));
       return;
     }
 

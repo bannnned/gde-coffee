@@ -1,4 +1,5 @@
-﻿import {
+import {
+  ActionIcon,
   Box,
   Button,
   Group,
@@ -21,7 +22,7 @@ import {
   type PropsWithChildren,
 } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { IconBrandGithub, IconBrandYandex } from "@tabler/icons-react";
+import { IconBrandGithub, IconBrandVk, IconBrandYandex } from "@tabler/icons-react";
 
 import type { AuthUser, LoginPayload, RegisterPayload } from "../api/auth";
 import * as authApi from "../api/auth";
@@ -230,10 +231,20 @@ export default function AuthGate({ children }: PropsWithChildren) {
     return base ? `${base}/api/auth/yandex/start` : "/api/auth/yandex/start";
   }, []);
 
+  const vkAuthUrl = useMemo(() => {
+    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+    return base ? `${base}/api/auth/vk/start` : "/api/auth/vk/start";
+  }, []);
+
   const titleText = isRegister ? "Регистрация" : "Вход";
   const submitLabel = isRegister ? "Создать аккаунт" : "Войти";
   const toggleLabel = isRegister ? "Войти" : "Регистрация";
   const toggleText = isRegister ? "Уже есть аккаунт?" : "Нет аккаунта?";
+  const oauthIconProps = {
+    size: 42,
+    variant: "transparent" as const,
+    className: "glass-action glass-action--square",
+  };
 
   return (
     <AuthContext.Provider value={ctxValue}>
@@ -405,41 +416,32 @@ export default function AuthGate({ children }: PropsWithChildren) {
               {submitLabel}
             </Button>
 
-            <Button
-              type="button"
-              radius="lg"
-              size="md"
-              variant="default"
-              leftSection={<IconBrandGithub size={18} />}
-              onClick={() => {
-                window.location.assign(githubAuthUrl);
-              }}
-              styles={{
-                root: {
-                  height: 48,
-                },
-              }}
-            >
-              Войти через GitHub
-            </Button>
-
-            <Button
-              type="button"
-              radius="lg"
-              size="md"
-              variant="default"
-              leftSection={<IconBrandYandex size={18} />}
-              onClick={() => {
-                window.location.assign(yandexAuthUrl);
-              }}
-              styles={{
-                root: {
-                  height: 48,
-                },
-              }}
-            >
-              Войти через Яндекс
-            </Button>
+            <Group gap="sm" justify="center">
+              <ActionIcon
+                {...oauthIconProps}
+                aria-label="Войти через GitHub"
+                title="GitHub"
+                onClick={() => window.location.assign(githubAuthUrl)}
+              >
+                <IconBrandGithub size={22} />
+              </ActionIcon>
+              <ActionIcon
+                {...oauthIconProps}
+                aria-label="Войти через Яндекс"
+                title="Яндекс"
+                onClick={() => window.location.assign(yandexAuthUrl)}
+              >
+                <IconBrandYandex size={22} />
+              </ActionIcon>
+              <ActionIcon
+                {...oauthIconProps}
+                aria-label="Войти через VK"
+                title="VK"
+                onClick={() => window.location.assign(vkAuthUrl)}
+              >
+                <IconBrandVk size={22} />
+              </ActionIcon>
+            </Group>
 
             <Group justify="space-between">
               <Text size="xs" c="dimmed">

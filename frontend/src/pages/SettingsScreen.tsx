@@ -14,6 +14,7 @@ import {
   IconArrowLeft,
   IconBrandGithub,
   IconBrandYandex,
+  IconBrandVk,
   IconCircleCheck,
   IconCircleX,
   IconMail,
@@ -79,6 +80,11 @@ export default function SettingsScreen() {
       : "/api/auth/yandex/link/start";
   }, []);
 
+  const vkAuthUrl = useMemo(() => {
+    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+    return base ? `${base}/api/auth/vk/link/start` : "/api/auth/vk/link/start";
+  }, []);
+
   const {
     control: emailControl,
     handleSubmit: handleEmailSubmit,
@@ -120,11 +126,14 @@ export default function SettingsScreen() {
     () => isProviderLinked("yandex"),
     [isProviderLinked],
   );
+  const vkLinked = useMemo(() => isProviderLinked("vk"), [isProviderLinked]);
 
   const githubStatusLabel = githubLinked ? "подключён" : "не подключён";
   const githubStatusTone = githubLinked ? "ok" : "warn";
   const yandexStatusLabel = yandexLinked ? "подключён" : "не подключён";
   const yandexStatusTone = yandexLinked ? "ok" : "warn";
+  const vkStatusLabel = vkLinked ? "подключён" : "не подключён";
+  const vkStatusTone = vkLinked ? "ok" : "warn";
 
   const refreshIdentities = useCallback(async () => {
     if (status !== "authed") {
@@ -365,6 +374,45 @@ export default function SettingsScreen() {
                   loading={isIdentitiesLoading}
                 >
                   Подключить Яндекс
+                </Button>
+              </Group>
+              {identityError && (
+                <div className={classes.error} style={{ marginTop: 12 }}>
+                  {identityError}
+                </div>
+              )}
+            </div>
+
+            <div className={classes.section}>
+              <div className={classes.sectionHeader}>
+                <Group gap="xs">
+                  <IconBrandVk size={18} />
+                  <Title order={4}>Подключить VK</Title>
+                </Group>
+              </div>
+              <div className={classes.statusLine}>
+                <span className={classes.statusPill} data-status={vkStatusTone}>
+                  {vkLinked ? (
+                    <IconCircleCheck size={14} />
+                  ) : (
+                    <IconCircleX size={14} />
+                  )}
+                  {vkStatusLabel}
+                </span>
+              </div>
+              <Text size="sm" className={classes.muted} mt={4}>
+                Подключите VK, чтобы привязать аккаунт к профилю.
+              </Text>
+              <Group className={classes.actionsRow} mt="md">
+                <Button
+                  variant="filled"
+                  className={classes.actionButton}
+                  onClick={() => window.location.assign(vkAuthUrl)}
+                  leftSection={<IconBrandVk size={16} />}
+                  disabled={status !== "authed" || isIdentitiesLoading}
+                  loading={isIdentitiesLoading}
+                >
+                  Подключить VK
                 </Button>
               </Group>
               {identityError && (

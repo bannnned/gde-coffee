@@ -32,6 +32,7 @@ type Handler struct {
 	Mailer               Mailer
 	Security             SecurityConfig
 	OAuthProviders       map[Provider]OAuthProvider
+	OAuthRedirectBase    map[Provider]string
 }
 
 type User struct {

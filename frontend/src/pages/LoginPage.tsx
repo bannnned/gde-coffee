@@ -1,11 +1,17 @@
-import { Box, Button, Paper, Stack, Text, Title } from "@mantine/core";
-import { useEffect, useRef } from "react";
+﻿import { ActionIcon, Box, Button, Paper, Stack, Text, Title } from "@mantine/core";
+import { IconBrandGithub, IconBrandVk, IconBrandYandex } from "@tabler/icons-react";
+import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import useOauthRedirect from "../hooks/useOauthRedirect";
 import classes from "./LoginPage.module.css";
+
+const buildAuthUrl = (path: string) => {
+  const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  return base ? `${base}${path}` : path;
+};
 
 export default function LoginPage() {
   useAllowBodyScroll();
@@ -17,6 +23,21 @@ export default function LoginPage() {
   const { hasOauthParams } = useOauthRedirect({
     onResultOk: refreshAuth,
   });
+
+  const githubAuthUrl = useMemo(
+    () => buildAuthUrl("/api/auth/github/start"),
+    [],
+  );
+  const yandexAuthUrl = useMemo(
+    () => buildAuthUrl("/api/auth/yandex/start"),
+    [],
+  );
+  const vkAuthUrl = useMemo(() => buildAuthUrl("/api/auth/vk/start"), []);
+  const oauthIconProps = {
+    size: 42,
+    variant: "transparent" as const,
+    className: `${classes.oauthButton} glass-action glass-action--square`,
+  };
 
   useEffect(() => {
     if (autoOpenedRef.current) return;
@@ -63,6 +84,32 @@ export default function LoginPage() {
                 Открыть форму входа
               </Button>
             )}
+            <div className={classes.oauthRow}>
+              <ActionIcon
+                {...oauthIconProps}
+                aria-label="Войти через GitHub"
+                title="GitHub"
+                onClick={() => window.location.assign(githubAuthUrl)}
+              >
+                <IconBrandGithub size={22} />
+              </ActionIcon>
+              <ActionIcon
+                {...oauthIconProps}
+                aria-label="Войти через Яндекс"
+                title="Яндекс"
+                onClick={() => window.location.assign(yandexAuthUrl)}
+              >
+                <IconBrandYandex size={22} />
+              </ActionIcon>
+              <ActionIcon
+                {...oauthIconProps}
+                aria-label="Войти через VK"
+                title="VK"
+                onClick={() => window.location.assign(vkAuthUrl)}
+              >
+                <IconBrandVk size={22} />
+              </ActionIcon>
+            </div>
             <Button variant="subtle" onClick={() => navigate("/")}>
               Вернуться назад
             </Button>

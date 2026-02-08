@@ -43,6 +43,10 @@ The backend serves:
 - `GET /api/auth/yandex/callback` — Yandex OAuth callback
 - `GET /api/auth/yandex/link/start` — link Yandex to current user (requires auth)
 - `GET /api/auth/yandex/link/callback` — Yandex link callback
+- `GET /api/auth/vk/start` — login via VK (OAuth)
+- `GET /api/auth/vk/callback` — VK OAuth callback
+- `GET /api/auth/vk/link/start` — link VK to current user (requires auth)
+- `GET /api/auth/vk/link/callback` — VK link callback
 ### Account
 - `POST /api/account/email/change/request` — request email change (requires auth)
 - `GET /api/account/email/change/confirm` — confirm email change by token
@@ -75,6 +79,11 @@ Common env vars (backend):
 - `YANDEX_CLIENT_ID`
 - `YANDEX_CLIENT_SECRET`
 - `YANDEX_OAUTH_SCOPE` (default `login:email login:info`)
+- `VK_CLIENT_ID`
+- `VK_CLIENT_SECRET`
+- `VK_OAUTH_SCOPE` (default `email`)
+- `VK_API_VERSION` (default `5.131`)
+- `VK_REDIRECT_URI_BASE` (optional; default `PUBLIC_BASE_URL`)
 CORS:
 - `CORS_ALLOW_ORIGINS`
 - `CORS_ALLOW_METHODS`
@@ -97,7 +106,7 @@ Current:
 ## Notes
 - Sessions are stored server-side in Postgres with HttpOnly cookies.
 - `/api/cafes` uses PostGIS `geography` (requires `postgis` extension).
-- Auth is local only for now; identities table prepares for OAuth providers.
+- OAuth providers supported: GitHub, Yandex, VK (login/link).
 
 ### PostGIS quick check
 ```sql
