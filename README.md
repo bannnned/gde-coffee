@@ -77,8 +77,21 @@ Current:
 - `000001_init` (cafes)
 - `000002_auth` (users, local_credentials, sessions)
 - `000003_identities` (OAuth-ready identities)
+- `000004_account_security` (email verify/change/reset tokens)
+- `000005_postgis` (geography column + GiST index)
 
 ## Notes
 - Sessions are stored server-side in Postgres with HttpOnly cookies.
-- `/api/cafes` uses SQL haversine (no PostGIS required).
+- `/api/cafes` uses PostGIS `geography` (requires `postgis` extension).
 - Auth is local only for now; identities table prepares for OAuth providers.
+
+### PostGIS quick check
+```sql
+EXPLAIN ANALYZE
+WITH params AS (SELECT ST_SetSRID(ST_MakePoint(30.3, 59.9), 4326)::geography AS p)
+SELECT id
+FROM public.cafes, params
+WHERE geog IS NOT NULL AND ST_DWithin(geog, params.p, 1000)
+ORDER BY ST_Distance(geog, params.p)
+LIMIT 10;
+```

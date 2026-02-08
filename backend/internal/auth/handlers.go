@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -21,18 +22,25 @@ const (
 )
 
 type Handler struct {
-	Pool                *pgxpool.Pool
-	CookieSecure        bool
-	SlidingRefreshHours int
-	LoginLimiter        *RateLimiter
-	Mailer              Mailer
-	Security            SecurityConfig
+	Pool                 *pgxpool.Pool
+	CookieSecure         bool
+	SlidingRefreshHours  int
+	LoginLimiter         *RateLimiter
+	EmailVerifyLimiter   *RateLimiter
+	PasswordResetLimiter *RateLimiter
+	EmailChangeLimiter   *RateLimiter
+	Mailer               Mailer
+	Security             SecurityConfig
+	GitHubClientID       string
+	GitHubClientSecret   string
+	GitHubScope          string
 }
 
 type User struct {
-	ID          string  `json:"id"`
-	Email       string  `json:"email"`
-	DisplayName *string `json:"display_name,omitempty"`
+	ID              string     `json:"id"`
+	Email           string     `json:"email"`
+	DisplayName     *string    `json:"display_name,omitempty"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
 }
 
 type registerRequest struct {
@@ -169,6 +177,7 @@ func (h Handler) Login(c *gin.Context) {
 
 	if h.LoginLimiter != nil {
 		if !h.LoginLimiter.Allow(c.ClientIP()) {
+			log.Printf("rate limit: login from %s", c.ClientIP())
 			respondError(c, http.StatusTooManyRequests, "rate_limited", "too many login attempts", nil)
 			return
 		}
@@ -181,29 +190,33 @@ func (h Handler) Login(c *gin.Context) {
 	var passwordHash string
 	err := h.Pool.QueryRow(
 		ctx,
-		`select u.id::text, u.email_normalized, u.display_name, lc.password_hash
+		`select u.id::text, u.email_normalized, u.display_name, u.email_verified_at, lc.password_hash
 		 from users u
 		 join local_credentials lc on lc.user_id = u.id
 		 where u.email_normalized = $1`,
 		email,
-	).Scan(&user.ID, &user.Email, &user.DisplayName, &passwordHash)
+	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.EmailVerifiedAt, &passwordHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("login failed (no user): email=%s ip=%s", email, c.ClientIP())
 			respondError(c, http.StatusUnauthorized, "unauthorized", "invalid credentials", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
+		log.Printf("login failed (db): %v", err)
+		respondError(c, http.StatusInternalServerError, "internal", "internal error", nil)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
+		log.Printf("login failed (bad password): email=%s ip=%s", email, c.ClientIP())
 		respondError(c, http.StatusUnauthorized, "unauthorized", "invalid credentials", nil)
 		return
 	}
 
 	sessionID, expiresAt, err := createSession(ctx, h.Pool, user.ID, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "session create failed", nil)
+		log.Printf("login failed (session create): %v", err)
+		respondError(c, http.StatusInternalServerError, "internal", "internal error", nil)
 		return
 	}
 
@@ -266,12 +279,12 @@ func getUserBySession(ctx context.Context, pool queryer, sid string) (User, time
 	var user User
 	var expiresAt time.Time
 	row := pool.QueryRow(ctx, `
-		select u.id::text, u.email_normalized, u.display_name, s.expires_at
+		select u.id::text, u.email_normalized, u.display_name, u.email_verified_at, s.expires_at
 		from sessions s
 		join users u on u.id = s.user_id
 		where s.id = $1 and s.revoked_at is null and s.expires_at > now()
 	`, sid)
-	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &expiresAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.EmailVerifiedAt, &expiresAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return User{}, time.Time{}, errUnauthorized
 		}

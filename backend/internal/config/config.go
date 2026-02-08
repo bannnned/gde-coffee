@@ -41,6 +41,9 @@ type AuthConfig struct {
 	VerifyTokenTTL      time.Duration
 	EmailChangeTTL      time.Duration
 	PasswordResetTTL    time.Duration
+	GitHubClientID      string
+	GitHubClientSecret  string
+	GitHubScope         string
 }
 
 type MailerConfig struct {
@@ -113,6 +116,7 @@ func Load() (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	githubScope := getEnvTrim("GITHUB_OAUTH_SCOPE", "read:user user:email")
 
 	smtpPort, err := getEnvInt("SMTP_PORT", 465)
 	if err != nil {
@@ -154,6 +158,9 @@ func Load() (Config, error) {
 		VerifyTokenTTL:      verifyTTL,
 		EmailChangeTTL:      emailChangeTTL,
 		PasswordResetTTL:    passwordResetTTL,
+		GitHubClientID:      getEnvTrim("GITHUB_CLIENT_ID", ""),
+		GitHubClientSecret:  getEnvTrim("GITHUB_CLIENT_SECRET", ""),
+		GitHubScope:         githubScope,
 	}
 
 	cfg.Mailer = MailerConfig{

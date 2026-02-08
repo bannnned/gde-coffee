@@ -55,10 +55,10 @@ func queryCafes(
 	cfg config.Config,
 ) ([]model.CafeResponse, error) {
 
-	// если сортировка work — выгодно взять побольше из БД, потом отсортировать в Go
+	// РµСЃР»Рё СЃРѕСЂС‚РёСЂРѕРІРєР° work вЂ” РІС‹РіРѕРґРЅРѕ РІР·СЏС‚СЊ РїРѕР±РѕР»СЊС€Рµ РёР· Р‘Р”, РїРѕС‚РѕРј РѕС‚СЃРѕСЂС‚РёСЂРѕРІР°С‚СЊ РІ Go
 	dbLimit := limit
 	if sortBy == config.SortByWork {
-		// чтобы было из чего выбирать
+		// С‡С‚РѕР±С‹ Р±С‹Р»Рѕ РёР· С‡РµРіРѕ РІС‹Р±РёСЂР°С‚СЊ
 		if cfg.Limits.MaxResults > 0 {
 			dbLimit = cfg.Limits.MaxResults
 		} else if limit > 0 {
@@ -75,39 +75,32 @@ func queryCafes(
 	if len(requiredAmenities) > 0 {
 		amenitiesParam = requiredAmenities
 	} else {
-		amenitiesParam = nil // важно: будет NULL
+		amenitiesParam = nil // РІР°Р¶РЅРѕ: Р±СѓРґРµС‚ NULL
 	}
 
-	// haversine в SQL (без PostGIS)
-	const sqlDistance = `
-WITH q AS (
-  SELECT
-    id::text AS id,
-    name,
-    address,
-    lat,
-    lng,
-    COALESCE(amenities, '{}'::text[]) AS amenities,
-    (2 * 6371000 * asin(
-      sqrt(
-        power(sin(radians(($1 - lat) / 2)), 2) +
-        cos(radians(lat)) * cos(radians($1)) *
-        power(sin(radians(($2 - lng) / 2)), 2)
-      )
-    )) AS distance_m
-  FROM public.cafes
-  WHERE (
+	// haversine РІ SQL (Р±РµР· PostGIS)
+	const sqlDistance = `WITH params AS (
+  SELECT ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography AS p
+)
+SELECT
+  id::text AS id,
+  name,
+  address,
+  lat,
+  lng,
+  COALESCE(amenities, '{}'::text[]) AS amenities,
+  ST_Distance(geog, params.p) AS distance_m
+FROM public.cafes, params
+WHERE
+  geog IS NOT NULL
+  AND ($3 = 0 OR ST_DWithin(geog, params.p, $3))
+  AND (
     $4::text[] IS NULL
     OR cardinality($4::text[]) = 0
     OR COALESCE(amenities, '{}'::text[]) @> $4::text[]
   )
-)
-SELECT id, name, address, lat, lng, amenities, distance_m
-FROM q
-WHERE ($3 = 0 OR distance_m <= $3)
 ORDER BY distance_m ASC
-LIMIT $5;
-`
+LIMIT $5;`
 
 	rows, err := pool.Query(ctx, sqlDistance, lat, lng, radiusM, amenitiesParam, dbLimit)
 	if err != nil {
@@ -139,7 +132,7 @@ LIMIT $5;
 			Longitude: lngDB,
 			Amenities: ams,
 			DistanceM: dist,
-			WorkScore: computeWorkScore(ams), // как у тебя уже есть
+			WorkScore: computeWorkScore(ams), // РєР°Рє Сѓ С‚РµР±СЏ СѓР¶Рµ РµСЃС‚СЊ
 		})
 	}
 
@@ -147,7 +140,7 @@ LIMIT $5;
 		return nil, err
 	}
 
-	// если просили сортировку по work — сортируем тут (distance уже посчитана)
+	// РµСЃР»Рё РїСЂРѕСЃРёР»Рё СЃРѕСЂС‚РёСЂРѕРІРєСѓ РїРѕ work вЂ” СЃРѕСЂС‚РёСЂСѓРµРј С‚СѓС‚ (distance СѓР¶Рµ РїРѕСЃС‡РёС‚Р°РЅР°)
 	if sortBy == config.SortByWork {
 		sort.Slice(out, func(i, j int) bool {
 			if out[i].WorkScore == out[j].WorkScore {
@@ -159,7 +152,7 @@ LIMIT $5;
 			out = out[:limit]
 		}
 	} else {
-		// distance сортировка уже в SQL, просто обрежем
+		// distance СЃРѕСЂС‚РёСЂРѕРІРєР° СѓР¶Рµ РІ SQL, РїСЂРѕСЃС‚Рѕ РѕР±СЂРµР¶РµРј
 		if limit > 0 && len(out) > limit {
 			out = out[:limit]
 		}
@@ -249,7 +242,7 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 
 		requiredAmenities := parseAmenities(c.Query("amenities"))
 
-		// таймаут на запрос
+		// С‚Р°Р№РјР°СѓС‚ РЅР° Р·Р°РїСЂРѕСЃ
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 		defer cancel()
 
@@ -486,33 +479,51 @@ func main() {
 	}()
 
 	auth.StartSessionCleanup(pool, 6*time.Hour)
+	auth.StartTokenCleanup(pool, 24*time.Hour)
 
 	api := r.Group("/api")
 	api.GET("/cafes", getCafes(cfg, pool))
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+	mailerClient := mailer.New(mailer.Config{
+		Host:    cfg.Mailer.Host,
+		Port:    cfg.Mailer.Port,
+		User:    cfg.Mailer.User,
+		Pass:    cfg.Mailer.Pass,
+		From:    cfg.Mailer.From,
+		ReplyTo: cfg.Mailer.ReplyTo,
+		Timeout: cfg.Mailer.Timeout,
+	})
+
 	authHandler := auth.Handler{
-		Pool:                pool,
-		CookieSecure:        cfg.Auth.CookieSecure,
-		SlidingRefreshHours: cfg.Auth.SlidingRefreshHours,
-		LoginLimiter:        auth.NewRateLimiter(cfg.Auth.LoginRateLimit, cfg.Auth.LoginRateWindow),
-		Mailer: mailer.New(mailer.Config{
-			Host:    cfg.Mailer.Host,
-			Port:    cfg.Mailer.Port,
-			User:    cfg.Mailer.User,
-			Pass:    cfg.Mailer.Pass,
-			From:    cfg.Mailer.From,
-			ReplyTo: cfg.Mailer.ReplyTo,
-			Timeout: cfg.Mailer.Timeout,
-		}),
+		Pool:                 pool,
+		CookieSecure:         cfg.Auth.CookieSecure,
+		SlidingRefreshHours:  cfg.Auth.SlidingRefreshHours,
+		LoginLimiter:         auth.NewRateLimiter(cfg.Auth.LoginRateLimit, cfg.Auth.LoginRateWindow),
+		EmailVerifyLimiter:   auth.NewRateLimiter(cfg.Auth.LoginRateLimit, cfg.Auth.LoginRateWindow),
+		PasswordResetLimiter: auth.NewRateLimiter(cfg.Auth.LoginRateLimit, cfg.Auth.LoginRateWindow),
+		EmailChangeLimiter:   auth.NewRateLimiter(cfg.Auth.LoginRateLimit, cfg.Auth.LoginRateWindow),
+		Mailer:               mailerClient,
 		Security: auth.SecurityConfig{
 			BaseURL:          cfg.Auth.PublicBaseURL,
 			VerifyTTL:        cfg.Auth.VerifyTokenTTL,
 			EmailChangeTTL:   cfg.Auth.EmailChangeTTL,
 			PasswordResetTTL: cfg.Auth.PasswordResetTTL,
 		},
+		GitHubClientID:     cfg.Auth.GitHubClientID,
+		GitHubClientSecret: cfg.Auth.GitHubClientSecret,
+		GitHubScope:        cfg.Auth.GitHubScope,
 	}
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			sent, failed := mailerClient.Stats()
+			log.Printf("mailer stats: sent=%d failed=%d", sent, failed)
+		}
+	}()
 	authGroup := api.Group("/auth")
 	authGroup.POST("/register", authHandler.Register)
 	authGroup.POST("/login", authHandler.Login)
@@ -523,6 +534,8 @@ func main() {
 	authGroup.GET("/email/verify/confirm", authHandler.EmailVerifyConfirm)
 	authGroup.POST("/password/reset/request", authHandler.PasswordResetRequest)
 	authGroup.POST("/password/reset/confirm", authHandler.PasswordResetConfirm)
+	authGroup.GET("/github/start", authHandler.GitHubStart)
+	authGroup.GET("/github/callback", authHandler.GitHubCallback)
 
 	accountGroup := api.Group("/account")
 	accountGroup.POST("/email/change/request", auth.RequireAuth(pool), authHandler.EmailChangeRequest)

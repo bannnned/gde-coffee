@@ -21,6 +21,7 @@ import {
   type PropsWithChildren,
 } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { IconBrandGithub } from "@tabler/icons-react";
 
 import type { AuthUser, LoginPayload, RegisterPayload } from "../api/auth";
 import * as authApi from "../api/auth";
@@ -209,6 +210,11 @@ export default function AuthGate({ children }: PropsWithChildren) {
     [isDark],
   );
 
+  const githubAuthUrl = useMemo(() => {
+    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+    return base ? `${base}/api/auth/github/start` : "/api/auth/github/start";
+  }, []);
+
   const titleText = isRegister ? "Регистрация" : "Вход";
   const submitLabel = isRegister ? "Создать аккаунт" : "Войти";
   const toggleLabel = isRegister ? "Войти" : "Регистрация";
@@ -382,6 +388,24 @@ export default function AuthGate({ children }: PropsWithChildren) {
               }}
             >
               {submitLabel}
+            </Button>
+
+            <Button
+              type="button"
+              radius="lg"
+              size="md"
+              variant="default"
+              leftSection={<IconBrandGithub size={18} />}
+              onClick={() => {
+                window.location.assign(githubAuthUrl);
+              }}
+              styles={{
+                root: {
+                  height: 48,
+                },
+              }}
+            >
+              Войти через GitHub
             </Button>
 
             <Group justify="space-between">

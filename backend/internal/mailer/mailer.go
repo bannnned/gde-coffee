@@ -10,6 +10,7 @@ import (
 	"net/mail"
 	"net/smtp"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -24,7 +25,9 @@ type Config struct {
 }
 
 type Mailer struct {
-	cfg Config
+	cfg        Config
+	sentCount  uint64
+	errorCount uint64
 }
 
 func New(cfg Config) *Mailer {
@@ -39,15 +42,15 @@ func (m *Mailer) SendEmail(ctx context.Context, to string, subject string, textB
 		return errors.New("mailer is nil")
 	}
 	if strings.TrimSpace(to) == "" {
-		return errors.New("email to is required")
+		return m.recordError(errors.New("email to is required"))
 	}
 	if strings.TrimSpace(m.cfg.From) == "" {
-		return errors.New("email from is required")
+		return m.recordError(errors.New("email from is required"))
 	}
 
 	msg, err := buildMessage(m.cfg.From, to, m.cfg.ReplyTo, subject, textBody, htmlBody)
 	if err != nil {
-		return err
+		return m.recordError(err)
 	}
 
 	addr := net.JoinHostPort(m.cfg.Host, fmt.Sprintf("%d", m.cfg.Port))
@@ -56,37 +59,54 @@ func (m *Mailer) SendEmail(ctx context.Context, to string, subject string, textB
 	if m.cfg.Port == 465 {
 		conn, err := tls.DialWithDialer(&dialer, "tcp4", addr, &tls.Config{ServerName: m.cfg.Host})
 		if err != nil {
-			return err
+			return m.recordError(err)
 		}
 		defer conn.Close()
 		client, err := smtp.NewClient(conn, m.cfg.Host)
 		if err != nil {
-			return err
+			return m.recordError(err)
 		}
 		defer client.Quit()
-		return sendSMTP(client, m.cfg, to, msg)
+		if err := sendSMTP(client, m.cfg, to, msg); err != nil {
+			return m.recordError(err)
+		}
+		atomic.AddUint64(&m.sentCount, 1)
+		return nil
 	}
 
 	conn, err := dialer.DialContext(ctx, "tcp4", addr)
 	if err != nil {
-		return err
+		return m.recordError(err)
 	}
 	defer conn.Close()
 
 	client, err := smtp.NewClient(conn, m.cfg.Host)
 	if err != nil {
-		return err
+		return m.recordError(err)
 	}
 	defer client.Quit()
 
 	if ok, _ := client.Extension("STARTTLS"); ok {
 		tlsConfig := &tls.Config{ServerName: m.cfg.Host}
 		if err := client.StartTLS(tlsConfig); err != nil {
-			return err
+			return m.recordError(err)
 		}
 	}
 
-	return sendSMTP(client, m.cfg, to, msg)
+	if err := sendSMTP(client, m.cfg, to, msg); err != nil {
+		return m.recordError(err)
+	}
+	atomic.AddUint64(&m.sentCount, 1)
+	return nil
+}
+
+func (m *Mailer) recordError(err error) error {
+	atomic.AddUint64(&m.errorCount, 1)
+	return err
+}
+
+func (m *Mailer) Stats() (sent uint64, failed uint64) {
+	return atomic.LoadUint64(&m.sentCount), atomic.LoadUint64(&m.errorCount)
 }
 
 func sendSMTP(client *smtp.Client, cfg Config, to string, msg []byte) error {
