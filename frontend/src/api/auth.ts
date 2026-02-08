@@ -6,6 +6,7 @@ export type AuthUser = {
   displayName?: string;
   name?: string;
   emailVerifiedAt?: string | null;
+  avatarUrl?: string | null;
 };
 
 export type LoginPayload = {
@@ -29,6 +30,14 @@ export type PasswordResetConfirmPayload = {
   newPassword: string;
 };
 
+export type AuthIdentity = {
+  id?: string;
+  provider?: string;
+  type?: string;
+  name?: string;
+  [key: string]: unknown;
+};
+
 function normalizeUser(data: any): AuthUser {
   const raw = data?.user ?? data ?? {};
   return {
@@ -38,6 +47,7 @@ function normalizeUser(data: any): AuthUser {
     displayName: raw.displayName ?? raw.name,
     emailVerifiedAt:
       raw.email_verified_at ?? raw.emailVerifiedAt ?? raw.email_verified ?? null,
+    avatarUrl: raw.avatar_url ?? raw.avatarUrl ?? raw.avatar ?? null,
   };
 }
 
@@ -92,4 +102,12 @@ export async function confirmPasswordReset(
     token: payload.token,
     new_password: payload.newPassword,
   });
+}
+
+export async function getIdentities(): Promise<AuthIdentity[]> {
+  const res = await http.get("/api/auth/identities");
+  const data = res.data;
+  if (Array.isArray(data)) return data as AuthIdentity[];
+  if (Array.isArray(data?.identities)) return data.identities as AuthIdentity[];
+  return [];
 }

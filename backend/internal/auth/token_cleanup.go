@@ -28,6 +28,9 @@ func StartTokenCleanup(pool *pgxpool.Pool, interval time.Duration) {
 			if _, err := pool.Exec(ctx, `delete from password_reset_tokens where consumed_at is not null or expires_at < now()`); err != nil {
 				log.Printf("token cleanup failed (password_reset_tokens): %v", err)
 			}
+			if _, err := pool.Exec(ctx, `delete from oauth_states where consumed_at is not null or expires_at < now()`); err != nil {
+				log.Printf("token cleanup failed (oauth_states): %v", err)
+			}
 			cancel()
 		}
 	}()

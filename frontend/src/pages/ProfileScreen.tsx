@@ -26,6 +26,7 @@ import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
+import { resolveAvatarUrl } from "../utils/resolveAvatarUrl";
 import classes from "./ProfileScreen.module.css";
 
 export default function ProfileScreen() {
@@ -46,8 +47,9 @@ export default function ProfileScreen() {
       .toUpperCase();
     const username = email.includes("@") ? email.split("@")[0] : email;
     const isVerified = Boolean(user?.emailVerifiedAt);
+    const avatarUrl = resolveAvatarUrl(user?.avatarUrl);
 
-    return { name, email, id, initial, username, isVerified };
+    return { name, email, id, initial, username, isVerified, avatarUrl };
   }, [user]);
 
   const handleLogout = async () => {
@@ -69,7 +71,7 @@ export default function ProfileScreen() {
             size={42}
             variant="transparent"
             className={`${classes.iconButton} glass-action glass-action--square`}
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/")}
             aria-label="Назад"
           >
             <IconArrowLeft size={18} />
@@ -110,7 +112,18 @@ export default function ProfileScreen() {
             ) : (
               <Stack gap="md">
                 <div className={classes.hero}>
-                  <div className={classes.avatarLarge}>{profile.initial}</div>
+                  <div className={classes.avatarLarge}>
+                    {profile.avatarUrl ? (
+                      <img
+                        src={profile.avatarUrl}
+                        alt={profile.name}
+                        className={classes.avatarImage}
+                        loading="lazy"
+                      />
+                    ) : (
+                      profile.initial
+                    )}
+                  </div>
                   <div className={classes.heroText}>
                     <Title order={2}>{profile.name}</Title>
                     <Text className={classes.heroCaption}>

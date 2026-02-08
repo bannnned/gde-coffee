@@ -496,6 +496,14 @@ func main() {
 		Timeout: cfg.Mailer.Timeout,
 	})
 
+	oauthProviders := map[auth.Provider]auth.OAuthProvider{}
+	if cfg.Auth.GitHubClientID != "" && cfg.Auth.GitHubClientSecret != "" {
+		oauthProviders[auth.ProviderGitHub] = auth.NewGitHubProvider(cfg.Auth.GitHubClientID, cfg.Auth.GitHubClientSecret, cfg.Auth.GitHubScope)
+	}
+	if cfg.Auth.YandexClientID != "" && cfg.Auth.YandexClientSecret != "" {
+		oauthProviders[auth.ProviderYandex] = auth.NewYandexProvider(cfg.Auth.YandexClientID, cfg.Auth.YandexClientSecret, cfg.Auth.YandexScope)
+	}
+
 	authHandler := auth.Handler{
 		Pool:                 pool,
 		CookieSecure:         cfg.Auth.CookieSecure,
@@ -511,9 +519,7 @@ func main() {
 			EmailChangeTTL:   cfg.Auth.EmailChangeTTL,
 			PasswordResetTTL: cfg.Auth.PasswordResetTTL,
 		},
-		GitHubClientID:     cfg.Auth.GitHubClientID,
-		GitHubClientSecret: cfg.Auth.GitHubClientSecret,
-		GitHubScope:        cfg.Auth.GitHubScope,
+		OAuthProviders: oauthProviders,
 	}
 
 	go func() {
@@ -536,6 +542,12 @@ func main() {
 	authGroup.POST("/password/reset/confirm", authHandler.PasswordResetConfirm)
 	authGroup.GET("/github/start", authHandler.GitHubStart)
 	authGroup.GET("/github/callback", authHandler.GitHubCallback)
+	authGroup.GET("/github/link/start", auth.RequireAuth(pool), authHandler.GitHubLinkStart)
+	authGroup.GET("/github/link/callback", authHandler.GitHubLinkCallback)
+	authGroup.GET("/yandex/start", authHandler.YandexStart)
+	authGroup.GET("/yandex/callback", authHandler.YandexCallback)
+	authGroup.GET("/yandex/link/start", auth.RequireAuth(pool), authHandler.YandexLinkStart)
+	authGroup.GET("/yandex/link/callback", authHandler.YandexLinkCallback)
 
 	accountGroup := api.Group("/account")
 	accountGroup.POST("/email/change/request", auth.RequireAuth(pool), authHandler.EmailChangeRequest)

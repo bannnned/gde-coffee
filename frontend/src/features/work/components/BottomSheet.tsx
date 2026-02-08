@@ -28,7 +28,7 @@ type SheetState = "peek" | "mid" | "expanded";
 
 const SWIPE_VELOCITY = 900;
 const PEEK_HEIGHT_PX = 64;
-const SHEET_PADDING_PX = 12;
+const SHEET_PADDING_PX = 8;
 
 const MotionPaper = motion(Paper as any);
 
@@ -176,15 +176,45 @@ export default function BottomSheet({
   ) => {
     const target = event.target as HTMLElement | null;
     if (!target) return;
-    if (
-      target.closest(
-        'button, a, input, textarea, select, [data-no-drag="true"]',
-      )
-    ) {
+    if (target.closest('input, textarea, select, [data-no-drag="true"]')) {
       return;
     }
-    event.preventDefault();
-    dragControls.start(event);
+    const isInteractive = Boolean(target.closest("button, a"));
+    if (!isInteractive) {
+      event.preventDefault();
+      dragControls.start(event);
+      return;
+    }
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const pointerId = event.pointerId;
+    const threshold = 6;
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
+      const dx = Math.abs(moveEvent.clientX - startX);
+      const dy = Math.abs(moveEvent.clientY - startY);
+      if (dx < threshold && dy < threshold) return;
+      moveEvent.preventDefault();
+      cleanup();
+      dragControls.start(moveEvent);
+    };
+
+    const handleUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      cleanup();
+    };
+
+    const cleanup = () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+
+    window.addEventListener("pointermove", handleMove, { passive: false });
+    window.addEventListener("pointerup", handleUp, { passive: true });
+    window.addEventListener("pointercancel", handleUp, { passive: true });
   };
 
   return (
@@ -201,7 +231,7 @@ export default function BottomSheet({
       <MotionPaper
         withBorder
         radius="lg"
-        p="sm"
+        p="xs"
         className={classes.sheet}
         data-state={sheetState}
         drag="y"

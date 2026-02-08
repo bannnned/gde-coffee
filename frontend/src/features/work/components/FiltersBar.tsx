@@ -1,4 +1,4 @@
-import {
+﻿import {
   ActionIcon,
   Badge,
   Box,
@@ -20,6 +20,7 @@ import type { Amenity } from "../types";
 import { AMENITY_LABELS, WORK_ICONS, WORK_UI_TEXT } from "../constants";
 import classes from "./FiltersBar.module.css";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
+import { resolveAvatarUrl } from "../../../utils/resolveAvatarUrl";
 
 type FiltersBarProps = {
   selectedAmenities: Amenity[];
@@ -56,6 +57,7 @@ export default function FiltersBar({
   const { setFiltersBarHeight } = useLayoutMetrics();
   const { user, status, openAuthModal } = useAuth();
   const navigate = useNavigate();
+  const avatarUrl = useMemo(() => resolveAvatarUrl(user?.avatarUrl), [user]);
 
   const amenityChipLabelBaseStyles = {
     boxSizing: "border-box",
@@ -69,7 +71,7 @@ export default function FiltersBar({
     letterSpacing: 0,
     transform: "none",
     paddingInline: 10,
-    paddingBlock: 6,
+    paddingBlock: 8,
     border: `1px solid ${
       scheme === "dark"
         ? "rgba(255, 255, 240, 0.18)"
@@ -199,12 +201,21 @@ export default function FiltersBar({
             onClick={() => navigate("/profile")}
             title={user.displayName ?? user.email ?? ""}
           >
-            <Text fw={700}>
-              {(user.displayName || user.email || "?")
-                .trim()
-                .charAt(0)
-                .toUpperCase()}
-            </Text>
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={user.displayName ?? user.email ?? "User"}
+                className={classes.userAvatar}
+                loading="lazy"
+              />
+            ) : (
+              <Text fw={700}>
+                {(user.displayName || user.email || "?")
+                  .trim()
+                  .charAt(0)
+                  .toUpperCase()}
+              </Text>
+            )}
           </UnstyledButton>
         ) : (
           <Button

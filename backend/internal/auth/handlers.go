@@ -31,15 +31,14 @@ type Handler struct {
 	EmailChangeLimiter   *RateLimiter
 	Mailer               Mailer
 	Security             SecurityConfig
-	GitHubClientID       string
-	GitHubClientSecret   string
-	GitHubScope          string
+	OAuthProviders       map[Provider]OAuthProvider
 }
 
 type User struct {
 	ID              string     `json:"id"`
 	Email           string     `json:"email"`
 	DisplayName     *string    `json:"display_name,omitempty"`
+	AvatarURL       *string    `json:"avatar_url,omitempty"`
 	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
 }
 
@@ -104,10 +103,10 @@ func (h Handler) Register(c *gin.Context) {
 		ctx,
 		`insert into users (email_normalized, display_name)
 		 values ($1, $2)
-		 returning id::text, email_normalized, display_name`,
+		 returning id::text, email_normalized, display_name, avatar_url`,
 		email,
 		req.DisplayName,
-	).Scan(&user.ID, &user.Email, &user.DisplayName)
+	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(c, http.StatusConflict, "already_exists", "email already registered", nil)
@@ -190,12 +189,12 @@ func (h Handler) Login(c *gin.Context) {
 	var passwordHash string
 	err := h.Pool.QueryRow(
 		ctx,
-		`select u.id::text, u.email_normalized, u.display_name, u.email_verified_at, lc.password_hash
+		`select u.id::text, u.email_normalized, u.display_name, u.avatar_url, u.email_verified_at, lc.password_hash
 		 from users u
 		 join local_credentials lc on lc.user_id = u.id
 		 where u.email_normalized = $1`,
 		email,
-	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.EmailVerifiedAt, &passwordHash)
+	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.EmailVerifiedAt, &passwordHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("login failed (no user): email=%s ip=%s", email, c.ClientIP())
@@ -279,12 +278,12 @@ func getUserBySession(ctx context.Context, pool queryer, sid string) (User, time
 	var user User
 	var expiresAt time.Time
 	row := pool.QueryRow(ctx, `
-		select u.id::text, u.email_normalized, u.display_name, u.email_verified_at, s.expires_at
+		select u.id::text, u.email_normalized, u.display_name, u.avatar_url, u.email_verified_at, s.expires_at
 		from sessions s
 		join users u on u.id = s.user_id
 		where s.id = $1 and s.revoked_at is null and s.expires_at > now()
 	`, sid)
-	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.EmailVerifiedAt, &expiresAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.EmailVerifiedAt, &expiresAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return User{}, time.Time{}, errUnauthorized
 		}

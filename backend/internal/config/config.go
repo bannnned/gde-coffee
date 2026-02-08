@@ -44,6 +44,9 @@ type AuthConfig struct {
 	GitHubClientID      string
 	GitHubClientSecret  string
 	GitHubScope         string
+	YandexClientID      string
+	YandexClientSecret  string
+	YandexScope         string
 }
 
 type MailerConfig struct {
@@ -117,6 +120,7 @@ func Load() (Config, error) {
 		return cfg, err
 	}
 	githubScope := getEnvTrim("GITHUB_OAUTH_SCOPE", "read:user user:email")
+	yandexScope := getEnvTrim("YANDEX_OAUTH_SCOPE", "login:email login:info")
 
 	smtpPort, err := getEnvInt("SMTP_PORT", 465)
 	if err != nil {
@@ -161,6 +165,9 @@ func Load() (Config, error) {
 		GitHubClientID:      getEnvTrim("GITHUB_CLIENT_ID", ""),
 		GitHubClientSecret:  getEnvTrim("GITHUB_CLIENT_SECRET", ""),
 		GitHubScope:         githubScope,
+		YandexClientID:      getEnvTrim("YANDEX_CLIENT_ID", ""),
+		YandexClientSecret:  getEnvTrim("YANDEX_CLIENT_SECRET", ""),
+		YandexScope:         yandexScope,
 	}
 
 	cfg.Mailer = MailerConfig{

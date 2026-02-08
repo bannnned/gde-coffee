@@ -1,4 +1,4 @@
-# Coffee Quest
+﻿# Coffee Quest
 
 Backend + frontend for a coffee discovery app.
 
@@ -35,7 +35,14 @@ The backend serves:
 - `GET /api/auth/email/verify/confirm` — confirm verification by token
 - `POST /api/auth/password/reset/request` — request password reset
 - `POST /api/auth/password/reset/confirm` — confirm password reset
-
+- `GET /api/auth/github/start` — login via GitHub (OAuth)
+- `GET /api/auth/github/callback` — GitHub OAuth callback
+- `GET /api/auth/github/link/start` — link GitHub to current user (requires auth)
+- `GET /api/auth/github/link/callback` — GitHub link callback
+- `GET /api/auth/yandex/start` — login via Yandex (OAuth)
+- `GET /api/auth/yandex/callback` — Yandex OAuth callback
+- `GET /api/auth/yandex/link/start` — link Yandex to current user (requires auth)
+- `GET /api/auth/yandex/link/callback` — Yandex link callback
 ### Account
 - `POST /api/account/email/change/request` — request email change (requires auth)
 - `GET /api/account/email/change/confirm` — confirm email change by token
@@ -62,7 +69,12 @@ Common env vars (backend):
 - `MAIL_FROM`
 - `MAIL_REPLY_TO` (optional)
 - `SMTP_TIMEOUT` (default `10s`)
-
+- `GITHUB_CLIENT_ID`
+- `GITHUB_CLIENT_SECRET`
+- `GITHUB_OAUTH_SCOPE` (default `read:user user:email`)
+- `YANDEX_CLIENT_ID`
+- `YANDEX_CLIENT_SECRET`
+- `YANDEX_OAUTH_SCOPE` (default `login:email login:info`)
 CORS:
 - `CORS_ALLOW_ORIGINS`
 - `CORS_ALLOW_METHODS`
@@ -79,6 +91,8 @@ Current:
 - `000003_identities` (OAuth-ready identities)
 - `000004_account_security` (email verify/change/reset tokens)
 - `000005_postgis` (geography column + GiST index)
+- `000006_oauth_states` (OAuth state storage)
+- `000007_oauth_state_redirect` (stores redirect_uri for OAuth state)
 
 ## Notes
 - Sessions are stored server-side in Postgres with HttpOnly cookies.

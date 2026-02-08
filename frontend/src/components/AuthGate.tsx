@@ -21,7 +21,7 @@ import {
   type PropsWithChildren,
 } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { IconBrandGithub } from "@tabler/icons-react";
+import { IconBrandGithub, IconBrandYandex } from "@tabler/icons-react";
 
 import type { AuthUser, LoginPayload, RegisterPayload } from "../api/auth";
 import * as authApi from "../api/auth";
@@ -33,6 +33,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   status: AuthStatus;
   logout: () => Promise<void>;
+  refreshAuth: () => Promise<void>;
   openAuthModal: (mode?: AuthFormMode) => void;
   closeAuthModal: () => void;
   isAuthModalOpen: boolean;
@@ -183,11 +184,20 @@ export default function AuthGate({ children }: PropsWithChildren) {
       user,
       status,
       logout,
+      refreshAuth: loadMe,
       openAuthModal,
       closeAuthModal,
       isAuthModalOpen,
     }),
-    [logout, status, user, openAuthModal, closeAuthModal, isAuthModalOpen],
+    [
+      logout,
+      status,
+      user,
+      openAuthModal,
+      closeAuthModal,
+      isAuthModalOpen,
+      loadMe,
+    ],
   );
 
   const inputStyles = useMemo(
@@ -213,6 +223,11 @@ export default function AuthGate({ children }: PropsWithChildren) {
   const githubAuthUrl = useMemo(() => {
     const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
     return base ? `${base}/api/auth/github/start` : "/api/auth/github/start";
+  }, []);
+
+  const yandexAuthUrl = useMemo(() => {
+    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+    return base ? `${base}/api/auth/yandex/start` : "/api/auth/yandex/start";
   }, []);
 
   const titleText = isRegister ? "Регистрация" : "Вход";
@@ -406,6 +421,24 @@ export default function AuthGate({ children }: PropsWithChildren) {
               }}
             >
               Войти через GitHub
+            </Button>
+
+            <Button
+              type="button"
+              radius="lg"
+              size="md"
+              variant="default"
+              leftSection={<IconBrandYandex size={18} />}
+              onClick={() => {
+                window.location.assign(yandexAuthUrl);
+              }}
+              styles={{
+                root: {
+                  height: 48,
+                },
+              }}
+            >
+              Войти через Яндекс
             </Button>
 
             <Group justify="space-between">

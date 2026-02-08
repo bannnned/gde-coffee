@@ -1,4 +1,4 @@
-import {
+﻿import {
   Button,
   Chip,
   Drawer,
@@ -131,7 +131,7 @@ export default function SettingsDrawer({
     letterSpacing: 0,
     transform: "none",
     paddingInline: 10,
-    paddingBlock: 6,
+    paddingBlock: 8,
     border: `1px solid ${
       scheme === "dark"
         ? "rgba(255, 255, 240, 0.18)"
