@@ -3,6 +3,7 @@
 import type { Amenity } from "./types";
 
 export const SPB_CENTER: [number, number] = [30.3158, 59.9343];
+export const MOSCOW_CENTER: [number, number] = [37.6173, 55.7558];
 export const DEFAULT_RADIUS_M = 2500;
 export const DEFAULT_AMENITIES: Amenity[] = ["wifi", "power"];
 

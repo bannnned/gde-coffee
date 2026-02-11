@@ -8,10 +8,16 @@
   useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
+import { IconMapPin } from "@tabler/icons-react";
 
 import type { Amenity } from "../types";
 import { AMENITY_LABELS, WORK_UI_TEXT } from "../constants";
 import { useAuth } from "../../../components/AuthGate";
+
+type LocationOption = {
+  id: string;
+  label: string;
+};
 
 type SettingsDrawerProps = {
   opened: boolean;
@@ -20,6 +26,11 @@ type SettingsDrawerProps = {
   onRadiusChange: (value: number) => void;
   selectedAmenities: Amenity[];
   onChangeAmenities: (next: Amenity[]) => void;
+  locationLabel: string;
+  locationOptions: LocationOption[];
+  selectedLocationId: string;
+  onSelectLocation: (id: string) => void;
+  onOpenMapPicker: () => void;
 };
 
 const RADIUS_OPTIONS = [1000, 2500, 5000, 0] as const;
@@ -31,6 +42,11 @@ export default function SettingsDrawer({
   onRadiusChange,
   selectedAmenities,
   onChangeAmenities,
+  locationLabel,
+  locationOptions,
+  selectedLocationId,
+  onSelectLocation,
+  onOpenMapPicker,
 }: SettingsDrawerProps) {
   const scheme = useComputedColorScheme("light", {
     getInitialValueInEffect: true,
@@ -177,6 +193,36 @@ export default function SettingsDrawer({
       styles={drawerStyles}
     >
       <Stack gap="md">
+        <Stack gap="xs">
+          <Group justify="space-between" align="center">
+            <Text>Место</Text>
+            <Text size="sm" c="dimmed">
+              {locationLabel}
+            </Text>
+          </Group>
+          <Group gap="xs" wrap="wrap">
+            {locationOptions.map((option) => (
+              <Button
+                key={option.id}
+                variant="transparent"
+                size="xs"
+                styles={glassButtonStyles(selectedLocationId === option.id)}
+                onClick={() => onSelectLocation(option.id)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </Group>
+          <Button
+            variant="light"
+            leftSection={<IconMapPin size={16} />}
+            onClick={onOpenMapPicker}
+            styles={glassButtonStyles(false)}
+          >
+            Выбрать на карте
+          </Button>
+        </Stack>
+
         <Stack gap="xs">
           <Text>{WORK_UI_TEXT.filtersTitle}</Text>
           <Chip.Group

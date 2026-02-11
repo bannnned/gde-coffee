@@ -52,6 +52,8 @@ type AuthConfig struct {
 	VKScope             string
 	VKAPIVersion        string
 	VKRedirectBase      string
+	TelegramBotToken    string
+	TelegramBotUsername string
 }
 
 type MailerConfig struct {
@@ -181,6 +183,8 @@ func Load() (Config, error) {
 		VKScope:             vkScope,
 		VKAPIVersion:        vkAPIVersion,
 		VKRedirectBase:      vkRedirectBase,
+		TelegramBotToken:    getEnvTrim("TELEGRAM_BOT_TOKEN", ""),
+		TelegramBotUsername: getEnvTrim("TELEGRAM_BOT_USERNAME", ""),
 	}
 
 	cfg.Mailer = MailerConfig{

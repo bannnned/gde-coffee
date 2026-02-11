@@ -33,6 +33,8 @@ type Handler struct {
 	Security             SecurityConfig
 	OAuthProviders       map[Provider]OAuthProvider
 	OAuthRedirectBase    map[Provider]string
+	TelegramBotToken     string
+	TelegramBotUsername  string
 }
 
 type User struct {
@@ -282,7 +284,10 @@ func getUserBySession(ctx context.Context, pool queryer, sid string) (User, time
 		select u.id::text, coalesce(u.email_normalized, ''), u.display_name, u.avatar_url, u.email_verified_at, s.expires_at
 		from sessions s
 		join users u on u.id = s.user_id
-		where s.id = $1 and s.revoked_at is null and s.expires_at > now()
+		where s.id = $1
+		  and s.revoked_at is null
+		  and s.expires_at > now()
+		  and s.user_session_version = u.session_version
 	`, sid)
 	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.EmailVerifiedAt, &expiresAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -298,22 +303,33 @@ type queryer interface {
 	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
 }
 
-func createSession(ctx context.Context, execer execer, userID, ip, userAgent string) (string, time.Time, error) {
+type sessionExecer interface {
+	execer
+	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
+}
+
+func createSession(ctx context.Context, execer sessionExecer, userID, ip, userAgent string) (string, time.Time, error) {
 	sessionID, err := generateSessionID()
 	if err != nil {
 		return "", time.Time{}, err
 	}
 	expiresAt := time.Now().Add(sessionTTL)
 
+	var sessionVersion int
+	if err := execer.QueryRow(ctx, `select session_version from users where id = $1`, userID).Scan(&sessionVersion); err != nil {
+		return "", time.Time{}, err
+	}
+
 	_, err = execer.Exec(
 		ctx,
-		`insert into sessions (id, user_id, expires_at, ip, user_agent)
-		 values ($1, $2, $3, $4, $5)`,
+		`insert into sessions (id, user_id, expires_at, ip, user_agent, user_session_version)
+		 values ($1, $2, $3, $4, $5, $6)`,
 		sessionID,
 		userID,
 		expiresAt,
 		ip,
 		userAgent,
+		sessionVersion,
 	)
 	if err != nil {
 		return "", time.Time{}, err

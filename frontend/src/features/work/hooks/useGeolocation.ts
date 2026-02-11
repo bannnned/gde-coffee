@@ -1,16 +1,29 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 
 type LngLat = [number, number];
 
 type GeoStatus = "idle" | "loading" | "ok" | "unavailable" | "error";
 
-export default function useGeolocation(initialCenter: LngLat) {
+type GeolocationOptions = {
+  autoLocate?: boolean;
+};
+
+export default function useGeolocation(
+  initialCenter: LngLat,
+  options: GeolocationOptions = {},
+) {
   const [userCenter, setUserCenter] = useState<LngLat>(initialCenter);
   const [focusLngLat, setFocusLngLat] = useState<LngLat | null>(null);
   const [geoStatus, setGeoStatus] = useState<GeoStatus>(() =>
     "geolocation" in navigator ? "idle" : "unavailable",
   );
   const [isLocating, setIsLocating] = useState(false);
+
+  const setManualCenter = useCallback((center: LngLat) => {
+    setUserCenter(center);
+    setGeoStatus("ok");
+    setIsLocating(false);
+  }, []);
 
   function locateMe(forceFocus: boolean, showLoading = true) {
     if (!("geolocation" in navigator)) {
@@ -41,15 +54,17 @@ export default function useGeolocation(initialCenter: LngLat) {
   }
 
   useEffect(() => {
+    if (options.autoLocate === false) return;
     locateMe(false, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [options.autoLocate]);
 
   return {
     userCenter,
     focusLngLat,
     setFocusLngLat,
     locateMe,
+    setManualCenter,
     geoStatus,
     isLocating,
   };

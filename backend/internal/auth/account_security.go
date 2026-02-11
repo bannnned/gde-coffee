@@ -322,7 +322,12 @@ func (h Handler) EmailChangeConfirm(c *gin.Context) {
 	}
 
 	_, err = tx.Exec(ctx, `
-		update users set email_normalized = $2, email_verified_at = now(), updated_at = now() where id = $1
+		update users
+		set email_normalized = $2,
+			email_verified_at = now(),
+			updated_at = now(),
+			session_version = session_version + 1
+		where id = $1
 	`, userID, newEmail)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -519,7 +524,7 @@ func (h Handler) PasswordResetConfirm(c *gin.Context) {
 		return
 	}
 
-	_, _ = tx.Exec(ctx, `update users set updated_at = now() where id = $1`, userID)
+	_, _ = tx.Exec(ctx, `update users set updated_at = now(), session_version = session_version + 1 where id = $1`, userID)
 
 	if err := tx.Commit(ctx); err != nil {
 		log.Printf("password reset confirm commit failed: %v", err)

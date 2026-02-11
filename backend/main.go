@@ -527,8 +527,10 @@ func main() {
 			EmailChangeTTL:   cfg.Auth.EmailChangeTTL,
 			PasswordResetTTL: cfg.Auth.PasswordResetTTL,
 		},
-		OAuthProviders:    oauthProviders,
-		OAuthRedirectBase: oauthRedirectBases,
+		OAuthProviders:      oauthProviders,
+		OAuthRedirectBase:   oauthRedirectBases,
+		TelegramBotToken:    cfg.Auth.TelegramBotToken,
+		TelegramBotUsername: cfg.Auth.TelegramBotUsername,
 	}
 
 	go func() {
@@ -561,6 +563,9 @@ func main() {
 	authGroup.GET("/vk/callback", authHandler.VKCallback)
 	authGroup.GET("/vk/link/start", auth.RequireAuth(pool), authHandler.VKLinkStart)
 	authGroup.GET("/vk/link/callback", authHandler.VKLinkCallback)
+	authGroup.POST("/telegram/start", authHandler.TelegramStart)
+	authGroup.POST("/telegram/callback", authHandler.TelegramCallback)
+	authGroup.POST("/sessions/revoke_all", auth.RequireAuth(pool), authHandler.RevokeAllSessions)
 
 	accountGroup := api.Group("/account")
 	accountGroup.POST("/email/change/request", auth.RequireAuth(pool), authHandler.EmailChangeRequest)

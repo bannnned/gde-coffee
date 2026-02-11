@@ -21,6 +21,9 @@ type Props = {
   cafes: Cafe[];
   selectedCafeId?: string | null;
   onCafeSelect?: (id: string) => void;
+  onMapClick?: (lngLat: [number, number]) => void;
+  disableCafeClick?: boolean;
+  paddingEnabled?: boolean;
   userLocation?: [number, number] | null;
   focusLngLat?: [number, number] | null;
 };
@@ -245,12 +248,16 @@ export default function Map({
   cafes,
   selectedCafeId,
   onCafeSelect,
+  onMapClick,
+  disableCafeClick = false,
+  paddingEnabled = true,
   userLocation,
   focusLngLat,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const onCafeSelectRef = useRef(onCafeSelect);
+  const onMapClickRef = useRef(onMapClick);
   const focusRef = useRef<[number, number] | null>(focusLngLat ?? null);
   const selectedCafeRef = useRef<string | null>(selectedCafeId ?? null);
   const geojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
@@ -261,6 +268,10 @@ export default function Map({
   useEffect(() => {
     onCafeSelectRef.current = onCafeSelect;
   }, [onCafeSelect]);
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
 
   useEffect(() => {
     focusRef.current = focusLngLat ?? null;
@@ -317,6 +328,11 @@ export default function Map({
       if (id && onCafeSelectRef.current) onCafeSelectRef.current(id);
     };
 
+    const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+      if (!onMapClickRef.current) return;
+      onMapClickRef.current([e.lngLat.lng, e.lngLat.lat]);
+    };
+
     const handleMouseEnter = () => {
       map.getCanvas().style.cursor = "pointer";
     };
@@ -338,9 +354,15 @@ export default function Map({
       }
       setIsMapReady(true);
 
-      map.on("click", "cafes-layer", handleClick);
-      map.on("mouseenter", "cafes-layer", handleMouseEnter);
-      map.on("mouseleave", "cafes-layer", handleMouseLeave);
+      if (!disableCafeClick) {
+        map.on("click", "cafes-layer", handleClick);
+        map.on("mouseenter", "cafes-layer", handleMouseEnter);
+        map.on("mouseleave", "cafes-layer", handleMouseLeave);
+      }
+
+      if (onMapClickRef.current) {
+        map.on("click", handleMapClick);
+      }
 
       const [userLoaded, cafeLoaded] = await Promise.all([
         loadImage(map, USER_ICON_ID, pinUrl),
@@ -356,9 +378,12 @@ export default function Map({
 
     return () => {
       map.off("load", handleLoad);
-      map.off("click", "cafes-layer", handleClick);
-      map.off("mouseenter", "cafes-layer", handleMouseEnter);
-      map.off("mouseleave", "cafes-layer", handleMouseLeave);
+      map.off("click", handleMapClick);
+      if (!disableCafeClick) {
+        map.off("click", "cafes-layer", handleClick);
+        map.off("mouseenter", "cafes-layer", handleMouseEnter);
+        map.off("mouseleave", "cafes-layer", handleMouseLeave);
+      }
       map.remove();
       mapRef.current = null;
       setIsMapReady(false);
@@ -367,6 +392,7 @@ export default function Map({
   }, []);
 
   useEffect(() => {
+    if (!paddingEnabled) return;
     if (!isMapReady) return;
     const map = mapRef.current;
     if (!map) return;
