@@ -69,6 +69,7 @@ export default function TelegramLoginWidget({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [botUsername, setBotUsername] = useState("");
   const [isConfigLoading, setIsConfigLoading] = useState(true);
+  const [isWidgetLoading, setIsWidgetLoading] = useState(false);
   const [widgetError, setWidgetError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export default function TelegramLoginWidget({
     }
 
     setWidgetError(null);
+    setIsWidgetLoading(true);
 
     const callbackName = callbackNameRef.current;
     const onAuth = async (rawUser: TelegramWidgetUser) => {
@@ -169,13 +171,36 @@ export default function TelegramLoginWidget({
     script.setAttribute("data-radius", "10");
     script.setAttribute("data-onauth", `${callbackName}(user)`);
     script.onerror = () => {
+      setIsWidgetLoading(false);
       setWidgetError("Не удалось загрузить Telegram widget.");
     };
 
     container.innerHTML = "";
     container.appendChild(script);
 
+    const markReadyIfWidgetMounted = () => {
+      const hasWidget = Boolean(
+        container.querySelector("iframe") ||
+          container.querySelector("a") ||
+          container.querySelector("[id^='telegram-login-']"),
+      );
+      if (hasWidget) {
+        setIsWidgetLoading(false);
+      }
+    };
+
+    // Widget may appear some time after script append.
+    markReadyIfWidgetMounted();
+    const observer = new MutationObserver(markReadyIfWidgetMounted);
+    observer.observe(container, { childList: true, subtree: true });
+    const readinessTimeout = window.setTimeout(() => {
+      markReadyIfWidgetMounted();
+      setIsWidgetLoading(false);
+    }, 8000);
+
     return () => {
+      observer.disconnect();
+      window.clearTimeout(readinessTimeout);
       delete (window as any)[callbackName];
       container.innerHTML = "";
     };
@@ -196,7 +221,7 @@ export default function TelegramLoginWidget({
           Авторизуем через Telegram...
         </Text>
       )}
-      {!widgetError && isConfigLoading && (
+      {!widgetError && (isConfigLoading || isWidgetLoading) && (
         <Text size="xs" c="dimmed" mt={4}>
           Загружаем Telegram login...
         </Text>

@@ -48,6 +48,35 @@ func (h Handler) TelegramConfig(c *gin.Context) {
 	})
 }
 
+func (h Handler) fillTelegramProfileIfMissing(
+	ctx context.Context,
+	userID string,
+	displayName *string,
+	avatarURL *string,
+) {
+	if displayName != nil && strings.TrimSpace(*displayName) != "" {
+		if _, err := h.Pool.Exec(
+			ctx,
+			`update users set display_name = $2 where id = $1 and (display_name is null or display_name = '')`,
+			userID,
+			strings.TrimSpace(*displayName),
+		); err != nil {
+			log.Printf("telegram profile: update display_name failed: %v", err)
+		}
+	}
+
+	if avatarURL != nil && strings.TrimSpace(*avatarURL) != "" {
+		if _, err := h.Pool.Exec(
+			ctx,
+			`update users set avatar_url = $2 where id = $1 and (avatar_url is null or avatar_url = '')`,
+			userID,
+			strings.TrimSpace(*avatarURL),
+		); err != nil {
+			log.Printf("telegram profile: update avatar_url failed: %v", err)
+		}
+	}
+}
+
 func (h Handler) TelegramStart(c *gin.Context) {
 	var req telegramStartRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -171,6 +200,9 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 			h.oauthRedirect(c, ProviderTelegram, dest, "internal", "", "")
 			return
 		}
+
+		h.fillTelegramProfileIfMissing(ctx, userID, identity.DisplayName, identity.AvatarURL)
+
 		sessionID, _, err := createSession(ctx, h.Pool, userID, c.ClientIP(), c.GetHeader("User-Agent"))
 		if err != nil {
 			log.Printf("telegram login: session create failed: %v", err)
@@ -211,16 +243,7 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 			}
 		}
 
-		if identity.AvatarURL != nil && strings.TrimSpace(*identity.AvatarURL) != "" {
-			if _, err := h.Pool.Exec(
-				ctx,
-				`update users set avatar_url = $2 where id = $1 and (avatar_url is null or avatar_url = '')`,
-				targetUserID,
-				*identity.AvatarURL,
-			); err != nil {
-				log.Printf("telegram link: update avatar failed: %v", err)
-			}
-		}
+		h.fillTelegramProfileIfMissing(ctx, targetUserID, identity.DisplayName, identity.AvatarURL)
 
 		h.oauthRedirect(c, ProviderTelegram, dest, "", "", "linked")
 		return

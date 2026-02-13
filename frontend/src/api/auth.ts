@@ -61,11 +61,13 @@ export type TelegramCallbackPayload = {
 
 function normalizeUser(data: any): AuthUser {
   const raw = data?.user ?? data ?? {};
+  const displayName = raw.display_name ?? raw.displayName ?? raw.name;
+  const name = raw.name ?? raw.display_name ?? raw.displayName;
   return {
     id: raw.id,
     email: raw.email,
-    name: raw.name ?? raw.displayName,
-    displayName: raw.displayName ?? raw.name,
+    name,
+    displayName,
     emailVerifiedAt:
       raw.email_verified_at ?? raw.emailVerifiedAt ?? raw.email_verified ?? null,
     avatarUrl: raw.avatar_url ?? raw.avatarUrl ?? raw.avatar ?? null,
