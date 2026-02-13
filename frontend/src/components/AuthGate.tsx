@@ -23,10 +23,11 @@ import {
   type PropsWithChildren,
 } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { IconBrandGithub, IconBrandVk, IconBrandYandex } from "@tabler/icons-react";
+import { IconBrandGithub, IconBrandYandex } from "@tabler/icons-react";
 
 import type { AuthUser, LoginPayload, RegisterPayload } from "../api/auth";
 import * as authApi from "../api/auth";
+import TelegramLoginWidget from "./TelegramLoginWidget";
 
 type AuthStatus = "loading" | "authed" | "unauth" | "error";
 type AuthFormMode = "login" | "register";
@@ -239,11 +240,6 @@ export default function AuthGate({ children }: PropsWithChildren) {
     return base ? `${base}/api/auth/yandex/start` : "/api/auth/yandex/start";
   }, []);
 
-  const vkAuthUrl = useMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-    return base ? `${base}/api/auth/vk/start` : "/api/auth/vk/start";
-  }, []);
-
   const titleText = isRegister ? "Регистрация" : "Вход";
   const submitLabel = isRegister ? "Создать аккаунт" : "Войти";
   const toggleLabel = isRegister ? "Войти" : "Регистрация";
@@ -444,15 +440,11 @@ export default function AuthGate({ children }: PropsWithChildren) {
               >
                 <IconBrandYandex size={22} />
               </ActionIcon>
-              <ActionIcon
-                {...oauthIconProps}
-                aria-label="Войти через VK"
-                title="VK"
-                onClick={() => window.location.assign(vkAuthUrl)}
-              >
-                <IconBrandVk size={22} />
-              </ActionIcon>
             </Group>
+
+            <Box style={{ display: "flex", justifyContent: "center" }}>
+              <TelegramLoginWidget flow="login" size="medium" />
+            </Box>
 
             <Group justify="space-between">
               <Text size="xs" c="dimmed">

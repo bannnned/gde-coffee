@@ -38,6 +38,23 @@ export type AuthIdentity = {
   [key: string]: unknown;
 };
 
+export type TelegramFlow = "login" | "link";
+
+export type TelegramStartResponse = {
+  state: string;
+};
+
+export type TelegramCallbackPayload = {
+  state: string;
+  id: number;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+};
+
 function normalizeUser(data: any): AuthUser {
   const raw = data?.user ?? data ?? {};
   return {
@@ -110,4 +127,40 @@ export async function getIdentities(): Promise<AuthIdentity[]> {
   if (Array.isArray(data)) return data as AuthIdentity[];
   if (Array.isArray(data?.identities)) return data.identities as AuthIdentity[];
   return [];
+}
+
+export async function telegramStart(
+  flow: TelegramFlow,
+): Promise<TelegramStartResponse> {
+  const res = await http.post<TelegramStartResponse>("/api/auth/telegram/start", {
+    flow,
+  });
+  return res.data;
+}
+
+function buildApiUrl(path: string): string {
+  const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+  return base ? `${base}${path}` : path;
+}
+
+export async function telegramCallback(
+  payload: TelegramCallbackPayload,
+): Promise<string> {
+  const res = await fetch(buildApiUrl("/api/auth/telegram/callback"), {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/html;q=0.9",
+    },
+    body: JSON.stringify(payload),
+    redirect: "follow",
+  });
+
+  if (!res.ok) {
+    throw new Error(`telegram callback failed (${res.status})`);
+  }
+
+  // Backend redirects to /login or /settings with oauth=result params.
+  return res.url;
 }

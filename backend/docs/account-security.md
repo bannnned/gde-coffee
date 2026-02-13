@@ -41,8 +41,8 @@ curl -i -X POST http://localhost:8080/api/auth/password/reset/confirm \
   -d '{"token":"RAW","new_password":"new-secret-123"}'
 ```
 
-## OAuth providers (GitHub / Yandex / VK)
-- Supported providers: GitHub, Yandex, VK.
+## OAuth providers (GitHub / Yandex)
+- Supported providers: GitHub, Yandex.
 - Login flow redirects to `/login?oauth=<provider>&result=ok|error=...`.
 - Link flow redirects to `/settings?oauth=<provider>&result=linked|error=...`.
 - Email merge happens only when the provider supplies a verified email.

@@ -12,7 +12,9 @@ type OauthErrorCode =
   | "cancelled"
   | "invalid_state"
   | "already_linked"
-  | "invalid_scope"
+  | "bad_payload"
+  | "invalid_signature"
+  | "expired"
   | "exchange_failed"
   | "profile_failed"
   | "internal";
@@ -23,7 +25,6 @@ const formatProvider = (providerRaw?: string, fallback = "GitHub") => {
   if (!normalized) return fallback;
   if (normalized === "github") return "GitHub";
   if (normalized === "yandex") return "Яндекс";
-  if (normalized === "vk") return "VK";
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
@@ -39,8 +40,12 @@ const getErrorMessage = (
       return "Ссылка устарела, попробуйте ещё раз";
     case "already_linked":
       return `Этот ${providerLabel} уже привязан к другому аккаунту`;
-    case "invalid_scope":
-      return `VK отклонил scope. Проверьте VK_OAUTH_SCOPE в окружении (лучше оставить пустым).`;
+    case "bad_payload":
+      return `Некорректные данные входа через ${providerLabel}.`;
+    case "invalid_signature":
+      return `Не удалось подтвердить подпись ${providerLabel}.`;
+    case "expired":
+      return `Ссылка входа через ${providerLabel} устарела, попробуйте снова.`;
     case "exchange_failed":
     case "profile_failed":
     case "internal":

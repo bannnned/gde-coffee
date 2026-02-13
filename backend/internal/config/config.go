@@ -47,11 +47,6 @@ type AuthConfig struct {
 	YandexClientID      string
 	YandexClientSecret  string
 	YandexScope         string
-	VKClientID          string
-	VKClientSecret      string
-	VKScope             string
-	VKAPIVersion        string
-	VKRedirectBase      string
 	TelegramBotToken    string
 	TelegramBotUsername string
 }
@@ -128,9 +123,6 @@ func Load() (Config, error) {
 	}
 	githubScope := getEnvTrim("GITHUB_OAUTH_SCOPE", "read:user user:email")
 	yandexScope := getEnvTrim("YANDEX_OAUTH_SCOPE", "login:email login:info")
-	vkScope := getEnvTrim("VK_OAUTH_SCOPE", "")
-	vkAPIVersion := getEnvTrim("VK_API_VERSION", "5.131")
-	vkRedirectBase := getEnvTrim("VK_REDIRECT_URI_BASE", "")
 
 	smtpPort, err := getEnvInt("SMTP_PORT", 465)
 	if err != nil {
@@ -178,11 +170,6 @@ func Load() (Config, error) {
 		YandexClientID:      getEnvTrim("YANDEX_CLIENT_ID", ""),
 		YandexClientSecret:  getEnvTrim("YANDEX_CLIENT_SECRET", ""),
 		YandexScope:         yandexScope,
-		VKClientID:          getEnvTrim("VK_CLIENT_ID", ""),
-		VKClientSecret:      getEnvTrim("VK_CLIENT_SECRET", ""),
-		VKScope:             vkScope,
-		VKAPIVersion:        vkAPIVersion,
-		VKRedirectBase:      vkRedirectBase,
 		TelegramBotToken:    getEnvTrim("TELEGRAM_BOT_TOKEN", ""),
 		TelegramBotUsername: getEnvTrim("TELEGRAM_BOT_USERNAME", ""),
 	}

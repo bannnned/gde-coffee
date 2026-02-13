@@ -523,14 +523,6 @@ func main() {
 	if cfg.Auth.YandexClientID != "" && cfg.Auth.YandexClientSecret != "" {
 		oauthProviders[auth.ProviderYandex] = auth.NewYandexProvider(cfg.Auth.YandexClientID, cfg.Auth.YandexClientSecret, cfg.Auth.YandexScope)
 	}
-	if cfg.Auth.VKClientID != "" && cfg.Auth.VKClientSecret != "" {
-		oauthProviders[auth.ProviderVK] = auth.NewVKProvider(cfg.Auth.VKClientID, cfg.Auth.VKClientSecret, cfg.Auth.VKScope, cfg.Auth.VKAPIVersion)
-	}
-
-	oauthRedirectBases := map[auth.Provider]string{}
-	if strings.TrimSpace(cfg.Auth.VKRedirectBase) != "" {
-		oauthRedirectBases[auth.ProviderVK] = cfg.Auth.VKRedirectBase
-	}
 
 	authHandler := auth.Handler{
 		Pool:                 pool,
@@ -548,7 +540,6 @@ func main() {
 			PasswordResetTTL: cfg.Auth.PasswordResetTTL,
 		},
 		OAuthProviders:      oauthProviders,
-		OAuthRedirectBase:   oauthRedirectBases,
 		TelegramBotToken:    cfg.Auth.TelegramBotToken,
 		TelegramBotUsername: cfg.Auth.TelegramBotUsername,
 	}
@@ -579,10 +570,6 @@ func main() {
 	authGroup.GET("/yandex/callback", authHandler.YandexCallback)
 	authGroup.GET("/yandex/link/start", auth.RequireAuth(pool), authHandler.YandexLinkStart)
 	authGroup.GET("/yandex/link/callback", authHandler.YandexLinkCallback)
-	authGroup.GET("/vk/start", authHandler.VKStart)
-	authGroup.GET("/vk/callback", authHandler.VKCallback)
-	authGroup.GET("/vk/link/start", auth.RequireAuth(pool), authHandler.VKLinkStart)
-	authGroup.GET("/vk/link/callback", authHandler.VKLinkCallback)
 	authGroup.POST("/telegram/start", authHandler.TelegramStart)
 	authGroup.POST("/telegram/callback", authHandler.TelegramCallback)
 	authGroup.POST("/sessions/revoke_all", auth.RequireAuth(pool), authHandler.RevokeAllSessions)

@@ -16,7 +16,6 @@ const (
 	ProviderLocal    Provider = "local"
 	ProviderGitHub   Provider = "github"
 	ProviderYandex   Provider = "yandex"
-	ProviderVK       Provider = "vk"
 	ProviderTelegram Provider = "telegram"
 )
 

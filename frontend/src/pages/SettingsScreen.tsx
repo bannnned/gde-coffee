@@ -13,8 +13,8 @@
 import {
   IconArrowLeft,
   IconBrandGithub,
+  IconBrandTelegram,
   IconBrandYandex,
-  IconBrandVk,
   IconCircleCheck,
   IconCircleX,
   IconMail,
@@ -25,6 +25,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import * as authApi from "../api/auth";
+import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import useOauthRedirect from "../hooks/useOauthRedirect";
@@ -87,11 +88,6 @@ export default function SettingsScreen() {
       : "/api/auth/yandex/link/start";
   }, []);
 
-  const vkAuthUrl = useMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-    return base ? `${base}/api/auth/vk/link/start` : "/api/auth/vk/link/start";
-  }, []);
-
   const {
     control: emailControl,
     handleSubmit: handleEmailSubmit,
@@ -133,14 +129,17 @@ export default function SettingsScreen() {
     () => isProviderLinked("yandex"),
     [isProviderLinked],
   );
-  const vkLinked = useMemo(() => isProviderLinked("vk"), [isProviderLinked]);
+  const telegramLinked = useMemo(
+    () => isProviderLinked("telegram"),
+    [isProviderLinked],
+  );
 
   const githubStatusLabel = githubLinked ? "подключён" : "не подключён";
   const githubStatusTone = githubLinked ? "ok" : "warn";
   const yandexStatusLabel = yandexLinked ? "подключён" : "не подключён";
   const yandexStatusTone = yandexLinked ? "ok" : "warn";
-  const vkStatusLabel = vkLinked ? "подключён" : "не подключён";
-  const vkStatusTone = vkLinked ? "ok" : "warn";
+  const telegramStatusLabel = telegramLinked ? "подключён" : "не подключён";
+  const telegramStatusTone = telegramLinked ? "ok" : "warn";
 
   const refreshIdentities = useCallback(async () => {
     if (status !== "authed") {
@@ -393,34 +392,28 @@ export default function SettingsScreen() {
             <div className={classes.section}>
               <div className={classes.sectionHeader}>
                 <Group gap="xs">
-                  <IconBrandVk size={18} />
-                  <Title order={4}>Подключить VK</Title>
+                  <IconBrandTelegram size={18} />
+                  <Title order={4}>Подключить Telegram</Title>
                 </Group>
               </div>
               <div className={classes.statusLine}>
-                <span className={classes.statusPill} data-status={vkStatusTone}>
-                  {vkLinked ? (
+                <span
+                  className={classes.statusPill}
+                  data-status={telegramStatusTone}
+                >
+                  {telegramLinked ? (
                     <IconCircleCheck size={14} />
                   ) : (
                     <IconCircleX size={14} />
                   )}
-                  {vkStatusLabel}
+                  {telegramStatusLabel}
                 </span>
               </div>
               <Text size="sm" className={classes.muted} mt={4}>
-                Подключите VK, чтобы привязать аккаунт к профилю.
+                Подключите Telegram, чтобы привязать аккаунт к профилю.
               </Text>
               <Group className={classes.actionsRow} mt="md">
-                <Button
-                  variant="filled"
-                  className={classes.actionButton}
-                  onClick={() => window.location.assign(vkAuthUrl)}
-                  leftSection={<IconBrandVk size={16} />}
-                  disabled={status !== "authed" || isIdentitiesLoading}
-                  loading={isIdentitiesLoading}
-                >
-                  Подключить VK
-                </Button>
+                <TelegramLoginWidget flow="link" size="medium" />
               </Group>
               {identityError && (
                 <div className={classes.error} style={{ marginTop: 12 }}>

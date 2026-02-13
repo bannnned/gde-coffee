@@ -1,9 +1,10 @@
 ﻿import { ActionIcon, Box, Button, Paper, Stack, Text, Title } from "@mantine/core";
-import { IconBrandGithub, IconBrandVk, IconBrandYandex } from "@tabler/icons-react";
+import { IconBrandGithub, IconBrandYandex } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
+import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import useOauthRedirect from "../hooks/useOauthRedirect";
 import classes from "./LoginPage.module.css";
@@ -32,7 +33,6 @@ export default function LoginPage() {
     () => buildAuthUrl("/api/auth/yandex/start"),
     [],
   );
-  const vkAuthUrl = useMemo(() => buildAuthUrl("/api/auth/vk/start"), []);
   const oauthIconProps = {
     size: 42,
     variant: "transparent" as const,
@@ -101,14 +101,9 @@ export default function LoginPage() {
               >
                 <IconBrandYandex size={22} />
               </ActionIcon>
-              <ActionIcon
-                {...oauthIconProps}
-                aria-label="Войти через VK"
-                title="VK"
-                onClick={() => window.location.assign(vkAuthUrl)}
-              >
-                <IconBrandVk size={22} />
-              </ActionIcon>
+            </div>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <TelegramLoginWidget flow="login" size="medium" />
             </div>
             <Button variant="subtle" onClick={() => navigate("/")}>
               Вернуться назад

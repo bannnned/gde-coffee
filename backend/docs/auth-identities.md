@@ -1,7 +1,7 @@
 # Auth Identities (OAuth readiness)
 
 ## „то это
-`identities` Ч таблица, котора€ св€зывает пользовател€ с внешними провайдерами (local, github, yandex, vk, telegram). Ёто позвол€ет добавить OAuth без рефакторинга моделей и сессий.
+`identities` Ч таблица, котора€ св€зывает пользовател€ с внешними провайдерами (local, github, yandex, telegram). Ёто позвол€ет добавить OAuth без рефакторинга моделей и сессий.
 
 ## ѕравила мерджа (mergeByEmail)
 —ервис `ResolveUserForIdentity` работает так:
