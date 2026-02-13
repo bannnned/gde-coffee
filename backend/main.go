@@ -380,6 +380,24 @@ func respondError(c *gin.Context, status int, code, message string, details inte
 	})
 }
 
+func applyStaticCacheHeaders(c *gin.Context, relPath string, isSPAFallback bool) {
+	normalized := strings.TrimPrefix(strings.ToLower(relPath), "/")
+
+	if isSPAFallback || normalized == "" || normalized == "index.html" || normalized == "sw.js" || normalized == "manifest.webmanifest" {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
+		return
+	}
+
+	if strings.HasPrefix(normalized, "assets/") {
+		c.Header("Cache-Control", "public, max-age=31536000, immutable")
+		return
+	}
+
+	c.Header("Cache-Control", "public, max-age=3600")
+}
+
 func serveStaticOrIndex(c *gin.Context, publicDir string) {
 	requestPath := c.Request.URL.Path
 	if strings.HasPrefix(requestPath, "/api/") || requestPath == "/api" {
@@ -392,6 +410,7 @@ func serveStaticOrIndex(c *gin.Context, publicDir string) {
 	if relPath != "" {
 		fullPath := filepath.Join(publicDir, filepath.FromSlash(relPath))
 		if info, err := os.Stat(fullPath); err == nil && !info.IsDir() {
+			applyStaticCacheHeaders(c, relPath, false)
 			c.File(fullPath)
 			return
 		}
@@ -402,6 +421,7 @@ func serveStaticOrIndex(c *gin.Context, publicDir string) {
 		respondError(c, http.StatusNotFound, "not_found", "index.html not found", nil)
 		return
 	}
+	applyStaticCacheHeaders(c, "index.html", true)
 	c.File(indexPath)
 }
 
