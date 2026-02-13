@@ -90,7 +90,7 @@ func (h Handler) TelegramStart(c *gin.Context) {
 func (h Handler) TelegramCallback(c *gin.Context) {
 	var req telegramCallbackRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.oauthRedirect(c, ProviderTelegram, "/login", "bad_payload", "")
+		h.oauthRedirect(c, ProviderTelegram, "/login", "bad_payload", "", "")
 		return
 	}
 
@@ -102,11 +102,11 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 	stateRec, err := ConsumeOAuthState(ctx, h.Pool, ProviderTelegram, strings.TrimSpace(req.State))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			h.oauthRedirect(c, ProviderTelegram, dest, "invalid_state", "")
+			h.oauthRedirect(c, ProviderTelegram, dest, "invalid_state", "", "")
 			return
 		}
 		log.Printf("telegram callback: consume state failed: %v", err)
-		h.oauthRedirect(c, ProviderTelegram, dest, "invalid_state", "")
+		h.oauthRedirect(c, ProviderTelegram, dest, "invalid_state", "", "")
 		return
 	}
 
@@ -125,7 +125,7 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 		if code == "" {
 			code = "invalid_signature"
 		}
-		h.oauthRedirect(c, ProviderTelegram, dest, code, "")
+		h.oauthRedirect(c, ProviderTelegram, dest, code, "", "")
 		return
 	}
 
@@ -156,21 +156,21 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 		userID, _, err := ResolveUserForIdentity(ctx, h.Pool, identity, false)
 		if err != nil {
 			log.Printf("telegram login: resolve user failed: %v", err)
-			h.oauthRedirect(c, ProviderTelegram, dest, "internal", "")
+			h.oauthRedirect(c, ProviderTelegram, dest, "internal", "", "")
 			return
 		}
 		sessionID, _, err := createSession(ctx, h.Pool, userID, c.ClientIP(), c.GetHeader("User-Agent"))
 		if err != nil {
 			log.Printf("telegram login: session create failed: %v", err)
-			h.oauthRedirect(c, ProviderTelegram, dest, "internal", "")
+			h.oauthRedirect(c, ProviderTelegram, dest, "internal", "", "")
 			return
 		}
 		setSessionCookie(c, sessionID, h.CookieSecure)
-		h.oauthRedirect(c, ProviderTelegram, dest, "", "ok")
+		h.oauthRedirect(c, ProviderTelegram, dest, "", "", "ok")
 		return
 	case oauthFlowLink:
 		if stateRec.UserID == nil || *stateRec.UserID == "" {
-			h.oauthRedirect(c, ProviderTelegram, dest, "invalid_state", "")
+			h.oauthRedirect(c, ProviderTelegram, dest, "invalid_state", "", "")
 			return
 		}
 		targetUserID := *stateRec.UserID
@@ -178,23 +178,23 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 		foundIdentity, found, err := GetIdentity(ctx, h.Pool, ProviderTelegram, identity.ProviderUserID)
 		if err != nil {
 			log.Printf("telegram link: identity lookup failed: %v", err)
-			h.oauthRedirect(c, ProviderTelegram, dest, "internal", "")
+			h.oauthRedirect(c, ProviderTelegram, dest, "internal", "", "")
 			return
 		}
 		if found {
 			if foundIdentity.UserID != targetUserID {
-				h.oauthRedirect(c, ProviderTelegram, dest, "already_linked", "")
+				h.oauthRedirect(c, ProviderTelegram, dest, "already_linked", "", "")
 				return
 			}
 		} else {
 			identity.UserID = targetUserID
 			if err := CreateIdentity(ctx, h.Pool, identity); err != nil {
 				if isUniqueViolation(err) {
-					h.oauthRedirect(c, ProviderTelegram, dest, "already_linked", "")
+					h.oauthRedirect(c, ProviderTelegram, dest, "already_linked", "", "")
 					return
 				}
 				log.Printf("telegram link: identity create failed: %v", err)
-				h.oauthRedirect(c, ProviderTelegram, dest, "internal", "")
+				h.oauthRedirect(c, ProviderTelegram, dest, "internal", "", "")
 				return
 			}
 		}
@@ -210,10 +210,10 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 			}
 		}
 
-		h.oauthRedirect(c, ProviderTelegram, dest, "", "linked")
+		h.oauthRedirect(c, ProviderTelegram, dest, "", "", "linked")
 		return
 	default:
-		h.oauthRedirect(c, ProviderTelegram, dest, "invalid_state", "")
+		h.oauthRedirect(c, ProviderTelegram, dest, "invalid_state", "", "")
 		return
 	}
 }

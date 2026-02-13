@@ -12,6 +12,7 @@ type OauthErrorCode =
   | "cancelled"
   | "invalid_state"
   | "already_linked"
+  | "invalid_scope"
   | "exchange_failed"
   | "profile_failed"
   | "internal";
@@ -27,8 +28,9 @@ const formatProvider = (providerRaw?: string, fallback = "GitHub") => {
 };
 
 const getErrorMessage = (
-  code: OauthErrorCode,
+  code: string,
   providerLabel: string,
+  errorDescription?: string,
 ): string => {
   switch (code) {
     case "cancelled":
@@ -37,11 +39,17 @@ const getErrorMessage = (
       return "Ссылка устарела, попробуйте ещё раз";
     case "already_linked":
       return `Этот ${providerLabel} уже привязан к другому аккаунту`;
+    case "invalid_scope":
+      return `VK отклонил scope. Проверьте VK_OAUTH_SCOPE в окружении (лучше оставить пустым).`;
     case "exchange_failed":
     case "profile_failed":
     case "internal":
-    default:
       return `Не удалось войти через ${providerLabel}, попробуйте ещё раз`;
+    default:
+      if (errorDescription) {
+        return `Ошибка ${providerLabel}: ${errorDescription}`;
+      }
+      return `Ошибка ${providerLabel}: ${code}`;
   }
 };
 
@@ -59,10 +67,18 @@ export default function useOauthRedirect({
   const resultParam =
     searchParams.get("result") || (legacyLinked ? "linked" : "");
   const errorParam = searchParams.get("error") || "";
+  const errorDescription = searchParams.get("error_description") || "";
 
   const hasOauthParams = useMemo(
-    () => Boolean(oauthParam || resultParam || errorParam || legacyLinked),
-    [oauthParam, resultParam, errorParam, legacyLinked],
+    () =>
+      Boolean(
+        oauthParam ||
+          resultParam ||
+          errorParam ||
+          errorDescription ||
+          legacyLinked,
+      ),
+    [oauthParam, resultParam, errorParam, errorDescription, legacyLinked],
   );
 
   const providerLabel = useMemo(
@@ -81,6 +97,7 @@ export default function useOauthRedirect({
       next.delete("oauth");
       next.delete("result");
       next.delete("error");
+      next.delete("error_description");
       next.delete("github_linked");
       navigate(
         { search: next.toString() ? `?${next.toString()}` : "" },
@@ -94,8 +111,8 @@ export default function useOauthRedirect({
     };
 
     if (errorParam) {
-      const key = errorParam.toLowerCase() as OauthErrorCode;
-      showError(getErrorMessage(key, providerLabel));
+      const key = errorParam.toLowerCase() as OauthErrorCode | string;
+      showError(getErrorMessage(key, providerLabel, errorDescription));
       return;
     }
 
@@ -138,6 +155,7 @@ export default function useOauthRedirect({
     clearParams();
   }, [
     errorParam,
+    errorDescription,
     hasOauthParams,
     navigate,
     onResultLinked,

@@ -25,13 +25,13 @@ func (h Handler) oauthStart(c *gin.Context, provider Provider, flow string, user
 	dest := oauthDefaultRedirect(flow)
 	if h.Security.BaseURL == "" {
 		log.Printf("oauth %s: missing base url", provider)
-		h.oauthRedirect(c, provider, dest, "internal", "")
+		h.oauthRedirect(c, provider, dest, "internal", "", "")
 		return
 	}
 	p, ok := h.oauthProvider(provider)
 	if !ok || p == nil {
 		log.Printf("oauth %s: provider not configured", provider)
-		h.oauthRedirect(c, provider, dest, "internal", "")
+		h.oauthRedirect(c, provider, dest, "internal", "", "")
 		return
 	}
 
@@ -48,7 +48,7 @@ func (h Handler) oauthStart(c *gin.Context, provider Provider, flow string, user
 	state, err := CreateOAuthState(ctx, h.Pool, provider, flow, userID, redirectURI)
 	if err != nil {
 		log.Printf("oauth %s: create state failed: %v", provider, err)
-		h.oauthRedirect(c, provider, dest, "internal", "")
+		h.oauthRedirect(c, provider, dest, "internal", "", "")
 		return
 	}
 
@@ -60,21 +60,22 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 	dest := oauthDefaultRedirect(expectedFlow)
 	if h.Security.BaseURL == "" {
 		log.Printf("oauth %s: missing base url", provider)
-		h.oauthRedirect(c, provider, dest, "internal", "")
+		h.oauthRedirect(c, provider, dest, "internal", "", "")
 		return
 	}
 	p, ok := h.oauthProvider(provider)
 	if !ok || p == nil {
 		log.Printf("oauth %s: provider not configured", provider)
-		h.oauthRedirect(c, provider, dest, "internal", "")
+		h.oauthRedirect(c, provider, dest, "internal", "", "")
 		return
 	}
 
 	code := strings.TrimSpace(c.Query("code"))
 	state := strings.TrimSpace(c.Query("state"))
 	errParam := strings.TrimSpace(c.Query("error"))
+	errDescription := strings.TrimSpace(c.Query("error_description"))
 	if state == "" {
-		h.oauthRedirect(c, provider, dest, "invalid_state", "")
+		h.oauthRedirect(c, provider, dest, "invalid_state", "", "")
 		return
 	}
 
@@ -84,42 +85,42 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 	stateRec, err := ConsumeOAuthState(ctx, h.Pool, provider, state)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			h.oauthRedirect(c, provider, dest, "invalid_state", "")
+			h.oauthRedirect(c, provider, dest, "invalid_state", "", "")
 			return
 		}
 		log.Printf("oauth %s: consume state failed: %v", provider, err)
-		h.oauthRedirect(c, provider, dest, "invalid_state", "")
+		h.oauthRedirect(c, provider, dest, "invalid_state", "", "")
 		return
 	}
 
 	if stateRec.RedirectURI == "" {
 		log.Printf("oauth %s: empty redirect uri", provider)
-		h.oauthRedirect(c, provider, dest, "invalid_state", "")
+		h.oauthRedirect(c, provider, dest, "invalid_state", "", "")
 		return
 	}
 	parsedRedirect, err := url.Parse(stateRec.RedirectURI)
 	if err != nil || parsedRedirect.Path == "" {
 		log.Printf("oauth %s: invalid redirect uri: %v", provider, err)
-		h.oauthRedirect(c, provider, dest, "invalid_state", "")
+		h.oauthRedirect(c, provider, dest, "invalid_state", "", "")
 		return
 	}
 	if !strings.EqualFold(parsedRedirect.Path, c.FullPath()) {
 		log.Printf("oauth %s: redirect uri mismatch expected path=%s got=%s", provider, c.FullPath(), parsedRedirect.Path)
-		h.oauthRedirect(c, provider, dest, "invalid_state", "")
+		h.oauthRedirect(c, provider, dest, "invalid_state", "", "")
 		return
 	}
 	if stateRec.Flow != expectedFlow {
 		log.Printf("oauth %s: flow mismatch expected=%s got=%s", provider, expectedFlow, stateRec.Flow)
-		h.oauthRedirect(c, provider, dest, "invalid_state", "")
+		h.oauthRedirect(c, provider, dest, "invalid_state", "", "")
 		return
 	}
 	if errParam != "" {
-		log.Printf("oauth %s: cancelled: %s", provider, errParam)
-		h.oauthRedirect(c, provider, dest, "cancelled", "")
+		log.Printf("oauth %s: provider error: %s (%s)", provider, errParam, errDescription)
+		h.oauthRedirect(c, provider, dest, strings.ToLower(errParam), errDescription, "")
 		return
 	}
 	if code == "" {
-		h.oauthRedirect(c, provider, dest, "invalid_state", "")
+		h.oauthRedirect(c, provider, dest, "invalid_state", "", "")
 		return
 	}
 
@@ -130,7 +131,7 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 		meta, err := withMeta.ExchangeWithMeta(ctx, code, stateRec.RedirectURI)
 		if err != nil {
 			log.Printf("oauth %s: exchange failed: %v", provider, err)
-			h.oauthRedirect(c, provider, dest, "exchange_failed", "")
+			h.oauthRedirect(c, provider, dest, "exchange_failed", "", "")
 			return
 		}
 		tokenValue = meta.AccessToken
@@ -140,7 +141,7 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 		token, err := p.Exchange(ctx, code, stateRec.RedirectURI)
 		if err != nil {
 			log.Printf("oauth %s: exchange failed: %v", provider, err)
-			h.oauthRedirect(c, provider, dest, "exchange_failed", "")
+			h.oauthRedirect(c, provider, dest, "exchange_failed", "", "")
 			return
 		}
 		tokenValue = token
@@ -149,7 +150,7 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 	profile, err := p.FetchProfile(ctx, tokenValue)
 	if err != nil {
 		log.Printf("oauth %s: profile fetch failed: %v", provider, err)
-		h.oauthRedirect(c, provider, dest, "profile_failed", "")
+		h.oauthRedirect(c, provider, dest, "profile_failed", "", "")
 		return
 	}
 	if profile.Email == nil && tokenEmail != nil {
@@ -165,23 +166,23 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 		userID, _, err := ResolveUserForIdentity(ctx, h.Pool, identity, mergeByEmail)
 		if err != nil {
 			log.Printf("oauth %s: resolve user failed: %v", provider, err)
-			h.oauthRedirect(c, provider, dest, "internal", "")
+			h.oauthRedirect(c, provider, dest, "internal", "", "")
 			return
 		}
 
 		sessionID, _, err := createSession(ctx, h.Pool, userID, c.ClientIP(), c.GetHeader("User-Agent"))
 		if err != nil {
 			log.Printf("oauth %s: session create failed: %v", provider, err)
-			h.oauthRedirect(c, provider, dest, "internal", "")
+			h.oauthRedirect(c, provider, dest, "internal", "", "")
 			return
 		}
 		setSessionCookie(c, sessionID, h.CookieSecure)
 
-		h.oauthRedirect(c, provider, dest, "", "ok")
+		h.oauthRedirect(c, provider, dest, "", "", "ok")
 		return
 	case oauthFlowLink:
 		if stateRec.UserID == nil || *stateRec.UserID == "" {
-			h.oauthRedirect(c, provider, dest, "invalid_state", "")
+			h.oauthRedirect(c, provider, dest, "invalid_state", "", "")
 			return
 		}
 		targetUserID := *stateRec.UserID
@@ -189,23 +190,23 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 		foundIdentity, found, err := GetIdentity(ctx, h.Pool, provider, identity.ProviderUserID)
 		if err != nil {
 			log.Printf("oauth %s: identity lookup failed: %v", provider, err)
-			h.oauthRedirect(c, provider, dest, "internal", "")
+			h.oauthRedirect(c, provider, dest, "internal", "", "")
 			return
 		}
 		if found {
 			if foundIdentity.UserID != targetUserID {
-				h.oauthRedirect(c, provider, dest, "already_linked", "")
+				h.oauthRedirect(c, provider, dest, "already_linked", "", "")
 				return
 			}
 		} else {
 			identity.UserID = targetUserID
 			if err := CreateIdentity(ctx, h.Pool, identity); err != nil {
 				if isUniqueViolation(err) {
-					h.oauthRedirect(c, provider, dest, "already_linked", "")
+					h.oauthRedirect(c, provider, dest, "already_linked", "", "")
 					return
 				}
 				log.Printf("oauth %s: identity create failed: %v", provider, err)
-				h.oauthRedirect(c, provider, dest, "internal", "")
+				h.oauthRedirect(c, provider, dest, "internal", "", "")
 				return
 			}
 		}
@@ -221,10 +222,10 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 			}
 		}
 
-		h.oauthRedirect(c, provider, dest, "", "linked")
+		h.oauthRedirect(c, provider, dest, "", "", "linked")
 		return
 	default:
-		h.oauthRedirect(c, provider, dest, "invalid_state", "")
+		h.oauthRedirect(c, provider, dest, "invalid_state", "", "")
 		return
 	}
 }
@@ -253,7 +254,7 @@ func oauthDefaultRedirect(flow string) string {
 	return "/login"
 }
 
-func (h Handler) oauthRedirect(c *gin.Context, provider Provider, destPath, errCode, result string) {
+func (h Handler) oauthRedirect(c *gin.Context, provider Provider, destPath, errCode, errDescription, result string) {
 	base := strings.TrimRight(h.Security.BaseURL, "/")
 	target := destPath
 	if base != "" {
@@ -263,6 +264,9 @@ func (h Handler) oauthRedirect(c *gin.Context, provider Provider, destPath, errC
 	params.Set("oauth", string(provider))
 	if errCode != "" {
 		params.Set("error", errCode)
+		if errDescription != "" {
+			params.Set("error_description", errDescription)
+		}
 	} else if result != "" {
 		params.Set("result", result)
 	}

@@ -21,12 +21,10 @@ type VKProvider struct {
 }
 
 func NewVKProvider(clientID, clientSecret, scope, apiVersion string) *VKProvider {
-	if scope == "" {
-		scope = "email"
-	}
 	if apiVersion == "" {
 		apiVersion = "5.131"
 	}
+	scope = normalizeVKScope(scope)
 	return &VKProvider{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
@@ -34,6 +32,37 @@ func NewVKProvider(clientID, clientSecret, scope, apiVersion string) *VKProvider
 		APIVersion:   apiVersion,
 		HTTPClient:   &http.Client{Timeout: 10 * time.Second},
 	}
+}
+
+func normalizeVKScope(scope string) string {
+	scope = strings.TrimSpace(scope)
+	if scope == "" {
+		return ""
+	}
+
+	parts := strings.FieldsFunc(scope, func(r rune) bool {
+		return r == ',' || r == ';' || r == ' ' || r == '\t' || r == '\n' || r == '\r'
+	})
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	seen := make(map[string]struct{}, len(parts))
+	normalized := make([]string, 0, len(parts))
+	for _, part := range parts {
+		token := strings.TrimSpace(part)
+		if token == "" {
+			continue
+		}
+		if _, ok := seen[token]; ok {
+			continue
+		}
+		seen[token] = struct{}{}
+		normalized = append(normalized, token)
+	}
+
+	return strings.Join(normalized, ",")
 }
 
 func (p *VKProvider) Provider() Provider {
