@@ -4,7 +4,6 @@ import {
   Stack,
   Text,
   ThemeIcon,
-  useComputedColorScheme,
 } from "@mantine/core";
 import {
   IconAlertCircle,
@@ -33,10 +32,6 @@ export default function EmptyStateCard({
   onRetry,
   onLocate,
 }: EmptyStateCardProps) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
-
   const emptyConfig =
     isError || emptyState === "error"
       ? {
@@ -63,22 +58,14 @@ export default function EmptyStateCard({
           };
 
   const emptyCardStyles = {
-    border:
-      scheme === "dark"
-        ? "1px solid rgba(255, 255, 240, 0.16)"
-        : "1px solid rgba(26, 26, 26, 0.1)",
+    border: "1px solid var(--border)",
   } as const;
 
   const emptyIconStyles = {
     background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(69,126,115,0.45), rgba(69,126,115,0.28))"
-        : "linear-gradient(135deg, rgba(69,126,115,0.28), rgba(69,126,115,0.18))",
-    color: scheme === "dark" ? "rgba(255, 255, 240, 0.95)" : "#1A1A1A",
-    boxShadow:
-      scheme === "dark"
-        ? "0 10px 20px rgba(0, 0, 0, 0.5)"
-        : "0 10px 20px rgba(26, 26, 26, 0.14)",
+      "linear-gradient(135deg, var(--color-brand-accent-soft), var(--surface))",
+    color: "var(--text)",
+    boxShadow: "var(--shadow)",
   } as const;
 
   const EmptyIcon = emptyConfig.icon;

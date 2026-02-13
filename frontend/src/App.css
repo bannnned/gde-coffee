@@ -97,9 +97,9 @@
 
 .filter-chip.is-active {
   background: var(--accent);
-  color: #fff;
+  color: var(--color-on-accent);
   border-color: transparent;
-  box-shadow: 0 12px 24px rgba(69, 126, 115, 0.25);
+  box-shadow: 0 12px 24px var(--attention-glow);
 }
 
 .filter-toggle {

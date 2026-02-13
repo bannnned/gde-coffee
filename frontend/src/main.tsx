@@ -1,17 +1,24 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 
-import { MantineProvider, type MantineColorsTuple, type MantineThemeOverride } from '@mantine/core'
+import { MantineProvider, useComputedColorScheme, type MantineColorsTuple, type MantineThemeOverride } from '@mantine/core'
 import { Notifications } from '@mantine/notifications'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 import './index.css'
+import {
+  applyPalette,
+  getStoredPalette,
+  listPalettes,
+  setStoredPalette,
+  type PaletteName,
+} from './theme/palettes'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,16 +31,16 @@ const queryClient = new QueryClient({
 })
 
 const emerald: MantineColorsTuple = [
-  '#e6fcf5',
-  '#c3fae8',
-  '#96f2d7',
-  '#63e6be',
-  '#38d9a9',
-  '#20c997',
-  '#12b886',
-  '#0ca678',
-  '#099268',
-  '#087f5b',
+  'var(--color-brand-accent-soft)',
+  'var(--color-brand-accent-soft)',
+  'var(--color-brand-accent-soft)',
+  'var(--color-brand-accent)',
+  'var(--color-brand-accent)',
+  'var(--color-brand-accent)',
+  'var(--color-brand-accent)',
+  'var(--color-brand-accent-strong)',
+  'var(--color-brand-accent-strong)',
+  'var(--color-brand-accent-strong)',
 ];
 
 const theme: MantineThemeOverride = {
@@ -42,10 +49,36 @@ const theme: MantineThemeOverride = {
   primaryShade: { light: 6, dark: 8 },
 };
 
+function PaletteSync() {
+  const computed = useComputedColorScheme('light', { getInitialValueInEffect: true })
+
+  useEffect(() => {
+    applyPalette(getStoredPalette(), computed)
+  }, [computed])
+
+  useEffect(() => {
+    const api = {
+      get: () => getStoredPalette(),
+      list: () => listPalettes(),
+      set: (name: PaletteName) => {
+        setStoredPalette(name)
+        applyPalette(name, computed)
+      },
+    }
+    ;(window as Window & { gdeCoffeePalette?: typeof api }).gdeCoffeePalette = api
+    return () => {
+      delete (window as Window & { gdeCoffeePalette?: typeof api }).gdeCoffeePalette
+    }
+  }, [computed])
+
+  return null
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <MantineProvider defaultColorScheme="auto" theme={theme}>
+        <PaletteSync />
         <Notifications />
         <App />
         <ReactQueryDevtools initialIsOpen={false} />

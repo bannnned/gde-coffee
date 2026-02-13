@@ -15,6 +15,7 @@ type UseCafesParams = {
   lng: number;
   radiusM: number;
   amenities: Amenity[];
+  enabled?: boolean;
 };
 
 type CafesQueryParams = {
@@ -48,6 +49,7 @@ export default function useCafes({
   lng,
   radiusM,
   amenities,
+  enabled = true,
 }: UseCafesParams) {
   // Stable ordering so query key doesn't change for the same set.
   const normalizedAmenities = useMemo(
@@ -180,6 +182,7 @@ export default function useCafes({
         }
       }
     },
+    enabled,
     staleTime: CAFES_CACHE_STALE_MS,
     gcTime: CAFES_CACHE_GC_MS,
     placeholderData: (previous) => previous,

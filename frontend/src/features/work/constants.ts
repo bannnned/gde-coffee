@@ -1,4 +1,4 @@
-﻿import { IconAdjustments, IconCurrentLocation } from "@tabler/icons-react";
+import { IconAdjustments, IconCurrentLocation } from "@tabler/icons-react";
 
 import type { Amenity } from "./types";
 
@@ -38,7 +38,7 @@ export const WORK_UI_TEXT = {
   routeYandex: "Яндекс",
   workScorePrefix: "work",
   radiusTitle: "Радиус",
-  radiusAll: "Весь",
+  radiusAll: "Город",
   filtersTitle: "Фильтры",
 } as const;
 

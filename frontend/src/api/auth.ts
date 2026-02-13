@@ -85,7 +85,11 @@ export async function login(payload: LoginPayload): Promise<AuthUser> {
 }
 
 export async function register(payload: RegisterPayload): Promise<AuthUser> {
-  const res = await http.post("/api/auth/register", payload);
+  const res = await http.post("/api/auth/register", {
+    email: payload.email,
+    password: payload.password,
+    display_name: payload.displayName,
+  });
   return normalizeUser(res.data);
 }
 

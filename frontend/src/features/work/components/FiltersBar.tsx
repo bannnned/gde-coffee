@@ -1,4 +1,4 @@
-﻿import {
+import {
   ActionIcon,
   Badge,
   Box,
@@ -7,7 +7,6 @@
   Group,
   Text,
   UnstyledButton,
-  useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -27,6 +26,7 @@ type FiltersBarProps = {
   onChangeAmenities: (next: Amenity[]) => void;
   onOpenSettings: () => void;
   showFetchingBadge: boolean;
+  highlightSettingsButton?: boolean;
 };
 
 const CHIP_GAP_PX = 4;
@@ -36,10 +36,8 @@ export default function FiltersBar({
   onChangeAmenities,
   onOpenSettings,
   showFetchingBadge,
+  highlightSettingsButton = false,
 }: FiltersBarProps) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
   const theme = useMantineTheme();
   const chipsScrollerRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
@@ -72,22 +70,12 @@ export default function FiltersBar({
     transform: "none",
     paddingInline: 10,
     paddingBlock: 8,
-    border: `1px solid ${
-      scheme === "dark"
-        ? "rgba(255, 255, 240, 0.18)"
-        : "rgba(26, 26, 26, 0.12)"
-    }`,
-    color: scheme === "dark" ? "rgba(255, 255, 240, 0.95)" : "#1A1A1A",
+    border: "1px solid var(--border)",
+    color: "var(--text)",
     backdropFilter: "blur(18px) saturate(180%)",
     WebkitBackdropFilter: "blur(18px) saturate(180%)",
-    background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(26,26,26,0.7), rgba(26,26,26,0.5))"
-        : "linear-gradient(135deg, rgba(255,255,240,0.92), rgba(255,255,240,0.68))",
-    boxShadow:
-      scheme === "dark"
-        ? "0 6px 18px rgba(0, 0, 0, 0.5)"
-        : "0 6px 16px rgba(26, 26, 26, 0.14)",
+    background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+    boxShadow: "var(--glass-shadow)",
     outline: "none",
     "&:active": {
       transform: "none",
@@ -95,16 +83,9 @@ export default function FiltersBar({
   } as const;
 
   const amenityChipLabelCheckedStyles = {
-    background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(69,126,115,0.45), rgba(69,126,115,0.3))"
-        : "linear-gradient(135deg, rgba(69,126,115,0.35), rgba(69,126,115,0.2))",
-    borderColor:
-      scheme === "dark" ? "rgba(69,126,115,0.55)" : "rgba(69,126,115,0.45)",
-    boxShadow:
-      scheme === "dark"
-        ? "0 8px 20px rgba(69, 126, 115, 0.35)"
-        : "0 8px 18px rgba(69, 126, 115, 0.25)",
+    background: "var(--color-brand-accent-soft)",
+    borderColor: "var(--accent)",
+    boxShadow: "0 8px 20px var(--attention-glow)",
     transform: "none",
   } as const;
 
@@ -157,7 +138,7 @@ export default function FiltersBar({
       observer.disconnect();
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [allAmenities, selectedKey, scheme, theme.fontSizes.xs]);
+  }, [allAmenities, selectedKey, theme.fontSizes.xs]);
 
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -235,7 +216,9 @@ export default function FiltersBar({
           <ActionIcon
             variant="transparent"
             size={42}
-            className="glass-action glass-action--square"
+            className={`glass-action glass-action--square ${
+              highlightSettingsButton ? classes.attentionButton : ""
+            }`}
             aria-label={WORK_UI_TEXT.settingsAria}
             onClick={onOpenSettings}
           >
@@ -293,15 +276,9 @@ export default function FiltersBar({
             styles={{
               root: {
                 backdropFilter: "blur(10px)",
-                background:
-                  scheme === "dark"
-                    ? "rgba(69,126,115,0.6)"
-                    : "rgba(69,126,115,0.85)",
-                color: "#FFFFF0",
-                border:
-                  scheme === "dark"
-                    ? "1px solid rgba(69,126,115,0.5)"
-                    : "1px solid rgba(69,126,115,0.35)",
+                background: "var(--accent)",
+                color: "var(--color-on-accent)",
+                border: "1px solid var(--accent)",
               },
             }}
           >

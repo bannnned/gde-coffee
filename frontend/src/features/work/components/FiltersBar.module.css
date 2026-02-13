@@ -1,4 +1,4 @@
-﻿.root {
+.root {
   pointer-events: none;
 }
 
@@ -15,9 +15,9 @@
   border-radius: 14px;
   font-size: 1rem;
   font-weight: 700;
-  background: rgba(255, 255, 240, 0.75);
-  border: 1px solid rgba(255, 255, 240, 0.85);
-  box-shadow: 0 8px 24px rgba(26, 26, 26, 0.16);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   overflow: hidden;
@@ -93,4 +93,23 @@
 
 .chipMeasureItem {
   display: inline-flex;
+}
+
+.attentionButton {
+  box-shadow:
+    0 0 0 1px var(--attention-ring),
+    0 0 20px var(--attention-glow);
+  animation: pulseAttention 1.8s ease-in-out infinite;
+}
+
+@keyframes pulseAttention {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.02);
+    filter: brightness(1.04);
+  }
 }

@@ -42,29 +42,17 @@
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 240, 0.2),
-    rgba(255, 255, 240, 0.75),
-    rgba(255, 255, 240, 0.2)
+    var(--color-border-strong),
+    var(--glass-border),
+    var(--color-border-strong)
   );
   box-shadow:
-    0 1px 0 rgba(255, 255, 240, 0.5),
-    0 6px 14px rgba(26, 26, 26, 0.16);
+    0 1px 0 var(--glass-border),
+    0 6px 14px var(--color-surface-overlay-soft);
 }
 
-:global([data-mantine-color-scheme="dark"]) .grabber {
-  color: rgba(255, 255, 240, 0.6);
-}
-
-:global([data-mantine-color-scheme="dark"]) .grabber::before {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 240, 0.12),
-    rgba(255, 255, 240, 0.45),
-    rgba(255, 255, 240, 0.12)
-  );
-  box-shadow:
-    0 1px 0 rgba(255, 255, 240, 0.08),
-    0 6px 16px rgba(0, 0, 0, 0.6);
+.grabber {
+  color: var(--muted);
 }
 
 .header {

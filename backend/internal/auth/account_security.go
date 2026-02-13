@@ -103,9 +103,9 @@ func (h Handler) EmailVerifyRequest(c *gin.Context) {
 	}
 
 	verifyURL := strings.TrimRight(h.Security.BaseURL, "/") + "/verify-email?token=" + rawToken
-	textBody := "Verify your email: " + verifyURL
-	htmlBody := "<p>Verify your email: <a href=\"" + verifyURL + "\">" + verifyURL + "</a></p>"
-	if err := h.Mailer.SendEmail(ctx, *email, "Verify your email", textBody, htmlBody); err != nil {
+	textBody := "Подтвердите email для gde-kofe.ru:\n" + verifyURL + "\n\nЕсли вы не регистрировались, просто проигнорируйте это письмо."
+	htmlBody := "<p>Подтвердите email для <b>gde-kofe.ru</b>:</p><p><a href=\"" + verifyURL + "\">" + verifyURL + "</a></p><p>Если вы не регистрировались, просто проигнорируйте это письмо.</p>"
+	if err := h.Mailer.SendEmail(ctx, *email, "Подтверждение email — gde-kofe.ru", textBody, htmlBody); err != nil {
 		log.Printf("sendEmail failed: %v", err)
 		respondError(c, http.StatusInternalServerError, "internal", "email send failed", nil)
 		return
@@ -270,9 +270,9 @@ func (h Handler) EmailChangeRequest(c *gin.Context) {
 	}
 
 	confirmURL := strings.TrimRight(h.Security.BaseURL, "/") + "/confirm-email-change?token=" + rawToken
-	textBody := "Confirm your email change: " + confirmURL
-	htmlBody := "<p>Confirm your email change: <a href=\"" + confirmURL + "\">" + confirmURL + "</a></p>"
-	if err := h.Mailer.SendEmail(ctx, newEmail, "Confirm email change", textBody, htmlBody); err != nil {
+	textBody := "Подтвердите смену email для gde-kofe.ru:\n" + confirmURL + "\n\nЕсли это были не вы, не переходите по ссылке."
+	htmlBody := "<p>Подтвердите смену email для <b>gde-kofe.ru</b>:</p><p><a href=\"" + confirmURL + "\">" + confirmURL + "</a></p><p>Если это были не вы, не переходите по ссылке.</p>"
+	if err := h.Mailer.SendEmail(ctx, newEmail, "Подтверждение смены email — gde-kofe.ru", textBody, htmlBody); err != nil {
 		log.Printf("sendEmail failed: %v", err)
 		respondError(c, http.StatusInternalServerError, "internal", "email send failed", nil)
 		return
@@ -443,9 +443,9 @@ func (h Handler) PasswordResetRequest(c *gin.Context) {
 	}
 
 	resetURL := strings.TrimRight(h.Security.BaseURL, "/") + "/reset-password?token=" + rawToken
-	textBody := "Password reset link: " + resetURL
-	htmlBody := "<p>Password reset link: <a href=\"" + resetURL + "\">" + resetURL + "</a></p>"
-	if err := h.Mailer.SendEmail(ctx, email, "Password reset", textBody, htmlBody); err != nil {
+	textBody := "Ссылка для сброса пароля gde-kofe.ru:\n" + resetURL + "\n\nЕсли это были не вы, просто проигнорируйте письмо."
+	htmlBody := "<p>Ссылка для сброса пароля <b>gde-kofe.ru</b>:</p><p><a href=\"" + resetURL + "\">" + resetURL + "</a></p><p>Если это были не вы, просто проигнорируйте письмо.</p>"
+	if err := h.Mailer.SendEmail(ctx, email, "Сброс пароля — gde-kofe.ru", textBody, htmlBody); err != nil {
 		log.Printf("sendEmail failed: %v", err)
 		respondError(c, http.StatusInternalServerError, "internal", "email send failed", nil)
 		return

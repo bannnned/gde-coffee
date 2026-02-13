@@ -11,6 +11,7 @@ type CafeListProps = {
   selectedCafeId: string | null;
   onSelectCafe: (id: string) => void;
   itemRefs: MutableRefObject<Record<string, HTMLButtonElement | null>>;
+  showDistance?: boolean;
 };
 
 export default function CafeList({
@@ -19,6 +20,7 @@ export default function CafeList({
   selectedCafeId,
   onSelectCafe,
   itemRefs,
+  showDistance = true,
 }: CafeListProps) {
   if (isLoading) {
     return <Text size="sm">{WORK_UI_TEXT.loading}</Text>;
@@ -43,10 +45,15 @@ export default function CafeList({
           fullWidth
         >
           <span>
-            {c.name}{" "}
-            <span style={{ opacity: 0.7 }}>
-              — {formatDistance(c.distance_m)}
-            </span>
+            {c.name}
+            {showDistance && (
+              <>
+                {" "}
+                <span style={{ opacity: 0.7 }}>
+                  — {formatDistance(c.distance_m)}
+                </span>
+              </>
+            )}
           </span>
           <span style={{ opacity: 0.8 }}>
             {WORK_UI_TEXT.workScorePrefix} {Math.round(c.work_score)}

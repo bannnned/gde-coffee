@@ -49,6 +49,7 @@ type registerRequest struct {
 	Email       string  `json:"email"`
 	Password    string  `json:"password"`
 	DisplayName *string `json:"display_name"`
+	Name        *string `json:"displayName"`
 }
 
 type loginRequest struct {
@@ -63,7 +64,11 @@ type apiError struct {
 }
 
 func respondError(c *gin.Context, status int, code, message string, details interface{}) {
-	c.JSON(status, apiError{Message: message, Code: code, Details: details})
+	c.JSON(status, apiError{
+		Message: localizeAuthErrorMessage(message),
+		Code:    code,
+		Details: details,
+	})
 }
 
 func (h Handler) Register(c *gin.Context) {
@@ -71,6 +76,19 @@ func (h Handler) Register(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "invalid json body", nil)
 		return
+	}
+
+	displayName := req.DisplayName
+	if displayName == nil {
+		displayName = req.Name
+	}
+	if displayName != nil {
+		trimmed := strings.TrimSpace(*displayName)
+		if trimmed == "" {
+			displayName = nil
+		} else {
+			displayName = &trimmed
+		}
 	}
 
 	email := NormalizeEmail(req.Email)
@@ -108,7 +126,7 @@ func (h Handler) Register(c *gin.Context) {
 		 values ($1, $2)
 		 returning id::text, email_normalized, display_name, avatar_url`,
 		email,
-		req.DisplayName,
+		displayName,
 	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL)
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -135,8 +153,8 @@ func (h Handler) Register(c *gin.Context) {
 		identity.Email = &emailCopy
 		identity.EmailNormalized = &emailCopy
 	}
-	if req.DisplayName != nil {
-		identity.DisplayName = req.DisplayName
+	if displayName != nil {
+		identity.DisplayName = displayName
 	}
 
 	if err := CreateIdentity(ctx, tx, identity); err != nil {

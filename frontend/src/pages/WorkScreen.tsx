@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Box, Button, Group, Modal, Stack, Text } from "@mantine/core";
+import { Box, Button, Group, Paper, Select, Stack, Text } from "@mantine/core";
+import { IconMapPinFilled } from "@tabler/icons-react";
 
 import Map from "../components/Map";
 import type { Amenity, Cafe } from "../types";
@@ -30,11 +31,18 @@ const LOCATION_OPTIONS = [
   { id: "moscow", label: "Москва", center: MOSCOW_CENTER },
 ] as const;
 
+const CITY_RADIUS_M_BY_ID: Record<(typeof LOCATION_OPTIONS)[number]["id"], number> = {
+  spb: 30000,
+  moscow: 35000,
+};
+const MANUAL_PIN_NUDGE_PX = 2;
+
 type LocationId = (typeof LOCATION_OPTIONS)[number]["id"];
 
 type LocationChoice =
+  | { type: "geolocation" }
   | { type: "city"; id: LocationId }
-  | { type: "map"; center: [number, number] };
+  | { type: "manual"; center: [number, number] };
 
 export default function WorkScreen() {
   const [radiusM, setRadiusM] = useState<number>(DEFAULT_RADIUS_M);
@@ -48,35 +56,51 @@ export default function WorkScreen() {
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const [locationChoice, setLocationChoice] = useState<LocationChoice | null>(
     () => {
-      if (typeof window === "undefined") return null;
+      if (typeof window === "undefined") return { type: "city", id: "spb" };
       try {
         const raw = window.localStorage.getItem(LOCATION_STORAGE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw) as LocationChoice;
-        if (
-          parsed?.type === "city" &&
-          LOCATION_OPTIONS.some((option) => option.id === parsed.id)
-        ) {
-          return parsed;
+        if (!raw) return { type: "city", id: "spb" };
+        const parsed = JSON.parse(raw) as {
+          type?: string;
+          id?: unknown;
+          center?: unknown;
+        };
+        if (parsed?.type === "geolocation") {
+          return { type: "geolocation" };
         }
         if (
-          parsed?.type === "map" &&
+          parsed?.type === "city" &&
+          typeof parsed.id === "string" &&
+          LOCATION_OPTIONS.some((option) => option.id === parsed.id)
+        ) {
+          return { type: "city", id: parsed.id as LocationId };
+        }
+        if (
+          (parsed?.type === "manual" || parsed?.type === "map") &&
           Array.isArray(parsed.center) &&
           parsed.center.length === 2
         ) {
+          const lng = Number(parsed.center[0]);
+          const lat = Number(parsed.center[1]);
+          if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+            return { type: "city", id: "spb" };
+          }
           return {
-            type: "map",
-            center: [Number(parsed.center[0]), Number(parsed.center[1])],
+            type: "manual",
+            center: [lng, lat],
           };
         }
       } catch {
-        return null;
+        return { type: "city", id: "spb" };
       }
-      return null;
+      return { type: "city", id: "spb" };
     },
   );
-  const [mapPickerOpen, setMapPickerOpen] = useState(false);
-  const [pickedCenter, setPickedCenter] = useState<[number, number] | null>(
+  const [manualPickMode, setManualPickMode] = useState(false);
+  const [manualPickedCenter, setManualPickedCenter] = useState<[number, number] | null>(
+    null,
+  );
+  const [manualStartCenter, setManualStartCenter] = useState<[number, number] | null>(
     null,
   );
 
@@ -85,7 +109,7 @@ export default function WorkScreen() {
       const option = LOCATION_OPTIONS.find((item) => item.id === locationChoice.id);
       return option?.center ?? SPB_CENTER;
     }
-    if (locationChoice?.type === "map") {
+    if (locationChoice?.type === "manual") {
       return locationChoice.center;
     }
     return SPB_CENTER;
@@ -104,24 +128,72 @@ export default function WorkScreen() {
     setManualCenter,
     geoStatus,
     isLocating,
-  } = useGeolocation(initialCenter, { autoLocate: locationChoice === null });
+  } = useGeolocation(initialCenter, {
+    autoLocate: locationChoice?.type === "geolocation",
+  });
+
+  const nearestCityId = useMemo(() => {
+    const [lngValue, latValue] = userCenter;
+    const metersPerLat = 111_320;
+    const metersPerLng = Math.max(
+      1,
+      Math.cos((latValue * Math.PI) / 180) * metersPerLat,
+    );
+
+    return LOCATION_OPTIONS.reduce<(typeof LOCATION_OPTIONS)[number]["id"]>(
+      (closest, option, index) => {
+        if (index === 0) return option.id;
+        const current = LOCATION_OPTIONS.find((item) => item.id === closest)!;
+        const currentDx = (lngValue - current.center[0]) * metersPerLng;
+        const currentDy = (latValue - current.center[1]) * metersPerLat;
+        const nextDx = (lngValue - option.center[0]) * metersPerLng;
+        const nextDy = (latValue - option.center[1]) * metersPerLat;
+        const currentDistSq = currentDx * currentDx + currentDy * currentDy;
+        const nextDistSq = nextDx * nextDx + nextDy * nextDy;
+        return nextDistSq < currentDistSq ? option.id : closest;
+      },
+      LOCATION_OPTIONS[0].id,
+    );
+  }, [userCenter]);
+
+  const effectiveRadiusM = useMemo(() => {
+    if (locationChoice?.type === "city") {
+      return CITY_RADIUS_M_BY_ID[locationChoice.id];
+    }
+    if (radiusM === 0) {
+      return CITY_RADIUS_M_BY_ID[nearestCityId];
+    }
+    return radiusM;
+  }, [locationChoice, nearestCityId, radiusM]);
 
   const [lng, lat] = userCenter;
   const { cafes, cafesQuery, showFetchingBadge } = useCafes({
     lat,
     lng,
-    radiusM,
+    radiusM: effectiveRadiusM,
     amenities: selectedAmenities,
+    enabled: locationChoice !== null,
   });
+  const visibleCafes = locationChoice ? cafes : [];
   const { selectedCafeId, selectedCafe, selectCafe, itemRefs } =
-    useCafeSelection({ cafes, onFocusLngLat: setFocusLngLat });
+    useCafeSelection({ cafes: visibleCafes, onFocusLngLat: setFocusLngLat });
 
+  const showFirstChoice = locationChoice === null && !manualPickMode;
+  const needsLocationChoice = locationChoice === null;
   const emptyState = cafesQuery.isError
     ? "error"
-    : cafes.length === 0 && geoStatus !== "ok"
+    : visibleCafes.length === 0 &&
+        locationChoice?.type === "geolocation" &&
+        geoStatus !== "ok"
       ? "no-geo"
       : "no-results";
-  const showEmptyState = !cafesQuery.isLoading && cafes.length === 0;
+  const showEmptyState =
+    !showFirstChoice &&
+    !manualPickMode &&
+    !cafesQuery.isLoading &&
+    visibleCafes.length === 0;
+  const isCityOnlyMode = locationChoice?.type === "city";
+  const manualPinOffsetY = MANUAL_PIN_NUDGE_PX;
 
   const locationOptions = useMemo(
     () => LOCATION_OPTIONS.map(({ id, label }) => ({ id, label })),
@@ -137,16 +209,20 @@ export default function WorkScreen() {
           ?.label ?? "Выбранный город"
       );
     }
-    if (locationChoice?.type === "map") {
+    if (locationChoice?.type === "manual") {
       return "Выбранная точка";
     }
-    if (geoStatus === "loading") return "Определяем...";
-    if (geoStatus === "ok") return "Мое местоположение";
-    return "Геолокация";
+    if (locationChoice?.type === "geolocation") {
+      if (geoStatus === "loading") return "Определяем...";
+      if (geoStatus === "ok") return "Мое местоположение";
+      return "Геолокация";
+    }
+    return "Не выбрано";
   }, [geoStatus, locationChoice]);
 
   useEffect(() => {
     if (!locationChoice) return;
+    if (locationChoice.type === "geolocation") return;
     const nextCenter =
       locationChoice.type === "city"
         ? LOCATION_OPTIONS.find((option) => option.id === locationChoice.id)
@@ -171,27 +247,57 @@ export default function WorkScreen() {
     }
   }, [locationChoice]);
 
+  useEffect(() => {
+    if (!selectedCafe) setDetailsOpen(false);
+  }, [selectedCafe]);
+
   const handleSelectLocation = (id: string) => {
     const option = LOCATION_OPTIONS.find((item) => item.id === id);
     if (!option) return;
+    setManualPickMode(false);
+    setRadiusM(0);
     setLocationChoice({ type: "city", id: option.id });
   };
 
-  const handleOpenMapPicker = () => {
-    setPickedCenter(userCenter);
-    setMapPickerOpen(true);
+  const handleStartManualPick = () => {
+    setManualStartCenter(userCenter);
+    setManualPickedCenter(userCenter);
+    setManualPickMode(true);
+    setDetailsOpen(false);
+    setSettingsOpen(false);
+    setFocusLngLat(userCenter);
   };
 
-  const handleConfirmMapPicker = () => {
-    if (!pickedCenter) return;
-    setLocationChoice({ type: "map", center: pickedCenter });
-    setMapPickerOpen(false);
+  const handleCancelManualPick = () => {
+    setManualPickMode(false);
+    setManualPickedCenter(null);
+    if (manualStartCenter) {
+      setFocusLngLat(manualStartCenter);
+    }
+    setManualStartCenter(null);
+  };
+
+  const handleConfirmManualPick = () => {
+    if (!manualPickedCenter) return;
+    setLocationChoice({ type: "manual", center: manualPickedCenter });
+    setManualPickMode(false);
+    setManualStartCenter(null);
   };
 
   const handleLocateMe = () => {
-    setLocationChoice(null);
+    if (manualPickMode) {
+      locateMe(true);
+      return;
+    }
+    setManualPickMode(false);
+    setLocationChoice({ type: "geolocation" });
     locateMe(true);
   };
+
+  useEffect(() => {
+    if (!manualPickMode) return;
+    setManualPickedCenter(userCenter);
+  }, [manualPickMode, userCenter]);
 
   function open2gisRoute(cafe: Cafe) {
     const from = `${userCenter[0]},${userCenter[1]}`; // lon,lat
@@ -213,10 +319,6 @@ export default function WorkScreen() {
     );
   }
 
-  useEffect(() => {
-    if (!selectedCafe) setDetailsOpen(false);
-  }, [selectedCafe]);
-
   return (
     <Box
       pos="relative"
@@ -225,43 +327,130 @@ export default function WorkScreen() {
       data-sheet-state={sheetState}
       style={{ ["--sheet-height" as string]: `${sheetHeight}px` }}
     >
-      {/* MAP full screen */}
       <Box pos="absolute" inset={0}>
         <Map
           center={userCenter}
           zoom={13}
-          cafes={cafes}
-          userLocation={userCenter}
+          cafes={visibleCafes}
+          userLocation={isCityOnlyMode || manualPickMode ? null : userCenter}
           selectedCafeId={selectedCafeId}
-          focusLngLat={focusLngLat}
-          onCafeSelect={selectCafe}
+          focusLngLat={manualPickMode ? null : focusLngLat}
+          onCafeSelect={manualPickMode ? undefined : selectCafe}
+          disableCafeClick={manualPickMode}
+          paddingEnabled
+          centerProbeOffsetY={manualPickMode ? manualPinOffsetY : 0}
+          onCenterChange={
+            manualPickMode ? (lngLat) => setManualPickedCenter(lngLat) : undefined
+          }
         />
       </Box>
+
+      {manualPickMode && (
+        <>
+          <Box
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: `calc(50% + ${manualPinOffsetY}px)`,
+              transform: "translate(-50%, -100%)",
+              pointerEvents: "none",
+              zIndex: 4,
+            }}
+          >
+            <IconMapPinFilled size={40} color="var(--color-map-cafe-marker)" stroke={1.5} />
+          </Box>
+          <Group
+            justify="center"
+            gap="xs"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: "calc(var(--sheet-height, 240px) + 20px)",
+              zIndex: 4,
+              pointerEvents: "none",
+            }}
+          >
+            <Button
+              variant="default"
+              style={{ pointerEvents: "auto" }}
+              onClick={handleCancelManualPick}
+            >
+              Отмена
+            </Button>
+            <Button
+              variant="gradient"
+              gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
+              style={{ pointerEvents: "auto" }}
+              onClick={handleConfirmManualPick}
+              disabled={!manualPickedCenter}
+            >
+              Выбрать
+            </Button>
+          </Group>
+        </>
+      )}
 
       <FiltersBar
         selectedAmenities={selectedAmenities}
         onChangeAmenities={setSelectedAmenities}
         onOpenSettings={() => setSettingsOpen(true)}
         showFetchingBadge={showFetchingBadge}
+        highlightSettingsButton={needsLocationChoice}
       />
 
       <FloatingControls
         onLocate={handleLocateMe}
         isLocating={isLocating}
+        highlight={needsLocationChoice}
       />
 
       <BottomSheet
         sheetRef={sheetRef}
-        isError={cafesQuery.isError && cafes.length === 0}
+        isError={cafesQuery.isError && visibleCafes.length === 0}
         errorText={WORK_UI_TEXT.errorLoad}
-        isListEmpty={cafes.length === 0}
+        isListEmpty={showFirstChoice || visibleCafes.length === 0}
         header={
-          selectedCafe ? (
+          showFirstChoice ? (
+            <Paper radius="xl" p="md" withBorder>
+              <Stack gap="sm">
+                <Text size="sm" fw={600}>
+                  Выберите, как определить точку поиска
+                </Text>
+                <Button
+                  variant="gradient"
+                  gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
+                  onClick={handleLocateMe}
+                >
+                  Включить геолокацию
+                </Button>
+                <Button variant="light" onClick={handleStartManualPick}>
+                  Выбрать вручную на карте
+                </Button>
+                <Select
+                  data={locationOptions.map((option) => ({
+                    value: option.id,
+                    label: option.label,
+                  }))}
+                  value={selectedLocationId || null}
+                  placeholder="Или выбрать город"
+                  searchable
+                  nothingFoundMessage="Ничего не найдено"
+                  onChange={(value) => {
+                    if (!value) return;
+                    handleSelectLocation(value);
+                  }}
+                />
+              </Stack>
+            </Paper>
+          ) : selectedCafe ? (
             <CafeCard
               cafe={selectedCafe}
               onOpen2gis={open2gisRoute}
               onOpenYandex={openYandexRoute}
               onOpenDetails={() => setDetailsOpen(true)}
+              showDistance={!isCityOnlyMode}
+              showRoutes={!isCityOnlyMode}
             />
           ) : showEmptyState ? (
             <EmptyStateCard
@@ -276,11 +465,12 @@ export default function WorkScreen() {
         }
       >
         <CafeList
-          cafes={cafes}
+          cafes={visibleCafes}
           isLoading={cafesQuery.isLoading}
           selectedCafeId={selectedCafeId}
           onSelectCafe={selectCafe}
           itemRefs={itemRefs}
+          showDistance={!isCityOnlyMode}
         />
       </BottomSheet>
 
@@ -289,74 +479,22 @@ export default function WorkScreen() {
         onClose={() => setSettingsOpen(false)}
         radiusM={radiusM}
         onRadiusChange={setRadiusM}
+        isRadiusLocked={isCityOnlyMode}
         selectedAmenities={selectedAmenities}
         onChangeAmenities={setSelectedAmenities}
         locationLabel={locationLabel}
         locationOptions={locationOptions}
         selectedLocationId={selectedLocationId}
         onSelectLocation={handleSelectLocation}
-        onOpenMapPicker={handleOpenMapPicker}
+        onOpenMapPicker={handleStartManualPick}
+        highlightLocationBlock={needsLocationChoice}
       />
-
-      <Modal
-        opened={mapPickerOpen}
-        onClose={() => setMapPickerOpen(false)}
-        fullScreen
-        title="Выбор места"
-        styles={{
-          content: { background: "var(--bg)" },
-          header: {
-            borderBottom: "1px solid rgba(255, 255, 240, 0.12)",
-            background: "transparent",
-          },
-          body: { paddingBottom: 24 },
-        }}
-      >
-        <Stack h="100%" gap="md">
-          <Box
-            style={{
-              flex: 1,
-              minHeight: 280,
-              borderRadius: 18,
-              overflow: "hidden",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "var(--glass-shadow)",
-            }}
-          >
-            <Map
-              center={pickedCenter ?? userCenter}
-              zoom={13}
-              cafes={[]}
-              userLocation={pickedCenter ?? userCenter}
-              onMapClick={(lngLat) => setPickedCenter(lngLat)}
-              disableCafeClick
-              paddingEnabled={false}
-              focusLngLat={pickedCenter ?? userCenter}
-            />
-          </Box>
-          <Text size="sm" c="dimmed">
-            Нажмите на карту, чтобы выбрать точку. Мы будем искать рядом с ней.
-          </Text>
-          <Group justify="space-between">
-            <Button variant="subtle" onClick={() => setMapPickerOpen(false)}>
-              Отмена
-            </Button>
-            <Button
-              variant="gradient"
-              gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
-              onClick={handleConfirmMapPicker}
-              disabled={!pickedCenter}
-            >
-              Выбрать
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
 
       <CafeDetailsScreen
         opened={detailsOpen}
         cafe={selectedCafe ?? null}
         onClose={() => setDetailsOpen(false)}
+        showDistance={!isCityOnlyMode}
       />
     </Box>
   );

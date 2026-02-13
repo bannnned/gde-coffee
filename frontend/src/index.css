@@ -1,61 +1,160 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap');
 
 :root {
-  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-family: 'Onest', 'Segoe UI', sans-serif;
+  --font-ui: 'Onest', 'Segoe UI', sans-serif;
+  --font-display: 'Unbounded', 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1A1A1A;
-  background-color: #EADCC8;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-base);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --coffee: #EADCC8;
-  --emerald: #457E73;
-  --ink: #1A1A1A;
-  --cream: #FFFFF0;
+  /* Palette categories (light fallback, can be overridden at runtime). */
+  --color-brand-accent: #457E73;
+  --color-brand-accent-soft: rgba(69, 126, 115, 0.28);
+  --color-brand-accent-strong: #2f5f55;
+  --color-on-accent: #FFFFF0;
 
-  --bg: var(--coffee);
-  --card: var(--cream);
-  --surface: rgba(255, 255, 240, 0.72);
-  --border: rgba(26, 26, 26, 0.12);
-  --text: var(--ink);
-  --muted: rgba(26, 26, 26, 0.65);
-  --accent: var(--emerald);
-  --shadow: 0 18px 40px rgba(26, 26, 26, 0.16);
-  --glass-bg: rgba(255, 255, 240, 0.65);
-  --glass-border: rgba(255, 255, 240, 0.75);
-  --glass-shadow: 0 12px 30px rgba(26, 26, 26, 0.14);
-  --glass-grad-1: rgba(255, 255, 240, 0.95);
-  --glass-grad-2: rgba(255, 255, 240, 0.65);
-  --glass-grad-hover-1: rgba(255, 255, 240, 0.98);
-  --glass-grad-hover-2: rgba(255, 255, 240, 0.75);
-  --bg-accent-1: rgba(69, 126, 115, 0.18);
-  --bg-accent-2: rgba(255, 255, 240, 0.35);
+  --color-bg-base: #EADCC8;
+  --color-bg-accent-1: rgba(69, 126, 115, 0.18);
+  --color-bg-accent-2: rgba(255, 255, 240, 0.35);
+
+  --color-surface-card: #FFFFF0;
+  --color-surface-main: rgba(255, 255, 240, 0.72);
+  --color-surface-overlay-soft: rgba(26, 26, 26, 0.12);
+  --color-surface-overlay-strong: rgba(26, 26, 26, 0.35);
+
+  --color-text-primary: #1A1A1A;
+  --color-text-muted: rgba(26, 26, 26, 0.65);
+  --color-text-inverse: #FFFFF0;
+
+  --color-border-soft: rgba(26, 26, 26, 0.12);
+  --color-border-strong: rgba(255, 255, 240, 0.8);
+  --color-border-glass: rgba(255, 255, 240, 0.75);
+
+  --color-glass-bg: rgba(255, 255, 240, 0.65);
+  --color-glass-shadow: 0 12px 30px rgba(26, 26, 26, 0.14);
+  --color-glass-grad-1: rgba(255, 255, 240, 0.95);
+  --color-glass-grad-2: rgba(255, 255, 240, 0.65);
+  --color-glass-grad-hover-1: rgba(255, 255, 240, 0.98);
+  --color-glass-grad-hover-2: rgba(255, 255, 240, 0.75);
+
+  --color-shadow-lg: 0 18px 40px rgba(26, 26, 26, 0.16);
+  --color-attention-ring: rgba(69, 126, 115, 0.42);
+  --color-attention-glow: rgba(69, 126, 115, 0.28);
+
+  --color-status-success: #2b8a3e;
+  --color-status-warning: #e67700;
+  --color-status-error: #c92a2a;
+  --color-status-info: #1971c2;
+
+  --color-map-user-marker: #FFFFF0;
+  --color-map-cafe-marker: #457E73;
+  --color-map-label-text: #1A1A1A;
+  --color-map-label-halo: rgba(255, 255, 240, 0.9);
+
+  /* Compatibility aliases used by existing components/styles. */
+  --coffee: var(--color-bg-base);
+  --emerald: var(--color-brand-accent);
+  --ink: var(--color-text-primary);
+  --cream: var(--color-text-inverse);
+
+  --bg: var(--color-bg-base);
+  --card: var(--color-surface-card);
+  --surface: var(--color-surface-main);
+  --border: var(--color-border-soft);
+  --text: var(--color-text-primary);
+  --muted: var(--color-text-muted);
+  --accent: var(--color-brand-accent);
+  --shadow: var(--color-shadow-lg);
+  --glass-bg: var(--color-glass-bg);
+  --glass-border: var(--color-border-glass);
+  --glass-shadow: var(--color-glass-shadow);
+  --glass-grad-1: var(--color-glass-grad-1);
+  --glass-grad-2: var(--color-glass-grad-2);
+  --glass-grad-hover-1: var(--color-glass-grad-hover-1);
+  --glass-grad-hover-2: var(--color-glass-grad-hover-2);
+  --bg-accent-1: var(--color-bg-accent-1);
+  --bg-accent-2: var(--color-bg-accent-2);
+  --attention-ring: var(--color-attention-ring);
+  --attention-glow: var(--color-attention-glow);
   --sheet-height: 240px;
 }
 
 :root[data-mantine-color-scheme='dark'] {
-  --bg: var(--ink);
-  --card: rgba(255, 255, 240, 0.07);
-  --surface: rgba(255, 255, 240, 0.05);
-  --border: rgba(255, 255, 240, 0.16);
-  --text: var(--cream);
-  --muted: rgba(255, 255, 240, 0.7);
-  --accent: var(--emerald);
-  --shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
-  --glass-bg: rgba(26, 26, 26, 0.7);
-  --glass-border: rgba(255, 255, 240, 0.14);
-  --glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
-  --glass-grad-1: rgba(26, 26, 26, 0.85);
-  --glass-grad-2: rgba(26, 26, 26, 0.5);
-  --glass-grad-hover-1: rgba(26, 26, 26, 0.95);
-  --glass-grad-hover-2: rgba(26, 26, 26, 0.6);
-  --bg-accent-1: rgba(69, 126, 115, 0.22);
-  --bg-accent-2: rgba(234, 220, 200, 0.14);
-  --mantine-color-text: var(--cream);
-  --mantine-color-dimmed: rgba(255, 255, 240, 0.7);
+  --color-brand-accent: #5aa294;
+  --color-brand-accent-soft: rgba(90, 162, 148, 0.28);
+  --color-brand-accent-strong: #6ec0b1;
+  --color-on-accent: #0f1917;
+
+  --color-bg-base: #1A1A1A;
+  --color-bg-accent-1: rgba(69, 126, 115, 0.22);
+  --color-bg-accent-2: rgba(234, 220, 200, 0.14);
+
+  --color-surface-card: rgba(255, 255, 240, 0.07);
+  --color-surface-main: rgba(255, 255, 240, 0.05);
+  --color-surface-overlay-soft: rgba(26, 26, 26, 0.45);
+  --color-surface-overlay-strong: rgba(26, 26, 26, 0.65);
+
+  --color-text-primary: #FFFFF0;
+  --color-text-muted: rgba(255, 255, 240, 0.7);
+  --color-text-inverse: #1A1A1A;
+
+  --color-border-soft: rgba(255, 255, 240, 0.16);
+  --color-border-strong: rgba(255, 255, 240, 0.18);
+  --color-border-glass: rgba(255, 255, 240, 0.14);
+
+  --color-glass-bg: rgba(26, 26, 26, 0.7);
+  --color-glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  --color-glass-grad-1: rgba(26, 26, 26, 0.85);
+  --color-glass-grad-2: rgba(26, 26, 26, 0.5);
+  --color-glass-grad-hover-1: rgba(26, 26, 26, 0.95);
+  --color-glass-grad-hover-2: rgba(26, 26, 26, 0.6);
+
+  --color-shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.6);
+  --color-attention-ring: rgba(90, 162, 148, 0.5);
+  --color-attention-glow: rgba(90, 162, 148, 0.32);
+
+  --color-status-success: #40c057;
+  --color-status-warning: #fab005;
+  --color-status-error: #ff6b6b;
+  --color-status-info: #4dabf7;
+
+  --color-map-user-marker: #FFFFF0;
+  --color-map-cafe-marker: #5aa294;
+  --color-map-label-text: #FFFFF0;
+  --color-map-label-halo: rgba(26, 26, 26, 0.92);
+
+  --coffee: var(--color-bg-base);
+  --emerald: var(--color-brand-accent);
+  --ink: var(--color-text-primary);
+  --cream: var(--color-text-inverse);
+
+  --bg: var(--color-bg-base);
+  --card: var(--color-surface-card);
+  --surface: var(--color-surface-main);
+  --border: var(--color-border-soft);
+  --text: var(--color-text-primary);
+  --muted: var(--color-text-muted);
+  --accent: var(--color-brand-accent);
+  --shadow: var(--color-shadow-lg);
+  --glass-bg: var(--color-glass-bg);
+  --glass-border: var(--color-border-glass);
+  --glass-shadow: var(--color-glass-shadow);
+  --glass-grad-1: var(--color-glass-grad-1);
+  --glass-grad-2: var(--color-glass-grad-2);
+  --glass-grad-hover-1: var(--color-glass-grad-hover-1);
+  --glass-grad-hover-2: var(--color-glass-grad-hover-2);
+  --bg-accent-1: var(--color-bg-accent-1);
+  --bg-accent-2: var(--color-bg-accent-2);
+  --attention-ring: var(--color-attention-ring);
+  --attention-glow: var(--color-attention-glow);
+  --mantine-color-text: var(--color-text-primary);
+  --mantine-color-dimmed: var(--color-text-muted);
 }
 
 .map-shell .maplibregl-ctrl-top-right {
@@ -87,7 +186,7 @@
   overflow: hidden;
   border: 1px solid var(--glass-border);
   border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(26, 26, 26, 0.16);
+  box-shadow: var(--glass-shadow);
   background: transparent;
   display: inline-flex;
   align-items: center;
@@ -129,8 +228,8 @@
 :root[data-mantine-color-scheme='dark'] .glass-action {
   border-color: var(--glass-border);
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(255, 255, 240, 0.04);
+    var(--glass-shadow),
+    inset 0 0 0 1px var(--color-surface-overlay-soft);
   color: var(--cream);
 }
 
@@ -173,7 +272,7 @@
   align-items: center;
   justify-content: center;
   color: inherit;
-  box-shadow: 0 8px 20px rgba(26, 26, 26, 0.16);
+  box-shadow: var(--glass-shadow);
   overflow: hidden;
   position: relative;
 }
@@ -203,8 +302,8 @@
 :root[data-mantine-color-scheme='dark'] .map-zoom-button {
   border-color: var(--glass-border);
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(255, 255, 240, 0.04);
+    var(--glass-shadow),
+    inset 0 0 0 1px var(--color-surface-overlay-soft);
   color: var(--cream);
 }
 
@@ -224,15 +323,15 @@
 }
 
 .oauth-button:hover {
-  background: rgba(69, 126, 115, 0.12);
+  background: var(--color-brand-accent-soft);
 }
 
 :root[data-mantine-color-scheme='dark'] .oauth-button {
-  border-color: rgba(255, 255, 240, 0.18);
+  border-color: var(--glass-border);
 }
 
 :root[data-mantine-color-scheme='dark'] .oauth-button:hover {
-  background: rgba(255, 255, 240, 0.08);
+  background: var(--color-surface-main);
 }
 
 :root[data-mantine-color-scheme='dark'] .map-zoom-button::before {
@@ -310,9 +409,10 @@ body {
 }
 
 .splash-title {
-  font-family: 'Fraunces', 'Times New Roman', serif;
+  font-family: var(--font-display);
   font-size: 1.1rem;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text);
 }
 
@@ -320,7 +420,7 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 2px solid rgba(69, 126, 115, 0.25);
+  border: 2px solid var(--color-brand-accent-soft);
   border-top-color: var(--accent);
   animation: splash-spin 0.9s linear infinite;
 }
@@ -341,7 +441,9 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: 'Fraunces', 'Times New Roman', serif;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.01em;
   margin: 0;
 }
 

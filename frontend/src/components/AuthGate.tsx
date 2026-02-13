@@ -9,7 +9,6 @@ import {
   Text,
   TextInput,
   Title,
-  useComputedColorScheme,
 } from "@mantine/core";
 import {
   createContext,
@@ -65,10 +64,6 @@ export function useAuth() {
 }
 
 export default function AuthGate({ children }: PropsWithChildren) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
-  const isDark = scheme === "dark";
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -207,11 +202,9 @@ export default function AuthGate({ children }: PropsWithChildren) {
     () => ({
       input: {
         borderRadius: 16,
-        background: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(255, 255, 255, 0.88)",
-        border: isDark ? "1px solid rgba(255, 255, 240, 0.16)" : "1px solid rgba(26, 26, 26, 0.12)",
-        boxShadow: isDark
-          ? "inset 0 0 0 1px rgba(255, 255, 255, 0.04)"
-          : "inset 0 0 0 1px rgba(26, 26, 26, 0.04)",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        boxShadow: "inset 0 0 0 1px var(--color-surface-overlay-soft)",
         height: 48,
         fontSize: 14.5,
       },
@@ -220,7 +213,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
         letterSpacing: 0.2,
       },
     }),
-    [isDark],
+    [],
   );
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
@@ -267,24 +260,16 @@ export default function AuthGate({ children }: PropsWithChildren) {
         }
         styles={{
           content: {
-            background: isDark
-              ? "rgba(26, 26, 26, 0.85)"
-              : "rgba(255, 255, 240, 0.92)",
-            border: isDark
-              ? "1px solid rgba(255, 255, 240, 0.16)"
-              : "1px solid rgba(26, 26, 26, 0.12)",
-            boxShadow: isDark
-              ? "0 18px 40px rgba(0,0,0,0.65)"
-              : "0 18px 40px rgba(26,26,26,0.2)",
+            background: "var(--glass-bg)",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow)",
             backdropFilter: "blur(18px) saturate(160%)",
             WebkitBackdropFilter: "blur(18px) saturate(160%)",
             borderRadius: 22,
           },
           header: {
             background: "transparent",
-            borderBottom: isDark
-              ? "1px solid rgba(255, 255, 240, 0.08)"
-              : "1px solid rgba(26, 26, 26, 0.08)",
+            borderBottom: "1px solid var(--border)",
             padding: "16px 18px 10px",
           },
           body: {
@@ -292,9 +277,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
           },
           overlay: {
             backdropFilter: "blur(8px)",
-            backgroundColor: isDark
-              ? "rgba(0, 0, 0, 0.55)"
-              : "rgba(26, 26, 26, 0.35)",
+            backgroundColor: "var(--color-surface-overlay-strong)",
           },
         }}
       >
@@ -414,9 +397,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
               styles={{
                 root: {
                   height: 48,
-                  boxShadow: isDark
-                    ? "0 12px 24px rgba(0, 0, 0, 0.35)"
-                    : "0 12px 24px rgba(32, 201, 151, 0.25)",
+                  boxShadow: "0 12px 24px var(--attention-glow)",
                 },
               }}
             >

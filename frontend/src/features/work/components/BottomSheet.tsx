@@ -1,4 +1,4 @@
-import { Box, Paper, Text, useComputedColorScheme } from "@mantine/core";
+import { Box, Paper, Text } from "@mantine/core";
 import {
   animate,
   motion,
@@ -40,9 +40,6 @@ export default function BottomSheet({
   isListEmpty,
   children,
 }: BottomSheetProps) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
   const {
     filtersBarHeight,
     safeViewportHeight,
@@ -247,19 +244,9 @@ export default function BottomSheet({
           height,
           maxHeight: "100%",
           ["--sheet-header-height" as string]: `${Math.round(headerHeight)}px`,
-          background:
-            scheme === "dark"
-              ? "rgba(26,26,26,0.78)"
-              : "rgba(255,255,240,0.78)",
-          border: `1px solid ${
-            scheme === "dark"
-              ? "rgba(255,255,240,0.16)"
-              : "rgba(255,255,240,0.7)"
-          }`,
-          boxShadow:
-            scheme === "dark"
-              ? "0 18px 45px rgba(0,0,0,0.6)"
-              : "0 18px 45px rgba(26,26,26,0.16)",
+          background: "var(--glass-bg)",
+          border: "1px solid var(--glass-border)",
+          boxShadow: "var(--shadow)",
           backdropFilter: "blur(14px)",
         }}
       >

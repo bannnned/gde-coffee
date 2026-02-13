@@ -6,7 +6,6 @@
   Paper,
   Stack,
   Text,
-  useComputedColorScheme,
 } from "@mantine/core";
 import { useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 
@@ -19,6 +18,8 @@ type CafeCardProps = {
   onOpen2gis: (cafe: Cafe) => void;
   onOpenYandex: (cafe: Cafe) => void;
   onOpenDetails?: () => void;
+  showDistance?: boolean;
+  showRoutes?: boolean;
 };
 
 export default function CafeCard({
@@ -26,41 +27,25 @@ export default function CafeCard({
   onOpen2gis,
   onOpenYandex,
   onOpenDetails,
+  showDistance = true,
+  showRoutes = true,
 }: CafeCardProps) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
   const clickStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const cardStyles = {
     zIndex: 1,
-    background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(26,26,26,0.78), rgba(26,26,26,0.6))"
-        : "linear-gradient(135deg, rgba(255,255,240,0.94), rgba(255,255,240,0.72))",
-    border:
-      scheme === "dark"
-        ? "1px solid rgba(255, 255, 240, 0.16)"
-        : "1px solid rgba(26, 26, 26, 0.1)",
-    boxShadow:
-      scheme === "dark"
-        ? "0 18px 40px rgba(0, 0, 0, 0.6), 0 8px 20px rgba(0, 0, 0, 0.45)"
-        : "0 18px 40px rgba(26, 26, 26, 0.14), 0 8px 18px rgba(26, 26, 26, 0.12)",
+    background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+    border: "1px solid var(--glass-border)",
+    boxShadow: "var(--shadow)",
     backdropFilter: "blur(18px) saturate(160%)",
     WebkitBackdropFilter: "blur(18px) saturate(160%)",
   } as const;
 
   const badgeStyles = {
     root: {
-      background:
-        scheme === "dark"
-          ? "rgba(255, 255, 240, 0.08)"
-          : "rgba(255, 255, 240, 0.7)",
-      border:
-        scheme === "dark"
-          ? "1px solid rgba(255, 255, 240, 0.18)"
-          : "1px solid rgba(26, 26, 26, 0.12)",
-      color: scheme === "dark" ? "rgba(255, 255, 240, 0.95)" : "#1A1A1A",
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      color: "var(--text)",
       backdropFilter: "blur(12px)",
       WebkitBackdropFilter: "blur(12px)",
     },
@@ -129,8 +114,8 @@ export default function CafeCard({
             {cafe.address}
           </Text>
           <Text size="sm" mt={6}>
-            {formatDistance(cafe.distance_m)} В· {WORK_UI_TEXT.workScorePrefix}{" "}
-            {Math.round(cafe.work_score)}
+            {showDistance ? `${formatDistance(cafe.distance_m)} В· ` : ""}
+            {WORK_UI_TEXT.workScorePrefix} {Math.round(cafe.work_score)}
           </Text>
           <Group
             gap={6}
@@ -138,8 +123,8 @@ export default function CafeCard({
             wrap="nowrap"
             style={{
               overflow: "hidden",
-              WebkitMaskImage: "linear-gradient(90deg, #000 85%, transparent)",
-              maskImage: "linear-gradient(90deg, #000 85%, transparent)",
+              WebkitMaskImage: "linear-gradient(90deg, currentColor 85%, transparent)",
+              maskImage: "linear-gradient(90deg, currentColor 85%, transparent)",
             }}
           >
             {cafe.amenities.map((a) => (
@@ -150,27 +135,29 @@ export default function CafeCard({
           </Group>
         </Box>
 
-        <Stack gap={6} miw={160} style={{ flexShrink: 0 }}>
-          <Button
-            size="xs"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpen2gis(cafe);
-            }}
-          >
-            {WORK_UI_TEXT.route2gis}
-          </Button>
-          <Button
-            size="xs"
-            variant="light"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenYandex(cafe);
-            }}
-          >
-            {WORK_UI_TEXT.routeYandex}
-          </Button>
-        </Stack>
+        {showRoutes && (
+          <Stack gap={6} miw={160} style={{ flexShrink: 0 }}>
+            <Button
+              size="xs"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen2gis(cafe);
+              }}
+            >
+              {WORK_UI_TEXT.route2gis}
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenYandex(cafe);
+              }}
+            >
+              {WORK_UI_TEXT.routeYandex}
+            </Button>
+          </Stack>
+        )}
       </Group>
     </Paper>
   );

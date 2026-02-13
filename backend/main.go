@@ -170,50 +170,50 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 		radiusStr := strings.TrimSpace(c.Query("radius_m"))
 
 		if latStr == "" || lngStr == "" || radiusStr == "" {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "lat, lng, and radius_m are required", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "Параметры lat, lng и radius_m обязательны.", nil)
 			return
 		}
 
 		lat, err := parseFloat(latStr)
 		if err != nil {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid lat", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректное значение lat.", nil)
 			return
 		}
 		if !isFinite(lat) {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "lat must be a finite number", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lat должен быть конечным числом.", nil)
 			return
 		}
 		if lat < -90 || lat > 90 {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "lat must be between -90 and 90", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lat должен быть в диапазоне от -90 до 90.", nil)
 			return
 		}
 
 		lng, err := parseFloat(lngStr)
 		if err != nil {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid lng", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректное значение lng.", nil)
 			return
 		}
 		if !isFinite(lng) {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "lng must be a finite number", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lng должен быть конечным числом.", nil)
 			return
 		}
 		if lng < -180 || lng > 180 {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "lng must be between -180 and 180", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "lng должен быть в диапазоне от -180 до 180.", nil)
 			return
 		}
 
 		radiusM, err := parseFloat(radiusStr)
 		if err != nil {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "invalid radius_m", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректное значение radius_m.", nil)
 			return
 		}
 		if !isFinite(radiusM) {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "radius_m must be a finite number", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "radius_m должен быть конечным числом.", nil)
 			return
 		}
 
 		if radiusM < 0 {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "radius_m must be >= 0", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "radius_m должен быть >= 0.", nil)
 			return
 		}
 
@@ -222,7 +222,7 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 				c,
 				http.StatusBadRequest,
 				"invalid_argument",
-				"radius_m must be <= 50000",
+				"radius_m должен быть <= 50000.",
 				gin.H{"max_radius_m": maxRadiusM},
 			)
 			return
@@ -230,7 +230,7 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 
 		sortBy := strings.TrimSpace(c.DefaultQuery("sort", config.DefaultSort))
 		if sortBy != config.SortByDistance && sortBy != config.SortByWork {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "sort must be 'work' or 'distance'", nil)
+			respondError(c, http.StatusBadRequest, "invalid_argument", "sort должен быть 'work' или 'distance'.", nil)
 			return
 		}
 
@@ -248,7 +248,7 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 
 		cafes, err := queryCafes(ctx, pool, lat, lng, radiusM, requiredAmenities, sortBy, limit, cfg)
 		if err != nil {
-			respondError(c, http.StatusInternalServerError, "internal", "db query failed", gin.H{"error": err.Error()})
+			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", gin.H{"error": err.Error()})
 			return
 		}
 
@@ -291,13 +291,13 @@ func parseLimit(raw string, limits config.LimitsConfig) (int, error) {
 
 	limit, err := strconv.Atoi(raw)
 	if err != nil {
-		return 0, fmt.Errorf("limit must be an integer")
+		return 0, fmt.Errorf("limit должен быть целым числом")
 	}
 	if limit <= 0 {
-		return 0, fmt.Errorf("limit must be > 0")
+		return 0, fmt.Errorf("limit должен быть больше 0")
 	}
 	if limits.MaxResults > 0 && limit > limits.MaxResults {
-		return 0, fmt.Errorf("limit must be <= %d", limits.MaxResults)
+		return 0, fmt.Errorf("limit должен быть <= %d", limits.MaxResults)
 	}
 	return limit, nil
 }
@@ -401,7 +401,7 @@ func applyStaticCacheHeaders(c *gin.Context, relPath string, isSPAFallback bool)
 func serveStaticOrIndex(c *gin.Context, publicDir string) {
 	requestPath := c.Request.URL.Path
 	if strings.HasPrefix(requestPath, "/api/") || requestPath == "/api" {
-		respondError(c, http.StatusNotFound, "not_found", "not found", nil)
+		respondError(c, http.StatusNotFound, "not_found", "Маршрут не найден.", nil)
 		return
 	}
 
@@ -418,7 +418,7 @@ func serveStaticOrIndex(c *gin.Context, publicDir string) {
 
 	indexPath := filepath.Join(publicDir, "index.html")
 	if _, err := os.Stat(indexPath); err != nil {
-		respondError(c, http.StatusNotFound, "not_found", "index.html not found", nil)
+		respondError(c, http.StatusNotFound, "not_found", "Файл index.html не найден.", nil)
 		return
 	}
 	applyStaticCacheHeaders(c, "index.html", true)

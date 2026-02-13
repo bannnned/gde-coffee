@@ -8,3 +8,21 @@
     transform 180ms ease;
 }
 
+.attentionButton {
+  box-shadow:
+    0 0 0 1px var(--attention-ring),
+    0 0 20px var(--attention-glow);
+  animation: pulseAttention 1.8s ease-in-out infinite;
+}
+
+@keyframes pulseAttention {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.02);
+    filter: brightness(1.04);
+  }
+}

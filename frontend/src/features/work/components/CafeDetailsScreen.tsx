@@ -5,7 +5,6 @@ import {
   Paper,
   Stack,
   Text,
-  useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
 
@@ -17,39 +16,30 @@ type CafeDetailsScreenProps = {
   opened: boolean;
   cafe: Cafe | null;
   onClose: () => void;
+  showDistance?: boolean;
 };
 
 export default function CafeDetailsScreen({
   opened,
   cafe,
   onClose,
+  showDistance = true,
 }: CafeDetailsScreenProps) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
   const theme = useMantineTheme();
 
   if (!cafe) return null;
 
   const modalStyles = {
     content: {
-      background:
-        scheme === "dark"
-          ? "rgba(26, 26, 26, 0.9)"
-          : "rgba(255, 255, 240, 0.98)",
+      background: "var(--glass-bg)",
+      border: "1px solid var(--glass-border)",
+      boxShadow: "var(--shadow)",
       backdropFilter: "blur(18px) saturate(160%)",
       WebkitBackdropFilter: "blur(18px) saturate(160%)",
     },
     header: {
-      background:
-        scheme === "dark"
-          ? "rgba(26, 26, 26, 0.82)"
-          : "rgba(255, 255, 240, 0.92)",
-      borderBottom: `1px solid ${
-        scheme === "dark"
-          ? "rgba(255, 255, 240, 0.14)"
-          : "rgba(26, 26, 26, 0.08)"
-      }`,
+      background: "var(--surface)",
+      borderBottom: "1px solid var(--border)",
     },
     title: {
       fontWeight: 700,
@@ -60,41 +50,23 @@ export default function CafeDetailsScreen({
     },
     overlay: {
       backdropFilter: "blur(4px)",
-      backgroundColor:
-        scheme === "dark"
-          ? "rgba(26, 26, 26, 0.65)"
-          : "rgba(26, 26, 26, 0.35)",
+      backgroundColor: "var(--color-surface-overlay-strong)",
     },
   } as const;
 
   const cardStyles = {
-    background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(26,26,26,0.78), rgba(26,26,26,0.6))"
-        : "linear-gradient(135deg, rgba(255,255,240,0.94), rgba(255,255,240,0.72))",
-    border:
-      scheme === "dark"
-        ? "1px solid rgba(255, 255, 240, 0.16)"
-        : "1px solid rgba(26, 26, 26, 0.1)",
-    boxShadow:
-      scheme === "dark"
-        ? "0 18px 40px rgba(0, 0, 0, 0.6), 0 8px 20px rgba(0, 0, 0, 0.45)"
-        : "0 18px 40px rgba(26, 26, 26, 0.14), 0 8px 18px rgba(26, 26, 26, 0.12)",
+    background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+    border: "1px solid var(--glass-border)",
+    boxShadow: "var(--shadow)",
     backdropFilter: "blur(18px) saturate(160%)",
     WebkitBackdropFilter: "blur(18px) saturate(160%)",
   } as const;
 
   const badgeStyles = {
     root: {
-      background:
-        scheme === "dark"
-          ? "rgba(255, 255, 240, 0.08)"
-          : "rgba(255, 255, 240, 0.7)",
-      border:
-        scheme === "dark"
-          ? "1px solid rgba(255, 255, 240, 0.18)"
-          : "1px solid rgba(26, 26, 26, 0.12)",
-      color: scheme === "dark" ? "rgba(255, 255, 240, 0.95)" : "#1A1A1A",
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      color: "var(--text)",
       backdropFilter: "blur(12px)",
       WebkitBackdropFilter: "blur(12px)",
     },
@@ -114,7 +86,7 @@ export default function CafeDetailsScreen({
           <Text c="dimmed" size="sm">
             {cafe.address}
           </Text>
-          <Text size="sm">{formatDistance(cafe.distance_m)}</Text>
+          {showDistance && <Text size="sm">{formatDistance(cafe.distance_m)}</Text>}
           {cafe.amenities.length > 0 && (
             <Group gap={6} wrap="wrap">
               {cafe.amenities.map((a) => (

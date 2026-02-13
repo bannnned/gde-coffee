@@ -1,13 +1,14 @@
-﻿import {
+import {
   Button,
   Chip,
   Drawer,
   Group,
+  Select,
   Stack,
   Text,
-  useComputedColorScheme,
   useMantineTheme,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { IconMapPin } from "@tabler/icons-react";
 
 import type { Amenity } from "../types";
@@ -24,6 +25,7 @@ type SettingsDrawerProps = {
   onClose: () => void;
   radiusM: number;
   onRadiusChange: (value: number) => void;
+  isRadiusLocked?: boolean;
   selectedAmenities: Amenity[];
   onChangeAmenities: (next: Amenity[]) => void;
   locationLabel: string;
@@ -31,6 +33,7 @@ type SettingsDrawerProps = {
   selectedLocationId: string;
   onSelectLocation: (id: string) => void;
   onOpenMapPicker: () => void;
+  highlightLocationBlock?: boolean;
 };
 
 const RADIUS_OPTIONS = [1000, 2500, 5000, 0] as const;
@@ -40,6 +43,7 @@ export default function SettingsDrawer({
   onClose,
   radiusM,
   onRadiusChange,
+  isRadiusLocked = false,
   selectedAmenities,
   onChangeAmenities,
   locationLabel,
@@ -47,85 +51,49 @@ export default function SettingsDrawer({
   selectedLocationId,
   onSelectLocation,
   onOpenMapPicker,
+  highlightLocationBlock = false,
 }: SettingsDrawerProps) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
   const theme = useMantineTheme();
+  const isCoarsePointer = useMediaQuery("(pointer: coarse)") ?? false;
   const { logout } = useAuth();
 
   const drawerStyles = {
     content: {
-      background:
-        scheme === "dark"
-          ? "rgba(26, 26, 26, 0.78)"
-          : "rgba(255, 255, 240, 0.82)",
+      background: "var(--glass-bg)",
       backdropFilter: "blur(18px) saturate(180%)",
       WebkitBackdropFilter: "blur(18px) saturate(180%)",
       borderTopLeftRadius: theme.radius.xl,
       borderTopRightRadius: theme.radius.xl,
-      border: `1px solid ${
-        scheme === "dark"
-          ? "rgba(255, 255, 240, 0.18)"
-          : "rgba(255, 255, 240, 0.8)"
-      }`,
-      boxShadow:
-        scheme === "dark"
-          ? "0 -18px 40px rgba(0, 0, 0, 0.7)"
-          : "0 -18px 40px rgba(26, 26, 26, 0.18)",
+      border: "1px solid var(--glass-border)",
+      boxShadow: "var(--shadow)",
     },
     header: {
       background: "transparent",
-      borderBottom: `1px solid ${
-        scheme === "dark"
-          ? "rgba(255, 255, 240, 0.12)"
-          : "rgba(255, 255, 240, 0.6)"
-      }`,
+      borderBottom: "1px solid var(--glass-border)",
     },
     body: {
       paddingTop: theme.spacing.sm,
     },
     overlay: {
       backdropFilter: "blur(2px)",
-      backgroundColor:
-        scheme === "dark"
-          ? "rgba(26, 26, 26, 0.45)"
-          : "rgba(26, 26, 26, 0.12)",
+      backgroundColor: "var(--color-surface-overlay-soft)",
     },
   } as const;
 
   const glassButtonBase = {
-    background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(26,26,26,0.7), rgba(26,26,26,0.5))"
-        : "linear-gradient(135deg, rgba(255,255,240,0.9), rgba(255,255,240,0.65))",
-    border: `1px solid ${
-      scheme === "dark"
-        ? "rgba(255, 255, 240, 0.2)"
-        : "rgba(255, 255, 240, 0.75)"
-    }`,
-    boxShadow:
-      scheme === "dark"
-        ? "0 6px 18px rgba(0, 0, 0, 0.55)"
-        : "0 6px 16px rgba(26, 26, 26, 0.14)",
+    background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+    border: "1px solid var(--glass-border)",
+    boxShadow: "var(--glass-shadow)",
     backdropFilter: "blur(16px) saturate(180%)",
     WebkitBackdropFilter: "blur(16px) saturate(180%)",
-    color: scheme === "dark" ? "#FFFFF0" : "#1A1A1A",
+    color: "var(--text)",
   } as const;
 
   const glassButtonActive = {
-    background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(69,126,115,0.45), rgba(69,126,115,0.3))"
-        : "linear-gradient(135deg, rgba(69,126,115,0.35), rgba(69,126,115,0.22))",
-    border: `1px solid ${
-      scheme === "dark" ? "rgba(69,126,115,0.55)" : "rgba(69,126,115,0.45)"
-    }`,
-    color: scheme === "dark" ? "#FFFFF0" : "#1A1A1A",
-    boxShadow:
-      scheme === "dark"
-        ? "0 8px 20px rgba(69, 126, 115, 0.35)"
-        : "0 8px 18px rgba(69, 126, 115, 0.25)",
+    background: "var(--color-brand-accent-soft)",
+    border: "1px solid var(--accent)",
+    color: "var(--text)",
+    boxShadow: "0 8px 20px var(--attention-glow)",
   } as const;
 
   const glassButtonStyles = (active: boolean) => ({
@@ -134,6 +102,24 @@ export default function SettingsDrawer({
       ...(active ? (glassButtonActive as object) : null),
     },
   });
+
+  const citySelectStyles = {
+    input: {
+      borderRadius: 12,
+      border: "1px solid var(--glass-border)",
+      background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+      boxShadow: "var(--glass-shadow)",
+      color: "var(--text)",
+      backdropFilter: "blur(16px) saturate(180%)",
+      WebkitBackdropFilter: "blur(16px) saturate(180%)",
+    },
+    dropdown: {
+      borderRadius: 12,
+      border: "1px solid var(--glass-border)",
+      background: "var(--card)",
+      boxShadow: "var(--shadow)",
+    },
+  } as const;
 
   const amenityChipLabelBaseStyles = {
     boxSizing: "border-box",
@@ -148,21 +134,11 @@ export default function SettingsDrawer({
     transform: "none",
     paddingInline: 10,
     paddingBlock: 8,
-    border: `1px solid ${
-      scheme === "dark"
-        ? "rgba(255, 255, 240, 0.18)"
-        : "rgba(26, 26, 26, 0.12)"
-    }`,
+    border: "1px solid var(--border)",
     backdropFilter: "blur(18px) saturate(180%)",
     WebkitBackdropFilter: "blur(18px) saturate(180%)",
-    background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(26,26,26,0.7), rgba(26,26,26,0.5))"
-        : "linear-gradient(135deg, rgba(255,255,240,0.92), rgba(255,255,240,0.68))",
-    boxShadow:
-      scheme === "dark"
-        ? "0 6px 18px rgba(0, 0, 0, 0.5)"
-        : "0 6px 16px rgba(26, 26, 26, 0.14)",
+    background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+    boxShadow: "var(--glass-shadow)",
     outline: "none",
     "&:active": {
       transform: "none",
@@ -170,16 +146,9 @@ export default function SettingsDrawer({
   } as const;
 
   const amenityChipLabelCheckedStyles = {
-    background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(69,126,115,0.45), rgba(69,126,115,0.3))"
-        : "linear-gradient(135deg, rgba(69,126,115,0.35), rgba(69,126,115,0.2))",
-    borderColor:
-      scheme === "dark" ? "rgba(69,126,115,0.55)" : "rgba(69,126,115,0.45)",
-    boxShadow:
-      scheme === "dark"
-        ? "0 8px 20px rgba(69, 126, 115, 0.35)"
-        : "0 8px 18px rgba(69, 126, 115, 0.25)",
+    background: "var(--color-brand-accent-soft)",
+    borderColor: "var(--accent)",
+    boxShadow: "0 8px 20px var(--attention-glow)",
     transform: "none",
   } as const;
 
@@ -193,33 +162,49 @@ export default function SettingsDrawer({
       styles={drawerStyles}
     >
       <Stack gap="md">
-        <Stack gap="xs">
+        <Stack
+          gap="xs"
+          style={
+            highlightLocationBlock
+              ? {
+                  padding: 10,
+                  borderRadius: 14,
+                  border: "1px solid var(--attention-ring)",
+                  boxShadow: "0 0 20px var(--attention-glow)",
+                  background: "var(--color-brand-accent-soft)",
+                }
+              : undefined
+          }
+        >
           <Group justify="space-between" align="center">
             <Text>Место</Text>
             <Text size="sm" c="dimmed">
               {locationLabel}
             </Text>
           </Group>
-          <Group gap="xs" wrap="wrap">
-            {locationOptions.map((option) => (
-              <Button
-                key={option.id}
-                variant="transparent"
-                size="xs"
-                styles={glassButtonStyles(selectedLocationId === option.id)}
-                onClick={() => onSelectLocation(option.id)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </Group>
+          <Select
+            data={locationOptions.map((option) => ({
+              value: option.id,
+              label: option.label,
+            }))}
+            value={selectedLocationId || null}
+            placeholder="Выбрать город"
+            searchable={!isCoarsePointer}
+            nothingFoundMessage="Ничего не найдено"
+            onChange={(value) => {
+              if (!value) return;
+              onSelectLocation(value);
+            }}
+            comboboxProps={{ withinPortal: false }}
+            styles={citySelectStyles}
+          />
           <Button
             variant="light"
             leftSection={<IconMapPin size={16} />}
             onClick={onOpenMapPicker}
             styles={glassButtonStyles(false)}
           >
-            Выбрать на карте
+            Выбрать вручную на карте
           </Button>
         </Stack>
 
@@ -266,14 +251,25 @@ export default function SettingsDrawer({
 
         <Group justify="space-between">
           <Text>{WORK_UI_TEXT.radiusTitle}</Text>
+          {isRadiusLocked && (
+            <Text size="xs" c="dimmed">
+              Фиксирован по городу
+            </Text>
+          )}
           <Group gap="xs">
             {RADIUS_OPTIONS.map((value) => (
               <Button
                 key={value}
                 variant="transparent"
                 size="xs"
-                styles={glassButtonStyles(radiusM === value)}
-                onClick={() => onRadiusChange(value)}
+                styles={glassButtonStyles(
+                  isRadiusLocked ? value === 0 : radiusM === value,
+                )}
+                onClick={() => {
+                  if (isRadiusLocked) return;
+                  onRadiusChange(value);
+                }}
+                disabled={isRadiusLocked}
               >
                 {value === 0
                   ? WORK_UI_TEXT.radiusAll
