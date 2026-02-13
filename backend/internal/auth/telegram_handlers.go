@@ -25,6 +25,10 @@ type telegramStartResponse struct {
 	State string `json:"state"`
 }
 
+type telegramConfigResponse struct {
+	BotUsername string `json:"bot_username"`
+}
+
 type telegramCallbackRequest struct {
 	State     string `json:"state"`
 	ID        int64  `json:"id"`
@@ -34,6 +38,14 @@ type telegramCallbackRequest struct {
 	PhotoURL  string `json:"photo_url"`
 	AuthDate  int64  `json:"auth_date"`
 	Hash      string `json:"hash"`
+}
+
+func (h Handler) TelegramConfig(c *gin.Context) {
+	botUsername := strings.TrimSpace(h.TelegramBotUsername)
+	log.Printf("telegram config requested: bot_username=%q", botUsername)
+	c.JSON(http.StatusOK, telegramConfigResponse{
+		BotUsername: botUsername,
+	})
 }
 
 func (h Handler) TelegramStart(c *gin.Context) {

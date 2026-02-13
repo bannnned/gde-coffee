@@ -44,6 +44,10 @@ export type TelegramStartResponse = {
   state: string;
 };
 
+export type TelegramConfigResponse = {
+  bot_username?: string;
+};
+
 export type TelegramCallbackPayload = {
   state: string;
   id: number;
@@ -136,6 +140,11 @@ export async function telegramStart(
     flow,
   });
   return res.data;
+}
+
+export async function telegramConfig(): Promise<TelegramConfigResponse> {
+  const res = await http.get<TelegramConfigResponse>("/api/auth/telegram/config");
+  return res.data ?? {};
 }
 
 function buildApiUrl(path: string): string {

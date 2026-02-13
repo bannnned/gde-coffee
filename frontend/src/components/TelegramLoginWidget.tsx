@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   telegramCallback,
+  telegramConfig,
   telegramStart,
   type TelegramCallbackPayload,
   type TelegramFlow,
@@ -25,9 +26,6 @@ type TelegramLoginWidgetProps = {
 };
 
 const TELEGRAM_WIDGET_SRC = "https://telegram.org/js/telegram-widget.js?22";
-const TELEGRAM_BOT_USERNAME = (
-  import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? ""
-).trim();
 
 function normalizeTelegramUser(
   raw: TelegramWidgetUser,
@@ -69,14 +67,51 @@ export default function TelegramLoginWidget({
   );
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [botUsername, setBotUsername] = useState("");
+  const [isConfigLoading, setIsConfigLoading] = useState(true);
   const [widgetError, setWidgetError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadConfig = async () => {
+      setIsConfigLoading(true);
+      try {
+        const config = await telegramConfig();
+        if (cancelled) return;
+        const username = String(config?.bot_username ?? "").trim();
+        console.info("[telegram] config bot_username:", username || "(empty)");
+        setBotUsername(username);
+      } catch {
+        if (cancelled) return;
+        console.error("[telegram] failed to load /api/auth/telegram/config");
+        setWidgetError("Не удалось получить настройки Telegram login.");
+      } finally {
+        if (!cancelled) {
+          setIsConfigLoading(false);
+        }
+      }
+    };
+
+    void loadConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    if (!TELEGRAM_BOT_USERNAME) {
-      setWidgetError("Telegram login не настроен: отсутствует VITE_TELEGRAM_BOT_USERNAME");
+    if (isConfigLoading) {
+      return;
+    }
+
+    if (!botUsername) {
+      console.warn("[telegram] bot_username is empty");
+      setWidgetError("Telegram login не настроен: отсутствует TELEGRAM_BOT_USERNAME");
+      container.innerHTML = "";
       return;
     }
 
@@ -126,7 +161,7 @@ export default function TelegramLoginWidget({
     const script = document.createElement("script");
     script.async = true;
     script.src = TELEGRAM_WIDGET_SRC;
-    script.setAttribute("data-telegram-login", TELEGRAM_BOT_USERNAME);
+    script.setAttribute("data-telegram-login", botUsername);
     script.setAttribute("data-size", size);
     script.setAttribute("data-request-access", "write");
     script.setAttribute("data-userpic", "false");
@@ -144,7 +179,7 @@ export default function TelegramLoginWidget({
       delete (window as any)[callbackName];
       container.innerHTML = "";
     };
-  }, [flow, size]);
+  }, [botUsername, flow, isConfigLoading, size]);
 
   return (
     <Box>
@@ -159,6 +194,11 @@ export default function TelegramLoginWidget({
       {isSubmitting && (
         <Text size="xs" c="dimmed" mt={4}>
           Авторизуем через Telegram...
+        </Text>
+      )}
+      {!widgetError && isConfigLoading && (
+        <Text size="xs" c="dimmed" mt={4}>
+          Загружаем Telegram login...
         </Text>
       )}
       {widgetError && (

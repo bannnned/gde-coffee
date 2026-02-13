@@ -432,6 +432,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf(
+		"telegram env: bot_username=%q token_set=%t",
+		strings.TrimSpace(cfg.Auth.TelegramBotUsername),
+		strings.TrimSpace(cfg.Auth.TelegramBotToken) != "",
+	)
 
 	dbURL1 := os.Getenv("DATABASE_URL")
 	dbURL2 := os.Getenv("DATABASE_URL_2")
@@ -570,6 +575,7 @@ func main() {
 	authGroup.GET("/yandex/callback", authHandler.YandexCallback)
 	authGroup.GET("/yandex/link/start", auth.RequireAuth(pool), authHandler.YandexLinkStart)
 	authGroup.GET("/yandex/link/callback", authHandler.YandexLinkCallback)
+	authGroup.GET("/telegram/config", authHandler.TelegramConfig)
 	authGroup.POST("/telegram/start", authHandler.TelegramStart)
 	authGroup.POST("/telegram/callback", authHandler.TelegramCallback)
 	authGroup.POST("/sessions/revoke_all", auth.RequireAuth(pool), authHandler.RevokeAllSessions)
