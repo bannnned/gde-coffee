@@ -55,6 +55,11 @@ The backend serves:
   - body: `{ "content_type": "image/jpeg|image/png|image/webp|image/avif", "size_bytes": 123456 }`
 - `POST /api/cafes/:id/photos/confirm` — confirm uploaded photo and bind it to cafe (requires auth)
   - body: `{ "object_key": "cafes/<cafe_id>/...", "is_cover"?: true, "position"?: 1 }`
+- `GET /api/cafes/:id/photos` — list cafe photos
+- `PATCH /api/cafes/:id/photos/order` — save photos order (requires auth)
+  - body: `{ "photo_ids": ["<id1>", "<id2>", "..."] }`
+- `PATCH /api/cafes/:id/photos/:photoID/cover` — set cover photo (requires auth)
+- `DELETE /api/cafes/:id/photos/:photoID` — delete photo (requires auth)
 
 ### Auth (cookie sessions)
 - `POST /api/auth/register` — create local user + session

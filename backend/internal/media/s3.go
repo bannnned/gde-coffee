@@ -140,6 +140,24 @@ func (s *Service) HeadObject(ctx context.Context, key string) (int64, string, er
 	return sizeBytes, contentType, nil
 }
 
+func (s *Service) DeleteObject(ctx context.Context, key string) error {
+	if !s.Enabled() {
+		return fmt.Errorf("s3 is not enabled")
+	}
+	key = strings.TrimSpace(strings.TrimPrefix(key, "/"))
+	if key == "" {
+		return fmt.Errorf("object key is required")
+	}
+	_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(s.cfg.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("delete object: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) PublicURL(key string) string {
 	key = strings.TrimSpace(strings.TrimPrefix(key, "/"))
 	if key == "" {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -54,6 +55,14 @@ type cafePhotoConfirmRequest struct {
 
 type cafePhotoConfirmResponse struct {
 	Photo model.CafePhotoResponse `json:"photo"`
+}
+
+type cafePhotoListResponse struct {
+	Photos []model.CafePhotoResponse `json:"photos"`
+}
+
+type cafePhotoReorderRequest struct {
+	PhotoIDs []string `json:"photo_ids"`
 }
 
 func newCafePhotoAPI(pool *pgxpool.Pool, s3 *media.Service, cfg config.MediaConfig) *cafePhotoAPI {
@@ -271,6 +280,394 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 	})
 }
 
+func (h *cafePhotoAPI) List(c *gin.Context) {
+	cafeID := strings.TrimSpace(c.Param("id"))
+	if cafeID == "" {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+		if err == pgx.ErrNoRows {
+			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			return
+		}
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	photos, err := listCafePhotos(ctx, h.pool, cafeID, h.cfg)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, cafePhotoListResponse{Photos: photos})
+}
+
+func (h *cafePhotoAPI) SetCover(c *gin.Context) {
+	cafeID := strings.TrimSpace(c.Param("id"))
+	photoID := strings.TrimSpace(c.Param("photoID"))
+	if cafeID == "" || photoID == "" {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+	defer cancel()
+
+	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+		if err == pgx.ErrNoRows {
+			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			return
+		}
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	tx, err := h.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+	defer func() {
+		_ = tx.Rollback(context.Background())
+	}()
+
+	if _, err := tx.Exec(
+		ctx,
+		`update cafe_photos set is_cover = false where cafe_id::text = $1 and is_cover = true`,
+		cafeID,
+	); err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	result, err := tx.Exec(
+		ctx,
+		`update cafe_photos set is_cover = true where cafe_id::text = $1 and id::text = $2`,
+		cafeID,
+		photoID,
+	)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+	if result.RowsAffected() == 0 {
+		respondError(c, http.StatusNotFound, "not_found", "Фото не найдено.", nil)
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	photos, err := listCafePhotos(ctx, h.pool, cafeID, h.cfg)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, cafePhotoListResponse{Photos: photos})
+}
+
+func (h *cafePhotoAPI) Reorder(c *gin.Context) {
+	cafeID := strings.TrimSpace(c.Param("id"))
+	if cafeID == "" {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		return
+	}
+
+	var req cafePhotoReorderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		return
+	}
+	if len(req.PhotoIDs) == 0 {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids не должен быть пустым.", nil)
+		return
+	}
+
+	seen := make(map[string]struct{}, len(req.PhotoIDs))
+	for i := range req.PhotoIDs {
+		photoID := strings.TrimSpace(req.PhotoIDs[i])
+		if photoID == "" {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит пустой id.", nil)
+			return
+		}
+		if _, ok := seen[photoID]; ok {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит дубли.", nil)
+			return
+		}
+		seen[photoID] = struct{}{}
+		req.PhotoIDs[i] = photoID
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+	defer cancel()
+
+	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+		if err == pgx.ErrNoRows {
+			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			return
+		}
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	tx, err := h.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+	defer func() {
+		_ = tx.Rollback(context.Background())
+	}()
+
+	rows, err := tx.Query(
+		ctx,
+		`select id::text from cafe_photos where cafe_id::text = $1 order by position asc, created_at asc`,
+		cafeID,
+	)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+	existingIDs := make([]string, 0, len(req.PhotoIDs))
+	for rows.Next() {
+		var photoID string
+		if err := rows.Scan(&photoID); err != nil {
+			rows.Close()
+			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			return
+		}
+		existingIDs = append(existingIDs, photoID)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+	rows.Close()
+
+	if len(existingIDs) != len(req.PhotoIDs) {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids должен содержать все фото кофейни.", nil)
+		return
+	}
+	existingSet := make(map[string]struct{}, len(existingIDs))
+	for _, photoID := range existingIDs {
+		existingSet[photoID] = struct{}{}
+	}
+	for _, photoID := range req.PhotoIDs {
+		if _, ok := existingSet[photoID]; !ok {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит чужой или несуществующий id.", nil)
+			return
+		}
+	}
+
+	for idx, photoID := range req.PhotoIDs {
+		if _, err := tx.Exec(
+			ctx,
+			`update cafe_photos set position = $1 where cafe_id::text = $2 and id::text = $3`,
+			idx+1,
+			cafeID,
+			photoID,
+		); err != nil {
+			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			return
+		}
+	}
+
+	var hasCover bool
+	if err := tx.QueryRow(
+		ctx,
+		`select exists(select 1 from cafe_photos where cafe_id::text = $1 and is_cover = true)`,
+		cafeID,
+	).Scan(&hasCover); err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+	if !hasCover && len(req.PhotoIDs) > 0 {
+		if _, err := tx.Exec(
+			ctx,
+			`update cafe_photos set is_cover = true where cafe_id::text = $1 and id::text = $2`,
+			cafeID,
+			req.PhotoIDs[0],
+		); err != nil {
+			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			return
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	photos, err := listCafePhotos(ctx, h.pool, cafeID, h.cfg)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, cafePhotoListResponse{Photos: photos})
+}
+
+func (h *cafePhotoAPI) Delete(c *gin.Context) {
+	cafeID := strings.TrimSpace(c.Param("id"))
+	photoID := strings.TrimSpace(c.Param("photoID"))
+	if cafeID == "" || photoID == "" {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+	defer cancel()
+
+	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+		if err == pgx.ErrNoRows {
+			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			return
+		}
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	tx, err := h.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+	defer func() {
+		_ = tx.Rollback(context.Background())
+	}()
+
+	var objectKey string
+	var wasCover bool
+	err = tx.QueryRow(
+		ctx,
+		`select object_key, is_cover
+		 from cafe_photos
+		 where cafe_id::text = $1 and id::text = $2
+		 for update`,
+		cafeID,
+		photoID,
+	).Scan(&objectKey, &wasCover)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			respondError(c, http.StatusNotFound, "not_found", "Фото не найдено.", nil)
+			return
+		}
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	if _, err := tx.Exec(
+		ctx,
+		`delete from cafe_photos where cafe_id::text = $1 and id::text = $2`,
+		cafeID,
+		photoID,
+	); err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	if wasCover {
+		var replacementID string
+		err := tx.QueryRow(
+			ctx,
+			`select id::text
+			 from cafe_photos
+			 where cafe_id::text = $1
+			 order by position asc, created_at asc
+			 limit 1`,
+			cafeID,
+		).Scan(&replacementID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			return
+		}
+		if err == nil {
+			if _, err := tx.Exec(
+				ctx,
+				`update cafe_photos set is_cover = true where cafe_id::text = $1 and id::text = $2`,
+				cafeID,
+				replacementID,
+			); err != nil {
+				respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+				return
+			}
+		}
+	}
+
+	rows, err := tx.Query(
+		ctx,
+		`select id::text
+		 from cafe_photos
+		 where cafe_id::text = $1
+		 order by is_cover desc, position asc, created_at asc`,
+		cafeID,
+	)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+	remainingIDs := make([]string, 0, 12)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			return
+		}
+		remainingIDs = append(remainingIDs, id)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+	rows.Close()
+
+	for idx, id := range remainingIDs {
+		if _, err := tx.Exec(
+			ctx,
+			`update cafe_photos set position = $1 where cafe_id::text = $2 and id::text = $3`,
+			idx+1,
+			cafeID,
+			id,
+		); err != nil {
+			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			return
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	if h.s3 != nil && h.s3.Enabled() {
+		deleteCtx, deleteCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer deleteCancel()
+		if err := h.s3.DeleteObject(deleteCtx, objectKey); err != nil {
+			log.Printf("photo delete warning: failed to delete object %q from S3: %v", objectKey, err)
+		}
+	}
+
+	photos, err := listCafePhotos(ctx, h.pool, cafeID, h.cfg)
+	if err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, cafePhotoListResponse{Photos: photos})
+}
+
 func ensureCafeExists(ctx context.Context, pool *pgxpool.Pool, cafeID string) error {
 	var id string
 	return pool.QueryRow(ctx, `select id::text from cafes where id::text = $1`, cafeID).Scan(&id)
@@ -350,6 +747,54 @@ func attachCafePhotos(
 		cafes[i].CoverPhotoURL = &cover
 	}
 	return nil
+}
+
+type cafePhotoRowsQuerier interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+func listCafePhotos(
+	ctx context.Context,
+	q cafePhotoRowsQuerier,
+	cafeID string,
+	mediaCfg config.MediaConfig,
+) ([]model.CafePhotoResponse, error) {
+	rows, err := q.Query(
+		ctx,
+		`select id::text, object_key, position, is_cover
+		 from cafe_photos
+		 where cafe_id::text = $1
+		 order by is_cover desc, position asc, created_at asc`,
+		cafeID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	photos := make([]model.CafePhotoResponse, 0, 8)
+	for rows.Next() {
+		var (
+			photoID   string
+			objectKey string
+			position  int
+			isCover   bool
+		)
+		if err := rows.Scan(&photoID, &objectKey, &position, &isCover); err != nil {
+			return nil, err
+		}
+		photos = append(photos, model.CafePhotoResponse{
+			ID:       photoID,
+			URL:      buildCafePhotoURL(mediaCfg, objectKey),
+			IsCover:  isCover,
+			Position: position,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return photos, nil
 }
 
 func buildCafePhotoURL(mediaCfg config.MediaConfig, objectKey string) string {

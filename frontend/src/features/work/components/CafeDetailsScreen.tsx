@@ -1,5 +1,6 @@
 import {
   Badge,
+  Button,
   Group,
   Modal,
   Paper,
@@ -17,6 +18,7 @@ type CafeDetailsScreenProps = {
   cafe: Cafe | null;
   onClose: () => void;
   showDistance?: boolean;
+  onManagePhotos?: () => void;
 };
 
 export default function CafeDetailsScreen({
@@ -24,6 +26,7 @@ export default function CafeDetailsScreen({
   cafe,
   onClose,
   showDistance = true,
+  onManagePhotos,
 }: CafeDetailsScreenProps) {
   const theme = useMantineTheme();
   const photos = cafe?.photos ?? [];
@@ -150,6 +153,15 @@ export default function CafeDetailsScreen({
                 </Badge>
               ))}
             </Group>
+          )}
+          {onManagePhotos && (
+            <Button
+              mt="xs"
+              variant="light"
+              onClick={onManagePhotos}
+            >
+              Управлять фото
+            </Button>
           )}
         </Stack>
       </Paper>

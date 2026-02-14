@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, Group, Paper, Select, Stack, Text } from "@mantine/core";
 import { IconMapPinFilled } from "@tabler/icons-react";
 
+import { useAuth } from "../components/AuthGate";
 import Map from "../components/Map";
 import type { Amenity, Cafe } from "../types";
 import {
@@ -19,6 +20,7 @@ import EmptyStateCard from "../features/work/components/EmptyStateCard";
 import FiltersBar from "../features/work/components/FiltersBar";
 import FloatingControls from "../features/work/components/FloatingControls";
 import SettingsDrawer from "../features/work/components/SettingsDrawer";
+import CafePhotoAdminModal from "../features/work/components/CafePhotoAdminModal";
 import useCafeSelection from "../features/work/hooks/useCafeSelection";
 import useCafes from "../features/work/hooks/useCafes";
 import useGeolocation from "../features/work/hooks/useGeolocation";
@@ -45,9 +47,11 @@ type LocationChoice =
   | { type: "manual"; center: [number, number] };
 
 export default function WorkScreen() {
+  const { user, openAuthModal } = useAuth();
   const [radiusM, setRadiusM] = useState<number>(DEFAULT_RADIUS_M);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [photoAdminOpen, setPhotoAdminOpen] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>(
     DEFAULT_AMENITIES,
   );
@@ -251,6 +255,10 @@ export default function WorkScreen() {
     if (!selectedCafe) setDetailsOpen(false);
   }, [selectedCafe]);
 
+  useEffect(() => {
+    if (!selectedCafe) setPhotoAdminOpen(false);
+  }, [selectedCafe]);
+
   const handleSelectLocation = (id: string) => {
     const option = LOCATION_OPTIONS.find((item) => item.id === id);
     if (!option) return;
@@ -318,6 +326,19 @@ export default function WorkScreen() {
       "noopener,noreferrer",
     );
   }
+
+  const handleOpenPhotoAdmin = () => {
+    if (!selectedCafe) return;
+    if (!user) {
+      openAuthModal("login");
+      return;
+    }
+    setPhotoAdminOpen(true);
+  };
+
+  const handlePhotosChanged = () => {
+    void cafesQuery.refetch();
+  };
 
   return (
     <Box
@@ -495,6 +516,16 @@ export default function WorkScreen() {
         cafe={selectedCafe ?? null}
         onClose={() => setDetailsOpen(false)}
         showDistance={!isCityOnlyMode}
+        onManagePhotos={handleOpenPhotoAdmin}
+      />
+
+      <CafePhotoAdminModal
+        opened={photoAdminOpen}
+        cafeId={selectedCafe?.id ?? null}
+        cafeName={selectedCafe?.name ?? ""}
+        initialPhotos={selectedCafe?.photos ?? []}
+        onClose={() => setPhotoAdminOpen(false)}
+        onPhotosChanged={handlePhotosChanged}
       />
     </Box>
   );

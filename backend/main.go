@@ -541,8 +541,12 @@ func main() {
 		log.Fatalf("s3 init failed: %v", err)
 	}
 	cafePhotoAPI := newCafePhotoAPI(pool, mediaService, cfg.Media)
+	api.GET("/cafes/:id/photos", cafePhotoAPI.List)
 	api.POST("/cafes/:id/photos/presign", auth.RequireAuth(pool), cafePhotoAPI.Presign)
 	api.POST("/cafes/:id/photos/confirm", auth.RequireAuth(pool), cafePhotoAPI.Confirm)
+	api.PATCH("/cafes/:id/photos/order", auth.RequireAuth(pool), cafePhotoAPI.Reorder)
+	api.PATCH("/cafes/:id/photos/:photoID/cover", auth.RequireAuth(pool), cafePhotoAPI.SetCover)
+	api.DELETE("/cafes/:id/photos/:photoID", auth.RequireAuth(pool), cafePhotoAPI.Delete)
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
