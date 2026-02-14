@@ -333,6 +333,7 @@ export default function WorkScreen() {
       openAuthModal("login");
       return;
     }
+    setDetailsOpen(false);
     setPhotoAdminOpen(true);
   };
 

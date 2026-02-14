@@ -283,6 +283,7 @@ export default function CafePhotoAdminModal({
       onClose={onClose}
       fullScreen
       withCloseButton
+      zIndex={420}
       title={`Фото кофейни: ${cafeName}`}
       styles={{
         content: {

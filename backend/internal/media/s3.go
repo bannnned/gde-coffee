@@ -98,7 +98,15 @@ func (s *Service) PresignPutObject(
 
 	headers := make(map[string]string, len(req.SignedHeader))
 	for k, values := range req.SignedHeader {
-		if strings.EqualFold(k, "host") {
+		lower := strings.ToLower(strings.TrimSpace(k))
+		if lower == "" {
+			continue
+		}
+		if lower == "host" ||
+			lower == "content-length" ||
+			lower == "user-agent" ||
+			lower == "accept-encoding" ||
+			lower == "connection" {
 			continue
 		}
 		if len(values) == 0 {
