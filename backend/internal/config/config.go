@@ -16,6 +16,7 @@ type Config struct {
 	Limits    LimitsConfig
 	Auth      AuthConfig
 	Mailer    MailerConfig
+	Media     MediaConfig
 }
 
 type CORSConfig struct {
@@ -59,6 +60,19 @@ type MailerConfig struct {
 	From    string
 	ReplyTo string
 	Timeout time.Duration
+}
+
+type MediaConfig struct {
+	S3Enabled         bool
+	S3Endpoint        string
+	S3Region          string
+	S3Bucket          string
+	S3AccessKeyID     string
+	S3SecretAccessKey string
+	S3PublicBaseURL   string
+	S3UsePathStyle    bool
+	S3PresignTTL      time.Duration
+	S3MaxUploadBytes  int64
 }
 
 func Load() (Config, error) {
@@ -133,6 +147,23 @@ func Load() (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	s3EnabledDefault := strings.TrimSpace(os.Getenv("S3_BUCKET")) != ""
+	s3Enabled, err := getEnvBool("S3_ENABLED", s3EnabledDefault)
+	if err != nil {
+		return cfg, err
+	}
+	s3UsePathStyle, err := getEnvBool("S3_USE_PATH_STYLE", true)
+	if err != nil {
+		return cfg, err
+	}
+	s3PresignTTL, err := getEnvDuration("S3_PRESIGN_TTL", 15*time.Minute)
+	if err != nil {
+		return cfg, err
+	}
+	s3MaxUploadBytes, err := getEnvInt("S3_MAX_UPLOAD_BYTES", 8*1024*1024)
+	if err != nil {
+		return cfg, err
+	}
 
 	cfg.CORS = CORSConfig{
 		AllowOrigins:     splitEnvList("CORS_ALLOW_ORIGINS", []string{"http://localhost:3001", "http://localhost:5173"}),
@@ -183,6 +214,18 @@ func Load() (Config, error) {
 		ReplyTo: getEnvTrim("MAIL_REPLY_TO", ""),
 		Timeout: mailerTimeout,
 	}
+	cfg.Media = MediaConfig{
+		S3Enabled:         s3Enabled,
+		S3Endpoint:        getEnvTrim("S3_ENDPOINT", ""),
+		S3Region:          getEnvTrim("S3_REGION", "ru-1"),
+		S3Bucket:          getEnvTrim("S3_BUCKET", ""),
+		S3AccessKeyID:     getEnvTrim("S3_ACCESS_KEY_ID", ""),
+		S3SecretAccessKey: getEnvTrim("S3_SECRET_ACCESS_KEY", ""),
+		S3PublicBaseURL:   getEnvTrim("S3_PUBLIC_BASE_URL", ""),
+		S3UsePathStyle:    s3UsePathStyle,
+		S3PresignTTL:      s3PresignTTL,
+		S3MaxUploadBytes:  int64(s3MaxUploadBytes),
+	}
 
 	log.Printf("config: port=%q public_dir=%q cors_origins=%v cookie_secure=%v sliding_hours=%d login_rate_limit=%d login_rate_window=%s",
 		cfg.Port,
@@ -226,6 +269,26 @@ func Load() (Config, error) {
 	}
 	if cfg.Mailer.Port <= 0 {
 		return cfg, fmt.Errorf("SMTP_PORT must be > 0")
+	}
+	if cfg.Media.S3Enabled {
+		if cfg.Media.S3Bucket == "" {
+			return cfg, fmt.Errorf("S3_BUCKET must not be empty when S3 is enabled")
+		}
+		if cfg.Media.S3Endpoint == "" {
+			return cfg, fmt.Errorf("S3_ENDPOINT must not be empty when S3 is enabled")
+		}
+		if cfg.Media.S3Region == "" {
+			return cfg, fmt.Errorf("S3_REGION must not be empty when S3 is enabled")
+		}
+		if cfg.Media.S3AccessKeyID == "" || cfg.Media.S3SecretAccessKey == "" {
+			return cfg, fmt.Errorf("S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are required when S3 is enabled")
+		}
+		if cfg.Media.S3PresignTTL <= 0 {
+			return cfg, fmt.Errorf("S3_PRESIGN_TTL must be > 0")
+		}
+		if cfg.Media.S3MaxUploadBytes <= 0 {
+			return cfg, fmt.Errorf("S3_MAX_UPLOAD_BYTES must be > 0")
+		}
 	}
 
 	return cfg, nil

@@ -17,4 +17,13 @@ export type Cafe = {
   amenities: Amenity[];
   distance_m: number;
   work_score: number;
+  cover_photo_url?: string | null;
+  photos?: CafePhoto[];
+};
+
+export type CafePhoto = {
+  id: string;
+  url: string;
+  is_cover: boolean;
+  position: number;
 };

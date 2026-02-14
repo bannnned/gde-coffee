@@ -26,6 +26,8 @@ export default function CafeDetailsScreen({
   showDistance = true,
 }: CafeDetailsScreenProps) {
   const theme = useMantineTheme();
+  const photos = cafe?.photos ?? [];
+  const coverPhotoUrl = cafe?.cover_photo_url ?? photos[0]?.url;
 
   if (!cafe) return null;
 
@@ -83,6 +85,59 @@ export default function CafeDetailsScreen({
     >
       <Paper withBorder radius="lg" p="md" style={cardStyles}>
         <Stack gap="xs">
+          {coverPhotoUrl && (
+            <Paper
+              withBorder
+              radius="md"
+              style={{
+                overflow: "hidden",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <img
+                src={coverPhotoUrl}
+                alt={`Фото: ${cafe.name}`}
+                style={{
+                  width: "100%",
+                  maxHeight: 260,
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            </Paper>
+          )}
+          {photos.length > 1 && (
+            <Group wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
+              {photos.map((photo) => (
+                <Paper
+                  key={photo.id}
+                  withBorder
+                  radius="sm"
+                  style={{
+                    width: 96,
+                    minWidth: 96,
+                    height: 72,
+                    overflow: "hidden",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                  }}
+                >
+                  <img
+                    src={photo.url}
+                    alt={`Фото: ${cafe.name}`}
+                    loading="lazy"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </Paper>
+              ))}
+            </Group>
+          )}
           <Text c="dimmed" size="sm">
             {cafe.address}
           </Text>

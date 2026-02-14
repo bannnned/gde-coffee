@@ -51,6 +51,10 @@ The backend serves:
   - Required query params: `lat`, `lng`, `radius_m`
   - Optional: `sort` (`distance` or `work`), `limit`, `amenities` (comma-separated)
   - Constraints: `lat` in `[-90,90]`, `lng` in `[-180,180]`, `radius_m <= 50000`
+- `POST /api/cafes/:id/photos/presign` — get S3 presigned upload URL (requires auth)
+  - body: `{ "content_type": "image/jpeg|image/png|image/webp|image/avif", "size_bytes": 123456 }`
+- `POST /api/cafes/:id/photos/confirm` — confirm uploaded photo and bind it to cafe (requires auth)
+  - body: `{ "object_key": "cafes/<cafe_id>/...", "is_cover"?: true, "position"?: 1 }`
 
 ### Auth (cookie sessions)
 - `POST /api/auth/register` — create local user + session
@@ -109,6 +113,16 @@ Common env vars (backend):
 - `YANDEX_OAUTH_SCOPE` (default `login:email login:info`)
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_BOT_USERNAME`
+- `S3_ENABLED` (`true/false`, auto-enabled if `S3_BUCKET` is set)
+- `S3_ENDPOINT` (e.g. `s3.twcstorage.ru`)
+- `S3_REGION` (e.g. `ru-1`)
+- `S3_BUCKET`
+- `S3_ACCESS_KEY_ID`
+- `S3_SECRET_ACCESS_KEY`
+- `S3_PUBLIC_BASE_URL` (e.g. `https://img.gde-kofe.ru`)
+- `S3_USE_PATH_STYLE` (`true/false`, default `true`)
+- `S3_PRESIGN_TTL` (default `15m`)
+- `S3_MAX_UPLOAD_BYTES` (default `8388608`)
 CORS:
 - `CORS_ALLOW_ORIGINS`
 - `CORS_ALLOW_METHODS`
@@ -118,6 +132,7 @@ CORS:
 
 ## Migrations
 SQL migrations live in `backend/migrations/`.
+They are applied automatically on backend startup (table `schema_migrations`).
 
 Current:
 - `000001_init` (cafes)
@@ -127,7 +142,9 @@ Current:
 - `000005_postgis` (geography column + GiST index)
 - `000006_oauth_states` (OAuth state storage)
 - `000007_oauth_state_redirect` (stores redirect_uri for OAuth state)
-- 00008_users_email_nullable (allow oauth users without email)
+- `000008_users_email_nullable` (allow oauth users without email)
+- `000009_session_version` (session invalidation versioning)
+- `000010_cafe_photos` (cafe images metadata for S3 object keys)
 
 ## Notes
 - Sessions are stored server-side in Postgres with HttpOnly cookies.

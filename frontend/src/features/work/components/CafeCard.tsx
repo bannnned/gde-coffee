@@ -31,6 +31,7 @@ export default function CafeCard({
   showRoutes = true,
 }: CafeCardProps) {
   const clickStartRef = useRef<{ x: number; y: number } | null>(null);
+  const coverPhotoUrl = cafe.cover_photo_url ?? cafe.photos?.[0]?.url;
 
   const cardStyles = {
     zIndex: 1,
@@ -105,6 +106,30 @@ export default function CafeCard({
       onPointerCancel={handlePointerCancel}
       onKeyDown={handleKeyDown}
     >
+      {coverPhotoUrl && (
+        <Box
+          mb="sm"
+          style={{
+            height: 126,
+            borderRadius: 12,
+            overflow: "hidden",
+            border: "1px solid var(--border)",
+            background: "var(--surface)",
+          }}
+        >
+          <img
+            src={coverPhotoUrl}
+            alt={`Фото: ${cafe.name}`}
+            loading="lazy"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        </Box>
+      )}
       <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
         <Box style={{ minWidth: 0, flex: 1 }}>
           <Text fw={700} c="text" size="md" lineClamp={1} title={cafe.name}>

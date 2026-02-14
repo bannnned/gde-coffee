@@ -21,7 +21,9 @@ import (
 	"backend/internal/auth"
 	"backend/internal/config"
 	"backend/internal/mailer"
+	"backend/internal/media"
 	"backend/internal/model"
+	dbmigrations "backend/migrations"
 )
 
 func connectDB(dbURL string) (*pgxpool.Pool, error) {
@@ -156,6 +158,10 @@ LIMIT $5;`
 		if limit > 0 && len(out) > limit {
 			out = out[:limit]
 		}
+	}
+
+	if err := attachCafePhotos(ctx, pool, out, cfg.Media); err != nil {
+		return nil, err
 	}
 
 	return out, nil
@@ -447,10 +453,13 @@ func main() {
 	}
 
 	var pool *pgxpool.Pool
+	selectedDBURL := ""
 	if dbURL1 != "" {
 		pool, err = connectDB(dbURL1)
 		if err != nil {
 			log.Printf("primary db connect failed: %v", err)
+		} else {
+			selectedDBURL = dbURL1
 		}
 	}
 
@@ -458,6 +467,8 @@ func main() {
 		pool, err = connectDB(dbURL2)
 		if err != nil {
 			log.Printf("secondary db connect failed: %v", err)
+		} else {
+			selectedDBURL = dbURL2
 		}
 	}
 
@@ -465,6 +476,8 @@ func main() {
 		pool, err = connectDB(dbURL3)
 		if err != nil {
 			log.Printf("tertiary db connect failed: %v", err)
+		} else {
+			selectedDBURL = dbURL3
 		}
 	}
 
@@ -472,6 +485,11 @@ func main() {
 		log.Fatal("db connect failed for DATABASE_URL, DATABASE_URL_2, and DATABASE_URL_3")
 	}
 	defer pool.Close()
+
+	if err := dbmigrations.Run(selectedDBURL); err != nil {
+		log.Fatalf("db migrations failed: %v", err)
+	}
+	log.Println("db migrations applied")
 
 	r := gin.Default()
 
@@ -508,6 +526,23 @@ func main() {
 
 	api := r.Group("/api")
 	api.GET("/cafes", getCafes(cfg, pool))
+	mediaService, err := media.NewS3Service(context.Background(), media.Config{
+		Enabled:         cfg.Media.S3Enabled,
+		Endpoint:        cfg.Media.S3Endpoint,
+		Region:          cfg.Media.S3Region,
+		Bucket:          cfg.Media.S3Bucket,
+		AccessKeyID:     cfg.Media.S3AccessKeyID,
+		SecretAccessKey: cfg.Media.S3SecretAccessKey,
+		PublicBaseURL:   cfg.Media.S3PublicBaseURL,
+		UsePathStyle:    cfg.Media.S3UsePathStyle,
+		PresignTTL:      cfg.Media.S3PresignTTL,
+	})
+	if err != nil {
+		log.Fatalf("s3 init failed: %v", err)
+	}
+	cafePhotoAPI := newCafePhotoAPI(pool, mediaService, cfg.Media)
+	api.POST("/cafes/:id/photos/presign", auth.RequireAuth(pool), cafePhotoAPI.Presign)
+	api.POST("/cafes/:id/photos/confirm", auth.RequireAuth(pool), cafePhotoAPI.Confirm)
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
