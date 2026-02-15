@@ -18,8 +18,8 @@ import {
 } from "react";
 
 import { getCafePhotos } from "../../../api/cafePhotos";
-import type { Cafe } from "../types";
-import { AMENITY_LABELS, WORK_UI_TEXT } from "../constants";
+import type { Cafe } from "../../../entities/cafe/model/types";
+import { AMENITY_LABELS, DISCOVERY_UI_TEXT } from "../constants";
 import { formatDistance } from "../utils";
 
 const AUTO_SLIDE_MS = 4000;
@@ -309,7 +309,7 @@ export default function CafeCard({
                 onOpen2gis(cafe);
               }}
             >
-              {WORK_UI_TEXT.route2gis}
+              {DISCOVERY_UI_TEXT.route2gis}
             </Button>
             <Button
               size="xs"
@@ -319,7 +319,7 @@ export default function CafeCard({
                 onOpenYandex(cafe);
               }}
             >
-              {WORK_UI_TEXT.routeYandex}
+              {DISCOVERY_UI_TEXT.routeYandex}
             </Button>
           </Stack>
         )}

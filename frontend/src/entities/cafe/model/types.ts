@@ -1,4 +1,4 @@
-﻿export type Amenity =
+export type Amenity =
   | "wifi"
   | "power"
   | "quiet"
@@ -7,6 +7,16 @@
   | "robusta"
   | "arabica"
   | "vortex";
+
+export type CafePhotoKind = "cafe" | "menu";
+
+export type CafePhoto = {
+  id: string;
+  url: string;
+  kind: CafePhotoKind;
+  is_cover: boolean;
+  position: number;
+};
 
 export type Cafe = {
   id: string;
@@ -20,14 +30,4 @@ export type Cafe = {
   is_favorite: boolean;
   cover_photo_url?: string | null;
   photos?: CafePhoto[];
-};
-
-export type CafePhotoKind = "cafe" | "menu";
-
-export type CafePhoto = {
-  id: string;
-  url: string;
-  kind: CafePhotoKind;
-  is_cover: boolean;
-  position: number;
 };

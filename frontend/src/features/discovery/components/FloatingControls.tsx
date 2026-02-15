@@ -1,6 +1,6 @@
 import { ActionIcon, Box } from "@mantine/core";
 
-import { WORK_ICONS, WORK_UI_TEXT } from "../constants";
+import { DISCOVERY_ICONS, DISCOVERY_UI_TEXT } from "../constants";
 import classes from "./FloatingControls.module.css";
 
 type FloatingControlsProps = {
@@ -22,7 +22,7 @@ export default function FloatingControls({
         className={`glass-action glass-action--square ${
           highlight ? classes.attentionButton : ""
         }`}
-        aria-label={WORK_UI_TEXT.locateAria}
+        aria-label={DISCOVERY_UI_TEXT.locateAria}
         onClick={onLocate}
         loading={isLocating}
         disabled={isLocating}
@@ -39,7 +39,7 @@ export default function FloatingControls({
           },
         }}
       >
-        <WORK_ICONS.locate size={18} />
+        <DISCOVERY_ICONS.locate size={18} />
       </ActionIcon>
     </Box>
   );

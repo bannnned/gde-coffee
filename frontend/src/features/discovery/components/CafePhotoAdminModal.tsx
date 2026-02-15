@@ -31,7 +31,7 @@ import {
   setCafePhotoCover,
   uploadCafePhotoByPresignedUrl,
 } from "../../../api/cafePhotos";
-import type { CafePhoto, CafePhotoKind } from "../types";
+import type { CafePhoto, CafePhotoKind } from "../../../entities/cafe/model/types";
 
 type CafePhotoAdminModalProps = {
   opened: boolean;

@@ -22,11 +22,15 @@ import {
   IconHeartFilled,
   IconLock,
 } from "@tabler/icons-react";
-import { getCafePhotos } from "../../../api/cafePhotos";
+import { getCafePhotos } from "../../../../api/cafePhotos";
 
-import type { Cafe, CafePhoto, CafePhotoKind } from "../types";
-import { AMENITY_LABELS } from "../constants";
-import { formatDistance } from "../utils";
+import type {
+  Cafe,
+  CafePhoto,
+  CafePhotoKind,
+} from "../../../../entities/cafe/model/types";
+import { AMENITY_LABELS } from "../../constants";
+import { formatDistance } from "../../utils";
 
 type CafeDetailsScreenProps = {
   opened: boolean;

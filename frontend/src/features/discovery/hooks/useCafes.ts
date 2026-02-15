@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getCafes } from "../../../api/cafes";
-import type { Amenity } from "../types";
+import type { Amenity } from "../../../entities/cafe/model/types";
 
 // Map moves can fire rapidly; debounce before hitting the API.
 const QUERY_DEBOUNCE_MS = 400;

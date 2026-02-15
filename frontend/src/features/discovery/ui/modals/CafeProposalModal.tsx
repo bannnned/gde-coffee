@@ -15,13 +15,13 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconMapPinFilled, IconPhotoPlus, IconTrash } from "@tabler/icons-react";
 
-import Map from "../../../components/Map";
-import { uploadCafePhotoByPresignedUrl } from "../../../api/cafePhotos";
-import { geocodeAddress } from "../../../api/geocode";
+import Map from "../../../../components/Map";
+import { uploadCafePhotoByPresignedUrl } from "../../../../api/cafePhotos";
+import { geocodeAddress } from "../../../../api/geocode";
 import {
   presignSubmissionPhotoUpload,
   submitCafeCreate,
-} from "../../../api/submissions";
+} from "../../../../api/submissions";
 
 type CafeProposalModalProps = {
   opened: boolean;

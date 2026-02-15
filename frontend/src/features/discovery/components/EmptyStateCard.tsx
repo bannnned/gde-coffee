@@ -10,7 +10,7 @@ import {
   IconMapPinOff,
 } from "@tabler/icons-react";
 
-import { WORK_UI_TEXT } from "../constants";
+import { DISCOVERY_UI_TEXT } from "../constants";
 
 type EmptyState = "no-results" | "no-geo" | "error";
 
@@ -35,24 +35,24 @@ export default function EmptyStateCard({
     isError || emptyState === "error"
       ? {
           icon: IconAlertCircle,
-          title: WORK_UI_TEXT.emptyErrorTitle,
-          subtitle: WORK_UI_TEXT.emptyErrorSubtitle,
-          actionLabel: WORK_UI_TEXT.retry,
+          title: DISCOVERY_UI_TEXT.emptyErrorTitle,
+          subtitle: DISCOVERY_UI_TEXT.emptyErrorSubtitle,
+          actionLabel: DISCOVERY_UI_TEXT.retry,
           onAction: onRetry,
         }
         : emptyState === "no-geo"
         ? {
             icon: IconMapPinOff,
-            title: WORK_UI_TEXT.emptyNoGeoTitle,
-            subtitle: WORK_UI_TEXT.emptyNoGeoSubtitle,
-            actionLabel: WORK_UI_TEXT.locate,
+            title: DISCOVERY_UI_TEXT.emptyNoGeoTitle,
+            subtitle: DISCOVERY_UI_TEXT.emptyNoGeoSubtitle,
+            actionLabel: DISCOVERY_UI_TEXT.locate,
             onAction: onLocate,
           }
         : {
             icon: null,
-            title: WORK_UI_TEXT.emptyTitle,
-            subtitle: WORK_UI_TEXT.emptySubtitle,
-            actionLabel: WORK_UI_TEXT.resetFilters,
+            title: DISCOVERY_UI_TEXT.emptyTitle,
+            subtitle: DISCOVERY_UI_TEXT.emptySubtitle,
+            actionLabel: DISCOVERY_UI_TEXT.resetFilters,
             onAction: onResetFilters,
           };
 

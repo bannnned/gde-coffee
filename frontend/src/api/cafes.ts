@@ -1,4 +1,4 @@
-﻿import type { Amenity, Cafe } from "../types";
+import type { Amenity, Cafe } from "../entities/cafe/model/types";
 import { http } from "./http";
 
 export type GetCafesParams = {

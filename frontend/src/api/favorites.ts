@@ -1,4 +1,4 @@
-import type { Cafe } from "../features/work/types";
+import type { Cafe } from "../entities/cafe/model/types";
 import { http } from "./http";
 
 type FavoriteStatusResponse = {

@@ -11,8 +11,8 @@ import {
 import { useMediaQuery } from "@mantine/hooks";
 import { IconMapPin, IconPlus } from "@tabler/icons-react";
 
-import type { Amenity } from "../types";
-import { AMENITY_LABELS, WORK_UI_TEXT } from "../constants";
+import type { Amenity } from "../../../../entities/cafe/model/types";
+import { AMENITY_LABELS, DISCOVERY_UI_TEXT } from "../../constants";
 
 type LocationOption = {
   id: string;
@@ -158,7 +158,7 @@ export default function SettingsDrawer({
       onClose={onClose}
       position="bottom"
       size="sm"
-      title={WORK_UI_TEXT.settingsAria}
+      title={DISCOVERY_UI_TEXT.settingsAria}
       styles={drawerStyles}
     >
       <Stack gap="md">
@@ -221,7 +221,7 @@ export default function SettingsDrawer({
         </Stack>
 
         <Stack gap="xs">
-          <Text>{WORK_UI_TEXT.filtersTitle}</Text>
+          <Text>{DISCOVERY_UI_TEXT.filtersTitle}</Text>
           <Chip.Group
             multiple
             value={selectedAmenities}
@@ -262,7 +262,7 @@ export default function SettingsDrawer({
         </Stack>
 
         <Group justify="space-between">
-          <Text>{WORK_UI_TEXT.radiusTitle}</Text>
+          <Text>{DISCOVERY_UI_TEXT.radiusTitle}</Text>
           {isRadiusLocked && (
             <Text size="xs" c="dimmed">
               Фиксирован по городу
@@ -284,7 +284,7 @@ export default function SettingsDrawer({
                 disabled={isRadiusLocked}
               >
                 {value === 0
-                  ? WORK_UI_TEXT.radiusAll
+                  ? DISCOVERY_UI_TEXT.radiusAll
                   : `${value / 1000}${value === 2500 ? "2.5" : ""}`.includes(
                         "2.5",
                       )

@@ -3,4 +3,4 @@ export type {
   Cafe,
   CafePhoto,
   CafePhotoKind,
-} from "./entities/cafe/model/types";
+} from "../../entities/cafe/model/types";

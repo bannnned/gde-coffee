@@ -16,8 +16,8 @@ import { useNavigate } from "react-router-dom";
 
 import { ColorSchemeToggle } from "../../../components/ColorSchemeToggle";
 import { useAuth } from "../../../components/AuthGate";
-import type { Amenity } from "../types";
-import { AMENITY_LABELS, WORK_ICONS, WORK_UI_TEXT } from "../constants";
+import type { Amenity } from "../../../entities/cafe/model/types";
+import { AMENITY_LABELS, DISCOVERY_ICONS, DISCOVERY_UI_TEXT } from "../constants";
 import classes from "./FiltersBar.module.css";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
 import { resolveAvatarUrl } from "../../../utils/resolveAvatarUrl";
@@ -235,10 +235,10 @@ export default function FiltersBar({
             className={`glass-action glass-action--square ${
               highlightSettingsButton ? classes.attentionButton : ""
             }`}
-            aria-label={WORK_UI_TEXT.settingsAria}
+            aria-label={DISCOVERY_UI_TEXT.settingsAria}
             onClick={onOpenSettings}
           >
-            <WORK_ICONS.settings size={18} />
+            <DISCOVERY_ICONS.settings size={18} />
           </ActionIcon>
 
           <ColorSchemeToggle />
@@ -325,7 +325,7 @@ export default function FiltersBar({
               },
             }}
           >
-            {WORK_UI_TEXT.fetching}
+            {DISCOVERY_UI_TEXT.fetching}
           </Badge>
         </Box>
       )}

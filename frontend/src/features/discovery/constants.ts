@@ -1,6 +1,6 @@
 import { IconAdjustments, IconCurrentLocation } from "@tabler/icons-react";
 
-import type { Amenity } from "./types";
+import type { Amenity } from "../../entities/cafe/model/types";
 
 export const SPB_CENTER: [number, number] = [30.3158, 59.9343];
 export const MOSCOW_CENTER: [number, number] = [37.6173, 55.7558];
@@ -18,7 +18,7 @@ export const AMENITY_LABELS: Record<Amenity, string> = {
   laptop: "Ноут",
 };
 
-export const WORK_UI_TEXT = {
+export const DISCOVERY_UI_TEXT = {
   title: "Где кофе",
   settingsAria: "Настройки",
   fetching: "обновляем…",
@@ -41,7 +41,7 @@ export const WORK_UI_TEXT = {
   filtersTitle: "Фильтры",
 } as const;
 
-export const WORK_ICONS = {
+export const DISCOVERY_ICONS = {
   settings: IconAdjustments,
   locate: IconCurrentLocation,
 } as const;

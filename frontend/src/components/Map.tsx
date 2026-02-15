@@ -6,7 +6,7 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Cafe } from "../types";
-import { useLayoutMetrics } from "../features/work/layout/LayoutMetricsContext";
+import { useLayoutMetrics } from "../features/discovery/layout/LayoutMetricsContext";
 import pinUrl from "../assets/pin.png";
 import cupUrl from "../assets/cup.png";
 import { APP_PALETTES, DEFAULT_PALETTE } from "../theme/palettes";

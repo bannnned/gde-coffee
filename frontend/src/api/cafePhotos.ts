@@ -1,5 +1,5 @@
 import { http } from "./http";
-import type { CafePhoto, CafePhotoKind } from "../features/work/types";
+import type { CafePhoto, CafePhotoKind } from "../entities/cafe/model/types";
 
 export type CafePhotoPresignPayload = {
   contentType: string;

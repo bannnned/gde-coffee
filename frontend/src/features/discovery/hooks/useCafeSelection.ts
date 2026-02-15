@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { Cafe } from "../types";
+import type { Cafe } from "../../../entities/cafe/model/types";
 
 type UseCafeSelectionParams = {
   cafes: Cafe[];

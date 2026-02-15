@@ -1,8 +1,8 @@
 import { Button, Stack, Text } from "@mantine/core";
 import type { MutableRefObject } from "react";
 
-import type { Cafe } from "../types";
-import { WORK_UI_TEXT } from "../constants";
+import type { Cafe } from "../../../entities/cafe/model/types";
+import { DISCOVERY_UI_TEXT } from "../constants";
 import { formatDistance } from "../utils";
 
 type CafeListProps = {
@@ -23,7 +23,7 @@ export default function CafeList({
   showDistance = true,
 }: CafeListProps) {
   if (isLoading) {
-    return <Text size="sm">{WORK_UI_TEXT.loading}</Text>;
+    return <Text size="sm">{DISCOVERY_UI_TEXT.loading}</Text>;
   }
 
   if (cafes.length === 0) {
