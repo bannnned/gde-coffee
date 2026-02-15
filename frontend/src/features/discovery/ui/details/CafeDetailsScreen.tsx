@@ -99,6 +99,9 @@ export default function CafeDetailsScreen({
   const [menuImageReady, setMenuImageReady] = useState(true);
   const [viewerImageReady, setViewerImageReady] = useState(true);
   const touchStartXRef = useRef<number | null>(null);
+  const loadedAboutUrlsRef = useRef<Set<string>>(new Set());
+  const loadedMenuUrlsRef = useRef<Set<string>>(new Set());
+  const loadedViewerUrlsRef = useRef<Set<string>>(new Set());
   const coverPhotoUrl =
     cafe?.cover_photo_url ??
     cafePhotos.find((photo) => photo.is_cover)?.url ??
@@ -184,21 +187,30 @@ export default function CafeDetailsScreen({
   }, [viewerPhotos.length]);
 
   useEffect(() => {
-    setAboutImageReady(false);
-    const timer = window.setTimeout(() => setAboutImageReady(true), 260);
-    return () => window.clearTimeout(timer);
+    const nextUrl = aboutMainPhoto?.url?.trim();
+    if (!nextUrl) {
+      setAboutImageReady(true);
+      return;
+    }
+    setAboutImageReady(loadedAboutUrlsRef.current.has(nextUrl));
   }, [aboutMainPhoto?.url]);
 
   useEffect(() => {
-    setMenuImageReady(false);
-    const timer = window.setTimeout(() => setMenuImageReady(true), 260);
-    return () => window.clearTimeout(timer);
+    const nextUrl = menuMainPhoto?.url?.trim();
+    if (!nextUrl) {
+      setMenuImageReady(true);
+      return;
+    }
+    setMenuImageReady(loadedMenuUrlsRef.current.has(nextUrl));
   }, [menuMainPhoto?.url]);
 
   useEffect(() => {
-    setViewerImageReady(false);
-    const timer = window.setTimeout(() => setViewerImageReady(true), 280);
-    return () => window.clearTimeout(timer);
+    const nextUrl = viewerPhoto?.url?.trim();
+    if (!nextUrl) {
+      setViewerImageReady(true);
+      return;
+    }
+    setViewerImageReady(loadedViewerUrlsRef.current.has(nextUrl));
   }, [viewerPhoto?.url]);
 
   useEffect(() => {
@@ -473,7 +485,14 @@ export default function CafeDetailsScreen({
                   <img
                     src={aboutMainPhoto.url}
                     alt={`Фото: ${cafe.name}`}
-                    onLoad={() => setAboutImageReady(true)}
+                    onLoad={(event) => {
+                      const src = event.currentTarget.currentSrc || event.currentTarget.src;
+                      if (src) {
+                        loadedAboutUrlsRef.current.add(src);
+                      }
+                      setAboutImageReady(true);
+                    }}
+                    onError={() => setAboutImageReady(true)}
                     style={{
                       width: "100%",
                       maxHeight: 260,
@@ -659,7 +678,14 @@ export default function CafeDetailsScreen({
                         src={menuMainPhoto.url}
                         alt={`Меню: ${cafe.name}`}
                         loading="lazy"
-                        onLoad={() => setMenuImageReady(true)}
+                        onLoad={(event) => {
+                          const src = event.currentTarget.currentSrc || event.currentTarget.src;
+                          if (src) {
+                            loadedMenuUrlsRef.current.add(src);
+                          }
+                          setMenuImageReady(true);
+                        }}
+                        onError={() => setMenuImageReady(true)}
                         style={{
                           width: "100%",
                           maxHeight: 260,
@@ -785,7 +811,14 @@ export default function CafeDetailsScreen({
               <img
                 src={viewerPhoto.url}
                 alt={viewerKind === "menu" ? `Меню: ${cafe.name}` : `Фото: ${cafe.name}`}
-                onLoad={() => setViewerImageReady(true)}
+                onLoad={(event) => {
+                  const src = event.currentTarget.currentSrc || event.currentTarget.src;
+                  if (src) {
+                    loadedViewerUrlsRef.current.add(src);
+                  }
+                  setViewerImageReady(true);
+                }}
+                onError={() => setViewerImageReady(true)}
                 style={{
                   width: "100%",
                   maxHeight: "72vh",

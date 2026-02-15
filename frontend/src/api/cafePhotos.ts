@@ -38,6 +38,45 @@ export type CafePhotosListResponse = {
   photos: CafePhoto[];
 };
 
+type GetCafePhotosOptions = {
+  force?: boolean;
+  maxAgeMs?: number;
+};
+
+type PhotoCacheEntry = {
+  photos: CafePhoto[];
+  cachedAt: number;
+};
+
+const PHOTO_LIST_CACHE_DEFAULT_MAX_AGE_MS = 60_000;
+// Session-level cache to avoid refetching unchanged photo lists on tab/screen switches.
+const photoListCache = new Map<string, PhotoCacheEntry>();
+const inFlightPhotoRequests = new Map<string, Promise<CafePhoto[]>>();
+
+function makePhotoCacheKey(cafeId: string, kind: CafePhotoKind): string {
+  return `${cafeId.trim()}|${kind}`;
+}
+
+function clonePhotos(photos: CafePhoto[]): CafePhoto[] {
+  return photos.map((photo) => ({ ...photo }));
+}
+
+function setPhotoListCache(cafeId: string, kind: CafePhotoKind, photos: CafePhoto[]) {
+  photoListCache.set(makePhotoCacheKey(cafeId, kind), {
+    photos: clonePhotos(photos),
+    cachedAt: Date.now(),
+  });
+}
+
+function invalidatePhotoListCache(cafeId: string, kind?: CafePhotoKind) {
+  if (kind) {
+    photoListCache.delete(makePhotoCacheKey(cafeId, kind));
+    return;
+  }
+  photoListCache.delete(makePhotoCacheKey(cafeId, "cafe"));
+  photoListCache.delete(makePhotoCacheKey(cafeId, "menu"));
+}
+
 export async function presignCafePhotoUpload(
   cafeId: string,
   payload: CafePhotoPresignPayload,
@@ -74,18 +113,44 @@ export async function confirmCafePhotoUpload(
       kind: payload.kind,
     },
   );
+  invalidatePhotoListCache(cafeId, payload.kind);
   return res.data;
 }
 
 export async function getCafePhotos(
   cafeId: string,
   kind: CafePhotoKind = "cafe",
+  options: GetCafePhotosOptions = {},
 ): Promise<CafePhoto[]> {
-  const res = await http.get<CafePhotosListResponse>(
-    `/api/cafes/${encodeURIComponent(cafeId)}/photos`,
-    { params: { kind } },
-  );
-  return res.data?.photos ?? [];
+  const key = makePhotoCacheKey(cafeId, kind);
+  const maxAgeMs = options.maxAgeMs ?? PHOTO_LIST_CACHE_DEFAULT_MAX_AGE_MS;
+
+  if (!options.force) {
+    const cached = photoListCache.get(key);
+    if (cached && Date.now() - cached.cachedAt <= maxAgeMs) {
+      return clonePhotos(cached.photos);
+    }
+    const pending = inFlightPhotoRequests.get(key);
+    if (pending) {
+      return pending.then((photos) => clonePhotos(photos));
+    }
+  }
+
+  const request = http
+    .get<CafePhotosListResponse>(`/api/cafes/${encodeURIComponent(cafeId)}/photos`, {
+      params: { kind },
+    })
+    .then((res) => {
+      const photos = res.data?.photos ?? [];
+      setPhotoListCache(cafeId, kind, photos);
+      return clonePhotos(photos);
+    })
+    .finally(() => {
+      inFlightPhotoRequests.delete(key);
+    });
+
+  inFlightPhotoRequests.set(key, request);
+  return request;
 }
 
 export async function reorderCafePhotos(
@@ -98,7 +163,9 @@ export async function reorderCafePhotos(
     { photo_ids: photoIds },
     { params: { kind } },
   );
-  return res.data?.photos ?? [];
+  const photos = res.data?.photos ?? [];
+  setPhotoListCache(cafeId, kind, photos);
+  return clonePhotos(photos);
 }
 
 export async function setCafePhotoCover(
@@ -111,7 +178,9 @@ export async function setCafePhotoCover(
     undefined,
     { params: { kind } },
   );
-  return res.data?.photos ?? [];
+  const photos = res.data?.photos ?? [];
+  setPhotoListCache(cafeId, kind, photos);
+  return clonePhotos(photos);
 }
 
 export async function deleteCafePhoto(
@@ -123,5 +192,7 @@ export async function deleteCafePhoto(
     `/api/cafes/${encodeURIComponent(cafeId)}/photos/${encodeURIComponent(photoId)}`,
     { params: { kind } },
   );
-  return res.data?.photos ?? [];
+  const photos = res.data?.photos ?? [];
+  setPhotoListCache(cafeId, kind, photos);
+  return clonePhotos(photos);
 }

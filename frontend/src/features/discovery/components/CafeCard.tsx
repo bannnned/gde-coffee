@@ -43,6 +43,7 @@ export default function CafeCard({
 }: CafeCardProps) {
   const clickStartRef = useRef<{ x: number; y: number } | null>(null);
   const touchStartXRef = useRef<number | null>(null);
+  const loadedPhotoUrlsRef = useRef<Set<string>>(new Set());
 
   const fallbackPhotoUrls = useMemo(() => {
     const direct = (cafe.photos ?? [])
@@ -100,9 +101,11 @@ export default function CafeCard({
   }, [photoUrls.length]);
 
   useEffect(() => {
-    setPhotoReady(false);
-    const timer = window.setTimeout(() => setPhotoReady(true), 220);
-    return () => window.clearTimeout(timer);
+    if (!activePhotoUrl) {
+      setPhotoReady(true);
+      return;
+    }
+    setPhotoReady(loadedPhotoUrlsRef.current.has(activePhotoUrl));
   }, [activePhotoUrl]);
 
   useEffect(() => {
@@ -224,6 +227,14 @@ export default function CafeCard({
             src={activePhotoUrl}
             alt={`Фото: ${cafe.name}`}
             loading="lazy"
+            onLoad={(event) => {
+              const src = event.currentTarget.currentSrc || event.currentTarget.src;
+              if (src) {
+                loadedPhotoUrlsRef.current.add(src);
+              }
+              setPhotoReady(true);
+            }}
+            onError={() => setPhotoReady(true)}
             style={{
               width: "100%",
               height: "100%",
