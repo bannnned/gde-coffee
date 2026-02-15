@@ -160,7 +160,7 @@ LIMIT $5;`
 		}
 	}
 
-	if err := attachCafePhotos(ctx, pool, out, cfg.Media); err != nil {
+	if err := attachCafeCoverPhotos(ctx, pool, out, cfg.Media); err != nil {
 		return nil, err
 	}
 

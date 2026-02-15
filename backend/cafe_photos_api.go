@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -26,6 +27,8 @@ var allowedPhotoContentTypes = map[string]string{
 	"image/webp": ".webp",
 	"image/avif": ".avif",
 }
+
+var uuidPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 
 type cafePhotoAPI struct {
 	pool *pgxpool.Pool
@@ -81,6 +84,10 @@ func (h *cafePhotoAPI) Presign(c *gin.Context) {
 
 	cafeID := strings.TrimSpace(c.Param("id"))
 	if cafeID == "" {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		return
+	}
+	if !isValidUUID(cafeID) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
@@ -152,6 +159,10 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 
 	cafeID := strings.TrimSpace(c.Param("id"))
 	if cafeID == "" {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		return
+	}
+	if !isValidUUID(cafeID) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
@@ -286,6 +297,10 @@ func (h *cafePhotoAPI) List(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
+	if !isValidUUID(cafeID) {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
@@ -315,6 +330,10 @@ func (h *cafePhotoAPI) SetCover(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
 		return
 	}
+	if !isValidUUID(cafeID) || !isValidUUID(photoID) {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 	defer cancel()
@@ -339,7 +358,7 @@ func (h *cafePhotoAPI) SetCover(c *gin.Context) {
 
 	if _, err := tx.Exec(
 		ctx,
-		`update cafe_photos set is_cover = false where cafe_id::text = $1 and is_cover = true`,
+		`update cafe_photos set is_cover = false where cafe_id = $1::uuid and is_cover = true`,
 		cafeID,
 	); err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
@@ -348,7 +367,7 @@ func (h *cafePhotoAPI) SetCover(c *gin.Context) {
 
 	result, err := tx.Exec(
 		ctx,
-		`update cafe_photos set is_cover = true where cafe_id::text = $1 and id::text = $2`,
+		`update cafe_photos set is_cover = true where cafe_id = $1::uuid and id = $2::uuid`,
 		cafeID,
 		photoID,
 	)
@@ -381,6 +400,10 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
+	if !isValidUUID(cafeID) {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		return
+	}
 
 	var req cafePhotoReorderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -397,6 +420,10 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 		photoID := strings.TrimSpace(req.PhotoIDs[i])
 		if photoID == "" {
 			respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит пустой id.", nil)
+			return
+		}
+		if !isValidUUID(photoID) {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит некорректный id.", nil)
 			return
 		}
 		if _, ok := seen[photoID]; ok {
@@ -430,7 +457,7 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 
 	rows, err := tx.Query(
 		ctx,
-		`select id::text from cafe_photos where cafe_id::text = $1 order by position asc, created_at asc`,
+		`select id::text from cafe_photos where cafe_id = $1::uuid order by position asc, created_at asc`,
 		cafeID,
 	)
 	if err != nil {
@@ -469,23 +496,28 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 		}
 	}
 
-	for idx, photoID := range req.PhotoIDs {
-		if _, err := tx.Exec(
-			ctx,
-			`update cafe_photos set position = $1 where cafe_id::text = $2 and id::text = $3`,
-			idx+1,
-			cafeID,
-			photoID,
-		); err != nil {
-			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
-			return
-		}
+	if _, err := tx.Exec(
+		ctx,
+		`with ordered as (
+			select id, ord::int as position
+			from unnest($1::uuid[]) with ordinality as t(id, ord)
+		)
+		update cafe_photos cp
+		set position = ordered.position
+		from ordered
+		where cp.cafe_id = $2::uuid
+		  and cp.id = ordered.id`,
+		req.PhotoIDs,
+		cafeID,
+	); err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
 	}
 
 	var hasCover bool
 	if err := tx.QueryRow(
 		ctx,
-		`select exists(select 1 from cafe_photos where cafe_id::text = $1 and is_cover = true)`,
+		`select exists(select 1 from cafe_photos where cafe_id = $1::uuid and is_cover = true)`,
 		cafeID,
 	).Scan(&hasCover); err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
@@ -494,7 +526,7 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 	if !hasCover && len(req.PhotoIDs) > 0 {
 		if _, err := tx.Exec(
 			ctx,
-			`update cafe_photos set is_cover = true where cafe_id::text = $1 and id::text = $2`,
+			`update cafe_photos set is_cover = true where cafe_id = $1::uuid and id = $2::uuid`,
 			cafeID,
 			req.PhotoIDs[0],
 		); err != nil {
@@ -521,6 +553,10 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 	cafeID := strings.TrimSpace(c.Param("id"))
 	photoID := strings.TrimSpace(c.Param("photoID"))
 	if cafeID == "" || photoID == "" {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
+		return
+	}
+	if !isValidUUID(cafeID) || !isValidUUID(photoID) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
 		return
 	}
@@ -552,7 +588,7 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		ctx,
 		`select object_key, is_cover
 		 from cafe_photos
-		 where cafe_id::text = $1 and id::text = $2
+		 where cafe_id = $1::uuid and id = $2::uuid
 		 for update`,
 		cafeID,
 		photoID,
@@ -568,7 +604,7 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 
 	if _, err := tx.Exec(
 		ctx,
-		`delete from cafe_photos where cafe_id::text = $1 and id::text = $2`,
+		`delete from cafe_photos where cafe_id = $1::uuid and id = $2::uuid`,
 		cafeID,
 		photoID,
 	); err != nil {
@@ -582,7 +618,7 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 			ctx,
 			`select id::text
 			 from cafe_photos
-			 where cafe_id::text = $1
+			 where cafe_id = $1::uuid
 			 order by position asc, created_at asc
 			 limit 1`,
 			cafeID,
@@ -594,7 +630,7 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		if err == nil {
 			if _, err := tx.Exec(
 				ctx,
-				`update cafe_photos set is_cover = true where cafe_id::text = $1 and id::text = $2`,
+				`update cafe_photos set is_cover = true where cafe_id = $1::uuid and id = $2::uuid`,
 				cafeID,
 				replacementID,
 			); err != nil {
@@ -608,7 +644,7 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		ctx,
 		`select id::text
 		 from cafe_photos
-		 where cafe_id::text = $1
+		 where cafe_id = $1::uuid
 		 order by is_cover desc, position asc, created_at asc`,
 		cafeID,
 	)
@@ -633,13 +669,20 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 	}
 	rows.Close()
 
-	for idx, id := range remainingIDs {
+	if len(remainingIDs) > 0 {
 		if _, err := tx.Exec(
 			ctx,
-			`update cafe_photos set position = $1 where cafe_id::text = $2 and id::text = $3`,
-			idx+1,
+			`with ordered as (
+				select id, ord::int as position
+				from unnest($1::uuid[]) with ordinality as t(id, ord)
+			)
+			update cafe_photos cp
+			set position = ordered.position
+			from ordered
+			where cp.cafe_id = $2::uuid
+			  and cp.id = ordered.id`,
+			remainingIDs,
 			cafeID,
-			id,
 		); err != nil {
 			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 			return
@@ -669,8 +712,18 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 }
 
 func ensureCafeExists(ctx context.Context, pool *pgxpool.Pool, cafeID string) error {
-	var id string
-	return pool.QueryRow(ctx, `select id::text from cafes where id::text = $1`, cafeID).Scan(&id)
+	var exists bool
+	if err := pool.QueryRow(
+		ctx,
+		`select exists(select 1 from cafes where id = $1::uuid)`,
+		cafeID,
+	).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return pgx.ErrNoRows
+	}
+	return nil
 }
 
 func normalizeContentType(contentType string) string {
@@ -686,7 +739,11 @@ func isUniqueViolationPg(err error) bool {
 	return errors.As(err, &pgErr) && strings.TrimSpace(pgErr.Code) == "23505"
 }
 
-func attachCafePhotos(
+func isValidUUID(value string) bool {
+	return uuidPattern.MatchString(strings.TrimSpace(value))
+}
+
+func attachCafeCoverPhotos(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	cafes []model.CafeResponse,
@@ -703,10 +760,12 @@ func attachCafePhotos(
 
 	rows, err := pool.Query(
 		ctx,
-		`select id::text, cafe_id::text, object_key, position, is_cover
+		`select distinct on (cafe_id)
+		    cafe_id::text,
+		    object_key
 		 from cafe_photos
-		 where cafe_id::text = any($1::text[])
-		 order by cafe_id::text asc, is_cover desc, position asc, created_at asc`,
+		 where cafe_id = any($1::uuid[])
+		 order by cafe_id asc, is_cover desc, position asc, created_at asc`,
 		cafeIDs,
 	)
 	if err != nil {
@@ -714,36 +773,26 @@ func attachCafePhotos(
 	}
 	defer rows.Close()
 
-	photosByCafeID := make(map[string][]model.CafePhotoResponse, len(cafes))
+	coverByCafeID := make(map[string]string, len(cafes))
 	for rows.Next() {
 		var (
-			photoID   string
 			cafeID    string
 			objectKey string
-			position  int
-			isCover   bool
 		)
-		if err := rows.Scan(&photoID, &cafeID, &objectKey, &position, &isCover); err != nil {
+		if err := rows.Scan(&cafeID, &objectKey); err != nil {
 			return err
 		}
-		photosByCafeID[cafeID] = append(photosByCafeID[cafeID], model.CafePhotoResponse{
-			ID:       photoID,
-			URL:      buildCafePhotoURL(mediaCfg, objectKey),
-			IsCover:  isCover,
-			Position: position,
-		})
+		coverByCafeID[cafeID] = buildCafePhotoURL(mediaCfg, objectKey)
 	}
 	if err := rows.Err(); err != nil {
 		return err
 	}
 
 	for i := range cafes {
-		photos := photosByCafeID[cafes[i].ID]
-		if len(photos) == 0 {
+		cover, ok := coverByCafeID[cafes[i].ID]
+		if !ok || strings.TrimSpace(cover) == "" {
 			continue
 		}
-		cafes[i].Photos = photos
-		cover := photos[0].URL
 		cafes[i].CoverPhotoURL = &cover
 	}
 	return nil
@@ -763,7 +812,7 @@ func listCafePhotos(
 		ctx,
 		`select id::text, object_key, position, is_cover
 		 from cafe_photos
-		 where cafe_id::text = $1
+		 where cafe_id = $1::uuid
 		 order by is_cover desc, position asc, created_at asc`,
 		cafeID,
 	)

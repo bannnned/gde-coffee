@@ -51,6 +51,7 @@ The backend serves:
   - Required query params: `lat`, `lng`, `radius_m`
   - Optional: `sort` (`distance` or `work`), `limit`, `amenities` (comma-separated)
   - Constraints: `lat` in `[-90,90]`, `lng` in `[-180,180]`, `radius_m <= 50000`
+  - Returns `cover_photo_url` only (full photos list is loaded via `GET /api/cafes/:id/photos`)
 - `POST /api/cafes/:id/photos/presign` — get S3 presigned upload URL (requires auth)
   - body: `{ "content_type": "image/jpeg|image/png|image/webp|image/avif", "size_bytes": 123456 }`
 - `POST /api/cafes/:id/photos/confirm` — confirm uploaded photo and bind it to cafe (requires auth)

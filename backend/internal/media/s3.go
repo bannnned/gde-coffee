@@ -31,6 +31,8 @@ type PresignPutResult struct {
 	ExpiresAt time.Time
 }
 
+const uploadCacheControl = "public, max-age=31536000, immutable"
+
 type Service struct {
 	cfg       Config
 	client    *s3.Client
@@ -86,9 +88,10 @@ func (s *Service) PresignPutObject(
 	req, err := s.presigner.PresignPutObject(
 		ctx,
 		&s3.PutObjectInput{
-			Bucket:      aws.String(s.cfg.Bucket),
-			Key:         aws.String(key),
-			ContentType: aws.String(contentType),
+			Bucket:       aws.String(s.cfg.Bucket),
+			Key:          aws.String(key),
+			ContentType:  aws.String(contentType),
+			CacheControl: aws.String(uploadCacheControl),
 		},
 		s3.WithPresignExpires(s.cfg.PresignTTL),
 	)

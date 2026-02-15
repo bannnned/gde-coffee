@@ -41,6 +41,8 @@ type CafePhotoAdminModalProps = {
   onPhotosChanged?: (photos: CafePhoto[]) => void;
 };
 
+const MAX_UPLOAD_CONCURRENCY = 3;
+
 function moveItem<T>(items: T[], from: number, to: number): T[] {
   if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) {
     return items;
@@ -49,6 +51,27 @@ function moveItem<T>(items: T[], from: number, to: number): T[] {
   const [item] = next.splice(from, 1);
   next.splice(to, 0, item);
   return next;
+}
+
+async function runWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  const safeConcurrency = Math.max(1, Math.min(concurrency, items.length));
+  let nextIndex = 0;
+
+  const runners = Array.from({ length: safeConcurrency }, async () => {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      if (currentIndex >= items.length) return;
+      await worker(items[currentIndex], currentIndex);
+    }
+  });
+
+  await Promise.all(runners);
 }
 
 export default function CafePhotoAdminModal({
@@ -131,8 +154,8 @@ export default function CafePhotoAdminModal({
     setIsUploading(true);
     setLastError(null);
     try {
-      for (let idx = 0; idx < files.length; idx += 1) {
-        const file = files[idx];
+      const hadNoPhotos = photos.length === 0;
+      await runWithConcurrency(files, MAX_UPLOAD_CONCURRENCY, async (file, idx) => {
         const presigned = await presignCafePhotoUpload(cafeId, {
           contentType: file.type,
           sizeBytes: file.size,
@@ -140,9 +163,9 @@ export default function CafePhotoAdminModal({
         await uploadCafePhotoByPresignedUrl(presigned.upload_url, file, presigned.headers ?? {});
         await confirmCafePhotoUpload(cafeId, {
           objectKey: presigned.object_key,
-          isCover: photos.length === 0 && idx === 0,
+          isCover: hadNoPhotos && idx === 0,
         });
-      }
+      });
 
       const fresh = await getCafePhotos(cafeId);
       publishPhotos(fresh);

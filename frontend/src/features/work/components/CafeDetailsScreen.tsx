@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Badge,
   Button,
@@ -8,8 +9,9 @@ import {
   Text,
   useMantineTheme,
 } from "@mantine/core";
+import { getCafePhotos } from "../../../api/cafePhotos";
 
-import type { Cafe } from "../types";
+import type { Cafe, CafePhoto } from "../types";
 import { AMENITY_LABELS } from "../constants";
 import { formatDistance } from "../utils";
 
@@ -29,8 +31,29 @@ export default function CafeDetailsScreen({
   onManagePhotos,
 }: CafeDetailsScreenProps) {
   const theme = useMantineTheme();
-  const photos = cafe?.photos ?? [];
+  const [photos, setPhotos] = useState<CafePhoto[]>(cafe?.photos ?? []);
   const coverPhotoUrl = cafe?.cover_photo_url ?? photos[0]?.url;
+
+  useEffect(() => {
+    if (!opened || !cafe?.id) {
+      setPhotos(cafe?.photos ?? []);
+      return;
+    }
+    let cancelled = false;
+    setPhotos(cafe.photos ?? []);
+    getCafePhotos(cafe.id)
+      .then((list) => {
+        if (cancelled) return;
+        setPhotos(list);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPhotos(cafe.photos ?? []);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cafe?.id, cafe?.photos, opened]);
 
   if (!cafe) return null;
 

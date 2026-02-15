@@ -22,6 +22,7 @@ type BottomSheetProps = PropsWithChildren<{
   errorText: string;
   header?: ReactNode;
   isListEmpty?: boolean;
+  lockedState?: SheetState | null;
 }>;
 
 type SheetState = "peek" | "mid" | "expanded";
@@ -38,6 +39,7 @@ export default function BottomSheet({
   errorText,
   header,
   isListEmpty,
+  lockedState = null,
   children,
 }: BottomSheetProps) {
   const {
@@ -68,6 +70,13 @@ export default function BottomSheet({
     return () => observer.disconnect();
   }, []);
 
+  useLayoutEffect(() => {
+    if (!lockedState) return;
+    setSheetState(lockedState);
+  }, [lockedState]);
+
+  const effectiveSheetState = lockedState ?? sheetState;
+
   const heights = useMemo(() => {
     const chromeReserve = 24;
     const safeViewport = Math.max(0, safeViewportHeight - chromeReserve);
@@ -91,9 +100,9 @@ export default function BottomSheet({
 
   useLayoutEffect(() => {
     const target =
-      sheetState === "expanded"
+      effectiveSheetState === "expanded"
         ? heights.expanded
-        : sheetState === "peek"
+        : effectiveSheetState === "peek"
           ? heights.peek
           : heights.mid;
     const controls = animate(height, target, {
@@ -102,7 +111,7 @@ export default function BottomSheet({
       damping: 34,
     });
     return () => controls.stop();
-  }, [height, heights, sheetState]);
+  }, [effectiveSheetState, height, heights]);
 
   const scheduleSheetHeight = (value: number) => {
     pendingSheetHeightRef.current = value;
@@ -134,8 +143,8 @@ export default function BottomSheet({
   }, [heights, height, setSheetHeight]);
 
   useLayoutEffect(() => {
-    setLayoutSheetState(sheetState);
-  }, [setLayoutSheetState, sheetState]);
+    setLayoutSheetState(effectiveSheetState);
+  }, [effectiveSheetState, setLayoutSheetState]);
 
   const pickClosest = (value: number) => {
     const points = [heights.expanded, heights.mid, heights.peek];
@@ -148,6 +157,7 @@ export default function BottomSheet({
     _: MouseEvent | TouchEvent | PointerEvent,
     info: { delta: { y: number } },
   ) => {
+    if (lockedState) return;
     const next = height.get() - info.delta.y;
     const clamped = Math.max(heights.peek, Math.min(heights.expanded, next));
     height.set(clamped);
@@ -157,6 +167,7 @@ export default function BottomSheet({
     _: MouseEvent | TouchEvent | PointerEvent,
     info: { offset: { y: number }; velocity: { y: number } },
   ) => {
+    if (lockedState) return;
     const current = height.get();
     const projected =
       Math.abs(info.velocity.y) > SWIPE_VELOCITY
@@ -171,6 +182,7 @@ export default function BottomSheet({
   const handleHeaderPointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
   ) => {
+    if (lockedState) return;
     const target = event.target as HTMLElement | null;
     if (!target) return;
     if (target.closest('input, textarea, select, [data-no-drag="true"]')) {
@@ -230,8 +242,8 @@ export default function BottomSheet({
         radius="lg"
         p="xs"
         className={classes.sheet}
-        data-state={sheetState}
-        drag="y"
+        data-state={effectiveSheetState}
+        drag={lockedState ? false : "y"}
         dragControls={dragControls}
         dragListener={false}
         dragConstraints={{ top: 0, bottom: 0 }}
@@ -266,7 +278,7 @@ export default function BottomSheet({
         <div
           className={classes.list}
           data-empty={isListEmpty ? "true" : "false"}
-          aria-hidden={sheetState === "peek"}
+          aria-hidden={effectiveSheetState === "peek"}
         >
           {children}
         </div>

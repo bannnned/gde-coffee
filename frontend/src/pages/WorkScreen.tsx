@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, Group, Paper, Select, Stack, Text } from "@mantine/core";
 import { IconMapPinFilled } from "@tabler/icons-react";
 
@@ -37,7 +37,8 @@ const CITY_RADIUS_M_BY_ID: Record<(typeof LOCATION_OPTIONS)[number]["id"], numbe
   spb: 30000,
   moscow: 35000,
 };
-const MANUAL_PIN_NUDGE_PX = 2;
+const MANUAL_PIN_NUDGE_PX = 0;
+const CENTER_EPS = 1e-6;
 
 type LocationId = (typeof LOCATION_OPTIONS)[number]["id"];
 
@@ -198,6 +199,7 @@ export default function WorkScreen() {
     visibleCafes.length === 0;
   const isCityOnlyMode = locationChoice?.type === "city";
   const manualPinOffsetY = MANUAL_PIN_NUDGE_PX;
+  const manualCenterProbeOffsetY = Math.round(-sheetHeight / 2 + manualPinOffsetY);
 
   const locationOptions = useMemo(
     () => LOCATION_OPTIONS.map(({ id, label }) => ({ id, label })),
@@ -302,6 +304,19 @@ export default function WorkScreen() {
     locateMe(true);
   };
 
+  const handleManualCenterChange = useCallback((lngLat: [number, number]) => {
+    setManualPickedCenter((prev) => {
+      if (!prev) return lngLat;
+      if (
+        Math.abs(prev[0] - lngLat[0]) < CENTER_EPS &&
+        Math.abs(prev[1] - lngLat[1]) < CENTER_EPS
+      ) {
+        return prev;
+      }
+      return lngLat;
+    });
+  }, []);
+
   useEffect(() => {
     if (!manualPickMode) return;
     setManualPickedCenter(userCenter);
@@ -344,7 +359,7 @@ export default function WorkScreen() {
   return (
     <Box
       pos="relative"
-      h="100vh"
+      h="100dvh"
       w="100%"
       data-sheet-state={sheetState}
       style={{ ["--sheet-height" as string]: `${sheetHeight}px` }}
@@ -360,10 +375,8 @@ export default function WorkScreen() {
           onCafeSelect={manualPickMode ? undefined : selectCafe}
           disableCafeClick={manualPickMode}
           paddingEnabled
-          centerProbeOffsetY={manualPickMode ? manualPinOffsetY : 0}
-          onCenterChange={
-            manualPickMode ? (lngLat) => setManualPickedCenter(lngLat) : undefined
-          }
+          centerProbeOffsetY={manualPickMode ? manualCenterProbeOffsetY : 0}
+          onCenterChange={manualPickMode ? handleManualCenterChange : undefined}
         />
       </Box>
 
@@ -373,7 +386,7 @@ export default function WorkScreen() {
             style={{
               position: "absolute",
               left: "50%",
-              top: `calc(50% + ${manualPinOffsetY}px)`,
+              top: `calc(50% - (var(--sheet-height, 240px) / 2) + ${manualPinOffsetY}px)`,
               transform: "translate(-50%, -100%)",
               pointerEvents: "none",
               zIndex: 4,
@@ -431,7 +444,8 @@ export default function WorkScreen() {
         sheetRef={sheetRef}
         isError={cafesQuery.isError && visibleCafes.length === 0}
         errorText={WORK_UI_TEXT.errorLoad}
-        isListEmpty={showFirstChoice || visibleCafes.length === 0}
+        isListEmpty={manualPickMode || showFirstChoice || visibleCafes.length === 0}
+        lockedState={manualPickMode ? "peek" : null}
         header={
           showFirstChoice ? (
             <Paper radius="xl" p="md" withBorder>
@@ -463,6 +477,17 @@ export default function WorkScreen() {
                     handleSelectLocation(value);
                   }}
                 />
+              </Stack>
+            </Paper>
+          ) : manualPickMode ? (
+            <Paper radius="xl" p="md" withBorder>
+              <Stack gap={4}>
+                <Text size="sm" fw={600}>
+                  Выбор точки на карте
+                </Text>
+                <Text size="sm" c="dimmed">
+                  Передвигайте карту. Точка фиксируется по пину в центре открытой области.
+                </Text>
               </Stack>
             </Paper>
           ) : selectedCafe ? (
