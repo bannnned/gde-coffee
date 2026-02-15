@@ -1,4 +1,4 @@
-package main
+package moderation
 
 import (
 	"context"
@@ -10,7 +10,10 @@ import (
 
 	"backend/internal/auth"
 	"backend/internal/config"
+	"backend/internal/domains/photos"
 	"backend/internal/media"
+	"backend/internal/shared/httpx"
+	"backend/internal/shared/validation"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -33,10 +36,12 @@ const (
 	statusReject  = "rejected"
 )
 
-type moderationAPI struct {
-	pool *pgxpool.Pool
-	s3   *media.Service
-	cfg  config.MediaConfig
+type Handler struct {
+	pool       *pgxpool.Pool
+	s3         *media.Service
+	cfg        config.MediaConfig
+	repository *Repository
+	service    *Service
 }
 
 type moderationSubmissionResponse struct {
@@ -120,44 +125,48 @@ type photosPayload struct {
 	ObjectKeys []string `json:"object_keys"`
 }
 
-func newModerationAPI(pool *pgxpool.Pool, s3 *media.Service, cfg config.MediaConfig) *moderationAPI {
-	return &moderationAPI{
-		pool: pool,
-		s3:   s3,
-		cfg:  cfg,
+func NewHandler(pool *pgxpool.Pool, s3 *media.Service, cfg config.MediaConfig) *Handler {
+	repository := NewRepository(pool)
+	service := NewService(repository, s3, cfg)
+	return &Handler{
+		pool:       pool,
+		s3:         s3,
+		cfg:        cfg,
+		repository: repository,
+		service:    service,
 	}
 }
 
-func (h *moderationAPI) PresignPhoto(c *gin.Context) {
+func (h *Handler) PresignPhoto(c *gin.Context) {
 	if h.s3 == nil || !h.s3.Enabled() {
-		respondError(c, http.StatusServiceUnavailable, "service_unavailable", "Загрузка фото сейчас недоступна.", nil)
+		httpx.RespondError(c, http.StatusServiceUnavailable, "service_unavailable", "Загрузка фото сейчас недоступна.", nil)
 		return
 	}
 
 	userID, ok := auth.UserIDFromContext(c)
 	if !ok || strings.TrimSpace(userID) == "" {
-		respondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
+		httpx.RespondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
 		return
 	}
 
 	var req submissionPhotoPresignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
 		return
 	}
 
-	contentType := normalizeContentType(req.ContentType)
-	ext, ok := allowedPhotoContentTypes[contentType]
+	contentType := photos.NormalizeContentType(req.ContentType)
+	ext, ok := photos.AllowedPhotoContentTypes[contentType]
 	if !ok {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Неподдерживаемый формат изображения.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Неподдерживаемый формат изображения.", nil)
 		return
 	}
 	if req.SizeBytes <= 0 {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Размер файла должен быть больше 0.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Размер файла должен быть больше 0.", nil)
 		return
 	}
 	if req.SizeBytes > h.cfg.S3MaxUploadBytes {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Размер файла превышает допустимый лимит.", gin.H{
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Размер файла превышает допустимый лимит.", gin.H{
 			"max_upload_bytes": h.cfg.S3MaxUploadBytes,
 		})
 		return
@@ -168,7 +177,7 @@ func (h *moderationAPI) PresignPhoto(c *gin.Context) {
 
 	token, err := auth.GenerateToken(9)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
@@ -181,7 +190,7 @@ func (h *moderationAPI) PresignPhoto(c *gin.Context) {
 	)
 	presigned, err := h.s3.PresignPutObject(ctx, objectKey, contentType)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Не удалось подготовить загрузку файла.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось подготовить загрузку файла.", nil)
 		return
 	}
 
@@ -195,42 +204,44 @@ func (h *moderationAPI) PresignPhoto(c *gin.Context) {
 	})
 }
 
-func (h *moderationAPI) SubmitCafeCreate(c *gin.Context) {
+func (h *Handler) SubmitCafeCreate(c *gin.Context) {
 	userID, ok := auth.UserIDFromContext(c)
 	if !ok || strings.TrimSpace(userID) == "" {
-		respondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
+		httpx.RespondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
 		return
 	}
 
 	var req submitCafeCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
 		return
 	}
 
 	name := strings.TrimSpace(req.Name)
 	address := strings.TrimSpace(req.Address)
 	if name == "" || address == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Название и адрес обязательны.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Название и адрес обязательны.", nil)
 		return
 	}
-	if !isFinite(req.Latitude) || req.Latitude < -90 || req.Latitude > 90 {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "latitude должен быть в диапазоне от -90 до 90.", nil)
+	if !validation.IsFinite(req.Latitude) || req.Latitude < -90 || req.Latitude > 90 {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "latitude должен быть в диапазоне от -90 до 90.", nil)
 		return
 	}
-	if !isFinite(req.Longitude) || req.Longitude < -180 || req.Longitude > 180 {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "longitude должен быть в диапазоне от -180 до 180.", nil)
+	if !validation.IsFinite(req.Longitude) || req.Longitude < -180 || req.Longitude > 180 {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "longitude должен быть в диапазоне от -180 до 180.", nil)
 		return
 	}
 
-	photoKeys, err := h.validatePendingObjectKeys(userID, req.PhotoObjectKeys)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 6*time.Second)
+	defer cancel()
+	photoKeys, err := h.validatePendingObjectKeys(ctx, userID, req.PhotoObjectKeys)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
-	menuPhotoKeys, err := h.validatePendingObjectKeys(userID, req.MenuPhotoObjectKey)
+	menuPhotoKeys, err := h.validatePendingObjectKeys(ctx, userID, req.MenuPhotoObjectKey)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
@@ -245,52 +256,50 @@ func (h *moderationAPI) SubmitCafeCreate(c *gin.Context) {
 		MenuPhotoObjectKeys: menuPhotoKeys,
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 6*time.Second)
-	defer cancel()
 	item, err := h.createSubmission(ctx, userID, entityTypeCafe, actionTypeCreate, nil, payload)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Не удалось создать заявку.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось создать заявку.", nil)
 		return
 	}
 	c.JSON(http.StatusOK, item)
 }
 
-func (h *moderationAPI) SubmitCafeDescription(c *gin.Context) {
+func (h *Handler) SubmitCafeDescription(c *gin.Context) {
 	userID, ok := auth.UserIDFromContext(c)
 	if !ok || strings.TrimSpace(userID) == "" {
-		respondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
+		httpx.RespondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
 		return
 	}
 
 	cafeID := strings.TrimSpace(c.Param("id"))
-	if !isValidUUID(cafeID) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+	if !validation.IsValidUUID(cafeID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
 
 	var req submitDescriptionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
 		return
 	}
 	description := strings.TrimSpace(req.Description)
 	if description == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Описание не должно быть пустым.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Описание не должно быть пустым.", nil)
 		return
 	}
 	if len([]rune(description)) > 2000 {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Описание слишком длинное.", gin.H{"max_chars": 2000})
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Описание слишком длинное.", gin.H{"max_chars": 2000})
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 6*time.Second)
 	defer cancel()
-	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+	if err := photos.EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
 		if err == pgx.ErrNoRows {
-			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
@@ -303,57 +312,58 @@ func (h *moderationAPI) SubmitCafeDescription(c *gin.Context) {
 		descriptionPayload{Description: description},
 	)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Не удалось создать заявку.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось создать заявку.", nil)
 		return
 	}
 	c.JSON(http.StatusOK, item)
 }
 
-func (h *moderationAPI) SubmitCafePhotos(c *gin.Context) {
+func (h *Handler) SubmitCafePhotos(c *gin.Context) {
 	h.submitPhotos(c, entityTypeCafePhoto)
 }
 
-func (h *moderationAPI) SubmitMenuPhotos(c *gin.Context) {
+func (h *Handler) SubmitMenuPhotos(c *gin.Context) {
 	h.submitPhotos(c, entityTypeMenuPhoto)
 }
 
-func (h *moderationAPI) submitPhotos(c *gin.Context, entityType string) {
+func (h *Handler) submitPhotos(c *gin.Context, entityType string) {
 	userID, ok := auth.UserIDFromContext(c)
 	if !ok || strings.TrimSpace(userID) == "" {
-		respondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
+		httpx.RespondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
 		return
 	}
 
 	cafeID := strings.TrimSpace(c.Param("id"))
-	if !isValidUUID(cafeID) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+	if !validation.IsValidUUID(cafeID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
 
 	var req submitPhotosRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
-		return
-	}
-
-	keys, err := h.validatePendingObjectKeys(userID, req.ObjectKeys)
-	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
-		return
-	}
-	if len(keys) == 0 {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Нужно выбрать хотя бы одно фото.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 6*time.Second)
 	defer cancel()
-	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+
+	keys, err := h.validatePendingObjectKeys(ctx, userID, req.ObjectKeys)
+	if err != nil {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		return
+	}
+	if len(keys) == 0 {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Нужно выбрать хотя бы одно фото.", nil)
+		return
+	}
+
+	if err := photos.EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
 		if err == pgx.ErrNoRows {
-			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
@@ -366,16 +376,16 @@ func (h *moderationAPI) submitPhotos(c *gin.Context, entityType string) {
 		photosPayload{ObjectKeys: keys},
 	)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Не удалось создать заявку.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось создать заявку.", nil)
 		return
 	}
 	c.JSON(http.StatusOK, item)
 }
 
-func (h *moderationAPI) ListMine(c *gin.Context) {
+func (h *Handler) ListMine(c *gin.Context) {
 	userID, ok := auth.UserIDFromContext(c)
 	if !ok || strings.TrimSpace(userID) == "" {
-		respondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
+		httpx.RespondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
 		return
 	}
 
@@ -395,7 +405,7 @@ func (h *moderationAPI) ListMine(c *gin.Context) {
 		userID,
 	)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить заявки.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить заявки.", nil)
 		return
 	}
 	defer rows.Close()
@@ -404,23 +414,23 @@ func (h *moderationAPI) ListMine(c *gin.Context) {
 	for rows.Next() {
 		item, scanErr := scanSubmissionRow(rows, "cafe")
 		if scanErr != nil {
-			respondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить заявки.", nil)
+			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить заявки.", nil)
 			return
 		}
 		h.enrichSubmission(&item)
 		out = append(out, item)
 	}
 	if err := rows.Err(); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить заявки.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить заявки.", nil)
 		return
 	}
 	c.JSON(http.StatusOK, submissionListResponse{Items: out})
 }
 
-func (h *moderationAPI) ListModeration(c *gin.Context) {
+func (h *Handler) ListModeration(c *gin.Context) {
 	status := strings.TrimSpace(strings.ToLower(c.DefaultQuery("status", statusPending)))
 	if status != "" && status != statusPending && status != statusApprove && status != statusReject && status != "needs_changes" && status != "cancelled" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный status.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный status.", nil)
 		return
 	}
 	entityType := strings.TrimSpace(strings.ToLower(c.Query("entity_type")))
@@ -445,7 +455,7 @@ func (h *moderationAPI) ListModeration(c *gin.Context) {
 		entityType,
 	)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить модерацию.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить модерацию.", nil)
 		return
 	}
 	defer rows.Close()
@@ -454,23 +464,23 @@ func (h *moderationAPI) ListModeration(c *gin.Context) {
 	for rows.Next() {
 		item, scanErr := scanSubmissionRow(rows, "author+cafe")
 		if scanErr != nil {
-			respondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить модерацию.", nil)
+			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить модерацию.", nil)
 			return
 		}
 		h.enrichSubmission(&item)
 		out = append(out, item)
 	}
 	if err := rows.Err(); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить модерацию.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить модерацию.", nil)
 		return
 	}
 	c.JSON(http.StatusOK, submissionListResponse{Items: out})
 }
 
-func (h *moderationAPI) GetModerationItem(c *gin.Context) {
+func (h *Handler) GetModerationItem(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
-	if !isValidUUID(id) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id заявки.", nil)
+	if !validation.IsValidUUID(id) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id заявки.", nil)
 		return
 	}
 
@@ -493,44 +503,44 @@ func (h *moderationAPI) GetModerationItem(c *gin.Context) {
 	item, err := scanSubmissionRow(row, "author+cafe")
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			respondError(c, http.StatusNotFound, "not_found", "Заявка не найдена.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Заявка не найдена.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить заявку.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить заявку.", nil)
 		return
 	}
 	h.enrichSubmission(&item)
 	c.JSON(http.StatusOK, item)
 }
 
-func (h *moderationAPI) Approve(c *gin.Context) {
+func (h *Handler) Approve(c *gin.Context) {
 	h.decide(c, statusApprove)
 }
 
-func (h *moderationAPI) Reject(c *gin.Context) {
+func (h *Handler) Reject(c *gin.Context) {
 	h.decide(c, statusReject)
 }
 
-func (h *moderationAPI) decide(c *gin.Context, decision string) {
+func (h *Handler) decide(c *gin.Context, decision string) {
 	submissionID := strings.TrimSpace(c.Param("id"))
-	if !isValidUUID(submissionID) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id заявки.", nil)
+	if !validation.IsValidUUID(submissionID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id заявки.", nil)
 		return
 	}
 	moderatorID, ok := auth.UserIDFromContext(c)
 	if !ok || strings.TrimSpace(moderatorID) == "" {
-		respondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
+		httpx.RespondError(c, http.StatusUnauthorized, "unauthorized", "Необходимо войти в аккаунт.", nil)
 		return
 	}
 
 	var req moderationDecisionRequest
 	if err := c.ShouldBindJSON(&req); err != nil && !strings.Contains(err.Error(), "EOF") {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
 		return
 	}
 	comment := strings.TrimSpace(req.Comment)
 	if decision == statusReject && comment == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Укажите причину отклонения.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Укажите причину отклонения.", nil)
 		return
 	}
 
@@ -539,7 +549,7 @@ func (h *moderationAPI) decide(c *gin.Context, decision string) {
 
 	tx, err := h.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	defer func() {
@@ -558,20 +568,20 @@ func (h *moderationAPI) decide(c *gin.Context, decision string) {
 	submission, err := scanSubmissionRow(row, "")
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			respondError(c, http.StatusNotFound, "not_found", "Заявка не найдена.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Заявка не найдена.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	if submission.Status != statusPending {
-		respondError(c, http.StatusConflict, "conflict", "Заявка уже обработана.", nil)
+		httpx.RespondError(c, http.StatusConflict, "conflict", "Заявка уже обработана.", nil)
 		return
 	}
 
 	if decision == statusApprove {
 		if err := h.applySubmission(ctx, tx, submission, moderatorID); err != nil {
-			respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 			return
 		}
 	}
@@ -590,7 +600,7 @@ func (h *moderationAPI) decide(c *gin.Context, decision string) {
 		moderatorID,
 		commentArg,
 	); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	if _, err := tx.Exec(
@@ -602,19 +612,19 @@ func (h *moderationAPI) decide(c *gin.Context, decision string) {
 		decision,
 		commentArg,
 	); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func (h *moderationAPI) applySubmission(
+func (h *Handler) applySubmission(
 	ctx context.Context,
 	tx pgx.Tx,
 	submission moderationSubmissionResponse,
@@ -635,18 +645,18 @@ func (h *moderationAPI) applySubmission(
 		if submission.ActionType != actionTypeCreate {
 			return fmt.Errorf("Неподдерживаемое действие для cafe_photo")
 		}
-		return h.applyCafePhotos(ctx, tx, submission, cafePhotoKindCafe, true)
+		return h.applyCafePhotos(ctx, tx, submission, photos.KindCafe, true)
 	case entityTypeMenuPhoto:
 		if submission.ActionType != actionTypeCreate {
 			return fmt.Errorf("Неподдерживаемое действие для menu_photo")
 		}
-		return h.applyCafePhotos(ctx, tx, submission, cafePhotoKindMenu, false)
+		return h.applyCafePhotos(ctx, tx, submission, photos.KindMenu, false)
 	default:
 		return fmt.Errorf("Этот тип заявки пока не поддерживается")
 	}
 }
 
-func (h *moderationAPI) applyCafeCreate(
+func (h *Handler) applyCafeCreate(
 	ctx context.Context,
 	tx pgx.Tx,
 	submission moderationSubmissionResponse,
@@ -687,19 +697,19 @@ func (h *moderationAPI) applyCafeCreate(
 	combinedMenu := append([]string{}, payload.MenuPhotoObjectKeys...)
 
 	if len(combinedKeys) > 0 {
-		if err := h.insertCafePhotos(ctx, tx, cafeID, moderatorID, combinedKeys, cafePhotoKindCafe, true); err != nil {
+		if err := h.insertCafePhotos(ctx, tx, cafeID, moderatorID, combinedKeys, photos.KindCafe, true); err != nil {
 			return err
 		}
 	}
 	if len(combinedMenu) > 0 {
-		if err := h.insertCafePhotos(ctx, tx, cafeID, moderatorID, combinedMenu, cafePhotoKindMenu, false); err != nil {
+		if err := h.insertCafePhotos(ctx, tx, cafeID, moderatorID, combinedMenu, photos.KindMenu, false); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (h *moderationAPI) applyCafeDescription(
+func (h *Handler) applyCafeDescription(
 	ctx context.Context,
 	tx pgx.Tx,
 	submission moderationSubmissionResponse,
@@ -731,7 +741,7 @@ func (h *moderationAPI) applyCafeDescription(
 	return nil
 }
 
-func (h *moderationAPI) applyCafePhotos(
+func (h *Handler) applyCafePhotos(
 	ctx context.Context,
 	tx pgx.Tx,
 	submission moderationSubmissionResponse,
@@ -759,7 +769,7 @@ func (h *moderationAPI) applyCafePhotos(
 	)
 }
 
-func (h *moderationAPI) insertCafePhotos(
+func (h *Handler) insertCafePhotos(
 	ctx context.Context,
 	tx pgx.Tx,
 	cafeID string,
@@ -768,7 +778,7 @@ func (h *moderationAPI) insertCafePhotos(
 	photoKind string,
 	allowCover bool,
 ) error {
-	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+	if err := photos.EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
 		if err == pgx.ErrNoRows {
 			return fmt.Errorf("Кофейня не найдена")
 		}
@@ -801,7 +811,7 @@ func (h *moderationAPI) insertCafePhotos(
 			if headErr != nil {
 				return fmt.Errorf("Файл %s не найден в хранилище", key)
 			}
-			if _, ok := allowedPhotoContentTypes[normalizeContentType(mimeType)]; !ok {
+			if _, ok := photos.AllowedPhotoContentTypes[photos.NormalizeContentType(mimeType)]; !ok {
 				return fmt.Errorf("Файл %s имеет неподдерживаемый формат", key)
 			}
 		} else {
@@ -810,12 +820,12 @@ func (h *moderationAPI) insertCafePhotos(
 
 		position++
 		isCover := false
-		if allowCover && photoKind == cafePhotoKindCafe && count == 0 && index == 0 {
+		if allowCover && photoKind == photos.KindCafe && count == 0 && index == 0 {
 			isCover = true
 		}
 
 		var uploadedBy any
-		if strings.TrimSpace(uploaderID) != "" && isValidUUID(uploaderID) {
+		if strings.TrimSpace(uploaderID) != "" && validation.IsValidUUID(uploaderID) {
 			uploadedBy = uploaderID
 		}
 
@@ -825,14 +835,14 @@ func (h *moderationAPI) insertCafePhotos(
 			 values ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid)`,
 			cafeID,
 			key,
-			normalizeContentType(mimeType),
+			photos.NormalizeContentType(mimeType),
 			sizeBytes,
 			photoKind,
 			position,
 			isCover,
 			uploadedBy,
 		); err != nil {
-			if isUniqueViolationPg(err) {
+			if photos.IsUniqueViolation(err) {
 				continue
 			}
 			return fmt.Errorf("Не удалось сохранить фото")
@@ -841,7 +851,7 @@ func (h *moderationAPI) insertCafePhotos(
 	return nil
 }
 
-func (h *moderationAPI) createSubmission(
+func (h *Handler) createSubmission(
 	ctx context.Context,
 	authorUserID string,
 	entityType string,
@@ -879,7 +889,7 @@ func (h *moderationAPI) createSubmission(
 	return item, nil
 }
 
-func (h *moderationAPI) validatePendingObjectKeys(userID string, keys []string) ([]string, error) {
+func (h *Handler) validatePendingObjectKeys(ctx context.Context, userID string, keys []string) ([]string, error) {
 	if len(keys) == 0 {
 		return nil, nil
 	}
@@ -901,14 +911,14 @@ func (h *moderationAPI) validatePendingObjectKeys(userID string, keys []string) 
 		if _, ok := seen[key]; ok {
 			continue
 		}
-		sizeBytes, mimeType, err := h.s3.HeadObject(context.Background(), key)
+		sizeBytes, mimeType, err := h.s3.HeadObject(ctx, key)
 		if err != nil {
 			return nil, fmt.Errorf("Файл %s не найден в хранилище", key)
 		}
 		if sizeBytes <= 0 || sizeBytes > h.cfg.S3MaxUploadBytes {
 			return nil, fmt.Errorf("Файл %s имеет недопустимый размер", key)
 		}
-		if _, ok := allowedPhotoContentTypes[normalizeContentType(mimeType)]; !ok {
+		if _, ok := photos.AllowedPhotoContentTypes[photos.NormalizeContentType(mimeType)]; !ok {
 			return nil, fmt.Errorf("Файл %s имеет неподдерживаемый формат", key)
 		}
 		seen[key] = struct{}{}
@@ -1011,7 +1021,7 @@ func scanSubmissionRow(row rowScanner, authorLabelMode string) (moderationSubmis
 	return item, nil
 }
 
-func (h *moderationAPI) enrichSubmission(item *moderationSubmissionResponse) {
+func (h *Handler) enrichSubmission(item *moderationSubmissionResponse) {
 	if item == nil || item.Payload == nil {
 		return
 	}
@@ -1069,7 +1079,7 @@ func extractStringArray(value any) []string {
 	}
 }
 
-func (h *moderationAPI) objectKeysToPublicURLs(keys []string) []string {
+func (h *Handler) objectKeysToPublicURLs(keys []string) []string {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -1084,7 +1094,7 @@ func (h *moderationAPI) objectKeysToPublicURLs(keys []string) []string {
 	return out
 }
 
-func (h *moderationAPI) publicURLForObjectKey(objectKey string) string {
+func (h *Handler) publicURLForObjectKey(objectKey string) string {
 	if h.s3 != nil && h.s3.Enabled() {
 		return h.s3.PublicURL(objectKey)
 	}

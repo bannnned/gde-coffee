@@ -1,4 +1,4 @@
-package main
+package photos
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
 
@@ -14,6 +13,8 @@ import (
 	"backend/internal/config"
 	"backend/internal/media"
 	"backend/internal/model"
+	"backend/internal/shared/httpx"
+	"backend/internal/shared/validation"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -21,24 +22,24 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var allowedPhotoContentTypes = map[string]string{
+var AllowedPhotoContentTypes = map[string]string{
 	"image/jpeg": ".jpg",
 	"image/png":  ".png",
 	"image/webp": ".webp",
 	"image/avif": ".avif",
 }
 
-var uuidPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
-
 const (
-	cafePhotoKindCafe = "cafe"
-	cafePhotoKindMenu = "menu"
+	KindCafe = "cafe"
+	KindMenu = "menu"
 )
 
-type cafePhotoAPI struct {
-	pool *pgxpool.Pool
-	s3   *media.Service
-	cfg  config.MediaConfig
+type Handler struct {
+	pool       *pgxpool.Pool
+	s3         *media.Service
+	cfg        config.MediaConfig
+	repository *Repository
+	service    *Service
 }
 
 type cafePhotoPresignRequest struct {
@@ -75,67 +76,71 @@ type cafePhotoReorderRequest struct {
 	PhotoIDs []string `json:"photo_ids"`
 }
 
-func newCafePhotoAPI(pool *pgxpool.Pool, s3 *media.Service, cfg config.MediaConfig) *cafePhotoAPI {
-	return &cafePhotoAPI{
-		pool: pool,
-		s3:   s3,
-		cfg:  cfg,
+func NewHandler(pool *pgxpool.Pool, s3 *media.Service, cfg config.MediaConfig) *Handler {
+	repository := NewRepository(pool)
+	service := NewService(repository, s3, cfg)
+	return &Handler{
+		pool:       pool,
+		s3:         s3,
+		cfg:        cfg,
+		repository: repository,
+		service:    service,
 	}
 }
 
-func normalizePhotoKind(raw string) (string, error) {
+func NormalizePhotoKind(raw string) (string, error) {
 	kind := strings.ToLower(strings.TrimSpace(raw))
 	if kind == "" {
-		return cafePhotoKindCafe, nil
+		return KindCafe, nil
 	}
 	switch kind {
-	case cafePhotoKindCafe, cafePhotoKindMenu:
+	case KindCafe, KindMenu:
 		return kind, nil
 	default:
 		return "", errors.New("Некорректный kind. Поддерживаются только cafe и menu.")
 	}
 }
 
-func (h *cafePhotoAPI) Presign(c *gin.Context) {
+func (h *Handler) Presign(c *gin.Context) {
 	if h.s3 == nil || !h.s3.Enabled() {
-		respondError(c, http.StatusServiceUnavailable, "service_unavailable", "Загрузка фото сейчас недоступна.", nil)
+		httpx.RespondError(c, http.StatusServiceUnavailable, "service_unavailable", "Загрузка фото сейчас недоступна.", nil)
 		return
 	}
 
 	cafeID := strings.TrimSpace(c.Param("id"))
 	if cafeID == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
-	if !isValidUUID(cafeID) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+	if !validation.IsValidUUID(cafeID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
 
 	var req cafePhotoPresignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
 		return
 	}
-	photoKind, err := normalizePhotoKind(req.Kind)
+	photoKind, err := NormalizePhotoKind(req.Kind)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
-	contentType := normalizeContentType(req.ContentType)
-	ext, ok := allowedPhotoContentTypes[contentType]
+	contentType := NormalizeContentType(req.ContentType)
+	ext, ok := AllowedPhotoContentTypes[contentType]
 	if !ok {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Неподдерживаемый формат изображения.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Неподдерживаемый формат изображения.", nil)
 		return
 	}
 
 	if req.SizeBytes <= 0 {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Размер файла должен быть больше 0.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Размер файла должен быть больше 0.", nil)
 		return
 	}
 	if req.SizeBytes > h.cfg.S3MaxUploadBytes {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Размер файла превышает допустимый лимит.", gin.H{
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Размер файла превышает допустимый лимит.", gin.H{
 			"max_upload_bytes": h.cfg.S3MaxUploadBytes,
 		})
 		return
@@ -144,25 +149,25 @@ func (h *cafePhotoAPI) Presign(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+	if err := EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
 		if err == pgx.ErrNoRows {
-			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	token, err := auth.GenerateToken(9)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	objectKey := fmt.Sprintf("cafes/%s/%s/%d_%s%s", cafeID, photoKind, time.Now().Unix(), token, ext)
 	presigned, err := h.s3.PresignPutObject(ctx, objectKey, contentType)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Не удалось подготовить загрузку файла.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось подготовить загрузку файла.", nil)
 		return
 	}
 
@@ -176,80 +181,80 @@ func (h *cafePhotoAPI) Presign(c *gin.Context) {
 	})
 }
 
-func (h *cafePhotoAPI) Confirm(c *gin.Context) {
+func (h *Handler) Confirm(c *gin.Context) {
 	if h.s3 == nil || !h.s3.Enabled() {
-		respondError(c, http.StatusServiceUnavailable, "service_unavailable", "Загрузка фото сейчас недоступна.", nil)
+		httpx.RespondError(c, http.StatusServiceUnavailable, "service_unavailable", "Загрузка фото сейчас недоступна.", nil)
 		return
 	}
 
 	cafeID := strings.TrimSpace(c.Param("id"))
 	if cafeID == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
-	if !isValidUUID(cafeID) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+	if !validation.IsValidUUID(cafeID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
 
 	var req cafePhotoConfirmRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
 		return
 	}
-	photoKind, err := normalizePhotoKind(req.Kind)
+	photoKind, err := NormalizePhotoKind(req.Kind)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	objectKey := strings.TrimSpace(strings.TrimPrefix(req.ObjectKey, "/"))
 	if objectKey == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "object_key обязателен.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "object_key обязателен.", nil)
 		return
 	}
 	keyPrefix := fmt.Sprintf("cafes/%s/%s/", cafeID, photoKind)
 	if !strings.HasPrefix(objectKey, keyPrefix) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "object_key не соответствует выбранной кофейне.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "object_key не соответствует выбранной кофейне.", nil)
 		return
 	}
 	if req.Position != nil && *req.Position < 0 {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "position должен быть >= 0.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "position должен быть >= 0.", nil)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 	defer cancel()
 
-	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+	if err := EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
 		if err == pgx.ErrNoRows {
-			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	sizeBytes, mimeType, err := h.s3.HeadObject(ctx, objectKey)
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Файл не найден в хранилище или ссылка устарела.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Файл не найден в хранилище или ссылка устарела.", nil)
 		return
 	}
 	if sizeBytes > h.cfg.S3MaxUploadBytes {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Размер файла превышает допустимый лимит.", gin.H{
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Размер файла превышает допустимый лимит.", gin.H{
 			"max_upload_bytes": h.cfg.S3MaxUploadBytes,
 			"size_bytes":       sizeBytes,
 		})
 		return
 	}
-	if _, ok := allowedPhotoContentTypes[normalizeContentType(mimeType)]; !ok {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Неподдерживаемый формат изображения.", nil)
+	if _, ok := AllowedPhotoContentTypes[NormalizeContentType(mimeType)]; !ok {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Неподдерживаемый формат изображения.", nil)
 		return
 	}
 
 	tx, err := h.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	defer func() {
@@ -263,7 +268,7 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 		cafeID,
 		photoKind,
 	).Scan(&photosCount); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
@@ -271,7 +276,7 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 	if req.Position != nil {
 		position = *req.Position
 	}
-	isCover := photoKind == cafePhotoKindCafe && (req.IsCover || photosCount == 0)
+	isCover := photoKind == KindCafe && (req.IsCover || photosCount == 0)
 
 	if isCover {
 		if _, err := tx.Exec(
@@ -280,7 +285,7 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 			cafeID,
 			photoKind,
 		); err != nil {
-			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 			return
 		}
 	}
@@ -301,7 +306,7 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 		 returning id::text, position, is_cover`,
 		cafeID,
 		objectKey,
-		normalizeContentType(mimeType),
+		NormalizeContentType(mimeType),
 		sizeBytes,
 		photoKind,
 		position,
@@ -309,16 +314,16 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 		uploadedBy,
 	).Scan(&photoID, &savedPosition, &savedIsCover)
 	if err != nil {
-		if isUniqueViolationPg(err) {
-			respondError(c, http.StatusConflict, "already_exists", "Это фото уже привязано к кофейне.", nil)
+		if IsUniqueViolation(err) {
+			httpx.RespondError(c, http.StatusConflict, "already_exists", "Это фото уже привязано к кофейне.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
@@ -333,79 +338,79 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 	})
 }
 
-func (h *cafePhotoAPI) List(c *gin.Context) {
+func (h *Handler) List(c *gin.Context) {
 	cafeID := strings.TrimSpace(c.Param("id"))
 	if cafeID == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
-	if !isValidUUID(cafeID) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+	if !validation.IsValidUUID(cafeID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
-	photoKind, err := normalizePhotoKind(c.DefaultQuery("kind", cafePhotoKindCafe))
+	photoKind, err := NormalizePhotoKind(c.DefaultQuery("kind", KindCafe))
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+	if err := EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
 		if err == pgx.ErrNoRows {
-			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
-	photos, err := listCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
+	photos, err := ListCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	c.JSON(http.StatusOK, cafePhotoListResponse{Photos: photos})
 }
 
-func (h *cafePhotoAPI) SetCover(c *gin.Context) {
+func (h *Handler) SetCover(c *gin.Context) {
 	cafeID := strings.TrimSpace(c.Param("id"))
 	photoID := strings.TrimSpace(c.Param("photoID"))
 	if cafeID == "" || photoID == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
 		return
 	}
-	if !isValidUUID(cafeID) || !isValidUUID(photoID) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
+	if !validation.IsValidUUID(cafeID) || !validation.IsValidUUID(photoID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
 		return
 	}
-	photoKind, err := normalizePhotoKind(c.DefaultQuery("kind", cafePhotoKindCafe))
+	photoKind, err := NormalizePhotoKind(c.DefaultQuery("kind", KindCafe))
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
-	if photoKind != cafePhotoKindCafe {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Обложку можно назначать только для фото заведения.", nil)
+	if photoKind != KindCafe {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Обложку можно назначать только для фото заведения.", nil)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 	defer cancel()
 
-	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+	if err := EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
 		if err == pgx.ErrNoRows {
-			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	tx, err := h.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	defer func() {
@@ -418,7 +423,7 @@ func (h *cafePhotoAPI) SetCover(c *gin.Context) {
 		cafeID,
 		photoKind,
 	); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
@@ -430,51 +435,51 @@ func (h *cafePhotoAPI) SetCover(c *gin.Context) {
 		photoID,
 	)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	if result.RowsAffected() == 0 {
-		respondError(c, http.StatusNotFound, "not_found", "Фото не найдено.", nil)
+		httpx.RespondError(c, http.StatusNotFound, "not_found", "Фото не найдено.", nil)
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
-	photos, err := listCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
+	photos, err := ListCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	c.JSON(http.StatusOK, cafePhotoListResponse{Photos: photos})
 }
 
-func (h *cafePhotoAPI) Reorder(c *gin.Context) {
+func (h *Handler) Reorder(c *gin.Context) {
 	cafeID := strings.TrimSpace(c.Param("id"))
 	if cafeID == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
-	if !isValidUUID(cafeID) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+	if !validation.IsValidUUID(cafeID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
-	photoKind, err := normalizePhotoKind(c.DefaultQuery("kind", cafePhotoKindCafe))
+	photoKind, err := NormalizePhotoKind(c.DefaultQuery("kind", KindCafe))
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	var req cafePhotoReorderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
 		return
 	}
 	if len(req.PhotoIDs) == 0 {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids не должен быть пустым.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids не должен быть пустым.", nil)
 		return
 	}
 
@@ -482,15 +487,15 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 	for i := range req.PhotoIDs {
 		photoID := strings.TrimSpace(req.PhotoIDs[i])
 		if photoID == "" {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит пустой id.", nil)
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит пустой id.", nil)
 			return
 		}
-		if !isValidUUID(photoID) {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит некорректный id.", nil)
+		if !validation.IsValidUUID(photoID) {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит некорректный id.", nil)
 			return
 		}
 		if _, ok := seen[photoID]; ok {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит дубли.", nil)
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит дубли.", nil)
 			return
 		}
 		seen[photoID] = struct{}{}
@@ -500,18 +505,18 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 	defer cancel()
 
-	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+	if err := EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
 		if err == pgx.ErrNoRows {
-			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	tx, err := h.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	defer func() {
@@ -528,7 +533,7 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 		photoKind,
 	)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	existingIDs := make([]string, 0, len(req.PhotoIDs))
@@ -536,20 +541,20 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 		var photoID string
 		if err := rows.Scan(&photoID); err != nil {
 			rows.Close()
-			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 			return
 		}
 		existingIDs = append(existingIDs, photoID)
 	}
 	if err := rows.Err(); err != nil {
 		rows.Close()
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	rows.Close()
 
 	if len(existingIDs) != len(req.PhotoIDs) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids должен содержать все фото кофейни.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids должен содержать все фото кофейни.", nil)
 		return
 	}
 	existingSet := make(map[string]struct{}, len(existingIDs))
@@ -558,7 +563,7 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 	}
 	for _, photoID := range req.PhotoIDs {
 		if _, ok := existingSet[photoID]; !ok {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит чужой или несуществующий id.", nil)
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "photo_ids содержит чужой или несуществующий id.", nil)
 			return
 		}
 	}
@@ -579,11 +584,11 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 		cafeID,
 		photoKind,
 	); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
-	if photoKind == cafePhotoKindCafe {
+	if photoKind == KindCafe {
 		var hasCover bool
 		if err := tx.QueryRow(
 			ctx,
@@ -595,7 +600,7 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 			cafeID,
 			photoKind,
 		).Scan(&hasCover); err != nil {
-			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 			return
 		}
 		if !hasCover && len(req.PhotoIDs) > 0 {
@@ -608,58 +613,58 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 				photoKind,
 				req.PhotoIDs[0],
 			); err != nil {
-				respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+				httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 				return
 			}
 		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
-	photos, err := listCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
+	photos, err := ListCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	c.JSON(http.StatusOK, cafePhotoListResponse{Photos: photos})
 }
 
-func (h *cafePhotoAPI) Delete(c *gin.Context) {
+func (h *Handler) Delete(c *gin.Context) {
 	cafeID := strings.TrimSpace(c.Param("id"))
 	photoID := strings.TrimSpace(c.Param("photoID"))
 	if cafeID == "" || photoID == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
 		return
 	}
-	if !isValidUUID(cafeID) || !isValidUUID(photoID) {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
+	if !validation.IsValidUUID(cafeID) || !validation.IsValidUUID(photoID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
 		return
 	}
-	photoKind, err := normalizePhotoKind(c.DefaultQuery("kind", cafePhotoKindCafe))
+	photoKind, err := NormalizePhotoKind(c.DefaultQuery("kind", KindCafe))
 	if err != nil {
-		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 	defer cancel()
 
-	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
+	if err := EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
 		if err == pgx.ErrNoRows {
-			respondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	tx, err := h.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	defer func() {
@@ -680,10 +685,10 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 	).Scan(&objectKey, &wasCover)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			respondError(c, http.StatusNotFound, "not_found", "Фото не найдено.", nil)
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Фото не найдено.", nil)
 			return
 		}
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
@@ -694,7 +699,7 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		photoKind,
 		photoID,
 	); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
@@ -711,7 +716,7 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 			photoKind,
 		).Scan(&replacementID)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 			return
 		}
 		if err == nil {
@@ -722,7 +727,7 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 				photoKind,
 				replacementID,
 			); err != nil {
-				respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+				httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 				return
 			}
 		}
@@ -738,7 +743,7 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		photoKind,
 	)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	remainingIDs := make([]string, 0, 12)
@@ -746,14 +751,14 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		var id string
 		if err := rows.Scan(&id); err != nil {
 			rows.Close()
-			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 			return
 		}
 		remainingIDs = append(remainingIDs, id)
 	}
 	if err := rows.Err(); err != nil {
 		rows.Close()
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 	rows.Close()
@@ -775,13 +780,13 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 			cafeID,
 			photoKind,
 		); err != nil {
-			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 			return
 		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
@@ -793,16 +798,16 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		}
 	}
 
-	photos, err := listCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
+	photos, err := ListCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
 	if err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
 	c.JSON(http.StatusOK, cafePhotoListResponse{Photos: photos})
 }
 
-func ensureCafeExists(ctx context.Context, pool *pgxpool.Pool, cafeID string) error {
+func EnsureCafeExists(ctx context.Context, pool *pgxpool.Pool, cafeID string) error {
 	var exists bool
 	if err := pool.QueryRow(
 		ctx,
@@ -817,7 +822,7 @@ func ensureCafeExists(ctx context.Context, pool *pgxpool.Pool, cafeID string) er
 	return nil
 }
 
-func normalizeContentType(contentType string) string {
+func NormalizeContentType(contentType string) string {
 	value := strings.ToLower(strings.TrimSpace(contentType))
 	if idx := strings.Index(value, ";"); idx > 0 {
 		return strings.TrimSpace(value[:idx])
@@ -825,16 +830,12 @@ func normalizeContentType(contentType string) string {
 	return value
 }
 
-func isUniqueViolationPg(err error) bool {
+func IsUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && strings.TrimSpace(pgErr.Code) == "23505"
 }
 
-func isValidUUID(value string) bool {
-	return uuidPattern.MatchString(strings.TrimSpace(value))
-}
-
-func attachCafeCoverPhotos(
+func AttachCafeCoverPhotos(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	cafes []model.CafeResponse,
@@ -859,7 +860,7 @@ func attachCafeCoverPhotos(
 		   and kind = $2
 		 order by cafe_id asc, is_cover desc, position asc, created_at asc`,
 		cafeIDs,
-		cafePhotoKindCafe,
+		KindCafe,
 	)
 	if err != nil {
 		return err
@@ -875,7 +876,7 @@ func attachCafeCoverPhotos(
 		if err := rows.Scan(&cafeID, &objectKey); err != nil {
 			return err
 		}
-		coverByCafeID[cafeID] = buildCafePhotoURL(mediaCfg, objectKey)
+		coverByCafeID[cafeID] = BuildPhotoURL(mediaCfg, objectKey)
 	}
 	if err := rows.Err(); err != nil {
 		return err
@@ -895,7 +896,7 @@ type cafePhotoRowsQuerier interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }
 
-func listCafePhotos(
+func ListCafePhotos(
 	ctx context.Context,
 	q cafePhotoRowsQuerier,
 	cafeID string,
@@ -930,7 +931,7 @@ func listCafePhotos(
 		}
 		photos = append(photos, model.CafePhotoResponse{
 			ID:       photoID,
-			URL:      buildCafePhotoURL(mediaCfg, objectKey),
+			URL:      BuildPhotoURL(mediaCfg, objectKey),
 			Kind:     kind,
 			IsCover:  isCover,
 			Position: position,
@@ -943,7 +944,7 @@ func listCafePhotos(
 	return photos, nil
 }
 
-func buildCafePhotoURL(mediaCfg config.MediaConfig, objectKey string) string {
+func BuildPhotoURL(mediaCfg config.MediaConfig, objectKey string) string {
 	key := strings.TrimSpace(strings.TrimPrefix(objectKey, "/"))
 	if key == "" {
 		return ""

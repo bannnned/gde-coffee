@@ -1,4 +1,4 @@
-package main
+package cafes
 
 import (
 	"context"
@@ -8,64 +8,56 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"backend/internal/config"
+	"backend/internal/domains/photos"
+	"backend/internal/model"
 
-	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 )
 
-type geocodeAPI struct {
-	client *http.Client
-	cfg    config.GeocodingConfig
+type Service struct {
+	repository *Repository
+	cfg        config.Config
+	client     *http.Client
 }
 
-type geocodeLookupResponse struct {
-	Found       bool    `json:"found"`
-	Latitude    float64 `json:"latitude,omitempty"`
-	Longitude   float64 `json:"longitude,omitempty"`
-	DisplayName string  `json:"display_name,omitempty"`
-	Provider    string  `json:"provider,omitempty"`
-}
-
-func newGeocodeAPI(cfg config.GeocodingConfig) *geocodeAPI {
-	return &geocodeAPI{
-		cfg: cfg,
+func NewService(repository *Repository, cfg config.Config) *Service {
+	return &Service{
+		repository: repository,
+		cfg:        cfg,
 		client: &http.Client{
-			Timeout: cfg.Timeout,
+			Timeout: cfg.Geocoding.Timeout,
 		},
 	}
 }
 
-func (h *geocodeAPI) Lookup(c *gin.Context) {
-	address := strings.TrimSpace(c.Query("address"))
-	city := strings.TrimSpace(c.Query("city"))
-	if address == "" {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Параметр address обязателен.", nil)
-		return
-	}
-	if len([]rune(address)) < 3 {
-		respondError(c, http.StatusBadRequest, "invalid_argument", "Введите более подробный адрес.", nil)
-		return
-	}
-
-	fullQuery := address
-	if city != "" {
-		fullQuery = city + ", " + address
-	}
-
-	result, err := h.lookup(c.Request.Context(), fullQuery)
+func (s *Service) List(ctx context.Context, params ListParams) ([]model.CafeResponse, error) {
+	items, err := s.repository.QueryCafes(ctx, params, s.cfg.Limits)
 	if err != nil {
-		respondError(c, http.StatusBadGateway, "upstream_error", "Не удалось определить координаты по адресу.", nil)
-		return
+		return nil, err
 	}
-	c.JSON(http.StatusOK, result)
+	if err := photos.AttachCafeCoverPhotos(ctx, s.repository.pool, items, s.cfg.Media); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (h *geocodeAPI) lookup(ctx context.Context, query string) (geocodeLookupResponse, error) {
-	var yandexErr error
+func (s *Service) UpdateDescription(ctx context.Context, cafeID, description string) (string, error) {
+	return s.repository.UpdateDescription(ctx, cafeID, description)
+}
 
-	if strings.TrimSpace(h.cfg.YandexAPIKey) != "" {
-		result, err := h.lookupYandex(ctx, query)
+func (s *Service) LookupAddress(ctx context.Context, address, city string) (GeocodeLookupResponse, error) {
+	fullQuery := strings.TrimSpace(address)
+	city = strings.TrimSpace(city)
+	if city != "" {
+		fullQuery = city + ", " + fullQuery
+	}
+
+	var yandexErr error
+	if strings.TrimSpace(s.cfg.Geocoding.YandexAPIKey) != "" {
+		result, err := s.lookupYandex(ctx, fullQuery)
 		if err == nil && result.Found {
 			return result, nil
 		}
@@ -74,19 +66,19 @@ func (h *geocodeAPI) lookup(ctx context.Context, query string) (geocodeLookupRes
 		}
 	}
 
-	result, err := h.lookupNominatim(ctx, query)
+	result, err := s.lookupNominatim(ctx, fullQuery)
 	if err != nil {
 		if yandexErr != nil {
-			return geocodeLookupResponse{}, fmt.Errorf("yandex: %w; nominatim: %w", yandexErr, err)
+			return GeocodeLookupResponse{}, fmt.Errorf("yandex: %w; nominatim: %w", yandexErr, err)
 		}
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 	return result, nil
 }
 
-func (h *geocodeAPI) lookupYandex(ctx context.Context, query string) (geocodeLookupResponse, error) {
+func (s *Service) lookupYandex(ctx context.Context, query string) (GeocodeLookupResponse, error) {
 	params := url.Values{}
-	params.Set("apikey", strings.TrimSpace(h.cfg.YandexAPIKey))
+	params.Set("apikey", strings.TrimSpace(s.cfg.Geocoding.YandexAPIKey))
 	params.Set("format", "json")
 	params.Set("results", "1")
 	params.Set("lang", "ru_RU")
@@ -95,21 +87,21 @@ func (h *geocodeAPI) lookupYandex(ctx context.Context, query string) (geocodeLoo
 	endpoint := "https://geocode-maps.yandex.ru/1.x/?" + params.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 	req.Header.Set("Accept", "application/json")
-	if ua := strings.TrimSpace(h.cfg.UserAgent); ua != "" {
+	if ua := strings.TrimSpace(s.cfg.Geocoding.UserAgent); ua != "" {
 		req.Header.Set("User-Agent", ua)
 	}
 
-	resp, err := h.client.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return geocodeLookupResponse{}, fmt.Errorf("yandex geocoder status=%d", resp.StatusCode)
+		return GeocodeLookupResponse{}, fmt.Errorf("yandex geocoder status=%d", resp.StatusCode)
 	}
 
 	var payload struct {
@@ -131,28 +123,28 @@ func (h *geocodeAPI) lookupYandex(ctx context.Context, query string) (geocodeLoo
 		} `json:"response"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 	if len(payload.Response.GeoObjectCollection.FeatureMember) == 0 {
-		return geocodeLookupResponse{Found: false}, nil
+		return GeocodeLookupResponse{Found: false}, nil
 	}
 
 	item := payload.Response.GeoObjectCollection.FeatureMember[0].GeoObject
 	coords := strings.Fields(strings.TrimSpace(item.Point.Pos))
 	if len(coords) != 2 {
-		return geocodeLookupResponse{Found: false}, nil
+		return GeocodeLookupResponse{Found: false}, nil
 	}
 
 	lng, err := strconv.ParseFloat(coords[0], 64)
 	if err != nil {
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 	lat, err := strconv.ParseFloat(coords[1], 64)
 	if err != nil {
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 
-	return geocodeLookupResponse{
+	return GeocodeLookupResponse{
 		Found:       true,
 		Latitude:    lat,
 		Longitude:   lng,
@@ -161,9 +153,8 @@ func (h *geocodeAPI) lookupYandex(ctx context.Context, query string) (geocodeLoo
 	}, nil
 }
 
-func (h *geocodeAPI) lookupNominatim(ctx context.Context, query string) (geocodeLookupResponse, error) {
-	baseURL := strings.TrimSpace(h.cfg.NominatimBaseURL)
-	baseURL = strings.TrimRight(baseURL, "/")
+func (s *Service) lookupNominatim(ctx context.Context, query string) (GeocodeLookupResponse, error) {
+	baseURL := strings.TrimRight(strings.TrimSpace(s.cfg.Geocoding.NominatimBaseURL), "/")
 	if baseURL == "" {
 		baseURL = "https://nominatim.openstreetmap.org"
 	}
@@ -178,21 +169,21 @@ func (h *geocodeAPI) lookupNominatim(ctx context.Context, query string) (geocode
 	endpoint := baseURL + "/search?" + params.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 	req.Header.Set("Accept", "application/json")
-	if ua := strings.TrimSpace(h.cfg.UserAgent); ua != "" {
+	if ua := strings.TrimSpace(s.cfg.Geocoding.UserAgent); ua != "" {
 		req.Header.Set("User-Agent", ua)
 	}
 
-	resp, err := h.client.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return geocodeLookupResponse{}, fmt.Errorf("nominatim status=%d", resp.StatusCode)
+		return GeocodeLookupResponse{}, fmt.Errorf("nominatim status=%d", resp.StatusCode)
 	}
 
 	var payload []struct {
@@ -201,26 +192,34 @@ func (h *geocodeAPI) lookupNominatim(ctx context.Context, query string) (geocode
 		DisplayName string `json:"display_name"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 	if len(payload) == 0 {
-		return geocodeLookupResponse{Found: false}, nil
+		return GeocodeLookupResponse{Found: false}, nil
 	}
 
 	lat, err := strconv.ParseFloat(strings.TrimSpace(payload[0].Lat), 64)
 	if err != nil {
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 	lng, err := strconv.ParseFloat(strings.TrimSpace(payload[0].Lon), 64)
 	if err != nil {
-		return geocodeLookupResponse{}, err
+		return GeocodeLookupResponse{}, err
 	}
 
-	return geocodeLookupResponse{
+	return GeocodeLookupResponse{
 		Found:       true,
 		Latitude:    lat,
 		Longitude:   lng,
 		DisplayName: strings.TrimSpace(payload[0].DisplayName),
 		Provider:    "nominatim",
 	}, nil
+}
+
+func (s *Service) IsNotFound(err error) bool {
+	return err == pgx.ErrNoRows
+}
+
+func (s *Service) TimeoutContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(parent, timeout)
 }
