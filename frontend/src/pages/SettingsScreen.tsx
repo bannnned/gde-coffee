@@ -19,6 +19,7 @@ import {
   IconCircleX,
   IconMail,
   IconShieldCheck,
+  IconUser,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState, type FocusEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -44,7 +45,7 @@ export default function SettingsScreen() {
   useAllowBodyScroll();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, logout, status, refreshAuth } = useAuth();
+  const { user, status, refreshAuth } = useAuth();
   const [identities, setIdentities] = useState<authApi.AuthIdentity[]>([]);
   const [identityError, setIdentityError] = useState<string | null>(null);
   const [isIdentitiesLoading, setIsIdentitiesLoading] = useState(false);
@@ -54,6 +55,10 @@ export default function SettingsScreen() {
   const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameResult, setNameResult] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [isNameSubmitting, setIsNameSubmitting] = useState(false);
 
   const verifiedParam = searchParams.get("verified") === "1";
   const emailChangedParam = searchParams.get("email_changed") === "1";
@@ -66,6 +71,14 @@ export default function SettingsScreen() {
   );
 
   const emailValue = user?.email ?? "—";
+  const currentDisplayName = useMemo(
+    () => user?.displayName?.trim() || user?.name?.trim() || "",
+    [user],
+  );
+
+  useEffect(() => {
+    setNameDraft(currentDisplayName);
+  }, [currentDisplayName]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
     const target = event.currentTarget;
@@ -228,6 +241,37 @@ export default function SettingsScreen() {
     }
   });
 
+  const handleNameSave = async () => {
+    setNameError(null);
+    setNameResult(null);
+
+    if (status !== "authed") {
+      setNameError("Войдите в аккаунт, чтобы изменить имя.");
+      return;
+    }
+
+    const value = nameDraft.trim();
+    if (!value) {
+      setNameError("Введите имя профиля.");
+      return;
+    }
+
+    setIsNameSubmitting(true);
+    try {
+      await authApi.updateProfileName({ displayName: value });
+      await refreshAuth();
+      setNameResult("Имя профиля сохранено.");
+    } catch (err: any) {
+      setNameError(
+        err?.response?.data?.message ??
+          err?.normalized?.message ??
+          "Не удалось сохранить имя профиля.",
+      );
+    } finally {
+      setIsNameSubmitting(false);
+    }
+  };
+
   const settingsTitle = useMemo(
     () => (status === "loading" ? "Загружаем аккаунт..." : "Аккаунт / Настройки"),
     [status],
@@ -260,6 +304,53 @@ export default function SettingsScreen() {
             {emailChangedParam && (
               <div className={classes.banner}>Email успешно изменён.</div>
             )}
+
+            <div className={classes.section}>
+              <div className={classes.sectionHeader}>
+                <Group gap="xs">
+                  <IconUser size={18} />
+                  <Title order={4}>Имя профиля</Title>
+                </Group>
+              </div>
+              <Text size="sm" className={classes.muted} mb="sm">
+                Имя видно в профиле и в интерфейсе приложения.
+              </Text>
+              <div className={classes.formGrid}>
+                <TextInput
+                  label="Имя"
+                  placeholder="Например, Антон"
+                  value={nameDraft}
+                  onChange={(event) => {
+                    setNameDraft(event.currentTarget.value);
+                    setNameError(null);
+                    setNameResult(null);
+                  }}
+                  onFocus={handleFieldFocus}
+                  disabled={status !== "authed"}
+                />
+              </div>
+              <Group className={classes.actionsRow} mt="md">
+                <Button
+                  variant="filled"
+                  className={classes.actionButton}
+                  onClick={handleNameSave}
+                  loading={isNameSubmitting}
+                  disabled={status !== "authed"}
+                >
+                  Сохранить имя
+                </Button>
+              </Group>
+              {nameResult && (
+                <div className={classes.banner} style={{ marginTop: 12 }}>
+                  {nameResult}
+                </div>
+              )}
+              {nameError && (
+                <div className={classes.error} style={{ marginTop: 12 }}>
+                  {nameError}
+                </div>
+              )}
+            </div>
 
             <div className={classes.section}>
               <div className={classes.sectionHeader}>
@@ -556,23 +647,6 @@ export default function SettingsScreen() {
               )}
             </div>
 
-            <div className={classes.section}>
-              <div className={classes.sectionHeader}>
-                <Group gap="xs">
-                  <IconShieldCheck size={18} />
-                  <Title order={4}>Сессия</Title>
-                </Group>
-              </div>
-              <Group className={classes.actionsRow}>
-                <Button
-                  onClick={logout}
-                  variant="filled"
-                  className={classes.actionButtonDanger}
-                >
-                  Выйти из аккаунта
-                </Button>
-              </Group>
-            </div>
           </Stack>
         </Box>
       </Container>

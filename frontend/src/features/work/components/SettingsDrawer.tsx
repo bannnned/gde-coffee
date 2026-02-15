@@ -1,11 +1,11 @@
 import {
-  Button,
   Chip,
   Drawer,
   Group,
   Select,
   Stack,
   Text,
+  Button,
   useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
@@ -55,7 +55,12 @@ export default function SettingsDrawer({
 }: SettingsDrawerProps) {
   const theme = useMantineTheme();
   const isCoarsePointer = useMediaQuery("(pointer: coarse)") ?? false;
-  const { logout } = useAuth();
+  const { user } = useAuth();
+  const accountName =
+    user?.displayName?.trim() ||
+    user?.name?.trim() ||
+    user?.email?.trim() ||
+    "Гость";
 
   const drawerStyles = {
     content: {
@@ -162,6 +167,13 @@ export default function SettingsDrawer({
       styles={drawerStyles}
     >
       <Stack gap="md">
+        <Stack gap={2}>
+          <Text size="xs" c="dimmed">
+            Аккаунт
+          </Text>
+          <Text fw={600}>{accountName}</Text>
+        </Stack>
+
         <Stack
           gap="xs"
           style={
@@ -282,17 +294,6 @@ export default function SettingsDrawer({
             ))}
           </Group>
         </Group>
-
-        <Button
-          variant="light"
-          onClick={async () => {
-            await logout();
-            onClose();
-          }}
-        >
-          Выйти
-        </Button>
-
       </Stack>
     </Drawer>
   );

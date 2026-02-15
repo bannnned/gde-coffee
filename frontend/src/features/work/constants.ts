@@ -36,7 +36,6 @@ export const WORK_UI_TEXT = {
   resetFilters: "Сбросить фильтры",
   route2gis: "2GIS",
   routeYandex: "Яндекс",
-  workScorePrefix: "work",
   radiusTitle: "Радиус",
   radiusAll: "Город",
   filtersTitle: "Фильтры",

@@ -18,10 +18,24 @@ export async function getCafes(params: GetCafesParams): Promise<Cafe[]> {
       lat,
       lng,
       radius_m,
-      sort: "distance",
       amenities: amenities?.length ? amenities.join(",") : undefined,
     },
   });
 
   return res.data;
+}
+
+type UpdateCafeDescriptionResponse = {
+  description: string;
+};
+
+export async function updateCafeDescription(
+  cafeId: string,
+  description: string,
+): Promise<string> {
+  const res = await http.patch<UpdateCafeDescriptionResponse>(
+    `/api/cafes/${encodeURIComponent(cafeId)}/description`,
+    { description },
+  );
+  return (res.data?.description ?? "").trim();
 }

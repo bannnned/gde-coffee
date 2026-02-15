@@ -367,7 +367,6 @@ export default function Map({
           id: c.id,
           name: c.name,
           address: c.address,
-          work_score: c.work_score,
           distance_m: c.distance_m,
         },
         geometry: {

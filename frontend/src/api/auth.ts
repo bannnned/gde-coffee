@@ -30,6 +30,10 @@ export type PasswordResetConfirmPayload = {
   newPassword: string;
 };
 
+export type UpdateProfileNamePayload = {
+  displayName: string;
+};
+
 export type AuthIdentity = {
   id?: string;
   provider?: string;
@@ -129,6 +133,15 @@ export async function confirmPasswordReset(
     token: payload.token,
     new_password: payload.newPassword,
   });
+}
+
+export async function updateProfileName(
+  payload: UpdateProfileNamePayload,
+): Promise<AuthUser> {
+  const res = await http.patch("/api/account/profile/name", {
+    display_name: payload.displayName,
+  });
+  return normalizeUser(res.data);
 }
 
 export async function getIdentities(): Promise<AuthIdentity[]> {

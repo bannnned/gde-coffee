@@ -12,11 +12,11 @@ export type Cafe = {
   id: string;
   name: string;
   address: string;
+  description?: string | null;
   latitude: number;
   longitude: number;
   amenities: Amenity[];
   distance_m: number;
-  work_score: number;
   cover_photo_url?: string | null;
   photos?: CafePhoto[];
 };

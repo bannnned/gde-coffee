@@ -138,10 +138,11 @@ export default function CafeCard({
           <Text c="dimmed" size="sm" lineClamp={1} title={cafe.address}>
             {cafe.address}
           </Text>
-          <Text size="sm" mt={6}>
-            {showDistance ? `${formatDistance(cafe.distance_m)} В· ` : ""}
-            {WORK_UI_TEXT.workScorePrefix} {Math.round(cafe.work_score)}
-          </Text>
+          {showDistance && (
+            <Text size="sm" mt={6}>
+              {formatDistance(cafe.distance_m)}
+            </Text>
+          )}
           <Group
             gap={6}
             mt={8}

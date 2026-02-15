@@ -13,11 +13,11 @@ type CafeResponse struct {
 	ID            string              `json:"id"`
 	Name          string              `json:"name"`
 	Address       string              `json:"address"`
+	Description   *string             `json:"description,omitempty"`
 	Latitude      float64             `json:"latitude"`
 	Longitude     float64             `json:"longitude"`
 	Amenities     []string            `json:"amenities"`
 	DistanceM     float64             `json:"distance_m"`
-	WorkScore     float64             `json:"work_score"`
 	CoverPhotoURL *string             `json:"cover_photo_url,omitempty"`
 	Photos        []CafePhotoResponse `json:"photos,omitempty"`
 }

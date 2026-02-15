@@ -5,6 +5,7 @@ import { IconMapPinFilled } from "@tabler/icons-react";
 import { useAuth } from "../components/AuthGate";
 import Map from "../components/Map";
 import type { Amenity, Cafe } from "../types";
+import { updateCafeDescription } from "../api/cafes";
 import {
   DEFAULT_AMENITIES,
   DEFAULT_RADIUS_M,
@@ -356,6 +357,20 @@ export default function WorkScreen() {
     void cafesQuery.refetch();
   };
 
+  const handleSaveCafeDescription = async (description: string) => {
+    if (!selectedCafe) {
+      throw new Error("Кофейня не выбрана.");
+    }
+    if (!user) {
+      openAuthModal("login");
+      throw new Error("Войдите в аккаунт, чтобы добавить описание.");
+    }
+
+    const saved = await updateCafeDescription(selectedCafe.id, description);
+    void cafesQuery.refetch();
+    return saved;
+  };
+
   return (
     <Box
       pos="relative"
@@ -542,6 +557,14 @@ export default function WorkScreen() {
         cafe={selectedCafe ?? null}
         onClose={() => setDetailsOpen(false)}
         showDistance={!isCityOnlyMode}
+        showRoutes={!isCityOnlyMode}
+        onOpen2gis={
+          selectedCafe ? () => open2gisRoute(selectedCafe) : undefined
+        }
+        onOpenYandex={
+          selectedCafe ? () => openYandexRoute(selectedCafe) : undefined
+        }
+        onSaveDescription={handleSaveCafeDescription}
         onManagePhotos={handleOpenPhotoAdmin}
       />
 

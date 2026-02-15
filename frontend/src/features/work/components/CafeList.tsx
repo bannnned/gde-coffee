@@ -40,7 +40,6 @@ export default function CafeList({
           }}
           onClick={() => onSelectCafe(c.id)}
           variant={c.id === selectedCafeId ? "filled" : "default"}
-          styles={{ inner: { justifyContent: "space-between" } }}
           size="sm"
           fullWidth
         >
@@ -54,9 +53,6 @@ export default function CafeList({
                 </span>
               </>
             )}
-          </span>
-          <span style={{ opacity: 0.8 }}>
-            {WORK_UI_TEXT.workScorePrefix} {Math.round(c.work_score)}
           </span>
         </Button>
       ))}

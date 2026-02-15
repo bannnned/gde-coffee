@@ -56,6 +56,15 @@ export default function FiltersBar({
   const { user, status, openAuthModal } = useAuth();
   const navigate = useNavigate();
   const avatarUrl = useMemo(() => resolveAvatarUrl(user?.avatarUrl), [user]);
+  const userLabel = useMemo(() => {
+    const value =
+      user?.displayName?.trim() ||
+      user?.name?.trim() ||
+      user?.email?.trim() ||
+      user?.id?.trim() ||
+      "";
+    return value;
+  }, [user]);
 
   const amenityChipLabelBaseStyles = {
     boxSizing: "border-box",
@@ -180,18 +189,18 @@ export default function FiltersBar({
             aria-label="Open profile"
             type="button"
             onClick={() => navigate("/profile")}
-            title={user.displayName ?? user.email ?? ""}
+            title={userLabel}
           >
             {avatarUrl ? (
               <img
                 src={avatarUrl}
-                alt={user.displayName ?? user.email ?? "User"}
+                alt={userLabel || "User"}
                 className={classes.userAvatar}
                 loading="lazy"
               />
             ) : (
               <Text fw={700}>
-                {(user.displayName || user.email || "?")
+                {(userLabel || "?")
                   .trim()
                   .charAt(0)
                   .toUpperCase()}

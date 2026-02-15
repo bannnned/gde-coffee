@@ -9,7 +9,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -52,23 +51,11 @@ func queryCafes(
 	pool *pgxpool.Pool,
 	lat, lng, radiusM float64,
 	requiredAmenities []string,
-	sortBy string,
 	limit int,
 	cfg config.Config,
 ) ([]model.CafeResponse, error) {
 
-	// РµСЃР»Рё СЃРѕСЂС‚РёСЂРѕРІРєР° work вЂ” РІС‹РіРѕРґРЅРѕ РІР·СЏС‚СЊ РїРѕР±РѕР»СЊС€Рµ РёР· Р‘Р”, РїРѕС‚РѕРј РѕС‚СЃРѕСЂС‚РёСЂРѕРІР°С‚СЊ РІ Go
 	dbLimit := limit
-	if sortBy == config.SortByWork {
-		// С‡С‚РѕР±С‹ Р±С‹Р»Рѕ РёР· С‡РµРіРѕ РІС‹Р±РёСЂР°С‚СЊ
-		if cfg.Limits.MaxResults > 0 {
-			dbLimit = cfg.Limits.MaxResults
-		} else if limit > 0 {
-			dbLimit = limit * 5
-		} else {
-			dbLimit = 200
-		}
-	}
 	if dbLimit <= 0 {
 		dbLimit = cfg.Limits.DefaultResults
 	}
@@ -88,6 +75,7 @@ SELECT
   id::text AS id,
   name,
   address,
+  COALESCE(description, '') AS description,
   lat,
   lng,
   COALESCE(amenities, '{}'::text[]) AS amenities,
@@ -116,25 +104,32 @@ LIMIT $5;`
 			id      string
 			name    string
 			address string
+			desc    string
 			latDB   float64
 			lngDB   float64
 			ams     []string
 			dist    float64
 		)
 
-		if err := rows.Scan(&id, &name, &address, &latDB, &lngDB, &ams, &dist); err != nil {
+		if err := rows.Scan(&id, &name, &address, &desc, &latDB, &lngDB, &ams, &dist); err != nil {
 			return nil, err
 		}
 
+		var description *string
+		desc = strings.TrimSpace(desc)
+		if desc != "" {
+			description = &desc
+		}
+
 		out = append(out, model.CafeResponse{
-			ID:        id,
-			Name:      name,
-			Address:   address,
-			Latitude:  latDB,
-			Longitude: lngDB,
-			Amenities: ams,
-			DistanceM: dist,
-			WorkScore: computeWorkScore(ams), // РєР°Рє Сѓ С‚РµР±СЏ СѓР¶Рµ РµСЃС‚СЊ
+			ID:          id,
+			Name:        name,
+			Address:     address,
+			Description: description,
+			Latitude:    latDB,
+			Longitude:   lngDB,
+			Amenities:   ams,
+			DistanceM:   dist,
 		})
 	}
 
@@ -142,22 +137,8 @@ LIMIT $5;`
 		return nil, err
 	}
 
-	// РµСЃР»Рё РїСЂРѕСЃРёР»Рё СЃРѕСЂС‚РёСЂРѕРІРєСѓ РїРѕ work вЂ” СЃРѕСЂС‚РёСЂСѓРµРј С‚СѓС‚ (distance СѓР¶Рµ РїРѕСЃС‡РёС‚Р°РЅР°)
-	if sortBy == config.SortByWork {
-		sort.Slice(out, func(i, j int) bool {
-			if out[i].WorkScore == out[j].WorkScore {
-				return out[i].DistanceM < out[j].DistanceM
-			}
-			return out[i].WorkScore > out[j].WorkScore
-		})
-		if limit > 0 && len(out) > limit {
-			out = out[:limit]
-		}
-	} else {
-		// distance СЃРѕСЂС‚РёСЂРѕРІРєР° СѓР¶Рµ РІ SQL, РїСЂРѕСЃС‚Рѕ РѕР±СЂРµР¶РµРј
-		if limit > 0 && len(out) > limit {
-			out = out[:limit]
-		}
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
 	}
 
 	if err := attachCafeCoverPhotos(ctx, pool, out, cfg.Media); err != nil {
@@ -234,9 +215,9 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 			return
 		}
 
-		sortBy := strings.TrimSpace(c.DefaultQuery("sort", config.DefaultSort))
-		if sortBy != config.SortByDistance && sortBy != config.SortByWork {
-			respondError(c, http.StatusBadRequest, "invalid_argument", "sort должен быть 'work' или 'distance'.", nil)
+		sortBy := strings.TrimSpace(c.Query("sort"))
+		if sortBy != "" && sortBy != config.SortByDistance {
+			respondError(c, http.StatusBadRequest, "invalid_argument", "sort поддерживает только значение 'distance'.", nil)
 			return
 		}
 
@@ -252,7 +233,7 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 		defer cancel()
 
-		cafes, err := queryCafes(ctx, pool, lat, lng, radiusM, requiredAmenities, sortBy, limit, cfg)
+		cafes, err := queryCafes(ctx, pool, lat, lng, radiusM, requiredAmenities, limit, cfg)
 		if err != nil {
 			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", gin.H{"error": err.Error()})
 			return
@@ -325,38 +306,6 @@ func hasAllAmenities(cafeAmenities, required []string) bool {
 	}
 
 	return true
-}
-
-func computeWorkScore(amenities []string) float64 {
-	score := config.WorkScoreBase
-
-	for _, amenity := range amenities {
-		amenity = strings.ToLower(strings.TrimSpace(amenity))
-		if weight, ok := config.WorkScoreWeights[amenity]; ok {
-			score += weight
-		}
-	}
-
-	if score > config.WorkScoreMax {
-		return config.WorkScoreMax
-	}
-	return score
-}
-
-func sortCafes(cafes []model.CafeResponse, sortBy string) {
-	switch sortBy {
-	case "work":
-		sort.Slice(cafes, func(i, j int) bool {
-			if cafes[i].WorkScore == cafes[j].WorkScore {
-				return cafes[i].DistanceM < cafes[j].DistanceM
-			}
-			return cafes[i].WorkScore > cafes[j].WorkScore
-		})
-	default:
-		sort.Slice(cafes, func(i, j int) bool {
-			return cafes[i].DistanceM < cafes[j].DistanceM
-		})
-	}
 }
 
 func haversineMeters(lat1, lng1, lat2, lng2 float64) float64 {
@@ -526,6 +475,8 @@ func main() {
 
 	api := r.Group("/api")
 	api.GET("/cafes", getCafes(cfg, pool))
+	cafeDescriptionAPI := newCafeDescriptionAPI(pool)
+	api.PATCH("/cafes/:id/description", auth.RequireAuth(pool), cafeDescriptionAPI.Update)
 	mediaService, err := media.NewS3Service(context.Background(), media.Config{
 		Enabled:         cfg.Media.S3Enabled,
 		Endpoint:        cfg.Media.S3Endpoint,
@@ -621,6 +572,7 @@ func main() {
 
 	accountGroup := api.Group("/account")
 	accountGroup.POST("/email/change/request", auth.RequireAuth(pool), authHandler.EmailChangeRequest)
+	accountGroup.PATCH("/profile/name", auth.RequireAuth(pool), authHandler.ProfileNameUpdate)
 	accountGroup.GET("/email/change/confirm", authHandler.EmailChangeConfirm)
 
 	r.NoRoute(func(c *gin.Context) {
