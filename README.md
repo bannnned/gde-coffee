@@ -61,6 +61,23 @@ The backend serves:
   - body: `{ "photo_ids": ["<id1>", "<id2>", "..."] }`
 - `PATCH /api/cafes/:id/photos/:photoID/cover` — set cover photo (requires auth)
 - `DELETE /api/cafes/:id/photos/:photoID` — delete photo (requires auth)
+- `GET /api/cafes/:id/rating` — get smart rating snapshot (`rating_v1`, counts, fraud risk, components)
+
+### Reviews & trust
+- `POST /api/reviews` — create/update own structured review for a cafe (requires auth + `Idempotency-Key`)
+  - body: `{ "cafe_id": "...", "rating": 1..5, "drink_name": "...", "taste_tags": ["..."], "summary": "...", "photo_count": 0 }`
+  - emits `review.created` or `review.updated`
+- `POST /api/reviews/:id/helpful` — mark review as helpful (requires auth + `Idempotency-Key`)
+  - emits `vote.helpful_added`
+- `POST /api/reviews/:id/visit/verify` — attach visit verification confidence to own review (requires auth + `Idempotency-Key`)
+  - body: `{ "confidence": "none|low|medium|high", "dwell_seconds": 0 }`
+  - emits `visit.verified` for non-`none`
+- `POST /api/reviews/:id/abuse` — report review abuse (requires auth)
+  - body: `{ "reason": "...", "details": "..." }`
+- `POST /api/abuse-reports/:id/confirm` — confirm abuse report (requires moderator/admin)
+  - emits `abuse.confirmed`
+
+Critical actions (`review publish`, `helpful vote`, `visit verify`) are idempotent via `Idempotency-Key`.
 
 ### Auth (cookie sessions)
 - `POST /api/auth/register` — create local user + session
@@ -151,6 +168,7 @@ Current:
 - `000008_users_email_nullable` (allow oauth users without email)
 - `000009_session_version` (session invalidation versioning)
 - `000010_cafe_photos` (cafe images metadata for S3 object keys)
+- `000015_reviews_stage1` (reviews/reputation/rating snapshots + idempotency keys + domain events queue)
 
 ## Notes
 - Sessions are stored server-side in Postgres with HttpOnly cookies.

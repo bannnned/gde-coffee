@@ -20,6 +20,7 @@ import (
 	"backend/internal/domains/favorites"
 	"backend/internal/domains/moderation"
 	"backend/internal/domains/photos"
+	"backend/internal/domains/reviews"
 	"backend/internal/mailer"
 	"backend/internal/media"
 	"backend/internal/shared/httpx"
@@ -203,6 +204,9 @@ func main() {
 	favoritesHandler := favorites.NewDefaultHandler(pool, cfg.Media)
 	photosHandler := photos.NewHandler(pool, mediaService, cfg.Media)
 	moderationHandler := moderation.NewHandler(pool, mediaService, cfg.Media)
+	reviewsHandler := reviews.NewDefaultHandler(pool)
+
+	go reviewsHandler.Service().StartEventWorker(context.Background(), 2*time.Second)
 
 	api := r.Group("/api")
 	api.GET("/geocode", cafesHandler.GeocodeLookup)
@@ -210,6 +214,12 @@ func main() {
 	api.POST("/cafes/:id/favorite", auth.RequireAuth(pool), favoritesHandler.Add)
 	api.DELETE("/cafes/:id/favorite", auth.RequireAuth(pool), favoritesHandler.Remove)
 	api.PATCH("/cafes/:id/description", auth.RequireRole(pool, "admin", "moderator"), cafesHandler.UpdateDescription)
+	api.POST("/reviews", auth.RequireAuth(pool), reviewsHandler.Publish)
+	api.POST("/reviews/:id/helpful", auth.RequireAuth(pool), reviewsHandler.AddHelpful)
+	api.POST("/reviews/:id/visit/verify", auth.RequireAuth(pool), reviewsHandler.VerifyVisit)
+	api.POST("/reviews/:id/abuse", auth.RequireAuth(pool), reviewsHandler.ReportAbuse)
+	api.POST("/abuse-reports/:id/confirm", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.ConfirmAbuse)
+	api.GET("/cafes/:id/rating", reviewsHandler.GetCafeRating)
 
 	api.GET("/cafes/:id/photos", photosHandler.List)
 	api.POST("/cafes/:id/photos/presign", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Presign)

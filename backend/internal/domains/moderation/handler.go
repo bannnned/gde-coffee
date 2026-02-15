@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -671,25 +672,32 @@ func (h *Handler) applyCafeCreate(
 	if name == "" || address == "" {
 		return fmt.Errorf("Название и адрес обязательны")
 	}
-
-	var descriptionArg any
 	description := strings.TrimSpace(payload.Description)
-	if description != "" {
-		descriptionArg = description
+	if !validation.IsFinite(payload.Latitude) || payload.Latitude < -90 || payload.Latitude > 90 {
+		return fmt.Errorf("Некорректное значение latitude в заявке")
 	}
+	if !validation.IsFinite(payload.Longitude) || payload.Longitude < -180 || payload.Longitude > 180 {
+		return fmt.Errorf("Некорректное значение longitude в заявке")
+	}
+	amenities := normalizeAmenities(payload.Amenities)
+	if amenities == nil {
+		amenities = []string{}
+	}
+
 	var cafeID string
 	if err := tx.QueryRow(
 		ctx,
 		`insert into cafes (name, address, description, lat, lng, amenities, geog)
-		 values ($1, $2, $3, $4, $5, $6, ST_SetSRID(ST_MakePoint($5, $4), 4326)::geography)
+		 values ($1::text, $2::text, nullif($3::text, ''), $4::double precision, $5::double precision, $6::text[], ST_SetSRID(ST_MakePoint($5::double precision, $4::double precision), 4326)::geography)
 		 returning id::text`,
 		name,
 		address,
-		descriptionArg,
+		description,
 		payload.Latitude,
 		payload.Longitude,
-		normalizeAmenities(payload.Amenities),
+		amenities,
 	).Scan(&cafeID); err != nil {
+		log.Printf("moderation: applyCafeCreate insert failed: %v", err)
 		return fmt.Errorf("Не удалось создать кофейню")
 	}
 
