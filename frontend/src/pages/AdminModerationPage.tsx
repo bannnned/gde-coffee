@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionIcon,
   Badge,
@@ -18,6 +18,7 @@ import { IconArrowLeft, IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
+import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import CafeDetailsScreen from "../features/discovery/ui/details/CafeDetailsScreen";
 import type { Cafe } from "../types";
 import {
@@ -39,6 +40,7 @@ import {
 } from "../api/submissions";
 
 export default function AdminModerationPage() {
+  useAllowBodyScroll();
   const navigate = useNavigate();
   const { user, status } = useAuth();
   const role = (user?.role ?? "").toLowerCase();
@@ -53,6 +55,8 @@ export default function AdminModerationPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [previewCafe, setPreviewCafe] = useState<Cafe | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const tabsScrollRef = useRef<HTMLDivElement | null>(null);
+  const [tabsFade, setTabsFade] = useState({ left: false, right: false });
 
   const refresh = useCallback(async () => {
     if (!allowed) return;
@@ -106,6 +110,52 @@ export default function AdminModerationPage() {
     }
     return counts;
   }, [items]);
+
+  const tabsData = useMemo(
+    () =>
+      TAB_ITEMS.map((tab) => ({
+        value: tab.value,
+        label: `${tab.label} (${tabCounts[tab.value] ?? 0})`,
+      })),
+    [tabCounts],
+  );
+
+  const updateTabsFade = useCallback(() => {
+    const node = tabsScrollRef.current;
+    if (!node) {
+      setTabsFade({ left: false, right: false });
+      return;
+    }
+    const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+    const left = node.scrollLeft > 2;
+    const right = node.scrollLeft < maxScrollLeft - 2;
+    setTabsFade((prev) => {
+      if (prev.left === left && prev.right === right) return prev;
+      return { left, right };
+    });
+  }, []);
+
+  useEffect(() => {
+    const node = tabsScrollRef.current;
+    if (!node) return;
+
+    updateTabsFade();
+    const onScroll = () => updateTabsFade();
+    node.addEventListener("scroll", onScroll, { passive: true });
+
+    const observer = new ResizeObserver(() => updateTabsFade());
+    observer.observe(node);
+    if (node.firstElementChild instanceof HTMLElement) {
+      observer.observe(node.firstElementChild);
+    }
+
+    window.addEventListener("resize", updateTabsFade);
+    return () => {
+      node.removeEventListener("scroll", onScroll);
+      observer.disconnect();
+      window.removeEventListener("resize", updateTabsFade);
+    };
+  }, [tabsData, updateTabsFade]);
 
   const handleApprove = async (id: string) => {
     setProcessingId(id);
@@ -215,38 +265,79 @@ export default function AdminModerationPage() {
           </Paper>
 
           <Paper withBorder radius="lg" p="md">
-            <SegmentedControl
-              fullWidth
-              value={activeTab}
-              onChange={(value) => setActiveTab((value as ModerationTabKey) ?? "all")}
-              data={TAB_ITEMS.map((tab) => ({
-                value: tab.value,
-                label: `${tab.label} (${tabCounts[tab.value] ?? 0})`,
-              }))}
-              styles={{
-                root: {
+            <Box pos="relative">
+              <Box
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 24,
+                  pointerEvents: "none",
+                  zIndex: 2,
+                  opacity: tabsFade.left ? 1 : 0,
+                  transition: "opacity 180ms ease",
                   background:
-                    "linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
-                  border: "1px solid var(--glass-border)",
-                  boxShadow: "var(--glass-shadow)",
-                  backdropFilter: "blur(14px) saturate(140%)",
-                  WebkitBackdropFilter: "blur(14px) saturate(140%)",
-                  transition: "background 220ms ease, box-shadow 220ms ease",
-                },
-                indicator: {
+                    "linear-gradient(90deg, color-mix(in srgb, var(--surface) 88%, transparent), transparent)",
+                }}
+              />
+              <Box
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 24,
+                  pointerEvents: "none",
+                  zIndex: 2,
+                  opacity: tabsFade.right ? 1 : 0,
+                  transition: "opacity 180ms ease",
                   background:
-                    "linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong))",
-                  border: "1px solid var(--color-border-soft)",
-                  boxShadow: "0 6px 16px var(--color-brand-accent-soft)",
-                  transition: "all 220ms ease",
-                },
-                label: {
-                  color: "var(--text)",
-                  fontWeight: 600,
-                  transition: "color 180ms ease",
-                },
+                    "linear-gradient(270deg, color-mix(in srgb, var(--surface) 88%, transparent), transparent)",
+                }}
+              />
+              <Box
+                ref={tabsScrollRef}
+              style={{
+                overflowX: "auto",
+                WebkitOverflowScrolling: "touch",
+                scrollbarWidth: "thin",
               }}
-            />
+            >
+              <SegmentedControl
+                fullWidth={false}
+                value={activeTab}
+                onChange={(value) => setActiveTab((value as ModerationTabKey) ?? "all")}
+                data={tabsData}
+                styles={{
+                  root: {
+                    width: "max-content",
+                    minWidth: "100%",
+                    background:
+                      "linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
+                    border: "1px solid var(--glass-border)",
+                    boxShadow: "var(--glass-shadow)",
+                    backdropFilter: "blur(14px) saturate(140%)",
+                    WebkitBackdropFilter: "blur(14px) saturate(140%)",
+                    transition: "background 220ms ease, box-shadow 220ms ease",
+                  },
+                  indicator: {
+                    background:
+                      "linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong))",
+                    border: "1px solid var(--color-border-soft)",
+                    boxShadow: "0 6px 16px var(--color-brand-accent-soft)",
+                    transition: "all 220ms ease",
+                  },
+                  label: {
+                    color: "var(--text)",
+                    fontWeight: 600,
+                    transition: "color 180ms ease",
+                    whiteSpace: "nowrap",
+                  },
+                }}
+              />
+            </Box>
+            </Box>
           </Paper>
 
           {visibleItems.length === 0 && !loading && (

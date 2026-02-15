@@ -71,6 +71,8 @@
 }
 
 .favoriteToggle {
+  width: fit-content;
+  max-width: max-content;
   flex-shrink: 0;
 }
 

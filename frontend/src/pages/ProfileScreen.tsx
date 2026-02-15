@@ -137,17 +137,17 @@ export default function ProfileScreen() {
                       ) : (
                         profile.initial
                       )}
-                      <ActionIcon
-                        size={32}
-                        radius="xl"
-                        className={classes.avatarPlusButton}
-                        aria-label="Изменить фото профиля"
-                        onClick={handleAvatarPick}
-                        loading={isAvatarUploading}
-                      >
-                        <IconPlus size={16} />
-                      </ActionIcon>
                     </div>
+                    <ActionIcon
+                      size={32}
+                      radius="xl"
+                      className={classes.avatarPlusButton}
+                      aria-label="Изменить фото профиля"
+                      onClick={handleAvatarPick}
+                      loading={isAvatarUploading}
+                    >
+                      <IconPlus size={16} />
+                    </ActionIcon>
                     <input
                       ref={avatarInputRef}
                       type="file"

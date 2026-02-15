@@ -256,6 +256,9 @@ export default function FiltersBar({
             onClick={onToggleFavorites}
             styles={{
               root: {
+                display: "inline-flex",
+                flex: "0 0 auto",
+                width: "fit-content",
                 border: "1px solid var(--border)",
                 background: favoritesOnly
                   ? "var(--color-brand-accent)"

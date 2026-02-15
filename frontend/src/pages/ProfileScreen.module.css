@@ -52,6 +52,8 @@
 .avatarWrap {
   position: relative;
   display: inline-flex;
+  width: 120px;
+  height: 120px;
 }
 
 .avatarLarge {
@@ -78,8 +80,9 @@
 
 .avatarPlusButton {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
+  right: 0;
+  bottom: 0;
+  transform: translate(18%, 18%);
   z-index: 2;
   border: 1px solid var(--glass-border);
   background: linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2));
