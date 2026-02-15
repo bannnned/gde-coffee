@@ -7,6 +7,7 @@ export type AuthUser = {
   name?: string;
   emailVerifiedAt?: string | null;
   avatarUrl?: string | null;
+  role?: string;
 };
 
 export type LoginPayload = {
@@ -75,6 +76,7 @@ function normalizeUser(data: any): AuthUser {
     emailVerifiedAt:
       raw.email_verified_at ?? raw.emailVerifiedAt ?? raw.email_verified ?? null,
     avatarUrl: raw.avatar_url ?? raw.avatarUrl ?? raw.avatar ?? null,
+    role: typeof raw.role === "string" ? raw.role : undefined,
   };
 }
 

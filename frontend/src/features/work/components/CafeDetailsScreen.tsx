@@ -29,8 +29,11 @@ type CafeDetailsScreenProps = {
   showRoutes?: boolean;
   onOpen2gis?: () => void;
   onOpenYandex?: () => void;
-  onSaveDescription?: (description: string) => Promise<string>;
-  onManagePhotos?: () => void;
+  onSaveDescription?: (
+    description: string,
+  ) => Promise<{ applied: boolean; description?: string; message?: string }>;
+  onManagePhotos?: (kind: "cafe" | "menu") => void;
+  canManageDirectly?: boolean;
 };
 
 type DetailsSection = "about" | "menu" | "reviews";
@@ -45,6 +48,7 @@ export default function CafeDetailsScreen({
   onOpenYandex,
   onSaveDescription,
   onManagePhotos,
+  canManageDirectly = false,
 }: CafeDetailsScreenProps) {
   const theme = useMantineTheme();
   const [photos, setPhotos] = useState<CafePhoto[]>(cafe?.photos ?? []);
@@ -58,6 +62,7 @@ export default function CafeDetailsScreen({
   const [descriptionEditing, setDescriptionEditing] = useState(false);
   const [descriptionSaving, setDescriptionSaving] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
+  const [descriptionHint, setDescriptionHint] = useState<string | null>(null);
   const coverPhotoUrl = cafe?.cover_photo_url ?? photos[0]?.url;
   const menuPhotoItems: CafePhoto[] =
     photos.length > 0
@@ -96,6 +101,7 @@ export default function CafeDetailsScreen({
     setDescriptionEditing(false);
     setDescriptionSaving(false);
     setDescriptionError(null);
+    setDescriptionHint(null);
   }, [cafe?.id, opened]);
 
   if (!cafe) return null;
@@ -154,6 +160,7 @@ export default function CafeDetailsScreen({
   const handleStartDescription = () => {
     setDescriptionDraft(description);
     setDescriptionError(null);
+    setDescriptionHint(null);
     setDescriptionEditing(true);
   };
 
@@ -174,11 +181,22 @@ export default function CafeDetailsScreen({
     setDescriptionSaving(true);
     setDescriptionError(null);
     try {
-      const saved = await onSaveDescription(trimmed);
-      const next = (saved ?? trimmed).trim();
-      setDescription(next);
-      setDescriptionDraft(next);
+      const result = await onSaveDescription(trimmed);
+      const next =
+        result.applied && typeof result.description === "string"
+          ? result.description.trim()
+          : description;
+      if (result.applied) {
+        setDescription(next);
+      }
+      setDescriptionDraft(next || trimmed);
       setDescriptionEditing(false);
+      setDescriptionHint(
+        result.message ??
+          (result.applied
+            ? "Описание сохранено."
+            : "Заявка на изменение отправлена на модерацию."),
+      );
     } catch (error: any) {
       const message =
         error?.normalized?.message ??
@@ -190,6 +208,12 @@ export default function CafeDetailsScreen({
       setDescriptionSaving(false);
     }
   };
+
+  const descriptionActionLabel = description
+    ? canManageDirectly
+      ? "Редактировать описание"
+      : "Предложить правку описания"
+    : "Добавить описание";
 
   const lockedBlock = (title: string, blockDescription: string) => (
     <Paper
@@ -343,21 +367,7 @@ export default function CafeDetailsScreen({
               </Text>
               {showDistance && <Text size="sm">{formatDistance(cafe.distance_m)}</Text>}
 
-              {description ? (
-                <Paper
-                  withBorder
-                  radius="md"
-                  p="md"
-                  style={{
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                    {description}
-                  </Text>
-                </Paper>
-              ) : descriptionEditing ? (
+              {descriptionEditing ? (
                 <Paper
                   withBorder
                   radius="md"
@@ -395,14 +405,42 @@ export default function CafeDetailsScreen({
                     </Group>
                   </Stack>
                 </Paper>
+              ) : description ? (
+                <Paper
+                  withBorder
+                  radius="md"
+                  p="md"
+                  style={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                    {description}
+                  </Text>
+                </Paper>
               ) : (
                 <Button
                   variant="light"
                   onClick={handleStartDescription}
                   disabled={!onSaveDescription}
                 >
-                  Добавить описание
+                  {descriptionActionLabel}
                 </Button>
+              )}
+              {description && !descriptionEditing && (
+                <Button
+                  variant="subtle"
+                  onClick={handleStartDescription}
+                  disabled={!onSaveDescription}
+                >
+                  {descriptionActionLabel}
+                </Button>
+              )}
+              {descriptionHint && (
+                <Text size="sm" c="teal.6">
+                  {descriptionHint}
+                </Text>
               )}
 
               {cafe.amenities.length > 0 && (
@@ -425,8 +463,8 @@ export default function CafeDetailsScreen({
                 </Group>
               )}
               {onManagePhotos && (
-                <Button mt="xs" variant="light" onClick={onManagePhotos}>
-                  Управлять фото
+                <Button mt="xs" variant="light" onClick={() => onManagePhotos("cafe")}>
+                  {canManageDirectly ? "Управлять фото заведения" : "Предложить фото заведения"}
                 </Button>
               )}
             </Stack>
@@ -486,8 +524,8 @@ export default function CafeDetailsScreen({
                 </Paper>
               )}
               {onManagePhotos && (
-                <Button variant="light" onClick={onManagePhotos}>
-                  Добавить фото меню
+                <Button variant="light" onClick={() => onManagePhotos("menu")}>
+                  {canManageDirectly ? "Управлять фото меню" : "Предложить фото меню"}
                 </Button>
               )}
             </Stack>
@@ -503,4 +541,3 @@ export default function CafeDetailsScreen({
     </Modal>
   );
 }
-

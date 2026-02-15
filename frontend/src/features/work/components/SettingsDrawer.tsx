@@ -9,7 +9,7 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconMapPin } from "@tabler/icons-react";
+import { IconMapPin, IconPlus } from "@tabler/icons-react";
 
 import type { Amenity } from "../types";
 import { AMENITY_LABELS, WORK_UI_TEXT } from "../constants";
@@ -34,6 +34,7 @@ type SettingsDrawerProps = {
   onSelectLocation: (id: string) => void;
   onOpenMapPicker: () => void;
   highlightLocationBlock?: boolean;
+  onSuggestCafe?: () => void;
 };
 
 const RADIUS_OPTIONS = [1000, 2500, 5000, 0] as const;
@@ -52,6 +53,7 @@ export default function SettingsDrawer({
   onSelectLocation,
   onOpenMapPicker,
   highlightLocationBlock = false,
+  onSuggestCafe,
 }: SettingsDrawerProps) {
   const theme = useMantineTheme();
   const isCoarsePointer = useMediaQuery("(pointer: coarse)") ?? false;
@@ -217,6 +219,18 @@ export default function SettingsDrawer({
             styles={glassButtonStyles(false)}
           >
             Выбрать вручную на карте
+          </Button>
+        </Stack>
+
+        <Stack gap="xs">
+          <Text>Контент</Text>
+          <Button
+            variant="light"
+            leftSection={<IconPlus size={16} />}
+            onClick={onSuggestCafe}
+            styles={glassButtonStyles(false)}
+          >
+            Предложить кофейню
           </Button>
         </Stack>
 

@@ -153,6 +153,8 @@ export default function SettingsScreen() {
   const yandexStatusTone = yandexLinked ? "ok" : "warn";
   const telegramStatusLabel = telegramLinked ? "подключён" : "не подключён";
   const telegramStatusTone = telegramLinked ? "ok" : "warn";
+  const userRole = (user?.role ?? "").toLowerCase();
+  const canModerate = userRole === "admin" || userRole === "moderator";
 
   const refreshIdentities = useCallback(async () => {
     if (status !== "authed") {
@@ -351,6 +353,29 @@ export default function SettingsScreen() {
                 </div>
               )}
             </div>
+
+            {canModerate && (
+              <div className={classes.section}>
+                <div className={classes.sectionHeader}>
+                  <Group gap="xs">
+                    <IconShieldCheck size={18} />
+                    <Title order={4}>Модерация</Title>
+                  </Group>
+                </div>
+                <Text size="sm" className={classes.muted} mb="sm">
+                  Открыть очередь заявок на модерацию.
+                </Text>
+                <Group className={classes.actionsRow}>
+                  <Button
+                    variant="light"
+                    className={classes.actionButton}
+                    onClick={() => navigate("/admin/moderation")}
+                  >
+                    Перейти в модерацию
+                  </Button>
+                </Group>
+              </div>
+            )}
 
             <div className={classes.section}>
               <div className={classes.sectionHeader}>

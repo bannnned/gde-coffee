@@ -2,6 +2,7 @@ import AuthGate from "./components/AuthGate";
 import { LayoutMetricsProvider } from "./features/work/layout/LayoutMetricsContext";
 import ConfirmEmailChangePage from "./pages/ConfirmEmailChangePage";
 import LoginPage from "./pages/LoginPage";
+import AdminModerationPage from "./pages/AdminModerationPage";
 import ProfileScreen from "./pages/ProfileScreen";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SettingsScreen from "./pages/SettingsScreen";
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/settings" element={<SettingsScreen />} />
+          <Route path="/admin/moderation" element={<AdminModerationPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route
             path="/confirm-email-change"

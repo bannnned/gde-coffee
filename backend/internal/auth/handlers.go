@@ -43,6 +43,7 @@ type User struct {
 	DisplayName     *string    `json:"display_name,omitempty"`
 	AvatarURL       *string    `json:"avatar_url,omitempty"`
 	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
+	Role            string     `json:"role"`
 }
 
 type registerRequest struct {
@@ -124,10 +125,10 @@ func (h Handler) Register(c *gin.Context) {
 		ctx,
 		`insert into users (email_normalized, display_name)
 		 values ($1, $2)
-		 returning id::text, email_normalized, display_name, avatar_url`,
+		 returning id::text, email_normalized, display_name, avatar_url, role`,
 		email,
 		displayName,
-	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL)
+	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.Role)
 	if err != nil {
 		if isUniqueViolation(err) {
 			respondError(c, http.StatusConflict, "already_exists", "email already registered", nil)
@@ -210,12 +211,12 @@ func (h Handler) Login(c *gin.Context) {
 	var passwordHash string
 	err := h.Pool.QueryRow(
 		ctx,
-		`select u.id::text, coalesce(u.email_normalized, ''), u.display_name, u.avatar_url, u.email_verified_at, lc.password_hash
+		`select u.id::text, coalesce(u.email_normalized, ''), u.display_name, u.avatar_url, u.email_verified_at, u.role, lc.password_hash
 		 from users u
 		 join local_credentials lc on lc.user_id = u.id
 		 where u.email_normalized = $1`,
 		email,
-	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.EmailVerifiedAt, &passwordHash)
+	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.EmailVerifiedAt, &user.Role, &passwordHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("login failed (no user): email=%s ip=%s", email, c.ClientIP())
@@ -299,7 +300,7 @@ func getUserBySession(ctx context.Context, pool queryer, sid string) (User, time
 	var user User
 	var expiresAt time.Time
 	row := pool.QueryRow(ctx, `
-		select u.id::text, coalesce(u.email_normalized, ''), u.display_name, u.avatar_url, u.email_verified_at, s.expires_at
+		select u.id::text, coalesce(u.email_normalized, ''), u.display_name, u.avatar_url, u.email_verified_at, u.role, s.expires_at
 		from sessions s
 		join users u on u.id = s.user_id
 		where s.id = $1
@@ -307,7 +308,7 @@ func getUserBySession(ctx context.Context, pool queryer, sid string) (User, time
 		  and s.expires_at > now()
 		  and s.user_session_version = u.session_version
 	`, sid)
-	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.EmailVerifiedAt, &expiresAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.EmailVerifiedAt, &user.Role, &expiresAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return User{}, time.Time{}, errUnauthorized
 		}

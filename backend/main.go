@@ -476,7 +476,11 @@ func main() {
 	api := r.Group("/api")
 	api.GET("/cafes", getCafes(cfg, pool))
 	cafeDescriptionAPI := newCafeDescriptionAPI(pool)
-	api.PATCH("/cafes/:id/description", auth.RequireAuth(pool), cafeDescriptionAPI.Update)
+	api.PATCH(
+		"/cafes/:id/description",
+		auth.RequireRole(pool, "admin", "moderator"),
+		cafeDescriptionAPI.Update,
+	)
 	mediaService, err := media.NewS3Service(context.Background(), media.Config{
 		Enabled:         cfg.Media.S3Enabled,
 		Endpoint:        cfg.Media.S3Endpoint,
@@ -491,13 +495,50 @@ func main() {
 	if err != nil {
 		log.Fatalf("s3 init failed: %v", err)
 	}
+	moderationAPI := newModerationAPI(pool, mediaService, cfg.Media)
 	cafePhotoAPI := newCafePhotoAPI(pool, mediaService, cfg.Media)
 	api.GET("/cafes/:id/photos", cafePhotoAPI.List)
-	api.POST("/cafes/:id/photos/presign", auth.RequireAuth(pool), cafePhotoAPI.Presign)
-	api.POST("/cafes/:id/photos/confirm", auth.RequireAuth(pool), cafePhotoAPI.Confirm)
-	api.PATCH("/cafes/:id/photos/order", auth.RequireAuth(pool), cafePhotoAPI.Reorder)
-	api.PATCH("/cafes/:id/photos/:photoID/cover", auth.RequireAuth(pool), cafePhotoAPI.SetCover)
-	api.DELETE("/cafes/:id/photos/:photoID", auth.RequireAuth(pool), cafePhotoAPI.Delete)
+	api.POST(
+		"/cafes/:id/photos/presign",
+		auth.RequireRole(pool, "admin", "moderator"),
+		cafePhotoAPI.Presign,
+	)
+	api.POST(
+		"/cafes/:id/photos/confirm",
+		auth.RequireRole(pool, "admin", "moderator"),
+		cafePhotoAPI.Confirm,
+	)
+	api.PATCH(
+		"/cafes/:id/photos/order",
+		auth.RequireRole(pool, "admin", "moderator"),
+		cafePhotoAPI.Reorder,
+	)
+	api.PATCH(
+		"/cafes/:id/photos/:photoID/cover",
+		auth.RequireRole(pool, "admin", "moderator"),
+		cafePhotoAPI.SetCover,
+	)
+	api.DELETE(
+		"/cafes/:id/photos/:photoID",
+		auth.RequireRole(pool, "admin", "moderator"),
+		cafePhotoAPI.Delete,
+	)
+
+	submissionsGroup := api.Group("/submissions")
+	submissionsGroup.Use(auth.RequireAuth(pool))
+	submissionsGroup.POST("/photos/presign", moderationAPI.PresignPhoto)
+	submissionsGroup.POST("/cafes", moderationAPI.SubmitCafeCreate)
+	submissionsGroup.POST("/cafes/:id/description", moderationAPI.SubmitCafeDescription)
+	submissionsGroup.POST("/cafes/:id/photos", moderationAPI.SubmitCafePhotos)
+	submissionsGroup.POST("/cafes/:id/menu-photos", moderationAPI.SubmitMenuPhotos)
+	submissionsGroup.GET("/mine", moderationAPI.ListMine)
+
+	moderationGroup := api.Group("/moderation")
+	moderationGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
+	moderationGroup.GET("/submissions", moderationAPI.ListModeration)
+	moderationGroup.GET("/submissions/:id", moderationAPI.GetModerationItem)
+	moderationGroup.POST("/submissions/:id/approve", moderationAPI.Approve)
+	moderationGroup.POST("/submissions/:id/reject", moderationAPI.Reject)
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})

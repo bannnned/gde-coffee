@@ -22,6 +22,7 @@ var authErrorMessageRu = map[string]string{
 	"internal error":                        "Внутренняя ошибка сервера.",
 	"missing session":                       "Сессия не найдена. Войдите снова.",
 	"invalid session":                       "Сессия недействительна. Войдите снова.",
+	"insufficient role":                     "Недостаточно прав для этого действия.",
 	"mailer not configured":                 "Сервис отправки почты не настроен.",
 	"too many requests":                     "Слишком много запросов. Попробуйте позже.",
 	"email send failed":                     "Не удалось отправить письмо.",

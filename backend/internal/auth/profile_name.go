@@ -89,10 +89,10 @@ func (h Handler) ProfileNameUpdate(c *gin.Context) {
 		`update users
 		    set display_name = $2
 		  where id = $1
-		  returning id::text, coalesce(email_normalized, ''), display_name, avatar_url, email_verified_at`,
+		  returning id::text, coalesce(email_normalized, ''), display_name, avatar_url, email_verified_at, role`,
 		userID,
 		displayName,
-	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.EmailVerifiedAt)
+	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.EmailVerifiedAt, &user.Role)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "db update failed", nil)
 		return

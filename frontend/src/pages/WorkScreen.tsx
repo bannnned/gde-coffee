@@ -6,6 +6,7 @@ import { useAuth } from "../components/AuthGate";
 import Map from "../components/Map";
 import type { Amenity, Cafe } from "../types";
 import { updateCafeDescription } from "../api/cafes";
+import { submitCafeDescription } from "../api/submissions";
 import {
   DEFAULT_AMENITIES,
   DEFAULT_RADIUS_M,
@@ -22,6 +23,8 @@ import FiltersBar from "../features/work/components/FiltersBar";
 import FloatingControls from "../features/work/components/FloatingControls";
 import SettingsDrawer from "../features/work/components/SettingsDrawer";
 import CafePhotoAdminModal from "../features/work/components/CafePhotoAdminModal";
+import CafePhotoSubmissionModal from "../features/work/components/CafePhotoSubmissionModal";
+import CafeProposalModal from "../features/work/components/CafeProposalModal";
 import useCafeSelection from "../features/work/hooks/useCafeSelection";
 import useCafes from "../features/work/hooks/useCafes";
 import useGeolocation from "../features/work/hooks/useGeolocation";
@@ -54,10 +57,15 @@ export default function WorkScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [photoAdminOpen, setPhotoAdminOpen] = useState(false);
+  const [photoSubmitOpen, setPhotoSubmitOpen] = useState(false);
+  const [photoSubmitKind, setPhotoSubmitKind] = useState<"cafe" | "menu">("cafe");
+  const [cafeProposalOpen, setCafeProposalOpen] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>(
     DEFAULT_AMENITIES,
   );
   const { sheetHeight, sheetState } = useLayoutMetrics();
+  const userRole = (user?.role ?? "").toLowerCase();
+  const isPrivilegedUser = userRole === "admin" || userRole === "moderator";
 
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const [locationChoice, setLocationChoice] = useState<LocationChoice | null>(
@@ -261,6 +269,9 @@ export default function WorkScreen() {
   useEffect(() => {
     if (!selectedCafe) setPhotoAdminOpen(false);
   }, [selectedCafe]);
+  useEffect(() => {
+    if (!selectedCafe) setPhotoSubmitOpen(false);
+  }, [selectedCafe]);
 
   const handleSelectLocation = (id: string) => {
     const option = LOCATION_OPTIONS.find((item) => item.id === id);
@@ -343,14 +354,19 @@ export default function WorkScreen() {
     );
   }
 
-  const handleOpenPhotoAdmin = () => {
+  const handleOpenPhotoAdmin = (kind: "cafe" | "menu") => {
     if (!selectedCafe) return;
     if (!user) {
       openAuthModal("login");
       return;
     }
     setDetailsOpen(false);
-    setPhotoAdminOpen(true);
+    if (isPrivilegedUser) {
+      setPhotoAdminOpen(true);
+      return;
+    }
+    setPhotoSubmitKind(kind);
+    setPhotoSubmitOpen(true);
   };
 
   const handlePhotosChanged = () => {
@@ -366,9 +382,21 @@ export default function WorkScreen() {
       throw new Error("Войдите в аккаунт, чтобы добавить описание.");
     }
 
-    const saved = await updateCafeDescription(selectedCafe.id, description);
-    void cafesQuery.refetch();
-    return saved;
+    if (isPrivilegedUser) {
+      const saved = await updateCafeDescription(selectedCafe.id, description);
+      void cafesQuery.refetch();
+      return {
+        applied: true,
+        description: saved,
+        message: "Описание сохранено.",
+      };
+    }
+
+    await submitCafeDescription(selectedCafe.id, description);
+    return {
+      applied: false,
+      message: "Заявка на описание отправлена на модерацию.",
+    };
   };
 
   return (
@@ -550,6 +578,14 @@ export default function WorkScreen() {
         onSelectLocation={handleSelectLocation}
         onOpenMapPicker={handleStartManualPick}
         highlightLocationBlock={needsLocationChoice}
+        onSuggestCafe={() => {
+          if (!user) {
+            openAuthModal("login");
+            return;
+          }
+          setCafeProposalOpen(true);
+          setSettingsOpen(false);
+        }}
       />
 
       <CafeDetailsScreen
@@ -566,6 +602,7 @@ export default function WorkScreen() {
         }
         onSaveDescription={handleSaveCafeDescription}
         onManagePhotos={handleOpenPhotoAdmin}
+        canManageDirectly={isPrivilegedUser}
       />
 
       <CafePhotoAdminModal
@@ -575,6 +612,18 @@ export default function WorkScreen() {
         initialPhotos={selectedCafe?.photos ?? []}
         onClose={() => setPhotoAdminOpen(false)}
         onPhotosChanged={handlePhotosChanged}
+      />
+      <CafePhotoSubmissionModal
+        opened={photoSubmitOpen}
+        cafeId={selectedCafe?.id ?? null}
+        cafeName={selectedCafe?.name ?? ""}
+        kind={photoSubmitKind}
+        onClose={() => setPhotoSubmitOpen(false)}
+      />
+      <CafeProposalModal
+        opened={cafeProposalOpen}
+        mapCenter={userCenter}
+        onClose={() => setCafeProposalOpen(false)}
       />
     </Box>
   );
