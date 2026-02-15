@@ -9,6 +9,35 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const (
+	sqlSelectReviewAuthorForAbuse = `select user_id::text
+   from reviews
+  where id = $1::uuid and status = 'published'`
+
+	sqlInsertAbuseReport = `insert into abuse_reports (review_id, reporter_user_id, reason, details)
+ values ($1::uuid, $2::uuid, $3, $4)
+ on conflict (review_id, reporter_user_id) do nothing
+ returning id::text, status`
+
+	sqlSelectAbuseReportByReviewAndReporter = `select id::text, status
+   from abuse_reports
+  where review_id = $1::uuid and reporter_user_id = $2::uuid`
+
+	sqlConfirmAbuseReport = `update abuse_reports
+    set status = 'confirmed',
+        confirmed_by = $2::uuid,
+        confirmed_at = coalesce(confirmed_at, now()),
+        updated_at = now()
+  where id = $1::uuid and status <> 'confirmed'
+  returning review_id::text, status`
+
+	sqlSelectAbuseReportByID = `select review_id::text, status
+   from abuse_reports
+  where id = $1::uuid`
+
+	sqlSelectReviewCafeByReviewID = `select cafe_id::text from reviews where id = $1::uuid`
+)
+
 func (s *Service) ReportAbuse(ctx context.Context, userID string, reviewID string, req ReportAbuseRequest) (map[string]interface{}, error) {
 	reason := strings.TrimSpace(req.Reason)
 	details := strings.TrimSpace(req.Details)
@@ -19,9 +48,7 @@ func (s *Service) ReportAbuse(ctx context.Context, userID string, reviewID strin
 	var reviewAuthorID string
 	err := s.repository.Pool().QueryRow(
 		ctx,
-		`select user_id::text
-		   from reviews
-		  where id = $1::uuid and status = 'published'`,
+		sqlSelectReviewAuthorForAbuse,
 		reviewID,
 	).Scan(&reviewAuthorID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -37,10 +64,7 @@ func (s *Service) ReportAbuse(ctx context.Context, userID string, reviewID strin
 	var reportID, status string
 	err = s.repository.Pool().QueryRow(
 		ctx,
-		`insert into abuse_reports (review_id, reporter_user_id, reason, details)
-		 values ($1::uuid, $2::uuid, $3, $4)
-		 on conflict (review_id, reporter_user_id) do nothing
-		 returning id::text, status`,
+		sqlInsertAbuseReport,
 		reviewID,
 		userID,
 		reason,
@@ -49,9 +73,7 @@ func (s *Service) ReportAbuse(ctx context.Context, userID string, reviewID strin
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = s.repository.Pool().QueryRow(
 			ctx,
-			`select id::text, status
-			   from abuse_reports
-			  where review_id = $1::uuid and reporter_user_id = $2::uuid`,
+			sqlSelectAbuseReportByReviewAndReporter,
 			reviewID,
 			userID,
 		).Scan(&reportID, &status)
@@ -82,13 +104,7 @@ func (s *Service) ConfirmAbuseReport(ctx context.Context, moderatorUserID string
 
 	err = tx.QueryRow(
 		ctx,
-		`update abuse_reports
-		    set status = 'confirmed',
-		        confirmed_by = $2::uuid,
-		        confirmed_at = coalesce(confirmed_at, now()),
-		        updated_at = now()
-		  where id = $1::uuid and status <> 'confirmed'
-		  returning review_id::text, status`,
+		sqlConfirmAbuseReport,
 		reportID,
 		moderatorUserID,
 	).Scan(&reviewID, &status)
@@ -98,9 +114,7 @@ func (s *Service) ConfirmAbuseReport(ctx context.Context, moderatorUserID string
 		newlyConfirmed = false
 		err = tx.QueryRow(
 			ctx,
-			`select review_id::text, status
-			   from abuse_reports
-			  where id = $1::uuid`,
+			sqlSelectAbuseReportByID,
 			reportID,
 		).Scan(&reviewID, &status)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -113,7 +127,7 @@ func (s *Service) ConfirmAbuseReport(ctx context.Context, moderatorUserID string
 		return nil, err
 	}
 
-	err = tx.QueryRow(ctx, `select cafe_id::text from reviews where id = $1::uuid`, reviewID).Scan(&cafeID)
+	err = tx.QueryRow(ctx, sqlSelectReviewCafeByReviewID, reviewID).Scan(&cafeID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}

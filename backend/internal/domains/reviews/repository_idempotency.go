@@ -8,6 +8,22 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const (
+	sqlInsertIdempotencyKey = `insert into idempotency_keys (scope, idempotency_key, request_hash, response_status, response_body)
+ values ($1, $2, $3, 0, '{}'::jsonb)
+ on conflict (scope, idempotency_key) do nothing`
+
+	sqlGetIdempotencyKeyForUpdate = `select request_hash, response_status, response_body
+   from idempotency_keys
+  where scope = $1 and idempotency_key = $2
+  for update`
+
+	sqlUpdateIdempotencyResponse = `update idempotency_keys
+    set response_status = $3,
+        response_body = $4::jsonb
+  where scope = $1 and idempotency_key = $2`
+)
+
 func (r *Repository) RunIdempotent(
 	ctx context.Context,
 	scope string,
@@ -29,9 +45,7 @@ func (r *Repository) RunIdempotent(
 
 	insertTag, err := tx.Exec(
 		ctx,
-		`insert into idempotency_keys (scope, idempotency_key, request_hash, response_status, response_body)
-		 values ($1, $2, $3, 0, '{}'::jsonb)
-		 on conflict (scope, idempotency_key) do nothing`,
+		sqlInsertIdempotencyKey,
 		scope,
 		idempotencyKey,
 		requestHash,
@@ -46,10 +60,7 @@ func (r *Repository) RunIdempotent(
 		var responseBodyRaw []byte
 		err = tx.QueryRow(
 			ctx,
-			`select request_hash, response_status, response_body
-			   from idempotency_keys
-			  where scope = $1 and idempotency_key = $2
-			  for update`,
+			sqlGetIdempotencyKeyForUpdate,
 			scope,
 			idempotencyKey,
 		).Scan(&existingHash, &responseStatus, &responseBodyRaw)
@@ -89,10 +100,7 @@ func (r *Repository) RunIdempotent(
 
 	if _, err := tx.Exec(
 		ctx,
-		`update idempotency_keys
-		    set response_status = $3,
-		        response_body = $4::jsonb
-		  where scope = $1 and idempotency_key = $2`,
+		sqlUpdateIdempotencyResponse,
 		scope,
 		idempotencyKey,
 		statusCode,

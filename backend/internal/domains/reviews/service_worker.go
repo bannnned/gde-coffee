@@ -10,6 +10,23 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const (
+	sqlSelectHelpfulVoteAuthorAndWeight = `select r.user_id::text, hv.weight::float8
+   from helpful_votes hv
+   join reviews r on r.id = hv.review_id
+  where hv.id = $1::uuid`
+
+	sqlSelectVisitVerificationAuthorAndConfidence = `select r.user_id::text, vv.confidence
+   from visit_verifications vv
+   join reviews r on r.id = vv.review_id
+  where vv.id = $1::uuid`
+
+	sqlSelectAbuseReportAuthor = `select r.user_id::text
+   from abuse_reports ar
+   join reviews r on r.id = ar.review_id
+  where ar.id = $1::uuid and ar.status = 'confirmed'`
+)
+
 func (s *Service) StartEventWorker(ctx context.Context, pollInterval time.Duration) {
 	if pollInterval <= 0 {
 		pollInterval = 2 * time.Second
@@ -84,10 +101,7 @@ func (s *Service) applyHelpfulReputation(ctx context.Context, payload map[string
 
 	err := s.repository.Pool().QueryRow(
 		ctx,
-		`select r.user_id::text, hv.weight::float8
-		   from helpful_votes hv
-		   join reviews r on r.id = hv.review_id
-		  where hv.id = $1::uuid`,
+		sqlSelectHelpfulVoteAuthorAndWeight,
 		voteID,
 	).Scan(&reviewAuthorID, &weight)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -127,10 +141,7 @@ func (s *Service) applyVisitReputation(ctx context.Context, payload map[string]i
 
 	err := s.repository.Pool().QueryRow(
 		ctx,
-		`select r.user_id::text, vv.confidence
-		   from visit_verifications vv
-		   join reviews r on r.id = vv.review_id
-		  where vv.id = $1::uuid`,
+		sqlSelectVisitVerificationAuthorAndConfidence,
 		verificationID,
 	).Scan(&reviewAuthorID, &confidence)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -171,10 +182,7 @@ func (s *Service) applyAbusePenalty(ctx context.Context, payload map[string]inte
 	var reviewAuthorID string
 	err := s.repository.Pool().QueryRow(
 		ctx,
-		`select r.user_id::text
-		   from abuse_reports ar
-		   join reviews r on r.id = ar.review_id
-		  where ar.id = $1::uuid and ar.status = 'confirmed'`,
+		sqlSelectAbuseReportAuthor,
 		reportID,
 	).Scan(&reviewAuthorID)
 	if errors.Is(err, pgx.ErrNoRows) {

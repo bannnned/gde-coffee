@@ -11,6 +11,74 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const (
+	sqlSelectCafeReviewInputs = `select
+	r.id::text,
+	r.user_id::text,
+	r.rating::float8,
+	extract(epoch from (now() - r.updated_at)) / 86400.0 as age_days,
+	coalesce(ra.drink_name, ''),
+	coalesce(cardinality(ra.taste_tags), 0),
+	coalesce(ra.summary_length, 0),
+	coalesce(ra.photo_count, 0),
+	coalesce(vv.confidence, 'none'),
+	coalesce((
+		select count(*)
+		  from abuse_reports ar
+		 where ar.review_id = r.id and ar.status = 'confirmed'
+	), 0)
+from reviews r
+left join review_attributes ra on ra.review_id = r.id
+left join visit_verifications vv on vv.review_id = r.id
+where r.cafe_id = $1::uuid and r.status = 'published'`
+
+	sqlUpsertCafeRatingSnapshot = `insert into cafe_rating_snapshots (
+	cafe_id,
+	formula_version,
+	rating,
+	reviews_count,
+	verified_reviews_count,
+	fraud_risk,
+	components,
+	computed_at,
+	updated_at
+)
+values ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb, now(), now())
+on conflict (cafe_id)
+do update set
+	formula_version = excluded.formula_version,
+	rating = excluded.rating,
+	reviews_count = excluded.reviews_count,
+	verified_reviews_count = excluded.verified_reviews_count,
+	fraud_risk = excluded.fraud_risk,
+	components = excluded.components,
+	computed_at = excluded.computed_at,
+	updated_at = now()`
+
+	sqlSelectCafeRatingSnapshot = `select formula_version,
+        rating::float8,
+        reviews_count,
+        verified_reviews_count,
+        fraud_risk::float8,
+        components,
+        computed_at
+   from cafe_rating_snapshots
+  where cafe_id = $1::uuid`
+
+	sqlSelectUserReputationWeightedSum = `select coalesce(sum(
+	case
+		when created_at >= now() - interval '365 days' then points::numeric
+		else points::numeric * 0.5
+	end
+), 0)::float8
+from reputation_events
+where user_id = $1::uuid`
+
+	sqlSelectGlobalMeanRating = `select coalesce(avg(rating)::float8, 4.0)
+   from reviews
+  where status = 'published'`
+)
+
 func (s *Service) GetCafeRatingSnapshot(ctx context.Context, cafeID string) (map[string]interface{}, error) {
 	snapshot, err := s.loadCafeRatingSnapshot(ctx, cafeID)
 	if err == nil {
@@ -43,25 +111,7 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 	reviews := make([]reviewInput, 0, 32)
 	rows, err := s.repository.Pool().Query(
 		ctx,
-		`select
-			r.id::text,
-			r.user_id::text,
-			r.rating::float8,
-			extract(epoch from (now() - r.updated_at)) / 86400.0 as age_days,
-			coalesce(ra.drink_name, ''),
-			coalesce(cardinality(ra.taste_tags), 0),
-			coalesce(ra.summary_length, 0),
-			coalesce(ra.photo_count, 0),
-			coalesce(vv.confidence, 'none'),
-			coalesce((
-				select count(*)
-				  from abuse_reports ar
-				 where ar.review_id = r.id and ar.status = 'confirmed'
-			), 0)
-		from reviews r
-		left join review_attributes ra on ra.review_id = r.id
-		left join visit_verifications vv on vv.review_id = r.id
-		where r.cafe_id = $1::uuid and r.status = 'published'`,
+		sqlSelectCafeReviewInputs,
 		cafeID,
 	)
 	if err != nil {
@@ -202,28 +252,7 @@ func (s *Service) saveCafeRatingSnapshot(
 
 	_, err = s.repository.Pool().Exec(
 		ctx,
-		`insert into cafe_rating_snapshots (
-			cafe_id,
-			formula_version,
-			rating,
-			reviews_count,
-			verified_reviews_count,
-			fraud_risk,
-			components,
-			computed_at,
-			updated_at
-		)
-		values ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb, now(), now())
-		on conflict (cafe_id)
-		do update set
-			formula_version = excluded.formula_version,
-			rating = excluded.rating,
-			reviews_count = excluded.reviews_count,
-			verified_reviews_count = excluded.verified_reviews_count,
-			fraud_risk = excluded.fraud_risk,
-			components = excluded.components,
-			computed_at = excluded.computed_at,
-			updated_at = now()`,
+		sqlUpsertCafeRatingSnapshot,
 		cafeID,
 		RatingFormulaVersion,
 		roundFloat(rating, 2),
@@ -248,15 +277,7 @@ func (s *Service) loadCafeRatingSnapshot(ctx context.Context, cafeID string) (ma
 
 	err := s.repository.Pool().QueryRow(
 		ctx,
-		`select formula_version,
-		        rating::float8,
-		        reviews_count,
-		        verified_reviews_count,
-		        fraud_risk::float8,
-		        components,
-		        computed_at
-		   from cafe_rating_snapshots
-		  where cafe_id = $1::uuid`,
+		sqlSelectCafeRatingSnapshot,
 		cafeID,
 	).Scan(
 		&formulaVersion,
@@ -302,14 +323,7 @@ func (s *Service) lookupUserReputationScoreQuery(ctx context.Context, q queryer,
 	var weightedSum float64
 	err := q.QueryRow(
 		ctx,
-		`select coalesce(sum(
-			case
-				when created_at >= now() - interval '365 days' then points::numeric
-				else points::numeric * 0.5
-			end
-		), 0)::float8
-		from reputation_events
-		where user_id = $1::uuid`,
+		sqlSelectUserReputationWeightedSum,
 		userID,
 	).Scan(&weightedSum)
 	if err != nil {
@@ -322,9 +336,7 @@ func (s *Service) globalMeanRating(ctx context.Context) (float64, error) {
 	var mean float64
 	err := s.repository.Pool().QueryRow(
 		ctx,
-		`select coalesce(avg(rating)::float8, 4.0)
-		   from reviews
-		  where status = 'published'`,
+		sqlSelectGlobalMeanRating,
 	).Scan(&mean)
 	if err != nil {
 		return 0, err

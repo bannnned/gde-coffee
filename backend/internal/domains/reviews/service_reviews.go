@@ -9,6 +9,39 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const (
+	sqlCheckCafeExists = `select exists(select 1 from cafes where id = $1::uuid)`
+
+	sqlSelectReviewForUpdateByUserCafe = `select id::text
+   from reviews
+  where user_id = $1::uuid and cafe_id = $2::uuid
+  for update`
+
+	sqlInsertReview = `insert into reviews (user_id, cafe_id, rating, summary, status)
+ values ($1::uuid, $2::uuid, $3, $4, 'published')
+ returning id::text, updated_at`
+
+	sqlInsertReviewAttributes = `insert into review_attributes (review_id, drink_name, taste_tags, summary_length, photo_count)
+ values ($1::uuid, $2, $3::text[], $4, $5)`
+
+	sqlUpdateReview = `update reviews
+    set rating = $2,
+        summary = $3,
+        status = 'published',
+        updated_at = now()
+  where id = $1::uuid
+  returning updated_at`
+
+	sqlUpsertReviewAttributes = `insert into review_attributes (review_id, drink_name, taste_tags, summary_length, photo_count)
+ values ($1::uuid, $2, $3::text[], $4, $5)
+ on conflict (review_id)
+ do update set drink_name = excluded.drink_name,
+               taste_tags = excluded.taste_tags,
+               summary_length = excluded.summary_length,
+               photo_count = excluded.photo_count,
+               updated_at = now()`
+)
+
 func (s *Service) PublishReview(
 	ctx context.Context,
 	userID string,
@@ -24,7 +57,7 @@ func (s *Service) PublishReview(
 
 	return s.repository.RunIdempotent(ctx, scope, idempotencyKey, hash, func(tx pgx.Tx) (int, map[string]interface{}, error) {
 		var cafeExists bool
-		if err := tx.QueryRow(ctx, `select exists(select 1 from cafes where id = $1::uuid)`, request.CafeID).Scan(&cafeExists); err != nil {
+		if err := tx.QueryRow(ctx, sqlCheckCafeExists, request.CafeID).Scan(&cafeExists); err != nil {
 			return 0, nil, err
 		}
 		if !cafeExists {
@@ -41,10 +74,7 @@ func (s *Service) PublishReview(
 
 		err := tx.QueryRow(
 			ctx,
-			`select id::text
-			   from reviews
-			  where user_id = $1::uuid and cafe_id = $2::uuid
-			  for update`,
+			sqlSelectReviewForUpdateByUserCafe,
 			userID,
 			request.CafeID,
 		).Scan(&reviewID)
@@ -53,9 +83,7 @@ func (s *Service) PublishReview(
 		case errors.Is(err, pgx.ErrNoRows):
 			err = tx.QueryRow(
 				ctx,
-				`insert into reviews (user_id, cafe_id, rating, summary, status)
-				 values ($1::uuid, $2::uuid, $3, $4, 'published')
-				 returning id::text, updated_at`,
+				sqlInsertReview,
 				userID,
 				request.CafeID,
 				request.Rating,
@@ -67,8 +95,7 @@ func (s *Service) PublishReview(
 
 			if _, err := tx.Exec(
 				ctx,
-				`insert into review_attributes (review_id, drink_name, taste_tags, summary_length, photo_count)
-				 values ($1::uuid, $2, $3::text[], $4, $5)`,
+				sqlInsertReviewAttributes,
 				reviewID,
 				request.DrinkName,
 				request.TasteTags,
@@ -85,13 +112,7 @@ func (s *Service) PublishReview(
 		default:
 			err = tx.QueryRow(
 				ctx,
-				`update reviews
-				    set rating = $2,
-				        summary = $3,
-				        status = 'published',
-				        updated_at = now()
-				  where id = $1::uuid
-				  returning updated_at`,
+				sqlUpdateReview,
 				reviewID,
 				request.Rating,
 				request.Summary,
@@ -102,14 +123,7 @@ func (s *Service) PublishReview(
 
 			if _, err := tx.Exec(
 				ctx,
-				`insert into review_attributes (review_id, drink_name, taste_tags, summary_length, photo_count)
-				 values ($1::uuid, $2, $3::text[], $4, $5)
-				 on conflict (review_id)
-				 do update set drink_name = excluded.drink_name,
-				               taste_tags = excluded.taste_tags,
-				               summary_length = excluded.summary_length,
-				               photo_count = excluded.photo_count,
-				               updated_at = now()`,
+				sqlUpsertReviewAttributes,
 				reviewID,
 				request.DrinkName,
 				request.TasteTags,

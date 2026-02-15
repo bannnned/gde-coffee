@@ -786,11 +786,18 @@ func (h *Handler) insertCafePhotos(
 	photoKind string,
 	allowCover bool,
 ) error {
-	if err := photos.EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
-		if err == pgx.ErrNoRows {
-			return fmt.Errorf("Кофейня не найдена")
-		}
+	var cafeExists bool
+	// Must check inside the same transaction: for approved "create cafe" submissions
+	// the cafe row is not visible outside tx until commit.
+	if err := tx.QueryRow(
+		ctx,
+		`select exists(select 1 from cafes where id = $1::uuid)`,
+		cafeID,
+	).Scan(&cafeExists); err != nil {
 		return fmt.Errorf("Внутренняя ошибка проверки кофейни")
+	}
+	if !cafeExists {
+		return fmt.Errorf("Кофейня не найдена")
 	}
 
 	var count int

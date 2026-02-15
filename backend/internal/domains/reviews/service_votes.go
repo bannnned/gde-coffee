@@ -8,6 +8,21 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const (
+	sqlSelectPublishedReviewAuthorAndCafe = `select user_id::text, cafe_id::text
+   from reviews
+  where id = $1::uuid and status = 'published'`
+
+	sqlInsertHelpfulVote = `insert into helpful_votes (review_id, voter_user_id, weight)
+ values ($1::uuid, $2::uuid, $3)
+ on conflict (review_id, voter_user_id) do nothing
+ returning id::text`
+
+	sqlSelectHelpfulVoteByReviewAndVoter = `select id::text, weight
+   from helpful_votes
+  where review_id = $1::uuid and voter_user_id = $2::uuid`
+)
+
 func (s *Service) AddHelpfulVote(
 	ctx context.Context,
 	userID string,
@@ -24,9 +39,7 @@ func (s *Service) AddHelpfulVote(
 		var reviewAuthorID, cafeID string
 		err := tx.QueryRow(
 			ctx,
-			`select user_id::text, cafe_id::text
-			   from reviews
-			  where id = $1::uuid and status = 'published'`,
+			sqlSelectPublishedReviewAuthorAndCafe,
 			reviewID,
 		).Scan(&reviewAuthorID, &cafeID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -49,10 +62,7 @@ func (s *Service) AddHelpfulVote(
 		var voteID string
 		err = tx.QueryRow(
 			ctx,
-			`insert into helpful_votes (review_id, voter_user_id, weight)
-			 values ($1::uuid, $2::uuid, $3)
-			 on conflict (review_id, voter_user_id) do nothing
-			 returning id::text`,
+			sqlInsertHelpfulVote,
 			reviewID,
 			userID,
 			weight,
@@ -63,9 +73,7 @@ func (s *Service) AddHelpfulVote(
 			alreadyExists = true
 			err = tx.QueryRow(
 				ctx,
-				`select id::text, weight
-				   from helpful_votes
-				  where review_id = $1::uuid and voter_user_id = $2::uuid`,
+				sqlSelectHelpfulVoteByReviewAndVoter,
 				reviewID,
 				userID,
 			).Scan(&voteID, &weight)

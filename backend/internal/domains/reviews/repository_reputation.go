@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 )
 
+const sqlInsertReputationEvent = `insert into reputation_events (user_id, event_type, points, source_type, source_id, metadata)
+ values ($1::uuid, $2, $3, $4, $5, $6::jsonb)
+ on conflict (user_id, event_type, source_type, source_id) do nothing`
+
 func (r *Repository) AddReputationEvent(
 	ctx context.Context,
 	userID string,
@@ -24,9 +28,7 @@ func (r *Repository) AddReputationEvent(
 
 	_, err = r.pool.Exec(
 		ctx,
-		`insert into reputation_events (user_id, event_type, points, source_type, source_id, metadata)
-		 values ($1::uuid, $2, $3, $4, $5, $6::jsonb)
-		 on conflict (user_id, event_type, source_type, source_id) do nothing`,
+		sqlInsertReputationEvent,
 		userID,
 		eventType,
 		points,

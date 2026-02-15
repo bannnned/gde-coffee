@@ -8,6 +8,25 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const sqlUpsertVisitVerification = `insert into visit_verifications (review_id, user_id, cafe_id, confidence, verified_at, dwell_seconds)
+ values (
+	$1::uuid,
+	$2::uuid,
+	$3::uuid,
+	$4,
+	case when $4 = 'none' then null else now() end,
+	$5
+ )
+ on conflict (review_id)
+ do update set confidence = excluded.confidence,
+               verified_at = case
+								when excluded.confidence = 'none' then null
+								else coalesce(visit_verifications.verified_at, now())
+							  end,
+               dwell_seconds = greatest(visit_verifications.dwell_seconds, excluded.dwell_seconds),
+               updated_at = now()
+ returning id::text`
+
 func (s *Service) VerifyVisit(
 	ctx context.Context,
 	userID string,
@@ -33,9 +52,7 @@ func (s *Service) VerifyVisit(
 		var reviewAuthorID, cafeID string
 		err := tx.QueryRow(
 			ctx,
-			`select user_id::text, cafe_id::text
-			   from reviews
-			  where id = $1::uuid and status = 'published'`,
+			sqlSelectPublishedReviewAuthorAndCafe,
 			reviewID,
 		).Scan(&reviewAuthorID, &cafeID)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -52,24 +69,7 @@ func (s *Service) VerifyVisit(
 		var verificationID string
 		err = tx.QueryRow(
 			ctx,
-			`insert into visit_verifications (review_id, user_id, cafe_id, confidence, verified_at, dwell_seconds)
-			 values (
-				$1::uuid,
-				$2::uuid,
-				$3::uuid,
-				$4,
-				case when $4 = 'none' then null else now() end,
-				$5
-			 )
-			 on conflict (review_id)
-			 do update set confidence = excluded.confidence,
-			               verified_at = case
-									when excluded.confidence = 'none' then null
-									else coalesce(visit_verifications.verified_at, now())
-								  end,
-			               dwell_seconds = greatest(visit_verifications.dwell_seconds, excluded.dwell_seconds),
-			               updated_at = now()
-			 returning id::text`,
+			sqlUpsertVisitVerification,
 			reviewID,
 			userID,
 			cafeID,

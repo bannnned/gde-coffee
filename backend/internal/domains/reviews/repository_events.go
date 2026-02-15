@@ -8,6 +8,43 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const (
+	sqlInsertDomainEvent = `insert into domain_events (event_type, aggregate_type, aggregate_id, dedupe_key, payload)
+ values ($1, 'cafe', $2::uuid, $3, $4::jsonb)
+ on conflict (dedupe_key) do nothing`
+
+	sqlClaimNextDomainEvent = `with next_event as (
+	select id
+	  from domain_events
+	 where (status = 'pending' or (status = 'processing' and updated_at < now() - interval '5 minutes'))
+	   and available_at <= now()
+	 order by available_at asc, id asc
+	 for update skip locked
+	 limit 1
+)
+update domain_events e
+   set status = 'processing',
+       attempts = e.attempts + 1,
+       updated_at = now(),
+       last_error = null
+  from next_event
+ where e.id = next_event.id
+ returning e.id, e.event_type, e.aggregate_id::text, e.payload, e.attempts`
+
+	sqlMarkDomainEventProcessed = `update domain_events
+    set status = 'processed',
+        updated_at = now(),
+        last_error = null
+  where id = $1`
+
+	sqlMarkDomainEventFailed = `update domain_events
+    set status = $2,
+        available_at = $3,
+        updated_at = now(),
+        last_error = $4
+  where id = $1`
+)
+
 func (r *Repository) EnqueueEventTx(
 	ctx context.Context,
 	tx pgx.Tx,
@@ -26,9 +63,7 @@ func (r *Repository) EnqueueEventTx(
 
 	_, err = tx.Exec(
 		ctx,
-		`insert into domain_events (event_type, aggregate_type, aggregate_id, dedupe_key, payload)
-		 values ($1, 'cafe', $2::uuid, $3, $4::jsonb)
-		 on conflict (dedupe_key) do nothing`,
+		sqlInsertDomainEvent,
 		eventType,
 		aggregateID,
 		dedupeKey,
@@ -45,23 +80,7 @@ func (r *Repository) ClaimNextEvent(ctx context.Context) (*domainEvent, error) {
 
 	err := r.pool.QueryRow(
 		ctx,
-		`with next_event as (
-			select id
-			  from domain_events
-			 where (status = 'pending' or (status = 'processing' and updated_at < now() - interval '5 minutes'))
-			   and available_at <= now()
-			 order by available_at asc, id asc
-			 for update skip locked
-			 limit 1
-		)
-		update domain_events e
-		   set status = 'processing',
-		       attempts = e.attempts + 1,
-		       updated_at = now(),
-		       last_error = null
-		  from next_event
-		 where e.id = next_event.id
-		 returning e.id, e.event_type, e.aggregate_id::text, e.payload, e.attempts`,
+		sqlClaimNextDomainEvent,
 	).Scan(&evt.ID, &evt.EventType, &evt.AggregateID, &raw, &evt.Attempts)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -83,11 +102,7 @@ func (r *Repository) ClaimNextEvent(ctx context.Context) (*domainEvent, error) {
 func (r *Repository) MarkEventProcessed(ctx context.Context, eventID int64) error {
 	_, err := r.pool.Exec(
 		ctx,
-		`update domain_events
-		    set status = 'processed',
-		        updated_at = now(),
-		        last_error = null
-		  where id = $1`,
+		sqlMarkDomainEventProcessed,
 		eventID,
 	)
 	return err
@@ -108,12 +123,7 @@ func (r *Repository) MarkEventFailed(ctx context.Context, eventID int64, attempt
 
 	_, err := r.pool.Exec(
 		ctx,
-		`update domain_events
-		    set status = $2,
-		        available_at = $3,
-		        updated_at = now(),
-		        last_error = $4
-		  where id = $1`,
+		sqlMarkDomainEventFailed,
 		eventID,
 		nextStatus,
 		nextAttemptAt,
