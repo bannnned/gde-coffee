@@ -1,6 +1,7 @@
 import AuthGate from "./components/AuthGate";
 import { LayoutMetricsProvider } from "./features/work/layout/LayoutMetricsContext";
 import ConfirmEmailChangePage from "./pages/ConfirmEmailChangePage";
+import FavoritesPage from "./pages/FavoritesPage";
 import LoginPage from "./pages/LoginPage";
 import AdminModerationPage from "./pages/AdminModerationPage";
 import ProfileScreen from "./pages/ProfileScreen";
@@ -25,6 +26,7 @@ export default function App() {
           />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/profile" element={<ProfileScreen />} />
+          <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/settings" element={<SettingsScreen />} />
           <Route path="/admin/moderation" element={<AdminModerationPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />

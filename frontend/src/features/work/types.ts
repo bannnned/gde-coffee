@@ -17,6 +17,7 @@ export type Cafe = {
   longitude: number;
   amenities: Amenity[];
   distance_m: number;
+  is_favorite: boolean;
   cover_photo_url?: string | null;
   photos?: CafePhoto[];
 };

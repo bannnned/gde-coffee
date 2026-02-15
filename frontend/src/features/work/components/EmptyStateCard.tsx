@@ -7,7 +7,6 @@ import {
 } from "@mantine/core";
 import {
   IconAlertCircle,
-  IconCoffee,
   IconMapPinOff,
 } from "@tabler/icons-react";
 
@@ -41,7 +40,7 @@ export default function EmptyStateCard({
           actionLabel: WORK_UI_TEXT.retry,
           onAction: onRetry,
         }
-      : emptyState === "no-geo"
+        : emptyState === "no-geo"
         ? {
             icon: IconMapPinOff,
             title: WORK_UI_TEXT.emptyNoGeoTitle,
@@ -50,7 +49,7 @@ export default function EmptyStateCard({
             onAction: onLocate,
           }
         : {
-            icon: IconCoffee,
+            icon: null,
             title: WORK_UI_TEXT.emptyTitle,
             subtitle: WORK_UI_TEXT.emptySubtitle,
             actionLabel: WORK_UI_TEXT.resetFilters,
@@ -68,14 +67,22 @@ export default function EmptyStateCard({
     boxShadow: "var(--shadow)",
   } as const;
 
+  const compactNoResults = emptyState === "no-results" && !isError;
   const EmptyIcon = emptyConfig.icon;
 
   return (
-    <Paper radius="xl" p="md" withBorder style={emptyCardStyles}>
-      <Stack gap={6} align="center">
-        <ThemeIcon size={48} radius={18} style={emptyIconStyles}>
-          <EmptyIcon size={22} />
-        </ThemeIcon>
+    <Paper
+      radius="xl"
+      p={compactNoResults ? "sm" : "md"}
+      withBorder
+      style={emptyCardStyles}
+    >
+      <Stack gap={compactNoResults ? 4 : 6} align="center">
+        {EmptyIcon && (
+          <ThemeIcon size={48} radius={18} style={emptyIconStyles}>
+            <EmptyIcon size={22} />
+          </ThemeIcon>
+        )}
         <Text size="sm" fw={600} ta="center">
           {emptyConfig.title}
         </Text>

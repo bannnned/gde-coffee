@@ -1,4 +1,4 @@
-﻿import {
+import {
   Badge,
   Box,
   Button,
@@ -7,11 +7,22 @@
   Stack,
   Text,
 } from "@mantine/core";
-import { useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type TouchEvent as ReactTouchEvent,
+} from "react";
 
+import { getCafePhotos } from "../../../api/cafePhotos";
 import type { Cafe } from "../types";
 import { AMENITY_LABELS, WORK_UI_TEXT } from "../constants";
 import { formatDistance } from "../utils";
+
+const AUTO_SLIDE_MS = 4000;
 
 type CafeCardProps = {
   cafe: Cafe;
@@ -31,7 +42,76 @@ export default function CafeCard({
   showRoutes = true,
 }: CafeCardProps) {
   const clickStartRef = useRef<{ x: number; y: number } | null>(null);
-  const coverPhotoUrl = cafe.cover_photo_url ?? cafe.photos?.[0]?.url;
+  const touchStartXRef = useRef<number | null>(null);
+
+  const fallbackPhotoUrls = useMemo(() => {
+    const direct = (cafe.photos ?? [])
+      .filter((photo) => photo.kind === "cafe")
+      .map((photo) => photo.url)
+      .filter(Boolean);
+    const cover = cafe.cover_photo_url?.trim() || "";
+
+    if (cover && !direct.includes(cover)) {
+      return [cover, ...direct];
+    }
+    return cover ? (direct.length > 0 ? direct : [cover]) : direct;
+  }, [cafe.cover_photo_url, cafe.photos]);
+
+  const [photoUrls, setPhotoUrls] = useState<string[]>(fallbackPhotoUrls);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [photoReady, setPhotoReady] = useState(true);
+  const activePhotoUrl = photoUrls[activePhotoIndex] ?? null;
+
+  useEffect(() => {
+    setPhotoUrls(fallbackPhotoUrls);
+    setActivePhotoIndex(0);
+  }, [cafe.id, fallbackPhotoUrls]);
+
+  useEffect(() => {
+    if (!cafe.id) return;
+    let cancelled = false;
+
+    getCafePhotos(cafe.id, "cafe")
+      .then((list) => {
+        if (cancelled) return;
+        const fetched = list.map((photo) => photo.url).filter(Boolean);
+        if (fetched.length === 0) return;
+
+        const cover = cafe.cover_photo_url?.trim() || "";
+        if (cover && !fetched.includes(cover)) {
+          setPhotoUrls([cover, ...fetched]);
+          return;
+        }
+        setPhotoUrls(fetched);
+      })
+      .catch(() => {
+        // Keep fallback photos on error.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cafe.id, cafe.cover_photo_url]);
+
+  useEffect(() => {
+    setActivePhotoIndex((prev) =>
+      photoUrls.length === 0 ? 0 : Math.min(prev, photoUrls.length - 1),
+    );
+  }, [photoUrls.length]);
+
+  useEffect(() => {
+    setPhotoReady(false);
+    const timer = window.setTimeout(() => setPhotoReady(true), 220);
+    return () => window.clearTimeout(timer);
+  }, [activePhotoUrl]);
+
+  useEffect(() => {
+    if (photoUrls.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setActivePhotoIndex((prev) => (prev + 1) % photoUrls.length);
+    }, AUTO_SLIDE_MS);
+    return () => window.clearInterval(timer);
+  }, [photoUrls.length]);
 
   const cardStyles = {
     zIndex: 1,
@@ -90,6 +170,26 @@ export default function CafeCard({
     }
   };
 
+  const stepPhoto = (direction: -1 | 1) => {
+    if (photoUrls.length <= 1) return;
+    setActivePhotoIndex((prev) => (prev + direction + photoUrls.length) % photoUrls.length);
+  };
+
+  const handlePhotoTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    touchStartXRef.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const handlePhotoTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const startX = touchStartXRef.current;
+    const endX = event.changedTouches[0]?.clientX ?? null;
+    touchStartXRef.current = null;
+    if (startX == null || endX == null || photoUrls.length <= 1) return;
+    const deltaX = endX - startX;
+    if (Math.abs(deltaX) < 40) return;
+    if (deltaX < 0) stepPhoto(1);
+    if (deltaX > 0) stepPhoto(-1);
+  };
+
   return (
     <Paper
       withBorder
@@ -106,10 +206,13 @@ export default function CafeCard({
       onPointerCancel={handlePointerCancel}
       onKeyDown={handleKeyDown}
     >
-      {coverPhotoUrl && (
+      {activePhotoUrl && (
         <Box
           mb="sm"
+          onTouchStart={handlePhotoTouchStart}
+          onTouchEnd={handlePhotoTouchEnd}
           style={{
+            position: "relative",
             height: 126,
             borderRadius: 12,
             overflow: "hidden",
@@ -118,7 +221,7 @@ export default function CafeCard({
           }}
         >
           <img
-            src={coverPhotoUrl}
+            src={activePhotoUrl}
             alt={`Фото: ${cafe.name}`}
             loading="lazy"
             style={{
@@ -126,8 +229,44 @@ export default function CafeCard({
               height: "100%",
               objectFit: "cover",
               display: "block",
+              opacity: photoReady ? 1 : 0.36,
+              filter: photoReady ? "blur(0px)" : "blur(2px)",
+              transition: "opacity 200ms ease, filter 220ms ease",
             }}
           />
+          {photoUrls.length > 1 && (
+            <Group
+              gap={4}
+              justify="center"
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 8,
+                pointerEvents: "none",
+              }}
+            >
+              {photoUrls.map((_, index) => (
+                <Box
+                  key={`photo-dot-${index + 1}`}
+                  style={{
+                    width: 16,
+                    height: 3,
+                    borderRadius: 999,
+                    background:
+                      index === activePhotoIndex
+                        ? "rgba(255, 255, 255, 0.94)"
+                        : "rgba(255, 255, 255, 0.42)",
+                    boxShadow:
+                      index === activePhotoIndex
+                        ? "0 0 0 1px rgba(0, 0, 0, 0.18)"
+                        : "none",
+                    transition: "background 180ms ease, box-shadow 180ms ease",
+                  }}
+                />
+              ))}
+            </Group>
+          )}
         </Box>
       )}
       <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">

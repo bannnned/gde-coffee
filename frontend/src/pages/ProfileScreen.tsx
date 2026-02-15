@@ -17,11 +17,11 @@ import {
   IconBrandYandex,
   IconCheck,
   IconChecklist,
-  IconCircleCheck,
-  IconCircleX,
   IconCrown,
+  IconHeart,
   IconId,
   IconLink,
+  IconLinkOff,
   IconLogout,
   IconMail,
   IconPlus,
@@ -238,6 +238,30 @@ export default function ProfileScreen() {
     }
   };
 
+  const socialStatuses = useMemo(
+    () => [
+      {
+        id: "github",
+        label: "GitHub",
+        linked: githubLinked,
+        icon: IconBrandGithub,
+      },
+      {
+        id: "yandex",
+        label: "Яндекс",
+        linked: yandexLinked,
+        icon: IconBrandYandex,
+      },
+      {
+        id: "telegram",
+        label: "Telegram",
+        linked: telegramLinked,
+        icon: IconBrandTelegram,
+      },
+    ],
+    [githubLinked, telegramLinked, yandexLinked],
+  );
+
   return (
     <Box className={classes.screen} data-ui="profile-screen">
       <Container className={classes.container}>
@@ -299,17 +323,17 @@ export default function ProfileScreen() {
                       ) : (
                         profile.initial
                       )}
+                      <ActionIcon
+                        size={32}
+                        radius="xl"
+                        className={classes.avatarPlusButton}
+                        aria-label="Изменить фото профиля"
+                        onClick={handleAvatarPick}
+                        loading={isAvatarUploading}
+                      >
+                        <IconPlus size={16} />
+                      </ActionIcon>
                     </div>
-                    <ActionIcon
-                      size={34}
-                      radius="xl"
-                      className={classes.avatarPlusButton}
-                      aria-label="Изменить фото профиля"
-                      onClick={handleAvatarPick}
-                      loading={isAvatarUploading}
-                    >
-                      <IconPlus size={16} />
-                    </ActionIcon>
                     <input
                       ref={avatarInputRef}
                       type="file"
@@ -414,6 +438,23 @@ export default function ProfileScreen() {
             <section className={classes.sectionCard}>
               <div className={classes.sectionHeader}>
                 <Group gap="xs">
+                  <IconHeart size={18} />
+                  <Text fw={600}>Избранные кофейни</Text>
+                </Group>
+              </div>
+              <Button
+                variant="light"
+                onClick={() => navigate("/favorites")}
+              >
+                Открыть избранное
+              </Button>
+            </section>
+          )}
+
+          {user && (
+            <section className={classes.sectionCard}>
+              <div className={classes.sectionHeader}>
+                <Group gap="xs">
                   <IconLink size={18} />
                   <Text fw={600}>Соцсети</Text>
                 </Group>
@@ -424,81 +465,64 @@ export default function ProfileScreen() {
                 )}
               </div>
 
-              <div className={classes.socialList}>
-                <div className={classes.socialRow}>
-                  <div className={classes.socialMeta}>
-                    <IconBrandGithub size={18} />
-                    <div>
-                      <Text fw={600}>GitHub</Text>
-                      <span
-                        className={classes.statusPill}
-                        data-status={githubLinked ? "ok" : "warn"}
+              <div className={classes.socialCompact}>
+                <div className={classes.socialIconRow}>
+                  {socialStatuses.map((item) => {
+                    const ItemIcon = item.icon;
+                    return (
+                      <div
+                        key={item.id}
+                        className={`${classes.socialIconItem} ${
+                          item.linked ? classes.socialIconItemOk : classes.socialIconItemWarn
+                        }`}
+                        title={`${item.label}: ${item.linked ? "подключен" : "не подключен"}`}
+                        aria-label={`${item.label}: ${item.linked ? "подключен" : "не подключен"}`}
                       >
-                        {githubLinked ? <IconCircleCheck size={14} /> : <IconCircleX size={14} />}
-                        {githubLinked ? "подключён" : "не подключён"}
-                      </span>
-                    </div>
-                  </div>
+                        <ItemIcon size={18} />
+                        <span
+                          className={classes.socialIconBadge}
+                          data-status={item.linked ? "ok" : "warn"}
+                        >
+                          {item.linked ? <IconCheck size={10} /> : <IconLinkOff size={10} />}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className={classes.socialConnectList}>
                   {!githubLinked && (
-                    <div className={classes.socialActions}>
-                      <Button
-                        size="xs"
-                        variant="light"
-                        onClick={() => window.location.assign(githubAuthUrl)}
-                        disabled={isIdentitiesLoading}
-                      >
-                        Подключить
-                      </Button>
-                    </div>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      onClick={() => window.location.assign(githubAuthUrl)}
+                      disabled={isIdentitiesLoading}
+                    >
+                      Подключить GitHub
+                    </Button>
                   )}
-                </div>
 
-                <div className={classes.socialRow}>
-                  <div className={classes.socialMeta}>
-                    <IconBrandYandex size={18} />
-                    <div>
-                      <Text fw={600}>Яндекс</Text>
-                      <span
-                        className={classes.statusPill}
-                        data-status={yandexLinked ? "ok" : "warn"}
-                      >
-                        {yandexLinked ? <IconCircleCheck size={14} /> : <IconCircleX size={14} />}
-                        {yandexLinked ? "подключён" : "не подключён"}
-                      </span>
-                    </div>
-                  </div>
                   {!yandexLinked && (
-                    <div className={classes.socialActions}>
-                      <Button
-                        size="xs"
-                        variant="light"
-                        onClick={() => window.location.assign(yandexAuthUrl)}
-                        disabled={isIdentitiesLoading}
-                      >
-                        Подключить
-                      </Button>
-                    </div>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      onClick={() => window.location.assign(yandexAuthUrl)}
+                      disabled={isIdentitiesLoading}
+                    >
+                      Подключить Яндекс
+                    </Button>
                   )}
-                </div>
 
-                <div className={classes.socialRow}>
-                  <div className={classes.socialMeta}>
-                    <IconBrandTelegram size={18} />
-                    <div>
-                      <Text fw={600}>Telegram</Text>
-                      <span
-                        className={classes.statusPill}
-                        data-status={telegramLinked ? "ok" : "warn"}
-                      >
-                        {telegramLinked ? <IconCircleCheck size={14} /> : <IconCircleX size={14} />}
-                        {telegramLinked ? "подключён" : "не подключён"}
-                      </span>
-                    </div>
-                  </div>
                   {!telegramLinked && (
-                    <div className={classes.socialActions}>
+                    <div className={classes.socialTelegramConnect}>
                       <TelegramLoginWidget flow="link" size="medium" />
                     </div>
+                  )}
+
+                  {githubLinked && yandexLinked && telegramLinked && (
+                    <Text size="sm" className={classes.muted}>
+                      Все соцсети подключены.
+                    </Text>
                   )}
                 </div>
               </div>

@@ -7,10 +7,11 @@ import {
   Group,
   Text,
   UnstyledButton,
+  rem,
   useMantineTheme,
 } from "@mantine/core";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { IconLogin } from "@tabler/icons-react";
+import { IconHeartFilled, IconLogin } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 import { ColorSchemeToggle } from "../../../components/ColorSchemeToggle";
@@ -24,6 +25,9 @@ import { resolveAvatarUrl } from "../../../utils/resolveAvatarUrl";
 type FiltersBarProps = {
   selectedAmenities: Amenity[];
   onChangeAmenities: (next: Amenity[]) => void;
+  favoritesOnly?: boolean;
+  onToggleFavorites?: () => void;
+  canToggleFavorites?: boolean;
   onOpenSettings: () => void;
   showFetchingBadge: boolean;
   highlightSettingsButton?: boolean;
@@ -34,6 +38,9 @@ const CHIP_GAP_PX = 4;
 export default function FiltersBar({
   selectedAmenities,
   onChangeAmenities,
+  favoritesOnly = false,
+  onToggleFavorites,
+  canToggleFavorites = false,
   onOpenSettings,
   showFetchingBadge,
   highlightSettingsButton = false,
@@ -239,6 +246,33 @@ export default function FiltersBar({
       </Group>
 
       <Group mt="xs" gap="xs" wrap="nowrap" className={classes.chipsRow}>
+        {canToggleFavorites && (
+          <Button
+            size="xs"
+            radius="xl"
+            variant={favoritesOnly ? "filled" : "default"}
+            leftSection={<IconHeartFilled size={rem(14)} />}
+            className={classes.favoriteToggle}
+            onClick={onToggleFavorites}
+            styles={{
+              root: {
+                border: "1px solid var(--border)",
+                background: favoritesOnly
+                  ? "var(--color-brand-accent)"
+                  : "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+                color: favoritesOnly ? "var(--color-on-accent)" : "var(--text)",
+                boxShadow: "var(--glass-shadow)",
+                backdropFilter: "blur(12px) saturate(160%)",
+                WebkitBackdropFilter: "blur(12px) saturate(160%)",
+              },
+              inner: {
+                gap: 6,
+              },
+            }}
+          >
+            Избранное
+          </Button>
+        )}
         <div
           className={classes.chipsScroller}
           ref={chipsScrollerRef}

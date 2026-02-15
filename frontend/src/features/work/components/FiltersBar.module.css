@@ -70,6 +70,10 @@
   min-width: 0;
 }
 
+.favoriteToggle {
+  flex-shrink: 0;
+}
+
 .chipsGroup {
   display: flex;
   flex-wrap: nowrap;

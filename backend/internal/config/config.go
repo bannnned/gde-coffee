@@ -17,6 +17,7 @@ type Config struct {
 	Auth      AuthConfig
 	Mailer    MailerConfig
 	Media     MediaConfig
+	Geocoding GeocodingConfig
 }
 
 type CORSConfig struct {
@@ -73,6 +74,13 @@ type MediaConfig struct {
 	S3UsePathStyle    bool
 	S3PresignTTL      time.Duration
 	S3MaxUploadBytes  int64
+}
+
+type GeocodingConfig struct {
+	YandexAPIKey     string
+	NominatimBaseURL string
+	UserAgent        string
+	Timeout          time.Duration
 }
 
 func Load() (Config, error) {
@@ -164,6 +172,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	geocodingTimeout, err := getEnvDuration("GEOCODING_TIMEOUT", 5*time.Second)
+	if err != nil {
+		return cfg, err
+	}
 
 	cfg.CORS = CORSConfig{
 		AllowOrigins:     splitEnvList("CORS_ALLOW_ORIGINS", []string{"http://localhost:3001", "http://localhost:5173"}),
@@ -225,6 +237,12 @@ func Load() (Config, error) {
 		S3UsePathStyle:    s3UsePathStyle,
 		S3PresignTTL:      s3PresignTTL,
 		S3MaxUploadBytes:  int64(s3MaxUploadBytes),
+	}
+	cfg.Geocoding = GeocodingConfig{
+		YandexAPIKey:     getEnvTrim("YANDEX_GEOCODER_API_KEY", ""),
+		NominatimBaseURL: getEnvTrim("NOMINATIM_BASE_URL", "https://nominatim.openstreetmap.org"),
+		UserAgent:        getEnvTrim("GEOCODER_USER_AGENT", "gde-kofe geocoder/1.0"),
+		Timeout:          geocodingTimeout,
 	}
 
 	log.Printf("config: port=%q public_dir=%q cors_origins=%v cookie_secure=%v sliding_hours=%d login_rate_limit=%d login_rate_window=%s",
@@ -289,6 +307,12 @@ func Load() (Config, error) {
 		if cfg.Media.S3MaxUploadBytes <= 0 {
 			return cfg, fmt.Errorf("S3_MAX_UPLOAD_BYTES must be > 0")
 		}
+	}
+	if cfg.Geocoding.Timeout <= 0 {
+		return cfg, fmt.Errorf("GEOCODING_TIMEOUT must be > 0")
+	}
+	if strings.TrimSpace(cfg.Geocoding.NominatimBaseURL) == "" {
+		return cfg, fmt.Errorf("NOMINATIM_BASE_URL must not be empty")
 	}
 
 	return cfg, nil

@@ -18,6 +18,7 @@ type CafeResponse struct {
 	Longitude     float64             `json:"longitude"`
 	Amenities     []string            `json:"amenities"`
 	DistanceM     float64             `json:"distance_m"`
+	IsFavorite    bool                `json:"is_favorite"`
 	CoverPhotoURL *string             `json:"cover_photo_url,omitempty"`
 	Photos        []CafePhotoResponse `json:"photos,omitempty"`
 }

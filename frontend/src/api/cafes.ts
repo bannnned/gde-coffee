@@ -6,11 +6,12 @@ export type GetCafesParams = {
   lng: number;
   radius_m: number;
   amenities?: Amenity[];
+  favoritesOnly?: boolean;
   signal?: AbortSignal;
 };
 
 export async function getCafes(params: GetCafesParams): Promise<Cafe[]> {
-  const { lat, lng, radius_m, amenities, signal } = params;
+  const { lat, lng, radius_m, amenities, favoritesOnly, signal } = params;
 
   const res = await http.get<Cafe[]>("/api/cafes", {
     signal,
@@ -19,6 +20,7 @@ export async function getCafes(params: GetCafesParams): Promise<Cafe[]> {
       lng,
       radius_m,
       amenities: amenities?.length ? amenities.join(",") : undefined,
+      favorites_only: favoritesOnly ? "true" : undefined,
     },
   });
 

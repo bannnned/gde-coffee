@@ -6,6 +6,7 @@ import { useAuth } from "../components/AuthGate";
 import Map from "../components/Map";
 import type { Amenity, Cafe } from "../types";
 import { updateCafeDescription } from "../api/cafes";
+import { addCafeToFavorites, removeCafeFromFavorites } from "../api/favorites";
 import { submitCafeDescription } from "../api/submissions";
 import {
   DEFAULT_AMENITIES,
@@ -64,9 +65,12 @@ export default function WorkScreen() {
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>(
     DEFAULT_AMENITIES,
   );
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [favoriteBusyCafeId, setFavoriteBusyCafeId] = useState<string | null>(null);
   const { sheetHeight, sheetState } = useLayoutMetrics();
   const userRole = (user?.role ?? "").toLowerCase();
   const isPrivilegedUser = userRole === "admin" || userRole === "moderator";
+  const isPhotoAdmin = userRole === "admin";
 
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const [locationChoice, setLocationChoice] = useState<LocationChoice | null>(
@@ -133,6 +137,7 @@ export default function WorkScreen() {
   function resetFilters() {
     setRadiusM(0);
     setSelectedAmenities([]);
+    setFavoritesOnly(false);
   }
 
   const {
@@ -187,6 +192,7 @@ export default function WorkScreen() {
     lng,
     radiusM: effectiveRadiusM,
     amenities: selectedAmenities,
+    favoritesOnly,
     enabled: locationChoice !== null,
   });
   const visibleCafes = locationChoice ? cafes : [];
@@ -217,6 +223,12 @@ export default function WorkScreen() {
   );
   const selectedLocationId =
     locationChoice?.type === "city" ? locationChoice.id : "";
+  const proposalCity = useMemo(() => {
+    if (locationChoice?.type !== "city") return "";
+    return (
+      LOCATION_OPTIONS.find((option) => option.id === locationChoice.id)?.label ?? ""
+    );
+  }, [locationChoice]);
 
   const locationLabel = useMemo(() => {
     if (locationChoice?.type === "city") {
@@ -273,6 +285,12 @@ export default function WorkScreen() {
   useEffect(() => {
     if (!selectedCafe) setPhotoSubmitOpen(false);
   }, [selectedCafe]);
+
+  useEffect(() => {
+    if (!user && favoritesOnly) {
+      setFavoritesOnly(false);
+    }
+  }, [favoritesOnly, user]);
 
   const handleSelectLocation = (id: string) => {
     const option = LOCATION_OPTIONS.find((item) => item.id === id);
@@ -361,14 +379,42 @@ export default function WorkScreen() {
       openAuthModal("login");
       return;
     }
-    setDetailsOpen(false);
-    if (isPrivilegedUser) {
+    if (isPhotoAdmin) {
       setPhotoAdminKind(kind);
       setPhotoAdminOpen(true);
       return;
     }
     setPhotoSubmitKind(kind);
     setPhotoSubmitOpen(true);
+  };
+
+  const handleToggleFavoritesFilter = () => {
+    if (!user) {
+      openAuthModal("login");
+      return;
+    }
+    setFavoritesOnly((prev) => !prev);
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!selectedCafe) return;
+    if (!user) {
+      openAuthModal("login");
+      return;
+    }
+    if (favoriteBusyCafeId === selectedCafe.id) return;
+
+    setFavoriteBusyCafeId(selectedCafe.id);
+    try {
+      if (selectedCafe.is_favorite) {
+        await removeCafeFromFavorites(selectedCafe.id);
+      } else {
+        await addCafeToFavorites(selectedCafe.id);
+      }
+      await cafesQuery.refetch();
+    } finally {
+      setFavoriteBusyCafeId(null);
+    }
   };
 
   const handlePhotosChanged = () => {
@@ -474,6 +520,9 @@ export default function WorkScreen() {
       <FiltersBar
         selectedAmenities={selectedAmenities}
         onChangeAmenities={setSelectedAmenities}
+        favoritesOnly={favoritesOnly}
+        onToggleFavorites={handleToggleFavoritesFilter}
+        canToggleFavorites
         onOpenSettings={() => setSettingsOpen(true)}
         showFetchingBadge={showFetchingBadge}
         highlightSettingsButton={needsLocationChoice}
@@ -603,8 +652,13 @@ export default function WorkScreen() {
           selectedCafe ? () => openYandexRoute(selectedCafe) : undefined
         }
         onSaveDescription={handleSaveCafeDescription}
+        isFavorite={Boolean(selectedCafe?.is_favorite)}
+        onToggleFavorite={handleToggleFavorite}
+        favoriteLoading={
+          Boolean(selectedCafe?.id) && selectedCafe?.id === favoriteBusyCafeId
+        }
         onManagePhotos={handleOpenPhotoAdmin}
-        canManageDirectly={isPrivilegedUser}
+        canManageDirectly={isPhotoAdmin}
       />
 
       <CafePhotoAdminModal
@@ -628,6 +682,7 @@ export default function WorkScreen() {
       <CafeProposalModal
         opened={cafeProposalOpen}
         mapCenter={userCenter}
+        city={proposalCity || undefined}
         onClose={() => setCafeProposalOpen(false)}
       />
     </Box>

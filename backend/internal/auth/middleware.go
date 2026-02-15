@@ -79,6 +79,29 @@ func RequireRole(pool *pgxpool.Pool, allowedRoles ...string) gin.HandlerFunc {
 	}
 }
 
+func OptionalAuth(pool *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sid, err := c.Cookie(cookieName)
+		if err != nil || strings.TrimSpace(sid) == "" {
+			c.Next()
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+
+		user, _, err := getUserBySession(ctx, pool, sid)
+		if err != nil {
+			c.Next()
+			return
+		}
+
+		c.Set(userIDKey, user.ID)
+		c.Set(userRoleKey, strings.ToLower(strings.TrimSpace(user.Role)))
+		c.Next()
+	}
+}
+
 func UserIDFromContext(c *gin.Context) (string, bool) {
 	value, ok := c.Get(userIDKey)
 	if !ok {

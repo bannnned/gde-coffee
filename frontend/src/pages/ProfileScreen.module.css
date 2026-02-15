@@ -55,6 +55,7 @@
 }
 
 .avatarLarge {
+  position: relative;
   width: 120px;
   height: 120px;
   border-radius: 999px;
@@ -77,8 +78,9 @@
 
 .avatarPlusButton {
   position: absolute;
-  right: 2px;
-  bottom: 2px;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
   border: 1px solid var(--glass-border);
   background: linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2));
   color: var(--text);
@@ -207,55 +209,73 @@
   color: var(--muted);
 }
 
-.socialList {
+.socialCompact {
   display: grid;
+  gap: 12px;
+}
+
+.socialIconRow {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-.socialRow {
-  display: flex;
+.socialIconItem {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 14px;
+  justify-content: center;
   border: 1px solid var(--border);
+  background: linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2));
+  box-shadow: var(--shadow);
+}
+
+.socialIconItemOk {
+  color: var(--color-status-success);
+  border-color: color-mix(in srgb, var(--color-status-success) 45%, var(--border));
+}
+
+.socialIconItemWarn {
+  color: var(--color-status-error);
+  border-color: color-mix(in srgb, var(--color-status-error) 45%, var(--border));
+}
+
+.socialIconBadge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--surface);
   background: var(--surface);
 }
 
-.socialMeta {
+.socialIconBadge[data-status="ok"] {
+  color: var(--color-on-accent);
+  background: var(--color-status-success);
+}
+
+.socialIconBadge[data-status="warn"] {
+  color: var(--color-on-accent);
+  background: var(--color-status-error);
+}
+
+.socialConnectList {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
 }
 
-.socialActions {
-  flex-shrink: 0;
-}
-
-.statusPill {
+.socialTelegramConnect {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.statusPill[data-status="ok"] {
-  border-color: var(--color-status-success);
-  color: var(--color-status-success);
-  background: color-mix(in srgb, var(--color-status-success) 12%, transparent);
-}
-
-.statusPill[data-status="warn"] {
-  border-color: var(--color-status-warning);
-  color: var(--color-status-warning);
-  background: color-mix(in srgb, var(--color-status-warning) 12%, transparent);
 }
 
 .errorText {
@@ -330,13 +350,9 @@
     padding: 18px;
   }
 
-  .socialRow {
-    align-items: flex-start;
+  .socialConnectList {
     flex-direction: column;
-  }
-
-  .socialActions {
-    width: 100%;
+    align-items: stretch;
   }
 
   .logoutButton {

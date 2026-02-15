@@ -51,6 +51,8 @@ func queryCafes(
 	pool *pgxpool.Pool,
 	lat, lng, radiusM float64,
 	requiredAmenities []string,
+	userID *string,
+	favoritesOnly bool,
 	limit int,
 	cfg config.Config,
 ) ([]model.CafeResponse, error) {
@@ -67,7 +69,12 @@ func queryCafes(
 		amenitiesParam = nil // РІР°Р¶РЅРѕ: Р±СѓРґРµС‚ NULL
 	}
 
-	// haversine РІ SQL (Р±РµР· PostGIS)
+	var userIDArg any
+	if userID != nil && strings.TrimSpace(*userID) != "" {
+		userIDArg = strings.TrimSpace(*userID)
+	}
+
+	// distance in SQL (PostGIS)
 	const sqlDistance = `WITH params AS (
   SELECT ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography AS p
 )
@@ -79,8 +86,13 @@ SELECT
   lat,
   lng,
   COALESCE(amenities, '{}'::text[]) AS amenities,
-  ST_Distance(geog, params.p) AS distance_m
-FROM public.cafes, params
+  ST_Distance(geog, params.p) AS distance_m,
+  (fav.user_id is not null) as is_favorite
+FROM public.cafes
+CROSS JOIN params
+LEFT JOIN public.user_favorite_cafes fav
+  ON fav.cafe_id = cafes.id
+ AND fav.user_id = $6::uuid
 WHERE
   geog IS NOT NULL
   AND ($3 = 0 OR ST_DWithin(geog, params.p, $3))
@@ -89,10 +101,21 @@ WHERE
     OR cardinality($4::text[]) = 0
     OR COALESCE(amenities, '{}'::text[]) @> $4::text[]
   )
+  AND ($7::boolean = false OR fav.user_id IS NOT NULL)
 ORDER BY distance_m ASC
 LIMIT $5;`
 
-	rows, err := pool.Query(ctx, sqlDistance, lat, lng, radiusM, amenitiesParam, dbLimit)
+	rows, err := pool.Query(
+		ctx,
+		sqlDistance,
+		lat,
+		lng,
+		radiusM,
+		amenitiesParam,
+		dbLimit,
+		userIDArg,
+		favoritesOnly,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -109,9 +132,20 @@ LIMIT $5;`
 			lngDB   float64
 			ams     []string
 			dist    float64
+			isFav   bool
 		)
 
-		if err := rows.Scan(&id, &name, &address, &desc, &latDB, &lngDB, &ams, &dist); err != nil {
+		if err := rows.Scan(
+			&id,
+			&name,
+			&address,
+			&desc,
+			&latDB,
+			&lngDB,
+			&ams,
+			&dist,
+			&isFav,
+		); err != nil {
 			return nil, err
 		}
 
@@ -130,6 +164,7 @@ LIMIT $5;`
 			Longitude:   lngDB,
 			Amenities:   ams,
 			DistanceM:   dist,
+			IsFavorite:  isFav,
 		})
 	}
 
@@ -220,6 +255,28 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 			respondError(c, http.StatusBadRequest, "invalid_argument", "sort поддерживает только значение 'distance'.", nil)
 			return
 		}
+		favoritesOnly := false
+		favoritesOnlyRaw := strings.TrimSpace(strings.ToLower(c.DefaultQuery("favorites_only", "false")))
+		if favoritesOnlyRaw != "" {
+			switch favoritesOnlyRaw {
+			case "1", "true", "yes", "on":
+				favoritesOnly = true
+			case "0", "false", "no", "off":
+				favoritesOnly = false
+			default:
+				respondError(c, http.StatusBadRequest, "invalid_argument", "favorites_only должен быть boolean.", nil)
+				return
+			}
+		}
+		var userID *string
+		if value, ok := auth.UserIDFromContext(c); ok && strings.TrimSpace(value) != "" {
+			trimmed := strings.TrimSpace(value)
+			userID = &trimmed
+		}
+		if favoritesOnly && userID == nil {
+			respondError(c, http.StatusUnauthorized, "unauthorized", "Войдите в аккаунт, чтобы фильтровать избранное.", nil)
+			return
+		}
 
 		limit, err := parseLimit(c.Query("limit"), cfg.Limits)
 		if err != nil {
@@ -233,7 +290,18 @@ func getCafes(cfg config.Config, pool *pgxpool.Pool) gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 		defer cancel()
 
-		cafes, err := queryCafes(ctx, pool, lat, lng, radiusM, requiredAmenities, limit, cfg)
+		cafes, err := queryCafes(
+			ctx,
+			pool,
+			lat,
+			lng,
+			radiusM,
+			requiredAmenities,
+			userID,
+			favoritesOnly,
+			limit,
+			cfg,
+		)
 		if err != nil {
 			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", gin.H{"error": err.Error()})
 			return
@@ -474,7 +542,12 @@ func main() {
 	auth.StartTokenCleanup(pool, 24*time.Hour)
 
 	api := r.Group("/api")
-	api.GET("/cafes", getCafes(cfg, pool))
+	geocodeAPI := newGeocodeAPI(cfg.Geocoding)
+	api.GET("/geocode", geocodeAPI.Lookup)
+	api.GET("/cafes", auth.OptionalAuth(pool), getCafes(cfg, pool))
+	favoritesAPI := newFavoritesAPI(pool, cfg.Media)
+	api.POST("/cafes/:id/favorite", auth.RequireAuth(pool), favoritesAPI.Add)
+	api.DELETE("/cafes/:id/favorite", auth.RequireAuth(pool), favoritesAPI.Remove)
 	cafeDescriptionAPI := newCafeDescriptionAPI(pool)
 	api.PATCH(
 		"/cafes/:id/description",
@@ -618,6 +691,7 @@ func main() {
 	accountGroup.PATCH("/profile/name", auth.RequireAuth(pool), authHandler.ProfileNameUpdate)
 	accountGroup.POST("/profile/avatar/presign", auth.RequireAuth(pool), authHandler.ProfileAvatarPresign)
 	accountGroup.POST("/profile/avatar/confirm", auth.RequireAuth(pool), authHandler.ProfileAvatarConfirm)
+	accountGroup.GET("/favorites", auth.RequireAuth(pool), favoritesAPI.List)
 	accountGroup.GET("/email/change/confirm", authHandler.EmailChangeConfirm)
 
 	r.NoRoute(func(c *gin.Context) {

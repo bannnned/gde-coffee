@@ -15,6 +15,7 @@ type UseCafesParams = {
   lng: number;
   radiusM: number;
   amenities: Amenity[];
+  favoritesOnly?: boolean;
   enabled?: boolean;
 };
 
@@ -24,6 +25,7 @@ type CafesQueryParams = {
   radiusM: number;
   amenities: Amenity[];
   amenitiesKey: string;
+  favoritesOnly: boolean;
 };
 
 function buildCafesKey({
@@ -31,8 +33,9 @@ function buildCafesKey({
   lng,
   radiusM,
   amenitiesKey,
-}: Pick<CafesQueryParams, "lat" | "lng" | "radiusM" | "amenitiesKey">) {
-  return `${lat}|${lng}|${radiusM}|${amenitiesKey}`;
+  favoritesOnly,
+}: Pick<CafesQueryParams, "lat" | "lng" | "radiusM" | "amenitiesKey" | "favoritesOnly">) {
+  return `${lat}|${lng}|${radiusM}|${amenitiesKey}|${favoritesOnly ? "fav" : "all"}`;
 }
 
 function linkAbortSignal(signal: AbortSignal, controller: AbortController) {
@@ -49,6 +52,7 @@ export default function useCafes({
   lng,
   radiusM,
   amenities,
+  favoritesOnly = false,
   enabled = true,
 }: UseCafesParams) {
   // Stable ordering so query key doesn't change for the same set.
@@ -68,6 +72,7 @@ export default function useCafes({
     radiusM,
     amenities: normalizedAmenities,
     amenitiesKey,
+    favoritesOnly,
   }));
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Explicitly cancel the previous in-flight request when a new one starts.
@@ -80,8 +85,9 @@ export default function useCafes({
         lng,
         radiusM,
         amenitiesKey,
+        favoritesOnly,
       }),
-    [lat, lng, radiusM, amenitiesKey],
+    [lat, lng, radiusM, amenitiesKey, favoritesOnly],
   );
   const debouncedKey = useMemo(
     () =>
@@ -90,12 +96,14 @@ export default function useCafes({
         lng: debouncedParams.lng,
         radiusM: debouncedParams.radiusM,
         amenitiesKey: debouncedParams.amenitiesKey,
+        favoritesOnly: debouncedParams.favoritesOnly,
       }),
     [
       debouncedParams.lat,
       debouncedParams.lng,
       debouncedParams.radiusM,
       debouncedParams.amenitiesKey,
+      debouncedParams.favoritesOnly,
     ],
   );
 
@@ -114,6 +122,7 @@ export default function useCafes({
         radiusM,
         amenities: normalizedAmenities,
         amenitiesKey,
+        favoritesOnly,
       });
     }, QUERY_DEBOUNCE_MS);
 
@@ -131,6 +140,7 @@ export default function useCafes({
     radiusM,
     normalizedAmenities,
     amenitiesKey,
+    favoritesOnly,
   ]);
 
   useEffect(() => {
@@ -155,6 +165,7 @@ export default function useCafes({
         lng: debouncedParams.lng,
         radiusM: debouncedParams.radiusM,
         amenities: debouncedParams.amenitiesKey,
+        favoritesOnly: debouncedParams.favoritesOnly,
       },
     ],
     queryFn: async ({ signal }) => {
@@ -174,6 +185,7 @@ export default function useCafes({
           lng: debouncedParams.lng,
           radius_m: debouncedParams.radiusM,
           amenities: debouncedParams.amenities,
+          favoritesOnly: debouncedParams.favoritesOnly,
           signal: controller.signal,
         });
       } finally {

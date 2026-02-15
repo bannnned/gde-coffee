@@ -176,6 +176,7 @@ export default function CafePhotoSubmissionModal({
       onClose={onClose}
       fullScreen
       withCloseButton
+      zIndex={425}
       title={`Предложить фото: ${cafeName}`}
       styles={{
         content: {

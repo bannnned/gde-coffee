@@ -19,6 +19,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconHeart,
+  IconHeartFilled,
   IconLock,
 } from "@tabler/icons-react";
 import { getCafePhotos } from "../../../api/cafePhotos";
@@ -38,6 +39,9 @@ type CafeDetailsScreenProps = {
   onSaveDescription?: (
     description: string,
   ) => Promise<{ applied: boolean; description?: string; message?: string }>;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
+  favoriteLoading?: boolean;
   onManagePhotos?: (kind: "cafe" | "menu") => void;
   canManageDirectly?: boolean;
 };
@@ -58,6 +62,9 @@ export default function CafeDetailsScreen({
   onOpen2gis,
   onOpenYandex,
   onSaveDescription,
+  isFavorite = false,
+  onToggleFavorite,
+  favoriteLoading = false,
   onManagePhotos,
   canManageDirectly = false,
 }: CafeDetailsScreenProps) {
@@ -393,7 +400,9 @@ export default function CafeDetailsScreen({
             size="lg"
             radius="xl"
             aria-label="Добавить в избранное"
-            onClick={() => void 0}
+            onClick={onToggleFavorite}
+            disabled={!onToggleFavorite}
+            loading={favoriteLoading}
             style={{
               border: "1px solid var(--glass-border)",
               background:
@@ -402,9 +411,10 @@ export default function CafeDetailsScreen({
               backdropFilter: "blur(14px) saturate(140%)",
               WebkitBackdropFilter: "blur(14px) saturate(140%)",
               flexShrink: 0,
+              color: isFavorite ? "var(--color-brand-accent)" : "var(--text)",
             }}
           >
-            <IconHeart size={18} />
+            {isFavorite ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
           </ActionIcon>
         </Group>
       }
@@ -420,21 +430,24 @@ export default function CafeDetailsScreen({
             styles={{
               root: {
                 background:
-                  "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+                  "linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
                 border: "1px solid var(--glass-border)",
-                boxShadow: "var(--shadow)",
+                boxShadow: "var(--glass-shadow)",
                 backdropFilter: "blur(14px) saturate(140%)",
                 WebkitBackdropFilter: "blur(14px) saturate(140%)",
+                transition: "background 220ms ease, box-shadow 220ms ease",
               },
               indicator: {
                 background:
                   "linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong))",
                 border: "1px solid var(--color-border-soft)",
                 boxShadow: "0 6px 16px var(--color-brand-accent-soft)",
+                transition: "all 220ms ease",
               },
               label: {
                 color: "var(--text)",
                 fontWeight: 600,
+                transition: "color 180ms ease",
               },
             }}
           />
@@ -613,7 +626,7 @@ export default function CafeDetailsScreen({
               )}
               {onManagePhotos && (
                 <Button mt="xs" variant="light" onClick={() => onManagePhotos("cafe")}>
-                  {canManageDirectly ? "Управлять фото заведения" : "Предложить фото заведения"}
+                  {canManageDirectly ? "Фото места" : "Добавить фото"}
                 </Button>
               )}
             </Stack>
@@ -715,7 +728,7 @@ export default function CafeDetailsScreen({
               )}
               {onManagePhotos && (
                 <Button variant="light" onClick={() => onManagePhotos("menu")}>
-                  {canManageDirectly ? "Управлять фото меню" : "Предложить фото меню"}
+                  {canManageDirectly ? "Фото меню" : "Добавить фото меню"}
                 </Button>
               )}
             </Stack>
@@ -734,7 +747,7 @@ export default function CafeDetailsScreen({
         onClose={() => setViewerOpen(false)}
         fullScreen
         withCloseButton
-        title={viewerKind === "menu" ? "Фото меню" : "Фото заведения"}
+        title={viewerKind === "menu" ? "Фото меню" : "Фото места"}
         styles={{
           content: {
             background: "var(--bg)",

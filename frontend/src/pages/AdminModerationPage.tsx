@@ -7,9 +7,9 @@ import {
   Container,
   Group,
   Paper,
+  SegmentedControl,
   Select,
   Stack,
-  Tabs,
   Text,
   Title,
 } from "@mantine/core";
@@ -18,6 +18,8 @@ import { IconArrowLeft, IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
+import CafeDetailsScreen from "../features/work/components/CafeDetailsScreen";
+import type { Cafe, CafePhoto } from "../types";
 import {
   approveModerationSubmission,
   listModerationSubmissions,
@@ -76,6 +78,93 @@ function readStringArray(
     .filter(Boolean);
 }
 
+function readString(
+  payload: Record<string, unknown> | undefined,
+  key: string,
+): string | null {
+  const value = payload?.[key];
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function readNumber(
+  payload: Record<string, unknown> | undefined,
+  key: string,
+): number | null {
+  const value = payload?.[key];
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function buildPhotos(urls: string[], kind: "cafe" | "menu"): CafePhoto[] {
+  return urls.map((url, index) => ({
+    id: `${kind}-${index + 1}`,
+    url,
+    kind,
+    position: index + 1,
+    is_cover: kind === "cafe" && index === 0,
+  }));
+}
+
+function buildPreviewCafe(item: ModerationSubmission): Cafe | null {
+  const payload = item.payload ?? {};
+
+  const payloadName = readString(payload, "name");
+  const payloadAddress = readString(payload, "address");
+  const payloadDescription = readString(payload, "description");
+  const payloadLat = readNumber(payload, "latitude");
+  const payloadLng = readNumber(payload, "longitude");
+  const payloadAmenitiesRaw = payload["amenities"];
+  const payloadAmenities = Array.isArray(payloadAmenitiesRaw)
+    ? payloadAmenitiesRaw.filter((value): value is string => typeof value === "string")
+    : [];
+
+  const photoUrls = readStringArray(payload, "photo_urls");
+  const menuPhotoUrls = readStringArray(payload, "menu_photo_urls");
+  const photos = [
+    ...buildPhotos(photoUrls, "cafe"),
+    ...buildPhotos(menuPhotoUrls, "menu"),
+  ];
+
+  const name = item.target_cafe_name?.trim() || payloadName || "";
+  const address = item.target_cafe_address?.trim() || payloadAddress || "";
+  if (!name || !address) return null;
+
+  const latitude =
+    typeof item.target_cafe_latitude === "number" && Number.isFinite(item.target_cafe_latitude)
+      ? item.target_cafe_latitude
+      : payloadLat ?? 0;
+  const longitude =
+    typeof item.target_cafe_longitude === "number" && Number.isFinite(item.target_cafe_longitude)
+      ? item.target_cafe_longitude
+      : payloadLng ?? 0;
+
+  const cafeID = (item.target_id ?? "").trim();
+  const coverPhoto = photoUrls[0] ?? null;
+
+  return {
+    id: cafeID,
+    name,
+    address,
+    description:
+      (item.entity_type === "cafe_description"
+        ? readString(payload, "description")
+        : payloadDescription) ?? null,
+    latitude,
+    longitude,
+    amenities: payloadAmenities as Cafe["amenities"],
+    distance_m: 0,
+    is_favorite: false,
+    cover_photo_url: coverPhoto,
+    photos,
+  };
+}
+
 function resolveTargetCafeMapUrl(item: ModerationSubmission): string | null {
   const direct = item.target_cafe_map_url?.trim();
   if (direct) return direct;
@@ -101,6 +190,8 @@ export default function AdminModerationPage() {
   );
   const [activeTab, setActiveTab] = useState<ModerationTabKey>("all");
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [previewCafe, setPreviewCafe] = useState<Cafe | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!allowed) return;
@@ -266,18 +357,38 @@ export default function AdminModerationPage() {
           </Paper>
 
           <Paper withBorder radius="lg" p="md">
-            <Tabs
+            <SegmentedControl
+              fullWidth
               value={activeTab}
               onChange={(value) => setActiveTab((value as ModerationTabKey) ?? "all")}
-            >
-              <Tabs.List grow>
-                {TAB_ITEMS.map((tab) => (
-                  <Tabs.Tab key={tab.value} value={tab.value}>
-                    {`${tab.label} (${tabCounts[tab.value] ?? 0})`}
-                  </Tabs.Tab>
-                ))}
-              </Tabs.List>
-            </Tabs>
+              data={TAB_ITEMS.map((tab) => ({
+                value: tab.value,
+                label: `${tab.label} (${tabCounts[tab.value] ?? 0})`,
+              }))}
+              styles={{
+                root: {
+                  background:
+                    "linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
+                  border: "1px solid var(--glass-border)",
+                  boxShadow: "var(--glass-shadow)",
+                  backdropFilter: "blur(14px) saturate(140%)",
+                  WebkitBackdropFilter: "blur(14px) saturate(140%)",
+                  transition: "background 220ms ease, box-shadow 220ms ease",
+                },
+                indicator: {
+                  background:
+                    "linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong))",
+                  border: "1px solid var(--color-border-soft)",
+                  boxShadow: "0 6px 16px var(--color-brand-accent-soft)",
+                  transition: "all 220ms ease",
+                },
+                label: {
+                  color: "var(--text)",
+                  fontWeight: 600,
+                  transition: "color 180ms ease",
+                },
+              }}
+            />
           </Paper>
 
           {visibleItems.length === 0 && !loading && (
@@ -293,6 +404,7 @@ export default function AdminModerationPage() {
             const menuPhotoUrls = readStringArray(item.payload, "menu_photo_urls");
             const targetCafeMapUrl = resolveTargetCafeMapUrl(item);
             const targetCafeName = item.target_cafe_name?.trim();
+            const previewCandidate = buildPreviewCafe(item);
             return (
               <Paper key={item.id} withBorder radius="lg" p="md">
                 <Stack gap="xs">
@@ -450,11 +562,32 @@ export default function AdminModerationPage() {
                       </Button>
                     </Group>
                   )}
+                  {previewCandidate && (
+                    <Button
+                      mt="xs"
+                      variant="light"
+                      fullWidth
+                      onClick={() => {
+                        setPreviewCafe(previewCandidate);
+                        setPreviewOpen(true);
+                      }}
+                    >
+                      Открыть кофейню
+                    </Button>
+                  )}
                 </Stack>
               </Paper>
             );
           })}
         </Stack>
+
+        <CafeDetailsScreen
+          opened={previewOpen}
+          cafe={previewCafe}
+          onClose={() => setPreviewOpen(false)}
+          showDistance={false}
+          showRoutes={false}
+        />
       </Container>
     </Box>
   );

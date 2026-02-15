@@ -12,6 +12,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
+  IconArrowLeft,
   IconArrowsSort,
   IconChevronDown,
   IconChevronUp,
@@ -97,7 +98,7 @@ export default function CafePhotoAdminModal({
     if (!opened) return;
     setPhotos(initialPhotos);
     setOrderDirty(false);
-  }, [opened, initialPhotos]);
+  }, [opened, cafeId, kind]);
 
   useEffect(() => {
     if (!opened || !cafeId) return;
@@ -128,7 +129,7 @@ export default function CafePhotoAdminModal({
 
   const canSaveOrder = orderDirty && !isSavingOrder && !isUploading && Boolean(cafeId);
   const isCafeKind = kind === "cafe";
-  const photoKindLabel = isCafeKind ? "заведения" : "меню";
+  const photoKindLabel = isCafeKind ? "места" : "меню";
   const photosCountLabel = useMemo(() => {
     if (photos.length === 0) return "Фото пока нет";
     return photos.length === 1 ? "1 фото" : `${photos.length} фото`;
@@ -334,6 +335,15 @@ export default function CafePhotoAdminModal({
       }}
     >
       <Stack gap="md">
+        <Button
+          variant="subtle"
+          leftSection={<IconArrowLeft size={16} />}
+          onClick={onClose}
+          style={{ alignSelf: "flex-start" }}
+        >
+          Назад к карточке
+        </Button>
+
         <Paper
           withBorder
           p="md"
@@ -397,7 +407,7 @@ export default function CafePhotoAdminModal({
             <Paper withBorder radius="md" p="md" style={{ background: "var(--surface)" }}>
               <Text size="sm" c="dimmed">
                 {isCafeKind
-                  ? "Пока нет фото. Добавьте первые изображения заведения."
+                  ? "Пока нет фото. Добавьте первые изображения места."
                   : "Пока нет фото. Добавьте первые изображения меню и позиций."}
               </Text>
             </Paper>
