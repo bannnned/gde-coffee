@@ -13,7 +13,6 @@ import { IconMapPin, IconPlus } from "@tabler/icons-react";
 
 import type { Amenity } from "../types";
 import { AMENITY_LABELS, WORK_UI_TEXT } from "../constants";
-import { useAuth } from "../../../components/AuthGate";
 
 type LocationOption = {
   id: string;
@@ -57,12 +56,6 @@ export default function SettingsDrawer({
 }: SettingsDrawerProps) {
   const theme = useMantineTheme();
   const isCoarsePointer = useMediaQuery("(pointer: coarse)") ?? false;
-  const { user } = useAuth();
-  const accountName =
-    user?.displayName?.trim() ||
-    user?.name?.trim() ||
-    user?.email?.trim() ||
-    "Гость";
 
   const drawerStyles = {
     content: {
@@ -169,13 +162,6 @@ export default function SettingsDrawer({
       styles={drawerStyles}
     >
       <Stack gap="md">
-        <Stack gap={2}>
-          <Text size="xs" c="dimmed">
-            Аккаунт
-          </Text>
-          <Text fw={600}>{accountName}</Text>
-        </Stack>
-
         <Stack
           gap="xs"
           style={

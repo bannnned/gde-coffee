@@ -57,6 +57,7 @@ export default function WorkScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [photoAdminOpen, setPhotoAdminOpen] = useState(false);
+  const [photoAdminKind, setPhotoAdminKind] = useState<"cafe" | "menu">("cafe");
   const [photoSubmitOpen, setPhotoSubmitOpen] = useState(false);
   const [photoSubmitKind, setPhotoSubmitKind] = useState<"cafe" | "menu">("cafe");
   const [cafeProposalOpen, setCafeProposalOpen] = useState(false);
@@ -362,6 +363,7 @@ export default function WorkScreen() {
     }
     setDetailsOpen(false);
     if (isPrivilegedUser) {
+      setPhotoAdminKind(kind);
       setPhotoAdminOpen(true);
       return;
     }
@@ -609,7 +611,10 @@ export default function WorkScreen() {
         opened={photoAdminOpen}
         cafeId={selectedCafe?.id ?? null}
         cafeName={selectedCafe?.name ?? ""}
-        initialPhotos={selectedCafe?.photos ?? []}
+        kind={photoAdminKind}
+        initialPhotos={
+          (selectedCafe?.photos ?? []).filter((photo) => photo.kind === photoAdminKind)
+        }
         onClose={() => setPhotoAdminOpen(false)}
         onPhotosChanged={handlePhotosChanged}
       />

@@ -21,9 +21,12 @@ export type Cafe = {
   photos?: CafePhoto[];
 };
 
+export type CafePhotoKind = "cafe" | "menu";
+
 export type CafePhoto = {
   id: string;
   url: string;
+  kind: CafePhotoKind;
   is_cover: boolean;
   position: number;
 };

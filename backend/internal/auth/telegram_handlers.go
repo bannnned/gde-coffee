@@ -66,12 +66,7 @@ func (h Handler) fillTelegramProfileIfMissing(
 	}
 
 	if avatarURL != nil && strings.TrimSpace(*avatarURL) != "" {
-		if _, err := h.Pool.Exec(
-			ctx,
-			`update users set avatar_url = $2 where id = $1 and (avatar_url is null or avatar_url = '')`,
-			userID,
-			strings.TrimSpace(*avatarURL),
-		); err != nil {
+		if err := updateUserAvatarIfEmpty(ctx, h.Pool, userID, avatarURL); err != nil {
 			log.Printf("telegram profile: update avatar_url failed: %v", err)
 		}
 	}

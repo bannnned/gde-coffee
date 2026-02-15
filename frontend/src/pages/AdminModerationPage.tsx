@@ -9,6 +9,7 @@ import {
   Paper,
   Select,
   Stack,
+  Tabs,
   Text,
   Title,
 } from "@mantine/core";
@@ -35,14 +36,24 @@ const STATUS_OPTIONS: { value: SubmissionStatus | ""; label: string }[] = [
   { value: "", label: "Все статусы" },
 ];
 
-const ENTITY_OPTIONS: { value: SubmissionEntityType | ""; label: string }[] = [
-  { value: "", label: "Все типы" },
-  { value: "cafe", label: "Новая кофейня" },
-  { value: "cafe_description", label: "Описание" },
-  { value: "cafe_photo", label: "Фото заведения" },
+type ModerationTabKey = "all" | SubmissionEntityType;
+
+const TAB_ITEMS: { value: ModerationTabKey; label: string }[] = [
+  { value: "all", label: "Все" },
+  { value: "cafe", label: "Кофейни" },
+  { value: "cafe_description", label: "Описания" },
+  { value: "cafe_photo", label: "Фото места" },
   { value: "menu_photo", label: "Фото меню" },
-  { value: "review", label: "Отзыв" },
+  { value: "review", label: "Отзывы" },
 ];
+
+const ENTITY_LABELS: Record<SubmissionEntityType, string> = {
+  cafe: "Новая кофейня",
+  cafe_description: "Описание",
+  cafe_photo: "Фото заведения",
+  menu_photo: "Фото меню",
+  review: "Отзыв",
+};
 
 function formatDate(value?: string | null): string {
   if (!value) return "—";
@@ -52,6 +63,29 @@ function formatDate(value?: string | null): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function readStringArray(
+  payload: Record<string, unknown> | undefined,
+  key: string,
+): string[] {
+  const value = payload?.[key];
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean);
+}
+
+function resolveTargetCafeMapUrl(item: ModerationSubmission): string | null {
+  const direct = item.target_cafe_map_url?.trim();
+  if (direct) return direct;
+  if (
+    typeof item.target_cafe_latitude === "number" &&
+    typeof item.target_cafe_longitude === "number"
+  ) {
+    return `https://yandex.ru/maps/?pt=${item.target_cafe_longitude},${item.target_cafe_latitude}&z=16&l=map`;
+  }
+  return null;
 }
 
 export default function AdminModerationPage() {
@@ -65,7 +99,7 @@ export default function AdminModerationPage() {
   const [filterStatus, setFilterStatus] = useState<SubmissionStatus | "pending" | "">(
     "pending",
   );
-  const [filterEntity, setFilterEntity] = useState<SubmissionEntityType | "">("");
+  const [activeTab, setActiveTab] = useState<ModerationTabKey>("all");
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -74,7 +108,7 @@ export default function AdminModerationPage() {
     try {
       const list = await listModerationSubmissions({
         status: filterStatus,
-        entityType: filterEntity,
+        entityType: "",
       });
       setItems(list);
     } catch (err: any) {
@@ -90,16 +124,39 @@ export default function AdminModerationPage() {
     } finally {
       setLoading(false);
     }
-  }, [allowed, filterEntity, filterStatus]);
+  }, [allowed, filterStatus]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   const entityLabel = useMemo(() => {
-    const map = new Map(ENTITY_OPTIONS.map((item) => [item.value, item.label]));
-    return (entity: string) => map.get(entity) ?? entity;
+    return (entity: string) =>
+      ENTITY_LABELS[entity as SubmissionEntityType] ?? entity;
   }, []);
+
+  const visibleItems = useMemo(() => {
+    if (activeTab === "all") return items;
+    return items.filter((item) => item.entity_type === activeTab);
+  }, [activeTab, items]);
+
+  const tabCounts = useMemo(() => {
+    const counts: Record<ModerationTabKey, number> = {
+      all: items.length,
+      cafe: 0,
+      cafe_description: 0,
+      cafe_photo: 0,
+      menu_photo: 0,
+      review: 0,
+    };
+    for (const item of items) {
+      const key = item.entity_type as ModerationTabKey;
+      if (key in counts) {
+        counts[key] += 1;
+      }
+    }
+    return counts;
+  }, [items]);
 
   const handleApprove = async (id: string) => {
     setProcessingId(id);
@@ -205,26 +262,37 @@ export default function AdminModerationPage() {
                 value={filterStatus}
                 onChange={(value) => setFilterStatus((value ?? "") as SubmissionStatus | "")}
               />
-              <Select
-                label="Тип заявки"
-                data={ENTITY_OPTIONS}
-                value={filterEntity}
-                onChange={(value) =>
-                  setFilterEntity((value ?? "") as SubmissionEntityType | "")
-                }
-              />
             </Stack>
           </Paper>
 
-          {items.length === 0 && !loading && (
+          <Paper withBorder radius="lg" p="md">
+            <Tabs
+              value={activeTab}
+              onChange={(value) => setActiveTab((value as ModerationTabKey) ?? "all")}
+            >
+              <Tabs.List grow>
+                {TAB_ITEMS.map((tab) => (
+                  <Tabs.Tab key={tab.value} value={tab.value}>
+                    {`${tab.label} (${tabCounts[tab.value] ?? 0})`}
+                  </Tabs.Tab>
+                ))}
+              </Tabs.List>
+            </Tabs>
+          </Paper>
+
+          {visibleItems.length === 0 && !loading && (
             <Paper withBorder radius="lg" p="md">
               <Text c="dimmed">Заявок по текущему фильтру нет.</Text>
             </Paper>
           )}
 
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const isPending = item.status === "pending";
             const isProcessing = processingId === item.id;
+            const photoUrls = readStringArray(item.payload, "photo_urls");
+            const menuPhotoUrls = readStringArray(item.payload, "menu_photo_urls");
+            const targetCafeMapUrl = resolveTargetCafeMapUrl(item);
+            const targetCafeName = item.target_cafe_name?.trim();
             return (
               <Paper key={item.id} withBorder radius="lg" p="md">
                 <Stack gap="xs">
@@ -240,11 +308,110 @@ export default function AdminModerationPage() {
                   <Text size="sm" c="dimmed">
                     Создано: {formatDate(item.created_at)}
                   </Text>
-                  {item.target_id && (
-                    <Text size="sm" c="dimmed">
-                      Цель: {item.target_id}
-                    </Text>
+                  {(item.target_id || targetCafeName) && (
+                    <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+                      <Stack gap={2} style={{ minWidth: 0 }}>
+                        <Text size="sm">
+                          Кофейня: {targetCafeName || "Без названия"}
+                        </Text>
+                        {item.target_cafe_address && (
+                          <Text size="xs" c="dimmed" lineClamp={2}>
+                            {item.target_cafe_address}
+                          </Text>
+                        )}
+                        {item.target_id && (
+                          <Text size="xs" c="dimmed">
+                            ID: {item.target_id}
+                          </Text>
+                        )}
+                      </Stack>
+                      {targetCafeMapUrl && (
+                        <Button
+                          size="xs"
+                          variant="light"
+                          component="a"
+                          href={targetCafeMapUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          Открыть карту
+                        </Button>
+                      )}
+                    </Group>
                   )}
+
+                  {photoUrls.length > 0 && (
+                    <Stack gap={6}>
+                      <Text size="sm" fw={600}>
+                        Фото заявки
+                      </Text>
+                      <Box
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                          gap: 8,
+                        }}
+                      >
+                        {photoUrls.map((url, index) => (
+                          <Paper
+                            key={`${item.id}-photo-${index}`}
+                            withBorder
+                            radius="sm"
+                            style={{ overflow: "hidden" }}
+                          >
+                            <img
+                              src={url}
+                              alt={`Фото заявки ${index + 1}`}
+                              loading="lazy"
+                              style={{
+                                width: "100%",
+                                aspectRatio: "4 / 3",
+                                objectFit: "cover",
+                                display: "block",
+                              }}
+                            />
+                          </Paper>
+                        ))}
+                      </Box>
+                    </Stack>
+                  )}
+
+                  {menuPhotoUrls.length > 0 && (
+                    <Stack gap={6}>
+                      <Text size="sm" fw={600}>
+                        Фото меню
+                      </Text>
+                      <Box
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                          gap: 8,
+                        }}
+                      >
+                        {menuPhotoUrls.map((url, index) => (
+                          <Paper
+                            key={`${item.id}-menu-${index}`}
+                            withBorder
+                            radius="sm"
+                            style={{ overflow: "hidden" }}
+                          >
+                            <img
+                              src={url}
+                              alt={`Фото меню ${index + 1}`}
+                              loading="lazy"
+                              style={{
+                                width: "100%",
+                                aspectRatio: "4 / 3",
+                                objectFit: "cover",
+                                display: "block",
+                              }}
+                            />
+                          </Paper>
+                        ))}
+                      </Box>
+                    </Stack>
+                  )}
+
                   <Paper withBorder radius="md" p="xs" style={{ background: "var(--surface)" }}>
                     <Text
                       component="pre"

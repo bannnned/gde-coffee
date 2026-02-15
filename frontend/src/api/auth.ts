@@ -35,6 +35,20 @@ export type UpdateProfileNamePayload = {
   displayName: string;
 };
 
+export type ProfileAvatarPresignPayload = {
+  contentType: string;
+  sizeBytes: number;
+};
+
+export type ProfileAvatarPresignResponse = {
+  upload_url: string;
+  method: string;
+  headers: Record<string, string>;
+  object_key: string;
+  file_url: string;
+  expires_at: string;
+};
+
 export type AuthIdentity = {
   id?: string;
   provider?: string;
@@ -142,6 +156,66 @@ export async function updateProfileName(
 ): Promise<AuthUser> {
   const res = await http.patch("/api/account/profile/name", {
     display_name: payload.displayName,
+  });
+  return normalizeUser(res.data);
+}
+
+export async function presignProfileAvatarUpload(
+  payload: ProfileAvatarPresignPayload,
+): Promise<ProfileAvatarPresignResponse> {
+  const res = await http.post<ProfileAvatarPresignResponse>(
+    "/api/account/profile/avatar/presign",
+    {
+      content_type: payload.contentType,
+      size_bytes: payload.sizeBytes,
+    },
+  );
+  return res.data;
+}
+
+export async function uploadProfileAvatarByPresignedUrl(
+  uploadUrl: string,
+  file: File,
+  headers: Record<string, string>,
+): Promise<void> {
+  const filteredHeaders: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers ?? {})) {
+    const lower = key.toLowerCase();
+    if (
+      lower === "host" ||
+      lower === "content-length" ||
+      lower === "user-agent" ||
+      lower === "accept-encoding" ||
+      lower === "connection"
+    ) {
+      continue;
+    }
+    filteredHeaders[key] = value;
+  }
+  if (!Object.keys(filteredHeaders).some((key) => key.toLowerCase() === "content-type")) {
+    filteredHeaders["Content-Type"] = file.type || "application/octet-stream";
+  }
+
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: filteredHeaders,
+    body: file,
+  });
+  if (!response.ok) {
+    let details = "";
+    try {
+      const text = await response.text();
+      details = text ? `: ${text.slice(0, 240)}` : "";
+    } catch {
+      details = "";
+    }
+    throw new Error(`upload failed (${response.status})${details}`);
+  }
+}
+
+export async function confirmProfileAvatarUpload(objectKey: string): Promise<AuthUser> {
+  const res = await http.post("/api/account/profile/avatar/confirm", {
+    object_key: objectKey,
   });
   return normalizeUser(res.data);
 }

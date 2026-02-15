@@ -1,9 +1,10 @@
 import { http } from "./http";
-import type { CafePhoto } from "../features/work/types";
+import type { CafePhoto, CafePhotoKind } from "../features/work/types";
 
 export type CafePhotoPresignPayload = {
   contentType: string;
   sizeBytes: number;
+  kind: CafePhotoKind;
 };
 
 export type CafePhotoPresignResponse = {
@@ -19,12 +20,14 @@ export type CafePhotoConfirmPayload = {
   objectKey: string;
   isCover?: boolean;
   position?: number;
+  kind: CafePhotoKind;
 };
 
 export type CafePhotoConfirmResponse = {
   photo: {
     id: string;
     url: string;
+    kind: CafePhotoKind;
     is_cover: boolean;
     position: number;
   };
@@ -43,6 +46,7 @@ export async function presignCafePhotoUpload(
     {
       content_type: payload.contentType,
       size_bytes: payload.sizeBytes,
+      kind: payload.kind,
     },
   );
   return res.data;
@@ -98,14 +102,19 @@ export async function confirmCafePhotoUpload(
       object_key: payload.objectKey,
       is_cover: payload.isCover ?? false,
       position: payload.position,
+      kind: payload.kind,
     },
   );
   return res.data;
 }
 
-export async function getCafePhotos(cafeId: string): Promise<CafePhoto[]> {
+export async function getCafePhotos(
+  cafeId: string,
+  kind: CafePhotoKind = "cafe",
+): Promise<CafePhoto[]> {
   const res = await http.get<CafePhotosListResponse>(
     `/api/cafes/${encodeURIComponent(cafeId)}/photos`,
+    { params: { kind } },
   );
   return res.data?.photos ?? [];
 }
@@ -113,10 +122,12 @@ export async function getCafePhotos(cafeId: string): Promise<CafePhoto[]> {
 export async function reorderCafePhotos(
   cafeId: string,
   photoIds: string[],
+  kind: CafePhotoKind = "cafe",
 ): Promise<CafePhoto[]> {
   const res = await http.patch<CafePhotosListResponse>(
     `/api/cafes/${encodeURIComponent(cafeId)}/photos/order`,
     { photo_ids: photoIds },
+    { params: { kind } },
   );
   return res.data?.photos ?? [];
 }
@@ -124,9 +135,12 @@ export async function reorderCafePhotos(
 export async function setCafePhotoCover(
   cafeId: string,
   photoId: string,
+  kind: CafePhotoKind = "cafe",
 ): Promise<CafePhoto[]> {
   const res = await http.patch<CafePhotosListResponse>(
     `/api/cafes/${encodeURIComponent(cafeId)}/photos/${encodeURIComponent(photoId)}/cover`,
+    undefined,
+    { params: { kind } },
   );
   return res.data?.photos ?? [];
 }
@@ -134,9 +148,11 @@ export async function setCafePhotoCover(
 export async function deleteCafePhoto(
   cafeId: string,
   photoId: string,
+  kind: CafePhotoKind = "cafe",
 ): Promise<CafePhoto[]> {
   const res = await http.delete<CafePhotosListResponse>(
     `/api/cafes/${encodeURIComponent(cafeId)}/photos/${encodeURIComponent(photoId)}`,
+    { params: { kind } },
   );
   return res.data?.photos ?? [];
 }

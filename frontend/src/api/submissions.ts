@@ -23,6 +23,11 @@ export type ModerationSubmission = {
   entity_type: SubmissionEntityType;
   action_type: SubmissionActionType;
   target_id?: string | null;
+  target_cafe_name?: string | null;
+  target_cafe_address?: string | null;
+  target_cafe_latitude?: number | null;
+  target_cafe_longitude?: number | null;
+  target_cafe_map_url?: string | null;
   payload: Record<string, unknown>;
   status: SubmissionStatus;
   moderator_id?: string | null;

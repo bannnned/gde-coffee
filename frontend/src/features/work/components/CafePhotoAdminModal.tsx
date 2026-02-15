@@ -30,12 +30,13 @@ import {
   setCafePhotoCover,
   uploadCafePhotoByPresignedUrl,
 } from "../../../api/cafePhotos";
-import type { CafePhoto } from "../types";
+import type { CafePhoto, CafePhotoKind } from "../types";
 
 type CafePhotoAdminModalProps = {
   opened: boolean;
   cafeId: string | null;
   cafeName: string;
+  kind: CafePhotoKind;
   initialPhotos?: CafePhoto[];
   onClose: () => void;
   onPhotosChanged?: (photos: CafePhoto[]) => void;
@@ -78,6 +79,7 @@ export default function CafePhotoAdminModal({
   opened,
   cafeId,
   cafeName,
+  kind,
   initialPhotos = [],
   onClose,
   onPhotosChanged,
@@ -102,7 +104,7 @@ export default function CafePhotoAdminModal({
     let cancelled = false;
     setIsLoading(true);
     setLastError(null);
-    getCafePhotos(cafeId)
+    getCafePhotos(cafeId, kind)
       .then((list) => {
         if (cancelled) return;
         setPhotos(list);
@@ -122,9 +124,11 @@ export default function CafePhotoAdminModal({
     return () => {
       cancelled = true;
     };
-  }, [opened, cafeId]);
+  }, [opened, cafeId, kind]);
 
   const canSaveOrder = orderDirty && !isSavingOrder && !isUploading && Boolean(cafeId);
+  const isCafeKind = kind === "cafe";
+  const photoKindLabel = isCafeKind ? "заведения" : "меню";
   const photosCountLabel = useMemo(() => {
     if (photos.length === 0) return "Фото пока нет";
     return photos.length === 1 ? "1 фото" : `${photos.length} фото`;
@@ -159,15 +163,17 @@ export default function CafePhotoAdminModal({
         const presigned = await presignCafePhotoUpload(cafeId, {
           contentType: file.type,
           sizeBytes: file.size,
+          kind,
         });
         await uploadCafePhotoByPresignedUrl(presigned.upload_url, file, presigned.headers ?? {});
         await confirmCafePhotoUpload(cafeId, {
           objectKey: presigned.object_key,
-          isCover: hadNoPhotos && idx === 0,
+          kind,
+          isCover: isCafeKind && hadNoPhotos && idx === 0,
         });
       });
 
-      const fresh = await getCafePhotos(cafeId);
+      const fresh = await getCafePhotos(cafeId, kind);
       publishPhotos(fresh);
       setOrderDirty(false);
       notifications.show({
@@ -206,9 +212,9 @@ export default function CafePhotoAdminModal({
   };
 
   const handleSetCover = async (photoId: string) => {
-    if (!cafeId) return;
+    if (!cafeId || !isCafeKind) return;
     try {
-      const next = await setCafePhotoCover(cafeId, photoId);
+      const next = await setCafePhotoCover(cafeId, photoId, kind);
       publishPhotos(next);
       setOrderDirty(false);
     } catch (err: any) {
@@ -226,7 +232,7 @@ export default function CafePhotoAdminModal({
   const handleDeletePhoto = async (photoId: string) => {
     if (!cafeId) return;
     try {
-      const next = await deleteCafePhoto(cafeId, photoId);
+      const next = await deleteCafePhoto(cafeId, photoId, kind);
       publishPhotos(next);
       setOrderDirty(false);
     } catch (err: any) {
@@ -258,6 +264,7 @@ export default function CafePhotoAdminModal({
       const next = await reorderCafePhotos(
         cafeId,
         photos.map((photo) => photo.id),
+        kind,
       );
       publishPhotos(next);
       setOrderDirty(false);
@@ -307,7 +314,7 @@ export default function CafePhotoAdminModal({
       fullScreen
       withCloseButton
       zIndex={420}
-      title={`Фото кофейни: ${cafeName}`}
+      title={`Фото ${photoKindLabel}: ${cafeName}`}
       styles={{
         content: {
           background: "var(--glass-bg)",
@@ -343,9 +350,9 @@ export default function CafePhotoAdminModal({
               <Text fw={600}>Загрузка фото</Text>
               <Badge variant="light">{photosCountLabel}</Badge>
             </Group>
-            <Text size="sm" c="dimmed">
+              <Text size="sm" c="dimmed">
               Нажмите кнопку ниже или перетащите файлы в эту область.
-            </Text>
+              </Text>
             <Group grow>
               <Button
                 leftSection={<IconPhotoPlus size={16} />}
@@ -389,7 +396,9 @@ export default function CafePhotoAdminModal({
           {!isLoading && photos.length === 0 && (
             <Paper withBorder radius="md" p="md" style={{ background: "var(--surface)" }}>
               <Text size="sm" c="dimmed">
-                Пока нет фото. Добавьте первые изображения кофейни.
+                {isCafeKind
+                  ? "Пока нет фото. Добавьте первые изображения заведения."
+                  : "Пока нет фото. Добавьте первые изображения меню и позиций."}
               </Text>
             </Paper>
           )}
@@ -434,21 +443,23 @@ export default function CafePhotoAdminModal({
                     <Text fw={600} size="sm">
                       Фото #{index + 1}
                     </Text>
-                    {photo.is_cover && (
+                    {isCafeKind && photo.is_cover && (
                       <Badge color="yellow" variant="light">
                         Обложка
                       </Badge>
                     )}
                   </Group>
                   <Group gap={6}>
-                    <Button
-                      size="xs"
-                      variant={photo.is_cover ? "filled" : "light"}
-                      leftSection={<IconStar size={14} />}
-                      onClick={() => void handleSetCover(photo.id)}
-                    >
-                      Обложка
-                    </Button>
+                    {isCafeKind && (
+                      <Button
+                        size="xs"
+                        variant={photo.is_cover ? "filled" : "light"}
+                        leftSection={<IconStar size={14} />}
+                        onClick={() => void handleSetCover(photo.id)}
+                      >
+                        Обложка
+                      </Button>
+                    )}
                     <ActionIcon
                       variant="light"
                       aria-label="Переместить вверх"

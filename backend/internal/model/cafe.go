@@ -25,6 +25,7 @@ type CafeResponse struct {
 type CafePhotoResponse struct {
 	ID       string `json:"id"`
 	URL      string `json:"url"`
+	Kind     string `json:"kind"`
 	IsCover  bool   `json:"is_cover"`
 	Position int    `json:"position"`
 }

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"backend/internal/media"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -35,6 +37,8 @@ type Handler struct {
 	OAuthRedirectBase    map[Provider]string
 	TelegramBotToken     string
 	TelegramBotUsername  string
+	AvatarMediaService   *media.Service
+	AvatarMaxUploadBytes int64
 }
 
 type User struct {

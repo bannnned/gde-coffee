@@ -30,6 +30,11 @@ var allowedPhotoContentTypes = map[string]string{
 
 var uuidPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 
+const (
+	cafePhotoKindCafe = "cafe"
+	cafePhotoKindMenu = "menu"
+)
+
 type cafePhotoAPI struct {
 	pool *pgxpool.Pool
 	s3   *media.Service
@@ -39,6 +44,7 @@ type cafePhotoAPI struct {
 type cafePhotoPresignRequest struct {
 	ContentType string `json:"content_type"`
 	SizeBytes   int64  `json:"size_bytes"`
+	Kind        string `json:"kind,omitempty"`
 }
 
 type cafePhotoPresignResponse struct {
@@ -54,6 +60,7 @@ type cafePhotoConfirmRequest struct {
 	ObjectKey string `json:"object_key"`
 	IsCover   bool   `json:"is_cover"`
 	Position  *int   `json:"position,omitempty"`
+	Kind      string `json:"kind,omitempty"`
 }
 
 type cafePhotoConfirmResponse struct {
@@ -76,6 +83,19 @@ func newCafePhotoAPI(pool *pgxpool.Pool, s3 *media.Service, cfg config.MediaConf
 	}
 }
 
+func normalizePhotoKind(raw string) (string, error) {
+	kind := strings.ToLower(strings.TrimSpace(raw))
+	if kind == "" {
+		return cafePhotoKindCafe, nil
+	}
+	switch kind {
+	case cafePhotoKindCafe, cafePhotoKindMenu:
+		return kind, nil
+	default:
+		return "", errors.New("Некорректный kind. Поддерживаются только cafe и menu.")
+	}
+}
+
 func (h *cafePhotoAPI) Presign(c *gin.Context) {
 	if h.s3 == nil || !h.s3.Enabled() {
 		respondError(c, http.StatusServiceUnavailable, "service_unavailable", "Загрузка фото сейчас недоступна.", nil)
@@ -95,6 +115,11 @@ func (h *cafePhotoAPI) Presign(c *gin.Context) {
 	var req cafePhotoPresignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		return
+	}
+	photoKind, err := normalizePhotoKind(req.Kind)
+	if err != nil {
+		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
@@ -134,7 +159,7 @@ func (h *cafePhotoAPI) Presign(c *gin.Context) {
 		return
 	}
 
-	objectKey := fmt.Sprintf("cafes/%s/%d_%s%s", cafeID, time.Now().Unix(), token, ext)
+	objectKey := fmt.Sprintf("cafes/%s/%s/%d_%s%s", cafeID, photoKind, time.Now().Unix(), token, ext)
 	presigned, err := h.s3.PresignPutObject(ctx, objectKey, contentType)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Не удалось подготовить загрузку файла.", nil)
@@ -172,13 +197,18 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
 		return
 	}
+	photoKind, err := normalizePhotoKind(req.Kind)
+	if err != nil {
+		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		return
+	}
 
 	objectKey := strings.TrimSpace(strings.TrimPrefix(req.ObjectKey, "/"))
 	if objectKey == "" {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "object_key обязателен.", nil)
 		return
 	}
-	keyPrefix := fmt.Sprintf("cafes/%s/", cafeID)
+	keyPrefix := fmt.Sprintf("cafes/%s/%s/", cafeID, photoKind)
 	if !strings.HasPrefix(objectKey, keyPrefix) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "object_key не соответствует выбранной кофейне.", nil)
 		return
@@ -227,7 +257,12 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 	}()
 
 	var photosCount int
-	if err := tx.QueryRow(ctx, `select count(*) from cafe_photos where cafe_id = $1::uuid`, cafeID).Scan(&photosCount); err != nil {
+	if err := tx.QueryRow(
+		ctx,
+		`select count(*) from cafe_photos where cafe_id = $1::uuid and kind = $2`,
+		cafeID,
+		photoKind,
+	).Scan(&photosCount); err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
@@ -236,10 +271,15 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 	if req.Position != nil {
 		position = *req.Position
 	}
-	isCover := req.IsCover || photosCount == 0
+	isCover := photoKind == cafePhotoKindCafe && (req.IsCover || photosCount == 0)
 
 	if isCover {
-		if _, err := tx.Exec(ctx, `update cafe_photos set is_cover = false where cafe_id = $1::uuid and is_cover = true`, cafeID); err != nil {
+		if _, err := tx.Exec(
+			ctx,
+			`update cafe_photos set is_cover = false where cafe_id = $1::uuid and kind = $2 and is_cover = true`,
+			cafeID,
+			photoKind,
+		); err != nil {
 			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 			return
 		}
@@ -256,13 +296,14 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 	var savedIsCover bool
 	err = tx.QueryRow(
 		ctx,
-		`insert into cafe_photos (cafe_id, object_key, mime_type, size_bytes, position, is_cover, uploaded_by)
-		 values ($1::uuid, $2, $3, $4, $5, $6, $7::uuid)
+		`insert into cafe_photos (cafe_id, object_key, mime_type, size_bytes, kind, position, is_cover, uploaded_by)
+		 values ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid)
 		 returning id::text, position, is_cover`,
 		cafeID,
 		objectKey,
 		normalizeContentType(mimeType),
 		sizeBytes,
+		photoKind,
 		position,
 		isCover,
 		uploadedBy,
@@ -285,6 +326,7 @@ func (h *cafePhotoAPI) Confirm(c *gin.Context) {
 		Photo: model.CafePhotoResponse{
 			ID:       photoID,
 			URL:      h.s3.PublicURL(objectKey),
+			Kind:     photoKind,
 			IsCover:  savedIsCover,
 			Position: savedPosition,
 		},
@@ -301,6 +343,11 @@ func (h *cafePhotoAPI) List(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
 		return
 	}
+	photoKind, err := normalizePhotoKind(c.DefaultQuery("kind", cafePhotoKindCafe))
+	if err != nil {
+		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
@@ -314,7 +361,7 @@ func (h *cafePhotoAPI) List(c *gin.Context) {
 		return
 	}
 
-	photos, err := listCafePhotos(ctx, h.pool, cafeID, h.cfg)
+	photos, err := listCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
@@ -332,6 +379,15 @@ func (h *cafePhotoAPI) SetCover(c *gin.Context) {
 	}
 	if !isValidUUID(cafeID) || !isValidUUID(photoID) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
+		return
+	}
+	photoKind, err := normalizePhotoKind(c.DefaultQuery("kind", cafePhotoKindCafe))
+	if err != nil {
+		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		return
+	}
+	if photoKind != cafePhotoKindCafe {
+		respondError(c, http.StatusBadRequest, "invalid_argument", "Обложку можно назначать только для фото заведения.", nil)
 		return
 	}
 
@@ -358,8 +414,9 @@ func (h *cafePhotoAPI) SetCover(c *gin.Context) {
 
 	if _, err := tx.Exec(
 		ctx,
-		`update cafe_photos set is_cover = false where cafe_id = $1::uuid and is_cover = true`,
+		`update cafe_photos set is_cover = false where cafe_id = $1::uuid and kind = $2 and is_cover = true`,
 		cafeID,
+		photoKind,
 	); err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
@@ -367,8 +424,9 @@ func (h *cafePhotoAPI) SetCover(c *gin.Context) {
 
 	result, err := tx.Exec(
 		ctx,
-		`update cafe_photos set is_cover = true where cafe_id = $1::uuid and id = $2::uuid`,
+		`update cafe_photos set is_cover = true where cafe_id = $1::uuid and kind = $2 and id = $3::uuid`,
 		cafeID,
+		photoKind,
 		photoID,
 	)
 	if err != nil {
@@ -385,7 +443,7 @@ func (h *cafePhotoAPI) SetCover(c *gin.Context) {
 		return
 	}
 
-	photos, err := listCafePhotos(ctx, h.pool, cafeID, h.cfg)
+	photos, err := listCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
@@ -402,6 +460,11 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 	}
 	if !isValidUUID(cafeID) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		return
+	}
+	photoKind, err := normalizePhotoKind(c.DefaultQuery("kind", cafePhotoKindCafe))
+	if err != nil {
+		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
@@ -457,8 +520,12 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 
 	rows, err := tx.Query(
 		ctx,
-		`select id::text from cafe_photos where cafe_id = $1::uuid order by position asc, created_at asc`,
+		`select id::text
+		 from cafe_photos
+		 where cafe_id = $1::uuid and kind = $2
+		 order by position asc, created_at asc`,
 		cafeID,
+		photoKind,
 	)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
@@ -506,32 +573,44 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 		set position = ordered.position
 		from ordered
 		where cp.cafe_id = $2::uuid
+		  and cp.kind = $3
 		  and cp.id = ordered.id`,
 		req.PhotoIDs,
 		cafeID,
+		photoKind,
 	); err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
 	}
 
-	var hasCover bool
-	if err := tx.QueryRow(
-		ctx,
-		`select exists(select 1 from cafe_photos where cafe_id = $1::uuid and is_cover = true)`,
-		cafeID,
-	).Scan(&hasCover); err != nil {
-		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
-		return
-	}
-	if !hasCover && len(req.PhotoIDs) > 0 {
-		if _, err := tx.Exec(
+	if photoKind == cafePhotoKindCafe {
+		var hasCover bool
+		if err := tx.QueryRow(
 			ctx,
-			`update cafe_photos set is_cover = true where cafe_id = $1::uuid and id = $2::uuid`,
+			`select exists(
+			    select 1
+			    from cafe_photos
+			    where cafe_id = $1::uuid and kind = $2 and is_cover = true
+			)`,
 			cafeID,
-			req.PhotoIDs[0],
-		); err != nil {
+			photoKind,
+		).Scan(&hasCover); err != nil {
 			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 			return
+		}
+		if !hasCover && len(req.PhotoIDs) > 0 {
+			if _, err := tx.Exec(
+				ctx,
+				`update cafe_photos
+				 set is_cover = true
+				 where cafe_id = $1::uuid and kind = $2 and id = $3::uuid`,
+				cafeID,
+				photoKind,
+				req.PhotoIDs[0],
+			); err != nil {
+				respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+				return
+			}
 		}
 	}
 
@@ -540,7 +619,7 @@ func (h *cafePhotoAPI) Reorder(c *gin.Context) {
 		return
 	}
 
-	photos, err := listCafePhotos(ctx, h.pool, cafeID, h.cfg)
+	photos, err := listCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
@@ -558,6 +637,11 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 	}
 	if !isValidUUID(cafeID) || !isValidUUID(photoID) {
 		respondError(c, http.StatusBadRequest, "invalid_argument", "Некорректные параметры id/photoID.", nil)
+		return
+	}
+	photoKind, err := normalizePhotoKind(c.DefaultQuery("kind", cafePhotoKindCafe))
+	if err != nil {
+		respondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
@@ -588,9 +672,10 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		ctx,
 		`select object_key, is_cover
 		 from cafe_photos
-		 where cafe_id = $1::uuid and id = $2::uuid
+		 where cafe_id = $1::uuid and kind = $2 and id = $3::uuid
 		 for update`,
 		cafeID,
+		photoKind,
 		photoID,
 	).Scan(&objectKey, &wasCover)
 	if err != nil {
@@ -604,8 +689,9 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 
 	if _, err := tx.Exec(
 		ctx,
-		`delete from cafe_photos where cafe_id = $1::uuid and id = $2::uuid`,
+		`delete from cafe_photos where cafe_id = $1::uuid and kind = $2 and id = $3::uuid`,
 		cafeID,
+		photoKind,
 		photoID,
 	); err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
@@ -618,10 +704,11 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 			ctx,
 			`select id::text
 			 from cafe_photos
-			 where cafe_id = $1::uuid
+			 where cafe_id = $1::uuid and kind = $2
 			 order by position asc, created_at asc
 			 limit 1`,
 			cafeID,
+			photoKind,
 		).Scan(&replacementID)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
@@ -630,8 +717,9 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		if err == nil {
 			if _, err := tx.Exec(
 				ctx,
-				`update cafe_photos set is_cover = true where cafe_id = $1::uuid and id = $2::uuid`,
+				`update cafe_photos set is_cover = true where cafe_id = $1::uuid and kind = $2 and id = $3::uuid`,
 				cafeID,
+				photoKind,
 				replacementID,
 			); err != nil {
 				respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
@@ -644,9 +732,10 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		ctx,
 		`select id::text
 		 from cafe_photos
-		 where cafe_id = $1::uuid
+		 where cafe_id = $1::uuid and kind = $2
 		 order by is_cover desc, position asc, created_at asc`,
 		cafeID,
+		photoKind,
 	)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
@@ -680,9 +769,11 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 			set position = ordered.position
 			from ordered
 			where cp.cafe_id = $2::uuid
+			  and cp.kind = $3
 			  and cp.id = ordered.id`,
 			remainingIDs,
 			cafeID,
+			photoKind,
 		); err != nil {
 			respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 			return
@@ -702,7 +793,7 @@ func (h *cafePhotoAPI) Delete(c *gin.Context) {
 		}
 	}
 
-	photos, err := listCafePhotos(ctx, h.pool, cafeID, h.cfg)
+	photos, err := listCafePhotos(ctx, h.pool, cafeID, photoKind, h.cfg)
 	if err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		return
@@ -765,8 +856,10 @@ func attachCafeCoverPhotos(
 		    object_key
 		 from cafe_photos
 		 where cafe_id = any($1::uuid[])
+		   and kind = $2
 		 order by cafe_id asc, is_cover desc, position asc, created_at asc`,
 		cafeIDs,
+		cafePhotoKindCafe,
 	)
 	if err != nil {
 		return err
@@ -806,15 +899,17 @@ func listCafePhotos(
 	ctx context.Context,
 	q cafePhotoRowsQuerier,
 	cafeID string,
+	photoKind string,
 	mediaCfg config.MediaConfig,
 ) ([]model.CafePhotoResponse, error) {
 	rows, err := q.Query(
 		ctx,
-		`select id::text, object_key, position, is_cover
+		`select id::text, object_key, kind, position, is_cover
 		 from cafe_photos
-		 where cafe_id = $1::uuid
+		 where cafe_id = $1::uuid and kind = $2
 		 order by is_cover desc, position asc, created_at asc`,
 		cafeID,
+		photoKind,
 	)
 	if err != nil {
 		return nil, err
@@ -826,15 +921,17 @@ func listCafePhotos(
 		var (
 			photoID   string
 			objectKey string
+			kind      string
 			position  int
 			isCover   bool
 		)
-		if err := rows.Scan(&photoID, &objectKey, &position, &isCover); err != nil {
+		if err := rows.Scan(&photoID, &objectKey, &kind, &position, &isCover); err != nil {
 			return nil, err
 		}
 		photos = append(photos, model.CafePhotoResponse{
 			ID:       photoID,
 			URL:      buildCafePhotoURL(mediaCfg, objectKey),
+			Kind:     kind,
 			IsCover:  isCover,
 			Position: position,
 		})

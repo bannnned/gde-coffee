@@ -575,9 +575,11 @@ func main() {
 			EmailChangeTTL:   cfg.Auth.EmailChangeTTL,
 			PasswordResetTTL: cfg.Auth.PasswordResetTTL,
 		},
-		OAuthProviders:      oauthProviders,
-		TelegramBotToken:    cfg.Auth.TelegramBotToken,
-		TelegramBotUsername: cfg.Auth.TelegramBotUsername,
+		OAuthProviders:       oauthProviders,
+		TelegramBotToken:     cfg.Auth.TelegramBotToken,
+		TelegramBotUsername:  cfg.Auth.TelegramBotUsername,
+		AvatarMediaService:   mediaService,
+		AvatarMaxUploadBytes: cfg.Media.S3MaxUploadBytes,
 	}
 
 	go func() {
@@ -614,6 +616,8 @@ func main() {
 	accountGroup := api.Group("/account")
 	accountGroup.POST("/email/change/request", auth.RequireAuth(pool), authHandler.EmailChangeRequest)
 	accountGroup.PATCH("/profile/name", auth.RequireAuth(pool), authHandler.ProfileNameUpdate)
+	accountGroup.POST("/profile/avatar/presign", auth.RequireAuth(pool), authHandler.ProfileAvatarPresign)
+	accountGroup.POST("/profile/avatar/confirm", auth.RequireAuth(pool), authHandler.ProfileAvatarConfirm)
 	accountGroup.GET("/email/change/confirm", authHandler.EmailChangeConfirm)
 
 	r.NoRoute(func(c *gin.Context) {

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActionIcon,
   Badge,
+  Box,
   Button,
   Group,
   Modal,
@@ -11,7 +13,7 @@ import {
   Textarea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPhotoPlus } from "@tabler/icons-react";
+import { IconPhotoPlus, IconTrash } from "@tabler/icons-react";
 
 import { uploadCafePhotoByPresignedUrl } from "../../../api/cafePhotos";
 import {
@@ -67,6 +69,27 @@ export default function CafeProposalModal({
 
   const centerLatitude = useMemo(() => Number(mapCenter[1]).toFixed(6), [mapCenter]);
   const centerLongitude = useMemo(() => Number(mapCenter[0]).toFixed(6), [mapCenter]);
+  const placePreviewUrls = useMemo(
+    () => placePhotos.map((file) => URL.createObjectURL(file)),
+    [placePhotos],
+  );
+  const menuPreviewUrls = useMemo(
+    () => menuPhotos.map((file) => URL.createObjectURL(file)),
+    [menuPhotos],
+  );
+
+  useEffect(
+    () => () => {
+      placePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [placePreviewUrls],
+  );
+  useEffect(
+    () => () => {
+      menuPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [menuPreviewUrls],
+  );
 
   useEffect(() => {
     if (!opened) return;
@@ -257,6 +280,52 @@ export default function CafeProposalModal({
               accept="image/jpeg,image/png,image/webp,image/avif"
               onChange={(event) => appendFiles(setPlacePhotos, event.currentTarget.files)}
             />
+            {placePhotos.map((file, index) => (
+              <Paper key={`${file.name}-${index}-${file.size}`} withBorder radius="md" p="xs">
+                <Group align="center" wrap="nowrap" gap="xs">
+                  <Box
+                    style={{
+                      width: 88,
+                      height: 66,
+                      borderRadius: 10,
+                      overflow: "hidden",
+                      border: "1px solid var(--border)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <img
+                      src={placePreviewUrls[index]}
+                      alt={file.name}
+                      loading="lazy"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  </Box>
+                  <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+                    <Text size="sm" lineClamp={1}>
+                      {file.name}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </Text>
+                  </Stack>
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    aria-label="Удалить фото"
+                    onClick={() =>
+                      setPlacePhotos((prev) => prev.filter((_, i) => i !== index))
+                    }
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Group>
+              </Paper>
+            ))}
           </Stack>
         </Paper>
 
@@ -281,6 +350,52 @@ export default function CafeProposalModal({
               accept="image/jpeg,image/png,image/webp,image/avif"
               onChange={(event) => appendFiles(setMenuPhotos, event.currentTarget.files)}
             />
+            {menuPhotos.map((file, index) => (
+              <Paper key={`${file.name}-${index}-${file.size}`} withBorder radius="md" p="xs">
+                <Group align="center" wrap="nowrap" gap="xs">
+                  <Box
+                    style={{
+                      width: 88,
+                      height: 66,
+                      borderRadius: 10,
+                      overflow: "hidden",
+                      border: "1px solid var(--border)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <img
+                      src={menuPreviewUrls[index]}
+                      alt={file.name}
+                      loading="lazy"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  </Box>
+                  <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+                    <Text size="sm" lineClamp={1}>
+                      {file.name}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </Text>
+                  </Stack>
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    aria-label="Удалить фото"
+                    onClick={() =>
+                      setMenuPhotos((prev) => prev.filter((_, i) => i !== index))
+                    }
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Group>
+              </Paper>
+            ))}
           </Stack>
         </Paper>
 

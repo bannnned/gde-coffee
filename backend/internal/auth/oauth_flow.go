@@ -169,6 +169,9 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 			h.oauthRedirect(c, provider, dest, "internal", "", "")
 			return
 		}
+		if err := updateUserAvatarIfEmpty(ctx, h.Pool, userID, identity.AvatarURL); err != nil {
+			log.Printf("oauth %s: update avatar failed: %v", provider, err)
+		}
 
 		sessionID, _, err := createSession(ctx, h.Pool, userID, c.ClientIP(), c.GetHeader("User-Agent"))
 		if err != nil {
@@ -211,15 +214,8 @@ func (h Handler) oauthCallback(c *gin.Context, provider Provider, expectedFlow s
 			}
 		}
 
-		if identity.AvatarURL != nil && strings.TrimSpace(*identity.AvatarURL) != "" {
-			if _, err := h.Pool.Exec(
-				ctx,
-				`update users set avatar_url = $2 where id = $1 and (avatar_url is null or avatar_url = '')`,
-				targetUserID,
-				*identity.AvatarURL,
-			); err != nil {
-				log.Printf("oauth %s: update avatar failed: %v", provider, err)
-			}
+		if err := updateUserAvatarIfEmpty(ctx, h.Pool, targetUserID, identity.AvatarURL); err != nil {
+			log.Printf("oauth %s: update avatar failed: %v", provider, err)
 		}
 
 		h.oauthRedirect(c, provider, dest, "", "", "linked")

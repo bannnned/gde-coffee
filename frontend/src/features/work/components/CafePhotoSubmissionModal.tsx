@@ -78,6 +78,17 @@ export default function CafePhotoSubmissionModal({
     if (files.length === 1) return "1 файл";
     return `${files.length} файлов`;
   }, [files.length]);
+  const previewUrls = useMemo(
+    () => files.map((file) => URL.createObjectURL(file)),
+    [files],
+  );
+
+  useEffect(
+    () => () => {
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [previewUrls],
+  );
 
   const appendFiles = (fileList: FileList | File[] | null) => {
     if (!fileList || fileList.length === 0) return;
@@ -255,10 +266,37 @@ export default function CafePhotoSubmissionModal({
               p="xs"
               style={{ background: "var(--surface)" }}
             >
-              <Group justify="space-between" wrap="nowrap">
-                <Text size="sm" lineClamp={1}>
-                  {file.name}
-                </Text>
+              <Group align="center" wrap="nowrap" gap="xs">
+                <Box
+                  style={{
+                    width: 88,
+                    height: 66,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    border: "1px solid var(--border)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <img
+                    src={previewUrls[index]}
+                    alt={file.name}
+                    loading="lazy"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </Box>
+                <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+                  <Text size="sm" lineClamp={1}>
+                    {file.name}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </Text>
+                </Stack>
                 <ActionIcon
                   variant="subtle"
                   color="red"

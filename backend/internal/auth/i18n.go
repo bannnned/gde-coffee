@@ -29,6 +29,7 @@ var authErrorMessageRu = map[string]string{
 	"email_required":                        "Укажите email.",
 	"token generate failed":                 "Не удалось создать токен.",
 	"token is required":                     "Требуется токен.",
+	"object key is required":                "Укажите object_key.",
 	"token is invalid or expired":           "Ссылка недействительна или срок действия истек.",
 	"user update failed":                    "Не удалось обновить пользователя.",
 	"token update failed":                   "Не удалось обновить токен.",

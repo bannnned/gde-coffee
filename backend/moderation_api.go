@@ -46,6 +46,11 @@ type moderationSubmissionResponse struct {
 	EntityType       string         `json:"entity_type"`
 	ActionType       string         `json:"action_type"`
 	TargetID         *string        `json:"target_id,omitempty"`
+	TargetCafeName   *string        `json:"target_cafe_name,omitempty"`
+	TargetCafeAddr   *string        `json:"target_cafe_address,omitempty"`
+	TargetCafeLat    *float64       `json:"target_cafe_latitude,omitempty"`
+	TargetCafeLng    *float64       `json:"target_cafe_longitude,omitempty"`
+	TargetCafeMapURL *string        `json:"target_cafe_map_url,omitempty"`
 	Payload          map[string]any `json:"payload"`
 	Status           string         `json:"status"`
 	ModeratorID      *string        `json:"moderator_id,omitempty"`
@@ -379,11 +384,13 @@ func (h *moderationAPI) ListMine(c *gin.Context) {
 
 	rows, err := h.pool.Query(
 		ctx,
-		`select id::text, author_user_id::text, entity_type, action_type, target_id::text, payload, status,
-		        moderator_id::text, moderator_comment, created_at, updated_at, decided_at
-		   from moderation_submissions
-		  where author_user_id = $1::uuid
-		  order by created_at desc
+		`select ms.id::text, ms.author_user_id::text, ms.entity_type, ms.action_type, ms.target_id::text, ms.payload, ms.status,
+		        ms.moderator_id::text, ms.moderator_comment, ms.created_at, ms.updated_at, ms.decided_at,
+		        c.name, c.address, c.lat, c.lng
+		   from moderation_submissions ms
+		   left join cafes c on c.id = ms.target_id
+		  where ms.author_user_id = $1::uuid
+		  order by ms.created_at desc
 		  limit 200`,
 		userID,
 	)
@@ -395,11 +402,12 @@ func (h *moderationAPI) ListMine(c *gin.Context) {
 
 	out := make([]moderationSubmissionResponse, 0, 32)
 	for rows.Next() {
-		item, scanErr := scanSubmissionRow(rows, "")
+		item, scanErr := scanSubmissionRow(rows, "cafe")
 		if scanErr != nil {
 			respondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить заявки.", nil)
 			return
 		}
+		h.enrichSubmission(&item)
 		out = append(out, item)
 	}
 	if err := rows.Err(); err != nil {
@@ -424,9 +432,11 @@ func (h *moderationAPI) ListModeration(c *gin.Context) {
 		ctx,
 		`select ms.id::text, ms.author_user_id::text, ms.entity_type, ms.action_type, ms.target_id::text, ms.payload, ms.status,
 		        ms.moderator_id::text, ms.moderator_comment, ms.created_at, ms.updated_at, ms.decided_at,
-		        coalesce(u.display_name, u.email_normalized, u.id::text) as author_label
+		        coalesce(u.display_name, u.email_normalized, u.id::text) as author_label,
+		        c.name, c.address, c.lat, c.lng
 		   from moderation_submissions ms
 		   join users u on u.id = ms.author_user_id
+		   left join cafes c on c.id = ms.target_id
 		  where ($1 = '' or ms.status = $1)
 		    and ($2 = '' or ms.entity_type = $2)
 		  order by ms.created_at asc
@@ -442,11 +452,12 @@ func (h *moderationAPI) ListModeration(c *gin.Context) {
 
 	out := make([]moderationSubmissionResponse, 0, 64)
 	for rows.Next() {
-		item, scanErr := scanSubmissionRow(rows, "author")
+		item, scanErr := scanSubmissionRow(rows, "author+cafe")
 		if scanErr != nil {
 			respondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить модерацию.", nil)
 			return
 		}
+		h.enrichSubmission(&item)
 		out = append(out, item)
 	}
 	if err := rows.Err(); err != nil {
@@ -470,14 +481,16 @@ func (h *moderationAPI) GetModerationItem(c *gin.Context) {
 		ctx,
 		`select ms.id::text, ms.author_user_id::text, ms.entity_type, ms.action_type, ms.target_id::text, ms.payload, ms.status,
 		        ms.moderator_id::text, ms.moderator_comment, ms.created_at, ms.updated_at, ms.decided_at,
-		        coalesce(u.display_name, u.email_normalized, u.id::text) as author_label
+		        coalesce(u.display_name, u.email_normalized, u.id::text) as author_label,
+		        c.name, c.address, c.lat, c.lng
 		   from moderation_submissions ms
 		   join users u on u.id = ms.author_user_id
+		   left join cafes c on c.id = ms.target_id
 		  where ms.id = $1::uuid`,
 		id,
 	)
 
-	item, err := scanSubmissionRow(row, "author")
+	item, err := scanSubmissionRow(row, "author+cafe")
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			respondError(c, http.StatusNotFound, "not_found", "Заявка не найдена.", nil)
@@ -486,6 +499,7 @@ func (h *moderationAPI) GetModerationItem(c *gin.Context) {
 		respondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить заявку.", nil)
 		return
 	}
+	h.enrichSubmission(&item)
 	c.JSON(http.StatusOK, item)
 }
 
@@ -621,12 +635,12 @@ func (h *moderationAPI) applySubmission(
 		if submission.ActionType != actionTypeCreate {
 			return fmt.Errorf("Неподдерживаемое действие для cafe_photo")
 		}
-		return h.applyCafePhotos(ctx, tx, submission, true)
+		return h.applyCafePhotos(ctx, tx, submission, cafePhotoKindCafe, true)
 	case entityTypeMenuPhoto:
 		if submission.ActionType != actionTypeCreate {
 			return fmt.Errorf("Неподдерживаемое действие для menu_photo")
 		}
-		return h.applyCafePhotos(ctx, tx, submission, false)
+		return h.applyCafePhotos(ctx, tx, submission, cafePhotoKindMenu, false)
 	default:
 		return fmt.Errorf("Этот тип заявки пока не поддерживается")
 	}
@@ -673,12 +687,12 @@ func (h *moderationAPI) applyCafeCreate(
 	combinedMenu := append([]string{}, payload.MenuPhotoObjectKeys...)
 
 	if len(combinedKeys) > 0 {
-		if err := h.insertCafePhotos(ctx, tx, cafeID, moderatorID, combinedKeys, true); err != nil {
+		if err := h.insertCafePhotos(ctx, tx, cafeID, moderatorID, combinedKeys, cafePhotoKindCafe, true); err != nil {
 			return err
 		}
 	}
 	if len(combinedMenu) > 0 {
-		if err := h.insertCafePhotos(ctx, tx, cafeID, moderatorID, combinedMenu, false); err != nil {
+		if err := h.insertCafePhotos(ctx, tx, cafeID, moderatorID, combinedMenu, cafePhotoKindMenu, false); err != nil {
 			return err
 		}
 	}
@@ -721,6 +735,7 @@ func (h *moderationAPI) applyCafePhotos(
 	ctx context.Context,
 	tx pgx.Tx,
 	submission moderationSubmissionResponse,
+	photoKind string,
 	allowCover bool,
 ) error {
 	if submission.TargetID == nil || strings.TrimSpace(*submission.TargetID) == "" {
@@ -733,7 +748,15 @@ func (h *moderationAPI) applyCafePhotos(
 	if len(payload.ObjectKeys) == 0 {
 		return fmt.Errorf("Список фото пуст")
 	}
-	return h.insertCafePhotos(ctx, tx, *submission.TargetID, submission.AuthorUserID, payload.ObjectKeys, allowCover)
+	return h.insertCafePhotos(
+		ctx,
+		tx,
+		*submission.TargetID,
+		submission.AuthorUserID,
+		payload.ObjectKeys,
+		photoKind,
+		allowCover,
+	)
 }
 
 func (h *moderationAPI) insertCafePhotos(
@@ -742,6 +765,7 @@ func (h *moderationAPI) insertCafePhotos(
 	cafeID string,
 	uploaderID string,
 	objectKeys []string,
+	photoKind string,
 	allowCover bool,
 ) error {
 	if err := ensureCafeExists(ctx, h.pool, cafeID); err != nil {
@@ -754,8 +778,9 @@ func (h *moderationAPI) insertCafePhotos(
 	var count int
 	if err := tx.QueryRow(
 		ctx,
-		`select count(*) from cafe_photos where cafe_id = $1::uuid`,
+		`select count(*) from cafe_photos where cafe_id = $1::uuid and kind = $2`,
 		cafeID,
+		photoKind,
 	).Scan(&count); err != nil {
 		return fmt.Errorf("Внутренняя ошибка сохранения фото")
 	}
@@ -785,7 +810,7 @@ func (h *moderationAPI) insertCafePhotos(
 
 		position++
 		isCover := false
-		if allowCover && count == 0 && index == 0 {
+		if allowCover && photoKind == cafePhotoKindCafe && count == 0 && index == 0 {
 			isCover = true
 		}
 
@@ -796,12 +821,13 @@ func (h *moderationAPI) insertCafePhotos(
 
 		if _, err := tx.Exec(
 			ctx,
-			`insert into cafe_photos (cafe_id, object_key, mime_type, size_bytes, position, is_cover, uploaded_by)
-			 values ($1::uuid, $2, $3, $4, $5, $6, $7::uuid)`,
+			`insert into cafe_photos (cafe_id, object_key, mime_type, size_bytes, kind, position, is_cover, uploaded_by)
+			 values ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid)`,
 			cafeID,
 			key,
 			normalizeContentType(mimeType),
 			sizeBytes,
+			photoKind,
 			position,
 			isCover,
 			uploadedBy,
@@ -845,7 +871,12 @@ func (h *moderationAPI) createSubmission(
 		targetArg,
 		payloadJSON,
 	)
-	return scanSubmissionRow(row, "")
+	item, scanErr := scanSubmissionRow(row, "")
+	if scanErr != nil {
+		return moderationSubmissionResponse{}, scanErr
+	}
+	h.enrichSubmission(&item)
+	return item, nil
 }
 
 func (h *moderationAPI) validatePendingObjectKeys(userID string, keys []string) ([]string, error) {
@@ -919,6 +950,10 @@ func scanSubmissionRow(row rowScanner, authorLabelMode string) (moderationSubmis
 		moderatorRemark *string
 		decidedAt       *time.Time
 		authorLabel     *string
+		targetCafeName  *string
+		targetCafeAddr  *string
+		targetCafeLat   *float64
+		targetCafeLng   *float64
 	)
 
 	dest := []any{
@@ -935,8 +970,11 @@ func scanSubmissionRow(row rowScanner, authorLabelMode string) (moderationSubmis
 		&item.UpdatedAt,
 		&decidedAt,
 	}
-	if authorLabelMode == "author" {
+	if strings.Contains(authorLabelMode, "author") {
 		dest = append(dest, &authorLabel)
+	}
+	if strings.Contains(authorLabelMode, "cafe") {
+		dest = append(dest, &targetCafeName, &targetCafeAddr, &targetCafeLat, &targetCafeLng)
 	}
 	if err := row.Scan(dest...); err != nil {
 		return moderationSubmissionResponse{}, err
@@ -948,6 +986,18 @@ func scanSubmissionRow(row rowScanner, authorLabelMode string) (moderationSubmis
 	item.DecidedAt = decidedAt
 	if authorLabel != nil {
 		item.AuthorLabel = strings.TrimSpace(*authorLabel)
+	}
+	item.TargetCafeName = targetCafeName
+	item.TargetCafeAddr = targetCafeAddr
+	item.TargetCafeLat = targetCafeLat
+	item.TargetCafeLng = targetCafeLng
+	if targetCafeLat != nil && targetCafeLng != nil {
+		url := fmt.Sprintf(
+			"https://yandex.ru/maps/?pt=%f,%f&z=16&l=map",
+			*targetCafeLng,
+			*targetCafeLat,
+		)
+		item.TargetCafeMapURL = &url
 	}
 
 	payloadMap := map[string]any{}
@@ -961,6 +1011,92 @@ func scanSubmissionRow(row rowScanner, authorLabelMode string) (moderationSubmis
 	return item, nil
 }
 
+func (h *moderationAPI) enrichSubmission(item *moderationSubmissionResponse) {
+	if item == nil || item.Payload == nil {
+		return
+	}
+
+	switch item.EntityType {
+	case entityTypeCafePhoto, entityTypeMenuPhoto:
+		keys := extractStringArray(item.Payload["object_keys"])
+		if len(keys) == 0 {
+			return
+		}
+		item.Payload["photo_urls"] = h.objectKeysToPublicURLs(keys)
+	case entityTypeCafe:
+		photoKeys := extractStringArray(item.Payload["photo_object_keys"])
+		menuKeys := extractStringArray(item.Payload["menu_photo_object_keys"])
+		if len(photoKeys) > 0 {
+			item.Payload["photo_urls"] = h.objectKeysToPublicURLs(photoKeys)
+		}
+		if len(menuKeys) > 0 {
+			item.Payload["menu_photo_urls"] = h.objectKeysToPublicURLs(menuKeys)
+		}
+	}
+}
+
+func extractStringArray(value any) []string {
+	if value == nil {
+		return nil
+	}
+	switch typed := value.(type) {
+	case []string:
+		out := make([]string, 0, len(typed))
+		for _, raw := range typed {
+			item := strings.TrimSpace(raw)
+			if item == "" {
+				continue
+			}
+			out = append(out, item)
+		}
+		return out
+	case []any:
+		out := make([]string, 0, len(typed))
+		for _, raw := range typed {
+			item, ok := raw.(string)
+			if !ok {
+				continue
+			}
+			item = strings.TrimSpace(item)
+			if item == "" {
+				continue
+			}
+			out = append(out, item)
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func (h *moderationAPI) objectKeysToPublicURLs(keys []string) []string {
+	if len(keys) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(keys))
+	for _, raw := range keys {
+		key := strings.TrimSpace(strings.TrimPrefix(raw, "/"))
+		if key == "" {
+			continue
+		}
+		out = append(out, h.publicURLForObjectKey(key))
+	}
+	return out
+}
+
+func (h *moderationAPI) publicURLForObjectKey(objectKey string) string {
+	if h.s3 != nil && h.s3.Enabled() {
+		return h.s3.PublicURL(objectKey)
+	}
+	base := strings.TrimSpace(h.cfg.S3PublicBaseURL)
+	if base == "" {
+		return objectKey
+	}
+	base = strings.TrimSuffix(base, "/")
+	key := strings.TrimPrefix(objectKey, "/")
+	return base + "/" + key
+}
+
 func decodeSubmissionPayload(payload map[string]any, target any) error {
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -968,4 +1104,3 @@ func decodeSubmissionPayload(payload map[string]any, target any) error {
 	}
 	return json.Unmarshal(raw, target)
 }
-

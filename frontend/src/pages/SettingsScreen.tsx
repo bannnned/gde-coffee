@@ -12,21 +12,16 @@
 } from "@mantine/core";
 import {
   IconArrowLeft,
-  IconBrandGithub,
-  IconBrandTelegram,
-  IconBrandYandex,
   IconCircleCheck,
   IconCircleX,
   IconMail,
   IconShieldCheck,
-  IconUser,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useMemo, useState, type FocusEvent } from "react";
+import { useCallback, useMemo, useState, type FocusEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import * as authApi from "../api/auth";
-import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import useOauthRedirect from "../hooks/useOauthRedirect";
@@ -46,19 +41,12 @@ export default function SettingsScreen() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, status, refreshAuth } = useAuth();
-  const [identities, setIdentities] = useState<authApi.AuthIdentity[]>([]);
-  const [identityError, setIdentityError] = useState<string | null>(null);
-  const [isIdentitiesLoading, setIsIdentitiesLoading] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [verifySuccess, setVerifySuccess] = useState<string | null>(null);
   const [emailChangeResult, setEmailChangeResult] = useState<string | null>(null);
   const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
-  const [nameDraft, setNameDraft] = useState("");
-  const [nameResult, setNameResult] = useState<string | null>(null);
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [isNameSubmitting, setIsNameSubmitting] = useState(false);
 
   const verifiedParam = searchParams.get("verified") === "1";
   const emailChangedParam = searchParams.get("email_changed") === "1";
@@ -71,34 +59,12 @@ export default function SettingsScreen() {
   );
 
   const emailValue = user?.email ?? "—";
-  const currentDisplayName = useMemo(
-    () => user?.displayName?.trim() || user?.name?.trim() || "",
-    [user],
-  );
-
-  useEffect(() => {
-    setNameDraft(currentDisplayName);
-  }, [currentDisplayName]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
     const target = event.currentTarget;
     window.requestAnimationFrame(() => {
       target.scrollIntoView({ behavior: "smooth", block: "center" });
     });
-  }, []);
-
-  const githubAuthUrl = useMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-    return base
-      ? `${base}/api/auth/github/link/start`
-      : "/api/auth/github/link/start";
-  }, []);
-
-  const yandexAuthUrl = useMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-    return base
-      ? `${base}/api/auth/yandex/link/start`
-      : "/api/auth/yandex/link/start";
   }, []);
 
   const {
@@ -123,72 +89,12 @@ export default function SettingsScreen() {
 
   const statusLabel = isVerified ? "подтверждён" : "не подтверждён";
   const statusTone = isVerified ? "ok" : "warn";
-
-  const isProviderLinked = useCallback(
-    (providerName: string) =>
-      identities.some((identity) => {
-        const provider =
-          identity.provider ?? identity.type ?? identity.name ?? "";
-        return provider.toString().toLowerCase() === providerName;
-      }),
-    [identities],
-  );
-
-  const githubLinked = useMemo(
-    () => isProviderLinked("github"),
-    [isProviderLinked],
-  );
-  const yandexLinked = useMemo(
-    () => isProviderLinked("yandex"),
-    [isProviderLinked],
-  );
-  const telegramLinked = useMemo(
-    () => isProviderLinked("telegram"),
-    [isProviderLinked],
-  );
-
-  const githubStatusLabel = githubLinked ? "подключён" : "не подключён";
-  const githubStatusTone = githubLinked ? "ok" : "warn";
-  const yandexStatusLabel = yandexLinked ? "подключён" : "не подключён";
-  const yandexStatusTone = yandexLinked ? "ok" : "warn";
-  const telegramStatusLabel = telegramLinked ? "подключён" : "не подключён";
-  const telegramStatusTone = telegramLinked ? "ok" : "warn";
   const userRole = (user?.role ?? "").toLowerCase();
   const canModerate = userRole === "admin" || userRole === "moderator";
 
-  const refreshIdentities = useCallback(async () => {
-    if (status !== "authed") {
-      setIdentities([]);
-      return;
-    }
-    setIsIdentitiesLoading(true);
-    setIdentityError(null);
-    try {
-      const list = await authApi.getIdentities();
-      setIdentities(list);
-    } catch (err: any) {
-      const statusCode = err?.response?.status ?? err?.normalized?.status;
-      if (statusCode && statusCode !== 404) {
-        setIdentityError(
-          err?.response?.data?.message ??
-            err?.normalized?.message ??
-            "Не удалось обновить список привязок.",
-        );
-      }
-      setIdentities([]);
-    } finally {
-      setIsIdentitiesLoading(false);
-    }
-  }, [status]);
-
-  useEffect(() => {
-    if (status !== "authed") return;
-    refreshIdentities();
-  }, [refreshIdentities, status]);
-
   useOauthRedirect({
     onResultOk: refreshAuth,
-    onResultLinked: refreshIdentities,
+    onResultLinked: refreshAuth,
   });
 
   const handleVerifyRequest = async () => {
@@ -243,37 +149,6 @@ export default function SettingsScreen() {
     }
   });
 
-  const handleNameSave = async () => {
-    setNameError(null);
-    setNameResult(null);
-
-    if (status !== "authed") {
-      setNameError("Войдите в аккаунт, чтобы изменить имя.");
-      return;
-    }
-
-    const value = nameDraft.trim();
-    if (!value) {
-      setNameError("Введите имя профиля.");
-      return;
-    }
-
-    setIsNameSubmitting(true);
-    try {
-      await authApi.updateProfileName({ displayName: value });
-      await refreshAuth();
-      setNameResult("Имя профиля сохранено.");
-    } catch (err: any) {
-      setNameError(
-        err?.response?.data?.message ??
-          err?.normalized?.message ??
-          "Не удалось сохранить имя профиля.",
-      );
-    } finally {
-      setIsNameSubmitting(false);
-    }
-  };
-
   const settingsTitle = useMemo(
     () => (status === "loading" ? "Загружаем аккаунт..." : "Аккаунт / Настройки"),
     [status],
@@ -306,53 +181,6 @@ export default function SettingsScreen() {
             {emailChangedParam && (
               <div className={classes.banner}>Email успешно изменён.</div>
             )}
-
-            <div className={classes.section}>
-              <div className={classes.sectionHeader}>
-                <Group gap="xs">
-                  <IconUser size={18} />
-                  <Title order={4}>Имя профиля</Title>
-                </Group>
-              </div>
-              <Text size="sm" className={classes.muted} mb="sm">
-                Имя видно в профиле и в интерфейсе приложения.
-              </Text>
-              <div className={classes.formGrid}>
-                <TextInput
-                  label="Имя"
-                  placeholder="Например, Антон"
-                  value={nameDraft}
-                  onChange={(event) => {
-                    setNameDraft(event.currentTarget.value);
-                    setNameError(null);
-                    setNameResult(null);
-                  }}
-                  onFocus={handleFieldFocus}
-                  disabled={status !== "authed"}
-                />
-              </div>
-              <Group className={classes.actionsRow} mt="md">
-                <Button
-                  variant="filled"
-                  className={classes.actionButton}
-                  onClick={handleNameSave}
-                  loading={isNameSubmitting}
-                  disabled={status !== "authed"}
-                >
-                  Сохранить имя
-                </Button>
-              </Group>
-              {nameResult && (
-                <div className={classes.banner} style={{ marginTop: 12 }}>
-                  {nameResult}
-                </div>
-              )}
-              {nameError && (
-                <div className={classes.error} style={{ marginTop: 12 }}>
-                  {nameError}
-                </div>
-              )}
-            </div>
 
             {canModerate && (
               <div className={classes.section}>
@@ -417,123 +245,6 @@ export default function SettingsScreen() {
               {verifyError && (
                 <div className={classes.error} style={{ marginTop: 12 }}>
                   {verifyError}
-                </div>
-              )}
-            </div>
-
-            <div className={classes.section}>
-              <div className={classes.sectionHeader}>
-                <Group gap="xs">
-                  <IconBrandGithub size={18} />
-                  <Title order={4}>Подключить GitHub</Title>
-                </Group>
-              </div>
-              <div className={classes.statusLine}>
-                <span
-                  className={classes.statusPill}
-                  data-status={githubStatusTone}
-                >
-                  {githubLinked ? (
-                    <IconCircleCheck size={14} />
-                  ) : (
-                    <IconCircleX size={14} />
-                  )}
-                  {githubStatusLabel}
-                </span>
-              </div>
-              <Text size="sm" className={classes.muted} mt={4}>
-                Подключите GitHub, чтобы привязать аккаунт к профилю.
-              </Text>
-              <Group className={classes.actionsRow} mt="md">
-                <Button
-                  variant="filled"
-                  className={classes.actionButton}
-                  onClick={() => window.location.assign(githubAuthUrl)}
-                  leftSection={<IconBrandGithub size={16} />}
-                  disabled={status !== "authed" || isIdentitiesLoading}
-                  loading={isIdentitiesLoading}
-                >
-                  Подключить GitHub
-                </Button>
-              </Group>
-              {identityError && (
-                <div className={classes.error} style={{ marginTop: 12 }}>
-                  {identityError}
-                </div>
-              )}
-            </div>
-
-            <div className={classes.section}>
-              <div className={classes.sectionHeader}>
-                <Group gap="xs">
-                  <IconBrandYandex size={18} />
-                  <Title order={4}>Подключить Яндекс</Title>
-                </Group>
-              </div>
-              <div className={classes.statusLine}>
-                <span
-                  className={classes.statusPill}
-                  data-status={yandexStatusTone}
-                >
-                  {yandexLinked ? (
-                    <IconCircleCheck size={14} />
-                  ) : (
-                    <IconCircleX size={14} />
-                  )}
-                  {yandexStatusLabel}
-                </span>
-              </div>
-              <Text size="sm" className={classes.muted} mt={4}>
-                Подключите Яндекс, чтобы привязать аккаунт к профилю.
-              </Text>
-              <Group className={classes.actionsRow} mt="md">
-                <Button
-                  variant="filled"
-                  className={classes.actionButton}
-                  onClick={() => window.location.assign(yandexAuthUrl)}
-                  leftSection={<IconBrandYandex size={16} />}
-                  disabled={status !== "authed" || isIdentitiesLoading}
-                  loading={isIdentitiesLoading}
-                >
-                  Подключить Яндекс
-                </Button>
-              </Group>
-              {identityError && (
-                <div className={classes.error} style={{ marginTop: 12 }}>
-                  {identityError}
-                </div>
-              )}
-            </div>
-
-            <div className={classes.section}>
-              <div className={classes.sectionHeader}>
-                <Group gap="xs">
-                  <IconBrandTelegram size={18} />
-                  <Title order={4}>Подключить Telegram</Title>
-                </Group>
-              </div>
-              <div className={classes.statusLine}>
-                <span
-                  className={classes.statusPill}
-                  data-status={telegramStatusTone}
-                >
-                  {telegramLinked ? (
-                    <IconCircleCheck size={14} />
-                  ) : (
-                    <IconCircleX size={14} />
-                  )}
-                  {telegramStatusLabel}
-                </span>
-              </div>
-              <Text size="sm" className={classes.muted} mt={4}>
-                Подключите Telegram, чтобы привязать аккаунт к профилю.
-              </Text>
-              <Group className={classes.actionsRow} mt="md">
-                <TelegramLoginWidget flow="link" size="medium" />
-              </Group>
-              {identityError && (
-                <div className={classes.error} style={{ marginTop: 12 }}>
-                  {identityError}
                 </div>
               )}
             </div>

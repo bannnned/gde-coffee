@@ -49,6 +49,11 @@
   gap: 12px;
 }
 
+.avatarWrap {
+  position: relative;
+  display: inline-flex;
+}
+
 .avatarLarge {
   width: 120px;
   height: 120px;
@@ -70,6 +75,16 @@
   overflow: hidden;
 }
 
+.avatarPlusButton {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2));
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
 .avatarImage {
   width: 100%;
   height: 100%;
@@ -81,6 +96,26 @@
 .heroText {
   display: grid;
   gap: 6px;
+}
+
+.heroNameRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.nameEditBox {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.nameEditActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .heroCaption {
@@ -172,6 +207,67 @@
   color: var(--muted);
 }
 
+.socialList {
+  display: grid;
+  gap: 10px;
+}
+
+.socialRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.socialMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.socialActions {
+  flex-shrink: 0;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.statusPill[data-status="ok"] {
+  border-color: var(--color-status-success);
+  color: var(--color-status-success);
+  background: color-mix(in srgb, var(--color-status-success) 12%, transparent);
+}
+
+.statusPill[data-status="warn"] {
+  border-color: var(--color-status-warning);
+  color: var(--color-status-warning);
+  background: color-mix(in srgb, var(--color-status-warning) 12%, transparent);
+}
+
+.errorText {
+  color: var(--color-status-error);
+  font-size: 0.9rem;
+}
+
+.successText {
+  color: var(--color-status-success);
+  font-size: 0.9rem;
+}
+
 .placeholderCard {
   display: flex;
   gap: 12px;
@@ -232,6 +328,15 @@
 
   .profileCard {
     padding: 18px;
+  }
+
+  .socialRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .socialActions {
+    width: 100%;
   }
 
   .logoutButton {

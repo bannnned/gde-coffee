@@ -176,9 +176,19 @@
 }
 
 :root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group {
-  background: var(--glass-bg);
-  border-color: var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  /* Keep built-in dark SVG icons readable inside MapLibre controls. */
+  background: rgba(255, 255, 240, 0.88);
+  border-color: rgba(255, 255, 240, 0.72);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button + button {
+  border-top-color: rgba(26, 26, 26, 0.14);
+}
+
+:root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button:not(:disabled):hover,
+:root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button:not(:disabled):active {
+  background-color: rgba(26, 26, 26, 0.08);
 }
 
 .glass-action {
@@ -328,6 +338,11 @@
 
 :root[data-mantine-color-scheme='dark'] .oauth-button {
   border-color: var(--glass-border);
+  color: var(--text);
+}
+
+:root[data-mantine-color-scheme='dark'] .oauth-button svg {
+  color: currentColor;
 }
 
 :root[data-mantine-color-scheme='dark'] .oauth-button:hover {
