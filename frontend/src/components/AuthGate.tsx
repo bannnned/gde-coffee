@@ -26,6 +26,7 @@ import { IconBrandGithub, IconBrandYandex } from "@tabler/icons-react";
 
 import type { AuthUser, LoginPayload, RegisterPayload } from "../api/auth";
 import * as authApi from "../api/auth";
+import { buildOAuthStartUrl } from "../api/url";
 import TelegramLoginWidget from "./TelegramLoginWidget";
 
 type AuthStatus = "loading" | "authed" | "unauth" | "error";
@@ -223,15 +224,8 @@ export default function AuthGate({ children }: PropsWithChildren) {
     });
   }, []);
 
-  const githubAuthUrl = useMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-    return base ? `${base}/api/auth/github/start` : "/api/auth/github/start";
-  }, []);
-
-  const yandexAuthUrl = useMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-    return base ? `${base}/api/auth/yandex/start` : "/api/auth/yandex/start";
-  }, []);
+  const githubAuthUrl = useMemo(() => buildOAuthStartUrl("github"), []);
+  const yandexAuthUrl = useMemo(() => buildOAuthStartUrl("yandex"), []);
 
   const titleText = isRegister ? "Регистрация" : "Вход";
   const submitLabel = isRegister ? "Создать аккаунт" : "Войти";

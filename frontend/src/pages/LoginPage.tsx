@@ -3,16 +3,12 @@ import { IconBrandGithub, IconBrandYandex } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
+import { buildOAuthStartUrl } from "../api/url";
 import { useAuth } from "../components/AuthGate";
 import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import useOauthRedirect from "../hooks/useOauthRedirect";
 import classes from "./LoginPage.module.css";
-
-const buildAuthUrl = (path: string) => {
-  const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-  return base ? `${base}${path}` : path;
-};
 
 export default function LoginPage() {
   useAllowBodyScroll();
@@ -26,11 +22,11 @@ export default function LoginPage() {
   });
 
   const githubAuthUrl = useMemo(
-    () => buildAuthUrl("/api/auth/github/start"),
+    () => buildOAuthStartUrl("github"),
     [],
   );
   const yandexAuthUrl = useMemo(
-    () => buildAuthUrl("/api/auth/yandex/start"),
+    () => buildOAuthStartUrl("yandex"),
     [],
   );
   const oauthIconProps = {

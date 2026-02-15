@@ -1,4 +1,5 @@
 import { http } from "./http";
+import { uploadByPresignedUrl } from "./presignedUpload";
 import type { CafePhoto, CafePhotoKind } from "../entities/cafe/model/types";
 
 export type CafePhotoPresignPayload = {
@@ -57,39 +58,7 @@ export async function uploadCafePhotoByPresignedUrl(
   file: File,
   headers: Record<string, string>,
 ): Promise<void> {
-  const filteredHeaders: Record<string, string> = {};
-  for (const [key, value] of Object.entries(headers ?? {})) {
-    const lower = key.toLowerCase();
-    if (
-      lower === "host" ||
-      lower === "content-length" ||
-      lower === "user-agent" ||
-      lower === "accept-encoding" ||
-      lower === "connection"
-    ) {
-      continue;
-    }
-    filteredHeaders[key] = value;
-  }
-  if (!Object.keys(filteredHeaders).some((key) => key.toLowerCase() === "content-type")) {
-    filteredHeaders["Content-Type"] = file.type || "application/octet-stream";
-  }
-
-  const response = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: filteredHeaders,
-    body: file,
-  });
-  if (!response.ok) {
-    let details = "";
-    try {
-      const text = await response.text();
-      details = text ? `: ${text.slice(0, 240)}` : "";
-    } catch {
-      details = "";
-    }
-    throw new Error(`upload failed (${response.status})${details}`);
-  }
+  await uploadByPresignedUrl(uploadUrl, file, headers);
 }
 
 export async function confirmCafePhotoUpload(

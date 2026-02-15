@@ -7,11 +7,10 @@ import {
   Group,
   Text,
   UnstyledButton,
-  rem,
   useMantineTheme,
 } from "@mantine/core";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { IconHeartFilled, IconLogin } from "@tabler/icons-react";
+import { IconHeart, IconHeartFilled, IconLogin } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 import { ColorSchemeToggle } from "../../../components/ColorSchemeToggle";
@@ -21,6 +20,9 @@ import { AMENITY_LABELS, DISCOVERY_ICONS, DISCOVERY_UI_TEXT } from "../constants
 import classes from "./FiltersBar.module.css";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
 import { resolveAvatarUrl } from "../../../utils/resolveAvatarUrl";
+import {
+  createDiscoveryAmenityChipLabelStyles,
+} from "../ui/styles/glass";
 
 type FiltersBarProps = {
   selectedAmenities: Amenity[];
@@ -73,37 +75,7 @@ export default function FiltersBar({
     return value;
   }, [user]);
 
-  const amenityChipLabelBaseStyles = {
-    boxSizing: "border-box",
-    minWidth: 72,
-    display: "inline-flex",
-    justifyContent: "center",
-    alignItems: "center",
-    fontWeight: 500,
-    fontSize: theme.fontSizes.xs,
-    lineHeight: 1,
-    letterSpacing: 0,
-    transform: "none",
-    paddingInline: 10,
-    paddingBlock: 8,
-    border: "1px solid var(--border)",
-    color: "var(--text)",
-    backdropFilter: "blur(18px) saturate(180%)",
-    WebkitBackdropFilter: "blur(18px) saturate(180%)",
-    background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-    boxShadow: "var(--glass-shadow)",
-    outline: "none",
-    "&:active": {
-      transform: "none",
-    },
-  } as const;
-
-  const amenityChipLabelCheckedStyles = {
-    background: "var(--color-brand-accent-soft)",
-    borderColor: "var(--accent)",
-    boxShadow: "0 8px 20px var(--attention-glow)",
-    transform: "none",
-  } as const;
+  const amenityChipLabelStyles = createDiscoveryAmenityChipLabelStyles(theme.fontSizes.xs);
 
   useLayoutEffect(() => {
     const container = chipsScrollerRef.current;
@@ -229,6 +201,19 @@ export default function FiltersBar({
         )}
 
         <Group gap="xs">
+          {canToggleFavorites && (
+            <ActionIcon
+              variant="transparent"
+              size={42}
+              className={`glass-action glass-action--square ${
+                favoritesOnly ? classes.favoriteHeaderButtonActive : ""
+              }`}
+              aria-label="Избранные кофейни"
+              onClick={onToggleFavorites}
+            >
+              {favoritesOnly ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
+            </ActionIcon>
+          )}
           <ActionIcon
             variant="transparent"
             size={42}
@@ -246,36 +231,6 @@ export default function FiltersBar({
       </Group>
 
       <Group mt="xs" gap="xs" wrap="nowrap" className={classes.chipsRow}>
-        {canToggleFavorites && (
-          <Button
-            size="xs"
-            radius="xl"
-            variant={favoritesOnly ? "filled" : "default"}
-            leftSection={<IconHeartFilled size={rem(14)} />}
-            className={classes.favoriteToggle}
-            onClick={onToggleFavorites}
-            styles={{
-              root: {
-                display: "inline-flex",
-                flex: "0 0 auto",
-                width: "fit-content",
-                border: "1px solid var(--border)",
-                background: favoritesOnly
-                  ? "var(--color-brand-accent)"
-                  : "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-                color: favoritesOnly ? "var(--color-on-accent)" : "var(--text)",
-                boxShadow: "var(--glass-shadow)",
-                backdropFilter: "blur(12px) saturate(160%)",
-                WebkitBackdropFilter: "blur(12px) saturate(160%)",
-              },
-              inner: {
-                gap: 6,
-              },
-            }}
-          >
-            Избранное
-          </Button>
-        )}
         <div
           className={classes.chipsScroller}
           ref={chipsScrollerRef}
@@ -301,8 +256,8 @@ export default function FiltersBar({
                   styles={{
                     iconWrapper: { display: "none" },
                     label: {
-                      ...amenityChipLabelBaseStyles,
-                      ...(isChecked ? amenityChipLabelCheckedStyles : null),
+                      ...amenityChipLabelStyles.base,
+                      ...(isChecked ? amenityChipLabelStyles.checked : null),
                     },
                   }}
                 >
@@ -353,8 +308,8 @@ export default function FiltersBar({
                 styles={{
                   iconWrapper: { display: "none" },
                   label: {
-                    ...amenityChipLabelBaseStyles,
-                    ...(isChecked ? amenityChipLabelCheckedStyles : null),
+                    ...amenityChipLabelStyles.base,
+                    ...(isChecked ? amenityChipLabelStyles.checked : null),
                   },
                 }}
               >

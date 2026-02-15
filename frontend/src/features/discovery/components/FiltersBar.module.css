@@ -76,6 +76,22 @@
   flex-shrink: 0;
 }
 
+.favoriteHeaderButtonActive {
+  color: var(--color-on-accent);
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 8px 20px var(--attention-glow);
+}
+
+.favoriteHeaderButtonActive::before {
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-accent),
+    var(--color-brand-accent-strong)
+  );
+}
+
 .chipsGroup {
   display: flex;
   flex-wrap: nowrap;

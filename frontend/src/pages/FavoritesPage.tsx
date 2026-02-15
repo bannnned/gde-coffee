@@ -10,10 +10,11 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { IconArrowLeft, IconHeartFilled, IconMapPin } from "@tabler/icons-react";
+import { IconArrowLeft, IconHeartFilled } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 import { listFavoriteCafes, removeCafeFromFavorites } from "../api/favorites";
+import CafeDetailsScreen from "../features/discovery/ui/details/CafeDetailsScreen";
 import type { Cafe } from "../types";
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
@@ -26,6 +27,8 @@ export default function FavoritesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [busyCafeId, setBusyCafeId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCafe, setSelectedCafe] = useState<Cafe | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const title = useMemo(
     () => (cafes.length === 1 ? "1 кофейня" : `${cafes.length} кофеен`),
@@ -138,6 +141,19 @@ export default function FavoritesPage() {
                     "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
                   border: "1px solid var(--glass-border)",
                   boxShadow: "var(--shadow)",
+                  cursor: "pointer",
+                }}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setSelectedCafe(cafe);
+                  setDetailsOpen(true);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  setSelectedCafe(cafe);
+                  setDetailsOpen(true);
                 }}
               >
                 <Stack gap="sm">
@@ -174,27 +190,16 @@ export default function FavoritesPage() {
                       </Text>
                     </Stack>
                     <Group gap={6} wrap="nowrap">
-                      <Button
-                        size="xs"
-                        variant="light"
-                        leftSection={<IconMapPin size={14} />}
-                        onClick={() =>
-                          window.open(
-                            `https://yandex.ru/maps/?pt=${cafe.longitude},${cafe.latitude}&z=16&l=map`,
-                            "_blank",
-                            "noopener,noreferrer",
-                          )
-                        }
-                      >
-                        На карте
-                      </Button>
                       <ActionIcon
                         size="md"
                         variant="light"
                         color="red"
                         aria-label="Убрать из избранного"
                         loading={busyCafeId === cafe.id}
-                        onClick={() => void handleRemove(cafe.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleRemove(cafe.id);
+                        }}
                       >
                         <IconHeartFilled size={16} />
                       </ActionIcon>
@@ -204,6 +209,14 @@ export default function FavoritesPage() {
               </Paper>
             );
           })}
+
+          <CafeDetailsScreen
+            opened={detailsOpen}
+            cafe={selectedCafe}
+            onClose={() => setDetailsOpen(false)}
+            showDistance={false}
+            showRoutes={false}
+          />
         </Stack>
       </Container>
     </Box>

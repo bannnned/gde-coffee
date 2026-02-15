@@ -51,9 +51,10 @@
 
 .avatarWrap {
   position: relative;
-  display: inline-flex;
+  display: inline-block;
   width: 120px;
   height: 120px;
+  line-height: 0;
 }
 
 .avatarLarge {
@@ -67,11 +68,9 @@
   font-size: 2.2rem;
   font-weight: 700;
   color: var(--text);
-  background: radial-gradient(
-      circle at 30% 30%,
+  background: radial-gradient(circle at 30% 30%,
       var(--glass-grad-hover-1),
-      var(--surface)
-    ),
+      var(--surface)),
     linear-gradient(135deg, var(--accent), var(--glass-grad-hover-1));
   border: 4px solid var(--glass-border);
   box-shadow: var(--shadow);
@@ -80,9 +79,8 @@
 
 .avatarPlusButton {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  transform: translate(18%, 18%);
+  right: -32px;
+  top: -94px;
   z-index: 2;
   border: 1px solid var(--glass-border);
   background: linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2));

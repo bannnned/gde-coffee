@@ -7,6 +7,7 @@ import {
 } from "@tabler/icons-react";
 
 import * as authApi from "../../../api/auth";
+import { buildOAuthLinkUrl } from "../../../api/url";
 import useOauthRedirect from "../../../hooks/useOauthRedirect";
 import { resolveAvatarUrl } from "../../../utils/resolveAvatarUrl";
 
@@ -69,15 +70,8 @@ export default function useProfileAccount({
     setNameDraft(editableName);
   }, [editableName]);
 
-  const githubAuthUrl = useMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-    return base ? `${base}/api/auth/github/link/start` : "/api/auth/github/link/start";
-  }, []);
-
-  const yandexAuthUrl = useMemo(() => {
-    const base = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-    return base ? `${base}/api/auth/yandex/link/start` : "/api/auth/yandex/link/start";
-  }, []);
+  const githubAuthUrl = useMemo(() => buildOAuthLinkUrl("github"), []);
+  const yandexAuthUrl = useMemo(() => buildOAuthLinkUrl("yandex"), []);
 
   const isProviderLinked = useCallback(
     (providerName: string) =>

@@ -13,6 +13,11 @@ import { IconMapPin, IconPlus } from "@tabler/icons-react";
 
 import type { Amenity } from "../../../../entities/cafe/model/types";
 import { AMENITY_LABELS, DISCOVERY_UI_TEXT } from "../../constants";
+import {
+  createDiscoveryAmenityChipLabelStyles,
+  getDiscoveryGlassButtonStyles,
+  discoveryGlassSelectStyles,
+} from "../styles/glass";
 
 type LocationOption = {
   id: string;
@@ -79,78 +84,7 @@ export default function SettingsDrawer({
       backgroundColor: "var(--color-surface-overlay-soft)",
     },
   } as const;
-
-  const glassButtonBase = {
-    background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-    border: "1px solid var(--glass-border)",
-    boxShadow: "var(--glass-shadow)",
-    backdropFilter: "blur(16px) saturate(180%)",
-    WebkitBackdropFilter: "blur(16px) saturate(180%)",
-    color: "var(--text)",
-  } as const;
-
-  const glassButtonActive = {
-    background: "var(--color-brand-accent-soft)",
-    border: "1px solid var(--accent)",
-    color: "var(--text)",
-    boxShadow: "0 8px 20px var(--attention-glow)",
-  } as const;
-
-  const glassButtonStyles = (active: boolean) => ({
-    root: {
-      ...(glassButtonBase as object),
-      ...(active ? (glassButtonActive as object) : null),
-    },
-  });
-
-  const citySelectStyles = {
-    input: {
-      borderRadius: 12,
-      border: "1px solid var(--glass-border)",
-      background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-      boxShadow: "var(--glass-shadow)",
-      color: "var(--text)",
-      backdropFilter: "blur(16px) saturate(180%)",
-      WebkitBackdropFilter: "blur(16px) saturate(180%)",
-    },
-    dropdown: {
-      borderRadius: 12,
-      border: "1px solid var(--glass-border)",
-      background: "var(--card)",
-      boxShadow: "var(--shadow)",
-    },
-  } as const;
-
-  const amenityChipLabelBaseStyles = {
-    boxSizing: "border-box",
-    minWidth: 72,
-    display: "inline-flex",
-    justifyContent: "center",
-    alignItems: "center",
-    fontWeight: 500,
-    fontSize: theme.fontSizes.xs,
-    lineHeight: 1,
-    letterSpacing: 0,
-    transform: "none",
-    paddingInline: 10,
-    paddingBlock: 8,
-    border: "1px solid var(--border)",
-    backdropFilter: "blur(18px) saturate(180%)",
-    WebkitBackdropFilter: "blur(18px) saturate(180%)",
-    background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-    boxShadow: "var(--glass-shadow)",
-    outline: "none",
-    "&:active": {
-      transform: "none",
-    },
-  } as const;
-
-  const amenityChipLabelCheckedStyles = {
-    background: "var(--color-brand-accent-soft)",
-    borderColor: "var(--accent)",
-    boxShadow: "0 8px 20px var(--attention-glow)",
-    transform: "none",
-  } as const;
+  const amenityChipLabelStyles = createDiscoveryAmenityChipLabelStyles(theme.fontSizes.xs);
 
   return (
     <Drawer
@@ -196,13 +130,13 @@ export default function SettingsDrawer({
               onSelectLocation(value);
             }}
             comboboxProps={{ withinPortal: false }}
-            styles={citySelectStyles}
+            styles={discoveryGlassSelectStyles}
           />
           <Button
             variant="light"
             leftSection={<IconMapPin size={16} />}
             onClick={onOpenMapPicker}
-            styles={glassButtonStyles(false)}
+            styles={getDiscoveryGlassButtonStyles(false)}
           >
             Выбрать вручную на карте
           </Button>
@@ -214,7 +148,7 @@ export default function SettingsDrawer({
             variant="light"
             leftSection={<IconPlus size={16} />}
             onClick={onSuggestCafe}
-            styles={glassButtonStyles(false)}
+            styles={getDiscoveryGlassButtonStyles(false)}
           >
             Предложить кофейню
           </Button>
@@ -248,8 +182,8 @@ export default function SettingsDrawer({
                     styles={{
                       iconWrapper: { display: "none" },
                       label: {
-                        ...amenityChipLabelBaseStyles,
-                        ...(isChecked ? amenityChipLabelCheckedStyles : null),
+                        ...amenityChipLabelStyles.base,
+                        ...(isChecked ? amenityChipLabelStyles.checked : null),
                       },
                     }}
                   >
@@ -274,7 +208,7 @@ export default function SettingsDrawer({
                 key={value}
                 variant="transparent"
                 size="xs"
-                styles={glassButtonStyles(
+                styles={getDiscoveryGlassButtonStyles(
                   isRadiusLocked ? value === 0 : radiusM === value,
                 )}
                 onClick={() => {
