@@ -1,0 +1,522 @@
+package reviews
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"backend/internal/config"
+	dbmigrations "backend/migrations"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var (
+	integrationPoolOnce sync.Once
+	integrationPool     *pgxpool.Pool
+	integrationPoolErr  error
+)
+
+func integrationTestPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+
+	dbURL := strings.TrimSpace(os.Getenv("TEST_DATABASE_URL"))
+	usingFallback := false
+	if dbURL == "" {
+		for _, key := range []string{"DATABASE_URL", "DATABASE_URL_2", "DATABASE_URL_3"} {
+			value := strings.TrimSpace(os.Getenv(key))
+			if value == "" {
+				continue
+			}
+			dbURL = value
+			usingFallback = true
+			break
+		}
+	}
+	if dbURL == "" {
+		t.Skip("TEST_DATABASE_URL and DATABASE_URL* are not set; skipping DB integration tests")
+	}
+	if usingFallback {
+		t.Log("TEST_DATABASE_URL is not set, using DATABASE_URL fallback for integration tests")
+	}
+
+	integrationPoolOnce.Do(func() {
+		if err := dbmigrations.Run(dbURL); err != nil {
+			integrationPoolErr = fmt.Errorf("run migrations: %w", err)
+			return
+		}
+		pool, err := pgxpool.New(context.Background(), dbURL)
+		if err != nil {
+			integrationPoolErr = fmt.Errorf("create pool: %w", err)
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := pool.Ping(ctx); err != nil {
+			integrationPoolErr = fmt.Errorf("ping pool: %w", err)
+			pool.Close()
+			return
+		}
+		integrationPool = pool
+	})
+
+	if integrationPoolErr != nil {
+		t.Fatalf("integration pool init failed: %v", integrationPoolErr)
+	}
+	return integrationPool
+}
+
+func newIntegrationRouter(pool *pgxpool.Pool) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	repository := NewRepository(pool)
+	service := NewService(repository)
+	handler := NewHandler(service, nil, config.MediaConfig{})
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		if userID := strings.TrimSpace(c.GetHeader("X-Test-User-ID")); userID != "" {
+			c.Set("user_id", userID)
+		}
+		if role := strings.ToLower(strings.TrimSpace(c.GetHeader("X-Test-Role"))); role != "" {
+			c.Set("user_role", role)
+		}
+		c.Next()
+	})
+
+	router.POST("/api/reviews", handler.Create)
+	router.PATCH("/api/reviews/:id", handler.Update)
+
+	admin := router.Group("/api/admin/drinks")
+	admin.Use(testRequireRoles("admin", "moderator"))
+	admin.POST("/unknown/:id/map", handler.MapUnknownDrink)
+
+	return router
+}
+
+func testRequireRoles(roles ...string) gin.HandlerFunc {
+	allowed := make(map[string]struct{}, len(roles))
+	for _, role := range roles {
+		next := strings.ToLower(strings.TrimSpace(role))
+		if next == "" {
+			continue
+		}
+		allowed[next] = struct{}{}
+	}
+	return func(c *gin.Context) {
+		role := strings.ToLower(strings.TrimSpace(c.GetString("user_role")))
+		if _, ok := allowed[role]; !ok {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"code":    "forbidden",
+				"message": "insufficient role",
+			})
+			return
+		}
+		c.Next()
+	}
+}
+
+func performJSONRequest(
+	t *testing.T,
+	router *gin.Engine,
+	method string,
+	path string,
+	headers map[string]string,
+	payload interface{},
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	var body []byte
+	if payload != nil {
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			t.Fatalf("marshal payload: %v", err)
+		}
+		body = raw
+	}
+
+	req := httptest.NewRequest(method, path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func mustCreateTestUser(t *testing.T, pool *pgxpool.Pool, role string) string {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	email := fmt.Sprintf("reviews-it-%d@example.com", time.Now().UnixNano())
+	var id string
+	err := pool.QueryRow(
+		ctx,
+		`insert into users (email_normalized, display_name, role)
+		 values ($1, $2, $3)
+		 returning id::text`,
+		email,
+		"it user",
+		strings.ToLower(strings.TrimSpace(role)),
+	).Scan(&id)
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	return id
+}
+
+func mustCreateTestCafe(t *testing.T, pool *pgxpool.Pool) string {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var id string
+	err := pool.QueryRow(
+		ctx,
+		`insert into cafes (name, lat, lng, address)
+		 values ($1, $2, $3, $4)
+		 returning id::text`,
+		fmt.Sprintf("test cafe %d", time.Now().UnixNano()),
+		55.751244,
+		37.618423,
+		"integration test",
+	).Scan(&id)
+	if err != nil {
+		t.Fatalf("create cafe: %v", err)
+	}
+	return id
+}
+
+func mustExec(t *testing.T, pool *pgxpool.Pool, query string, args ...interface{}) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := pool.Exec(ctx, query, args...); err != nil {
+		t.Fatalf("exec query failed: %v", err)
+	}
+}
+
+func mustDeleteTestUser(t *testing.T, pool *pgxpool.Pool, userID string) {
+	t.Helper()
+	if strings.TrimSpace(userID) == "" {
+		return
+	}
+	mustExec(t, pool, `delete from users where id = $1::uuid`, userID)
+}
+
+func mustDeleteTestCafe(t *testing.T, pool *pgxpool.Pool, cafeID string) {
+	t.Helper()
+	if strings.TrimSpace(cafeID) == "" {
+		return
+	}
+	mustExec(t, pool, `delete from cafes where id = $1::uuid`, cafeID)
+}
+
+func TestReviewsCreateWithUnknownDrink(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userID := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustExec(t, pool, `delete from drink_unknown_formats where name = $1`, "v-60 sparkling tonic")
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	rec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":    userID,
+			"Idempotency-Key":   fmt.Sprintf("it-create-%d", time.Now().UnixNano()),
+			"X-Test-Role":       "user",
+			"X-Requested-By-IT": "true",
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     5,
+			"drink":      "  V-60  Sparkling   Tonic ",
+			"taste_tags": []string{"acidity", "berries"},
+			"summary":    "Очень яркая чашка с ягодной кислотностью, чистым телом и длинным послевкусием. Вернусь повторно.",
+			"photos":     []string{},
+		},
+	)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d, body=%s", rec.Code, rec.Body.String())
+	}
+
+	var createResp struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+	if strings.TrimSpace(createResp.ReviewID) == "" {
+		t.Fatalf("review_id is empty in response: %s", rec.Body.String())
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var drinkID, drinkName string
+	if err := pool.QueryRow(
+		ctx,
+		`select coalesce(drink_id, ''), coalesce(drink_name, '')
+		   from review_attributes
+		  where review_id = $1::uuid`,
+		createResp.ReviewID,
+	).Scan(&drinkID, &drinkName); err != nil {
+		t.Fatalf("load review_attributes: %v", err)
+	}
+	if strings.TrimSpace(drinkID) != "" {
+		t.Fatalf("expected empty drink_id for unknown drink, got %q", drinkID)
+	}
+	if drinkName != "v-60 sparkling tonic" {
+		t.Fatalf("expected normalized drink_name, got %q", drinkName)
+	}
+
+	var mentions int
+	var status string
+	if err := pool.QueryRow(
+		ctx,
+		`select mentions_count, status
+		   from drink_unknown_formats
+		  where name = $1`,
+		"v-60 sparkling tonic",
+	).Scan(&mentions, &status); err != nil {
+		t.Fatalf("load drink_unknown_formats: %v", err)
+	}
+	if mentions < 1 {
+		t.Fatalf("expected mentions_count >= 1, got %d", mentions)
+	}
+	if status != "new" {
+		t.Fatalf("expected status=new, got %q", status)
+	}
+}
+
+func TestReviewsPatchWithUnknownDrink(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userID := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustExec(t, pool, `delete from drink_unknown_formats where name = $1`, "filter fusion 2026")
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-patch-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     4,
+			"drink_id":   "espresso",
+			"taste_tags": []string{"chocolate"},
+			"summary":    "Сбалансированный эспрессо с выраженной сладостью, хорошей структурой и чистым послевкусием без горечи.",
+			"photos":     []string{},
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+
+	var createResp struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+	if strings.TrimSpace(createResp.ReviewID) == "" {
+		t.Fatalf("empty review_id: %s", createRec.Body.String())
+	}
+
+	patchRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPatch,
+		"/api/reviews/"+createResp.ReviewID,
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-patch-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"drink": "  filter fusion   2026 ",
+		},
+	)
+	if patchRec.Code != http.StatusOK {
+		t.Fatalf("patch expected 200, got %d, body=%s", patchRec.Code, patchRec.Body.String())
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var drinkID, drinkName string
+	if err := pool.QueryRow(
+		ctx,
+		`select coalesce(drink_id, ''), coalesce(drink_name, '')
+		   from review_attributes
+		  where review_id = $1::uuid`,
+		createResp.ReviewID,
+	).Scan(&drinkID, &drinkName); err != nil {
+		t.Fatalf("load review_attributes after patch: %v", err)
+	}
+	if strings.TrimSpace(drinkID) != "" {
+		t.Fatalf("expected empty drink_id for unknown drink after patch, got %q", drinkID)
+	}
+	if drinkName != "filter fusion 2026" {
+		t.Fatalf("expected normalized drink_name after patch, got %q", drinkName)
+	}
+
+	var mentions int
+	if err := pool.QueryRow(
+		ctx,
+		`select mentions_count
+		   from drink_unknown_formats
+		  where name = $1`,
+		"filter fusion 2026",
+	).Scan(&mentions); err != nil {
+		t.Fatalf("load unknown format after patch: %v", err)
+	}
+	if mentions < 1 {
+		t.Fatalf("expected mentions_count >= 1, got %d", mentions)
+	}
+}
+
+func TestAdminMapUnknownDrinkFormatEndpoint(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	adminUserID := mustCreateTestUser(t, pool, "admin")
+	unknownName := fmt.Sprintf("rare map brew %d", time.Now().UnixNano())
+	drinkID := fmt.Sprintf("it-map-%d", time.Now().UnixNano())
+	drinkName := fmt.Sprintf("it map drink %d", time.Now().UnixNano())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var unknownID int64
+	if err := pool.QueryRow(
+		ctx,
+		`insert into drink_unknown_formats (name, mentions_count, first_seen_at, last_seen_at, status)
+		 values ($1, 3, now(), now(), 'new')
+		 returning id`,
+		unknownName,
+	).Scan(&unknownID); err != nil {
+		t.Fatalf("insert unknown format: %v", err)
+	}
+
+	if _, err := pool.Exec(
+		ctx,
+		`insert into drinks (id, name, aliases, description, category, popularity_rank, is_active, created_at, updated_at)
+		 values ($1, $2, '{}'::text[], '', 'test', 100, true, now(), now())`,
+		drinkID,
+		drinkName,
+	); err != nil {
+		t.Fatalf("insert target drink: %v", err)
+	}
+
+	t.Cleanup(func() {
+		mustExec(t, pool, `delete from drink_unknown_formats where id = $1`, unknownID)
+		mustExec(t, pool, `delete from drinks where id = $1`, drinkID)
+		mustDeleteTestUser(t, pool, adminUserID)
+	})
+
+	mapRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		fmt.Sprintf("/api/admin/drinks/unknown/%d/map", unknownID),
+		map[string]string{
+			"X-Test-User-ID": adminUserID,
+			"X-Test-Role":    "admin",
+		},
+		map[string]interface{}{
+			"drink_id":  drinkID,
+			"add_alias": true,
+		},
+	)
+	if mapRec.Code != http.StatusOK {
+		t.Fatalf("map expected 200, got %d, body=%s", mapRec.Code, mapRec.Body.String())
+	}
+
+	var mapResp struct {
+		Unknown struct {
+			Status        string `json:"status"`
+			MappedDrinkID string `json:"mapped_drink_id"`
+		} `json:"unknown"`
+	}
+	if err := json.Unmarshal(mapRec.Body.Bytes(), &mapResp); err != nil {
+		t.Fatalf("decode map response: %v", err)
+	}
+	if mapResp.Unknown.Status != "mapped" {
+		t.Fatalf("expected response status=mapped, got %q", mapResp.Unknown.Status)
+	}
+	if mapResp.Unknown.MappedDrinkID != drinkID {
+		t.Fatalf("expected response mapped_drink_id=%q, got %q", drinkID, mapResp.Unknown.MappedDrinkID)
+	}
+
+	var (
+		status       string
+		mappedDrink  string
+		drinkAliases []string
+	)
+	if err := pool.QueryRow(
+		ctx,
+		`select status, coalesce(mapped_drink_id, '')
+		   from drink_unknown_formats
+		  where id = $1`,
+		unknownID,
+	).Scan(&status, &mappedDrink); err != nil {
+		t.Fatalf("load unknown after map: %v", err)
+	}
+	if status != "mapped" {
+		t.Fatalf("expected persisted status=mapped, got %q", status)
+	}
+	if mappedDrink != drinkID {
+		t.Fatalf("expected persisted mapped_drink_id=%q, got %q", drinkID, mappedDrink)
+	}
+
+	if err := pool.QueryRow(
+		ctx,
+		`select aliases
+		   from drinks
+		  where id = $1`,
+		drinkID,
+	).Scan(&drinkAliases); err != nil {
+		t.Fatalf("load drink aliases after map: %v", err)
+	}
+	foundAlias := false
+	for _, alias := range drinkAliases {
+		if alias == unknownName {
+			foundAlias = true
+			break
+		}
+	}
+	if !foundAlias {
+		t.Fatalf("expected alias %q to be added, got aliases=%v", unknownName, drinkAliases)
+	}
+}
