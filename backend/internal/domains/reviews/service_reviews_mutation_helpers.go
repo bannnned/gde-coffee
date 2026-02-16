@@ -15,7 +15,7 @@ func validateCreateReviewRequest(req PublishReviewRequest) error {
 	if req.Rating < 1 || req.Rating > 5 {
 		return ErrConflict
 	}
-	if strings.TrimSpace(req.DrinkID) == "" && strings.TrimSpace(req.Drink) == "" {
+	if len(req.Positions) == 0 && strings.TrimSpace(req.DrinkID) == "" && strings.TrimSpace(req.Drink) == "" {
 		return ErrConflict
 	}
 	if utfRuneLen(req.Summary) < minReviewSummaryLength {
@@ -33,7 +33,7 @@ func validateEffectiveReviewState(state cafeReviewState, enforceSummaryMin bool)
 	if state.Rating < 1 || state.Rating > 5 {
 		return ErrConflict
 	}
-	if strings.TrimSpace(state.DrinkID) == "" && strings.TrimSpace(state.DrinkName) == "" {
+	if len(state.Positions) == 0 && strings.TrimSpace(state.DrinkID) == "" && strings.TrimSpace(state.DrinkName) == "" {
 		return ErrConflict
 	}
 	if enforceSummaryMin && utfRuneLen(state.Summary) < minReviewSummaryLength {
@@ -111,6 +111,39 @@ func (s *Service) loadReviewStateForUpdateTx(ctx context.Context, tx pgx.Tx, rev
 	}
 	state.Photos = photos
 	state.PhotoCount = len(photos)
+
+	positionRows, err := tx.Query(ctx, sqlSelectReviewPositions, state.ReviewID)
+	if err != nil {
+		return state, err
+	}
+	defer positionRows.Close()
+
+	positions := make([]reviewPositionState, 0, 4)
+	for positionRows.Next() {
+		var item reviewPositionState
+		if err := positionRows.Scan(&item.Position, &item.DrinkID, &item.DrinkName); err != nil {
+			return state, err
+		}
+		item.DrinkID = normalizeDrinkToken(item.DrinkID)
+		item.DrinkName = normalizeDrinkText(item.DrinkName)
+		positions = append(positions, item)
+	}
+	if err := positionRows.Err(); err != nil {
+		return state, err
+	}
+	state.Positions = positions
+	if len(state.Positions) > 0 {
+		state.DrinkID = state.Positions[0].DrinkID
+		state.DrinkName = state.Positions[0].DrinkName
+	} else if state.DrinkID != "" || state.DrinkName != "" {
+		state.Positions = []reviewPositionState{
+			{
+				Position:  1,
+				DrinkID:   state.DrinkID,
+				DrinkName: state.DrinkName,
+			},
+		}
+	}
 	return state, nil
 }
 
@@ -164,4 +197,76 @@ func (s *Service) replaceReviewPhotosTx(
 		}
 	}
 	return nil
+}
+
+func (s *Service) replaceReviewPositionsTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	reviewID string,
+	positions []reviewPositionState,
+) error {
+	if _, err := tx.Exec(ctx, sqlDeleteReviewPositions, reviewID); err != nil {
+		return err
+	}
+	for idx, item := range positions {
+		drinkID := normalizeDrinkToken(item.DrinkID)
+		drinkName := normalizeDrinkText(item.DrinkName)
+		if drinkID == "" && drinkName == "" {
+			continue
+		}
+		if _, err := tx.Exec(
+			ctx,
+			sqlInsertReviewPosition,
+			reviewID,
+			idx+1,
+			drinkID,
+			drinkName,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) resolveReviewPositionsTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	input []ReviewPositionDTO,
+	userID string,
+) ([]ReviewPositionDTO, error) {
+	normalized := normalizeReviewPositions(input)
+	if len(normalized) == 0 {
+		return nil, ErrInvalidDrink
+	}
+
+	resolved := make([]ReviewPositionDTO, 0, len(normalized))
+	for _, item := range normalized {
+		choice, err := s.resolveDrinkInputTx(ctx, tx, item.DrinkID, item.Drink, userID)
+		if err != nil {
+			return nil, err
+		}
+		resolved = append(resolved, ReviewPositionDTO{
+			DrinkID: choice.ID,
+			Drink:   choice.Name,
+		})
+	}
+
+	// Re-normalize after resolution to collapse aliases to one canonical drink_id.
+	resolved = normalizeReviewPositions(resolved)
+	if len(resolved) == 0 {
+		return nil, ErrInvalidDrink
+	}
+	return resolved, nil
+}
+
+func mapReviewPositionDTOToState(input []ReviewPositionDTO) []reviewPositionState {
+	positions := make([]reviewPositionState, 0, len(input))
+	for idx, item := range input {
+		positions = append(positions, reviewPositionState{
+			Position:  idx + 1,
+			DrinkID:   normalizeDrinkToken(item.DrinkID),
+			DrinkName: normalizeDrinkText(item.Drink),
+		})
+	}
+	return positions
 }

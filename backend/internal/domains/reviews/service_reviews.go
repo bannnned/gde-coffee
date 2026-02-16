@@ -73,12 +73,13 @@ func (s *Service) CreateReview(
 			return 0, nil, ErrDuplicateContent
 		}
 
-		resolved, err := s.resolveDrinkInputTx(ctx, tx, request.DrinkID, request.Drink, userID)
+		resolvedPositions, err := s.resolveReviewPositionsTx(ctx, tx, request.Positions, userID)
 		if err != nil {
 			return 0, nil, err
 		}
-		request.DrinkID = resolved.ID
-		request.Drink = resolved.Name
+		request.Positions = resolvedPositions
+		request.DrinkID = resolvedPositions[0].DrinkID
+		request.Drink = resolvedPositions[0].Drink
 
 		var (
 			reviewID  string
@@ -100,6 +101,14 @@ func (s *Service) CreateReview(
 			return 0, nil, err
 		}
 		if err := s.replaceReviewPhotosTx(ctx, tx, reviewID, request.Photos); err != nil {
+			return 0, nil, err
+		}
+		if err := s.replaceReviewPositionsTx(
+			ctx,
+			tx,
+			reviewID,
+			mapReviewPositionDTOToState(request.Positions),
+		); err != nil {
 			return 0, nil, err
 		}
 
@@ -160,11 +169,27 @@ func (s *Service) UpdateReview(
 		if req.Rating != nil {
 			next.Rating = *req.Rating
 		}
-		if req.DrinkID != nil {
-			next.DrinkID = normalizeDrinkToken(*req.DrinkID)
+		if req.Positions != nil {
+			next.Positions = mapReviewPositionDTOToState(normalizeReviewPositions(*req.Positions))
+		} else if req.DrinkID != nil || req.Drink != nil {
+			legacyDrinkID := ""
+			legacyDrinkName := ""
+			if req.DrinkID != nil {
+				legacyDrinkID = *req.DrinkID
+			}
+			if req.Drink != nil {
+				legacyDrinkName = *req.Drink
+			}
+			next.Positions = mapReviewPositionDTOToState(normalizeReviewPositions([]ReviewPositionDTO{
+				{
+					DrinkID: legacyDrinkID,
+					Drink:   legacyDrinkName,
+				},
+			}))
 		}
-		if req.Drink != nil {
-			next.DrinkName = normalizeDrinkText(*req.Drink)
+		if len(next.Positions) > 0 {
+			next.DrinkID = next.Positions[0].DrinkID
+			next.DrinkName = next.Positions[0].DrinkName
 		}
 		if req.TasteTags != nil {
 			next.TasteTags = normalizeTags(*req.TasteTags)
@@ -179,13 +204,21 @@ func (s *Service) UpdateReview(
 		if err := validateEffectiveReviewState(next, req.Summary != nil); err != nil {
 			return 0, nil, err
 		}
-		if req.DrinkID != nil || req.Drink != nil {
-			resolved, err := s.resolveDrinkInputTx(ctx, tx, next.DrinkID, next.DrinkName, userID)
+		if req.Positions != nil || req.DrinkID != nil || req.Drink != nil {
+			rawPositions := make([]ReviewPositionDTO, 0, len(next.Positions))
+			for _, item := range next.Positions {
+				rawPositions = append(rawPositions, ReviewPositionDTO{
+					DrinkID: item.DrinkID,
+					Drink:   item.DrinkName,
+				})
+			}
+			resolved, err := s.resolveReviewPositionsTx(ctx, tx, rawPositions, userID)
 			if err != nil {
 				return 0, nil, err
 			}
-			next.DrinkID = resolved.ID
-			next.DrinkName = resolved.Name
+			next.Positions = mapReviewPositionDTOToState(resolved)
+			next.DrinkID = resolved[0].DrinkID
+			next.DrinkName = resolved[0].Drink
 		}
 		if req.Summary != nil && looksLikeSpamSummary(next.Summary) {
 			return 0, nil, ErrSpamDetected
@@ -219,6 +252,11 @@ func (s *Service) UpdateReview(
 		}
 		if req.Photos != nil {
 			if err := s.replaceReviewPhotosTx(ctx, tx, state.ReviewID, next.Photos); err != nil {
+				return 0, nil, err
+			}
+		}
+		if req.Positions != nil || req.DrinkID != nil || req.Drink != nil {
+			if err := s.replaceReviewPositionsTx(ctx, tx, state.ReviewID, next.Positions); err != nil {
 				return 0, nil, err
 			}
 		}

@@ -74,6 +74,7 @@ export default function DiscoveryScreen() {
     handleToggleFavorite,
     handleOpenPhotoAdmin,
     handlePhotosChanged,
+    handleStartCafeDescriptionEdit,
     handleSaveCafeDescription,
     handleOpenCafeProposal,
     open2gisRoute,
@@ -205,6 +206,7 @@ export default function DiscoveryScreen() {
         showRoutes={!isCityOnlyMode}
         onOpen2gis={selectedCafe ? () => open2gisRoute(selectedCafe) : undefined}
         onOpenYandex={selectedCafe ? () => openYandexRoute(selectedCafe) : undefined}
+        onStartDescriptionEdit={handleStartCafeDescriptionEdit}
         onSaveDescription={handleSaveCafeDescription}
         isFavorite={Boolean(selectedCafe?.is_favorite)}
         onToggleFavorite={handleToggleFavorite}

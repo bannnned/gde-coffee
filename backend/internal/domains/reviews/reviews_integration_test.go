@@ -94,6 +94,8 @@ func newIntegrationRouter(pool *pgxpool.Pool) *gin.Engine {
 
 	router.POST("/api/reviews", handler.Create)
 	router.PATCH("/api/reviews/:id", handler.Update)
+	router.POST("/api/reviews/:id/helpful", handler.AddHelpful)
+	router.GET("/api/cafes/:id/reviews", handler.ListCafeReviews)
 	moderationReviews := router.Group("/api/reviews")
 	moderationReviews.Use(testRequireRoles("admin", "moderator"))
 	moderationReviews.DELETE("/:id", handler.DeleteReview)
@@ -409,6 +411,138 @@ func TestReviewsPatchWithUnknownDrink(t *testing.T) {
 	}
 }
 
+func TestReviewsCreateWithMultiplePositionsAndFilter(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userID := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	unknownName := "ultra bloom 2026"
+	t.Cleanup(func() {
+		mustExec(t, pool, `delete from drink_unknown_formats where name = $1`, unknownName)
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-multi-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id": cafeID,
+			"rating":  5,
+			"positions": []map[string]string{
+				{"drink_id": "espresso"},
+				{"drink": unknownName},
+			},
+			"taste_tags": []string{"sweet", "berries"},
+			"summary":    "Очень сочная чашка: в эспрессо плотное тело и сладость, в альтернативе раскрылись ягоды и чистая кислотность без дефектов.",
+			"photos":     []string{},
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+
+	var createResp struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+	if strings.TrimSpace(createResp.ReviewID) == "" {
+		t.Fatalf("empty review_id: %s", createRec.Body.String())
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var positionsCount int
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*)
+		   from review_positions
+		  where review_id = $1::uuid`,
+		createResp.ReviewID,
+	).Scan(&positionsCount); err != nil {
+		t.Fatalf("count review positions: %v", err)
+	}
+	if positionsCount != 2 {
+		t.Fatalf("expected 2 positions, got %d", positionsCount)
+	}
+
+	listAllRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/cafes/"+cafeID+"/reviews?sort=new",
+		nil,
+		nil,
+	)
+	if listAllRec.Code != http.StatusOK {
+		t.Fatalf("list all expected 200, got %d, body=%s", listAllRec.Code, listAllRec.Body.String())
+	}
+
+	var listAllBody struct {
+		Reviews []struct {
+			ID        string `json:"id"`
+			Positions []struct {
+				DrinkID   string `json:"drink_id"`
+				DrinkName string `json:"drink_name"`
+			} `json:"positions"`
+		} `json:"reviews"`
+		PositionOptions []struct {
+			Key string `json:"key"`
+		} `json:"position_options"`
+	}
+	if err := json.Unmarshal(listAllRec.Body.Bytes(), &listAllBody); err != nil {
+		t.Fatalf("decode list all body: %v", err)
+	}
+	if len(listAllBody.Reviews) != 1 {
+		t.Fatalf("expected 1 review in list, got %d", len(listAllBody.Reviews))
+	}
+	if len(listAllBody.Reviews[0].Positions) != 2 {
+		t.Fatalf("expected review to include 2 positions, got %d", len(listAllBody.Reviews[0].Positions))
+	}
+	if len(listAllBody.PositionOptions) < 2 {
+		t.Fatalf("expected at least 2 position options, got %d", len(listAllBody.PositionOptions))
+	}
+
+	listFilteredRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/cafes/"+cafeID+"/reviews?sort=new&position=espresso",
+		nil,
+		nil,
+	)
+	if listFilteredRec.Code != http.StatusOK {
+		t.Fatalf("list filtered expected 200, got %d, body=%s", listFilteredRec.Code, listFilteredRec.Body.String())
+	}
+
+	var listFilteredBody struct {
+		Reviews []struct {
+			ID string `json:"id"`
+		} `json:"reviews"`
+		Position string `json:"position"`
+	}
+	if err := json.Unmarshal(listFilteredRec.Body.Bytes(), &listFilteredBody); err != nil {
+		t.Fatalf("decode list filtered body: %v", err)
+	}
+	if listFilteredBody.Position != "espresso" {
+		t.Fatalf("expected position=espresso in response, got %q", listFilteredBody.Position)
+	}
+	if len(listFilteredBody.Reviews) != 1 {
+		t.Fatalf("expected filtered list to have 1 review, got %d", len(listFilteredBody.Reviews))
+	}
+}
+
 func TestAdminMapUnknownDrinkFormatEndpoint(t *testing.T) {
 	pool := integrationTestPool(t)
 	router := newIntegrationRouter(pool)
@@ -611,5 +745,134 @@ func TestDeleteReviewByModeratorOnly(t *testing.T) {
 	}
 	if status != "removed" {
 		t.Fatalf("expected review status=removed, got %q", status)
+	}
+}
+
+func TestAddHelpfulVoteEndpoint(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	authorID := mustCreateTestUser(t, pool, "user")
+	voterID := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, voterID)
+		mustDeleteTestUser(t, pool, authorID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  authorID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-helpful-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     5,
+			"drink_id":   "espresso",
+			"taste_tags": []string{"sweet", "chocolate"},
+			"summary":    "Яркий эспрессо с чистой сладостью, отчетливыми нотами какао и сбалансированной кислотностью без резкости.",
+			"photos":     []string{},
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+	var createResp struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	helpfulRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+createResp.ReviewID+"/helpful",
+		map[string]string{
+			"X-Test-User-ID":  voterID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-helpful-%d", time.Now().UnixNano()),
+		},
+		nil,
+	)
+	if helpfulRec.Code != http.StatusOK {
+		t.Fatalf("helpful expected 200, got %d, body=%s", helpfulRec.Code, helpfulRec.Body.String())
+	}
+
+	var helpfulResp struct {
+		VoteID        string  `json:"vote_id"`
+		ReviewID      string  `json:"review_id"`
+		Weight        float64 `json:"weight"`
+		AlreadyExists bool    `json:"already_exists"`
+	}
+	if err := json.Unmarshal(helpfulRec.Body.Bytes(), &helpfulResp); err != nil {
+		t.Fatalf("decode helpful response: %v", err)
+	}
+	if strings.TrimSpace(helpfulResp.VoteID) == "" {
+		t.Fatalf("vote_id is empty: body=%s", helpfulRec.Body.String())
+	}
+	if helpfulResp.ReviewID != createResp.ReviewID {
+		t.Fatalf("review_id mismatch: want=%s got=%s", createResp.ReviewID, helpfulResp.ReviewID)
+	}
+	if helpfulResp.AlreadyExists {
+		t.Fatalf("expected already_exists=false on first vote")
+	}
+	if helpfulResp.Weight < 0.8 || helpfulResp.Weight > 1.5 {
+		t.Fatalf("expected vote weight in [0.8,1.5], got %f", helpfulResp.Weight)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var (
+		votesCount int
+		maxWeight  float64
+	)
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*), coalesce(max(weight), 0)::float8
+		   from helpful_votes
+		  where review_id = $1::uuid`,
+		createResp.ReviewID,
+	).Scan(&votesCount, &maxWeight); err != nil {
+		t.Fatalf("load helpful votes: %v", err)
+	}
+	if votesCount != 1 {
+		t.Fatalf("expected 1 helpful vote, got %d", votesCount)
+	}
+	if maxWeight < 0.8 || maxWeight > 1.5 {
+		t.Fatalf("persisted vote weight expected in [0.8,1.5], got %f", maxWeight)
+	}
+
+	againRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+createResp.ReviewID+"/helpful",
+		map[string]string{
+			"X-Test-User-ID":  voterID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-helpful-repeat-%d", time.Now().UnixNano()),
+		},
+		nil,
+	)
+	if againRec.Code != http.StatusOK {
+		t.Fatalf("repeat helpful expected 200, got %d, body=%s", againRec.Code, againRec.Body.String())
+	}
+	var againResp struct {
+		AlreadyExists bool `json:"already_exists"`
+	}
+	if err := json.Unmarshal(againRec.Body.Bytes(), &againResp); err != nil {
+		t.Fatalf("decode repeat helpful response: %v", err)
+	}
+	if !againResp.AlreadyExists {
+		t.Fatalf("expected already_exists=true on duplicate vote")
 	}
 }

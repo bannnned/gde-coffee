@@ -5,13 +5,12 @@ import {
   Button,
   Group,
   Paper,
-  Select,
   SegmentedControl,
   Stack,
+  TagsInput,
   Text,
   TextInput,
   Textarea,
-  type ComboboxItem,
 } from "@mantine/core";
 import { IconPhotoPlus, IconTrash } from "@tabler/icons-react";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
@@ -22,16 +21,19 @@ import {
   type FormPhoto,
   type ReviewFormValues,
 } from "./reviewForm";
+import type { ReviewQualityInsight } from "./useReviewsSectionController";
 
 type ReviewComposerCardProps = {
   ownReview: CafeReview | undefined;
+  ownReviewQualityInsight: ReviewQualityInsight | null;
+  draftQualitySuggestions: string[];
   control: Control<ReviewFormValues>;
   errors: FieldErrors<ReviewFormValues>;
   isSubmitting: boolean;
-  drinkSelectData: ComboboxItem[];
-  drinkIdValue: string;
-  drinkQueryValue: string;
+  positionsInput: string[];
+  positionInputData: string[];
   drinksLoading: boolean;
+  onPositionsInputSearchChange: (value: string) => void;
   summaryLength: number;
   summaryTrimmedLength: number;
   photos: FormPhoto[];
@@ -40,21 +42,21 @@ type ReviewComposerCardProps = {
   submitHint: string | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onFormSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onDrinkSearchChange: (value: string) => void;
-  onDrinkChange: (value: string | null, option: ComboboxItem | null) => void;
   onAppendFiles: (files: FileList | null) => void;
   onRemovePhoto: (photoId: string) => void;
 };
 
 export function ReviewComposerCard({
   ownReview,
+  ownReviewQualityInsight,
+  draftQualitySuggestions,
   control,
   errors,
   isSubmitting,
-  drinkSelectData,
-  drinkIdValue,
-  drinkQueryValue,
+  positionsInput,
+  positionInputData,
   drinksLoading,
+  onPositionsInputSearchChange,
   summaryLength,
   summaryTrimmedLength,
   photos,
@@ -63,8 +65,6 @@ export function ReviewComposerCard({
   submitHint,
   fileInputRef,
   onFormSubmit,
-  onDrinkSearchChange,
-  onDrinkChange,
   onAppendFiles,
   onRemovePhoto,
 }: ReviewComposerCardProps) {
@@ -100,20 +100,32 @@ export function ReviewComposerCard({
             )}
           />
 
-          <Select
-            label="Напиток"
-            placeholder="Начните вводить название напитка"
-            searchable
-            required
-            value={drinkIdValue || null}
-            data={drinkSelectData}
-            searchValue={drinkQueryValue}
-            onSearchChange={onDrinkSearchChange}
-            onChange={onDrinkChange}
-            nothingFoundMessage={drinksLoading ? "Ищем..." : "Ничего не найдено"}
-            description="Можно выбрать из справочника или ввести новый формат вручную"
-            error={errors.drinkQuery?.message}
+          <Controller
+            control={control}
+            name="positionsInput"
+            render={({ field }) => (
+              <TagsInput
+                label="Напиток"
+                placeholder="Добавьте позиции: эспрессо, воронка v60, фильтр"
+                description="Можно выбрать из подсказок или добавить свой формат"
+                value={field.value}
+                data={positionInputData}
+                maxTags={8}
+                splitChars={[","]}
+                clearable
+                searchable
+                required
+                onSearchChange={onPositionsInputSearchChange}
+                onChange={(value) => field.onChange(value)}
+                nothingFoundMessage={drinksLoading ? "Ищем..." : "Ничего не найдено"}
+                error={errors.positionsInput?.message}
+              />
+            )}
           />
+
+          <Text size="xs" c="dimmed">
+            Позиции: {positionsInput.length}/8.
+          </Text>
 
           <Controller
             control={control}
@@ -239,6 +251,46 @@ export function ReviewComposerCard({
           {submitHint && (
             <Text size="sm" c="teal">
               {submitHint}
+            </Text>
+          )}
+
+          {ownReviewQualityInsight && (
+            <Paper
+              withBorder
+              p="sm"
+              radius="md"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <Stack gap={6}>
+                <Text size="sm" fw={600}>
+                  Качество отзыва: {ownReviewQualityInsight.score}/100
+                </Text>
+                <Group gap={6} wrap="wrap">
+                  {ownReviewQualityInsight.checklist.map((item) => (
+                    <Badge
+                      key={item.label}
+                      size="xs"
+                      variant={item.ok ? "light" : "outline"}
+                      color={item.ok ? "teal" : "gray"}
+                    >
+                      {item.label}
+                    </Badge>
+                  ))}
+                </Group>
+                {ownReviewQualityInsight.suggestions.length > 0 && (
+                  <Text size="xs" c="dimmed">
+                    Чтобы повысить оценку: {ownReviewQualityInsight.suggestions.slice(0, 2).join(", ")}.
+                  </Text>
+                )}
+              </Stack>
+            </Paper>
+          )}
+          {!ownReviewQualityInsight && draftQualitySuggestions.length > 0 && (
+            <Text size="xs" c="dimmed">
+              Чтобы улучшить отзыв: {draftQualitySuggestions.slice(0, 2).join(", ")}.
             </Text>
           )}
 

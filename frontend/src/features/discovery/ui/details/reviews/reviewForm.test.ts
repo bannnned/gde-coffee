@@ -15,11 +15,10 @@ function makeSummary(length: number): string {
 }
 
 describe("reviewFormSchema", () => {
-  it("accepts form when selected drink id is provided", () => {
+  it("accepts form when at least one position is provided", () => {
     const result = reviewFormSchema.safeParse({
       ratingValue: "5",
-      drinkId: "espresso",
-      drinkQuery: "",
+      positionsInput: ["espresso"],
       tagsInput: "berry, chocolate",
       summary: makeSummary(MIN_SUMMARY_LENGTH),
       photos: [],
@@ -28,11 +27,10 @@ describe("reviewFormSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts form when free-form drink name is provided", () => {
+  it("accepts form when free-form positions are provided", () => {
     const result = reviewFormSchema.safeParse({
       ratingValue: "4",
-      drinkId: "",
-      drinkQuery: "  filter v60  ",
+      positionsInput: ["  filter v60  ", "espresso tonic"],
       tagsInput: "",
       summary: makeSummary(MIN_SUMMARY_LENGTH),
       photos: [],
@@ -41,11 +39,10 @@ describe("reviewFormSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects form when drink id and drink query are empty", () => {
+  it("rejects form when positions are empty", () => {
     const result = reviewFormSchema.safeParse({
       ratingValue: "4",
-      drinkId: "",
-      drinkQuery: "   ",
+      positionsInput: [],
       tagsInput: "",
       summary: makeSummary(MIN_SUMMARY_LENGTH),
       photos: [],
@@ -53,15 +50,14 @@ describe("reviewFormSchema", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join(".") === "drinkQuery")).toBe(true);
+      expect(result.error.issues.some((issue) => issue.path.join(".") === "positionsInput")).toBe(true);
     }
   });
 
   it("rejects too short summary", () => {
     const result = reviewFormSchema.safeParse({
       ratingValue: "3",
-      drinkId: "americano",
-      drinkQuery: "",
+      positionsInput: ["americano"],
       tagsInput: "",
       summary: makeSummary(MIN_SUMMARY_LENGTH - 1),
       photos: [],
@@ -81,8 +77,7 @@ describe("reviewFormSchema", () => {
     }));
     const result = reviewFormSchema.safeParse({
       ratingValue: "5",
-      drinkId: "flat-white",
-      drinkQuery: "",
+      positionsInput: ["flat-white"],
       tagsInput: "",
       summary: makeSummary(MIN_SUMMARY_LENGTH),
       photos,

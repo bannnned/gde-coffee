@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	maxReviewPositions    = 8
 	maxTasteTags          = 10
 	maxReviewPhotos       = 8
 	defaultReviewPageSize = 20
@@ -133,11 +134,19 @@ func (h *Handler) ListCafeReviews(c *gin.Context) {
 		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
+	positionFilter := normalizeReviewPositionFilter(c.Query("position"))
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 	defer cancel()
 
-	reviewsList, hasMore, nextOffset, err := h.service.ListCafeReviews(ctx, cafeID, sortBy, offset, limit)
+	reviewsList, positionOptions, hasMore, nextOffset, err := h.service.ListCafeReviews(
+		ctx,
+		cafeID,
+		sortBy,
+		positionFilter,
+		offset,
+		limit,
+	)
 	if err != nil {
 		h.respondDomainError(c, err)
 		return
@@ -148,14 +157,24 @@ func (h *Handler) ListCafeReviews(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"cafe_id":     cafeID,
-		"sort":        sortBy,
-		"limit":       limit,
-		"cursor":      strings.TrimSpace(c.Query("cursor")),
-		"has_more":    hasMore,
-		"next_cursor": nextCursor,
-		"reviews":     reviewsList,
+		"cafe_id":          cafeID,
+		"sort":             sortBy,
+		"limit":            limit,
+		"cursor":           strings.TrimSpace(c.Query("cursor")),
+		"position":         positionFilter,
+		"has_more":         hasMore,
+		"next_cursor":      nextCursor,
+		"position_options": positionOptions,
+		"reviews":          reviewsList,
 	})
+}
+
+func normalizeReviewPositionFilter(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" || strings.EqualFold(value, "all") {
+		return ""
+	}
+	return normalizeDrinkText(value)
 }
 
 func parseReviewPageSize(raw string) (int, error) {
@@ -226,9 +245,23 @@ func normalizeAndValidateCreateRequest(req PublishReviewRequest) (PublishReviewR
 	}
 	normalized.Drink = normalizeDrinkText(normalized.Drink)
 	normalized.DrinkID = normalizeDrinkToken(normalized.DrinkID)
-	if strings.TrimSpace(normalized.DrinkID) == "" && strings.TrimSpace(normalized.Drink) == "" {
+	normalized.Positions = normalizeReviewPositions(normalized.Positions)
+	if len(normalized.Positions) == 0 && (strings.TrimSpace(normalized.DrinkID) != "" || strings.TrimSpace(normalized.Drink) != "") {
+		normalized.Positions = []ReviewPositionDTO{
+			{
+				DrinkID: normalized.DrinkID,
+				Drink:   normalized.Drink,
+			},
+		}
+	}
+	if len(normalized.Positions) == 0 {
 		return normalized, errInvalid("Поле напиток обязательно.")
 	}
+	if len(normalized.Positions) > maxReviewPositions {
+		return normalized, errInvalid("positions не может быть больше 8.")
+	}
+	normalized.DrinkID = normalized.Positions[0].DrinkID
+	normalized.Drink = normalized.Positions[0].Drink
 	if utfRuneLen(normalized.Summary) < minReviewSummaryLength {
 		return normalized, errInvalid("summary должен быть не короче 60 символов.")
 	}
@@ -264,6 +297,17 @@ func normalizeAndValidateUpdateRequest(req UpdateReviewRequest) (UpdateReviewReq
 		value := normalizeDrinkText(*req.Drink)
 		req.Drink = &value
 	}
+	if req.Positions != nil {
+		hasAnyField = true
+		normalized := normalizeReviewPositions(*req.Positions)
+		if len(normalized) == 0 {
+			return req, errInvalid("positions не может быть пустым.")
+		}
+		if len(normalized) > maxReviewPositions {
+			return req, errInvalid("positions не может быть больше 8.")
+		}
+		req.Positions = &normalized
+	}
 	if req.Summary != nil {
 		hasAnyField = true
 		value := strings.TrimSpace(*req.Summary)
@@ -296,10 +340,34 @@ func normalizeAndValidateUpdateRequest(req UpdateReviewRequest) (UpdateReviewReq
 	if !hasAnyField {
 		return req, errInvalid("Нужно передать хотя бы одно поле для обновления.")
 	}
+	if req.Positions != nil && len(*req.Positions) > 0 {
+		first := (*req.Positions)[0]
+		req.DrinkID = &first.DrinkID
+		req.Drink = &first.Drink
+	}
+	if req.Positions == nil && (req.DrinkID != nil || req.Drink != nil) {
+		positions := normalizeReviewPositions([]ReviewPositionDTO{
+			{
+				DrinkID: valueOrEmpty(req.DrinkID),
+				Drink:   valueOrEmpty(req.Drink),
+			},
+		})
+		if len(positions) == 0 {
+			return req, errInvalid("Поле напиток не может быть пустым.")
+		}
+		req.Positions = &positions
+	}
 	if req.DrinkID != nil && req.Drink != nil && strings.TrimSpace(*req.DrinkID) == "" && strings.TrimSpace(*req.Drink) == "" {
 		return req, errInvalid("Поле напиток не может быть пустым.")
 	}
 	return req, nil
+}
+
+func valueOrEmpty(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(*value)
 }
 
 func errInvalid(message string) error {

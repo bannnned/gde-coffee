@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, SegmentedControl, Stack, Text } from "@mantine/core";
+import { Badge, Button, Group, Paper, SegmentedControl, Select, Stack, Text } from "@mantine/core";
 
 import type { CafeReview, ReviewSort } from "../../../../../api/reviews";
 import { formatReviewDate } from "./reviewForm";
@@ -6,11 +6,16 @@ import { formatReviewDate } from "./reviewForm";
 type ReviewFeedProps = {
   sort: ReviewSort;
   onSortChange: (value: ReviewSort) => void;
+  positionFilter: string;
+  onPositionFilterChange: (value: string) => void;
+  positionOptions: Array<{ key: string; label: string }>;
   isLoading: boolean;
   isLoadingMore: boolean;
   loadError: string | null;
   reviews: CafeReview[];
   currentUserId: string;
+  helpfulPendingReviewID: string;
+  onMarkHelpful: (review: CafeReview) => void;
   canDeleteReviews: boolean;
   onDeleteReview: (review: CafeReview) => void;
   hasMore: boolean;
@@ -20,32 +25,54 @@ type ReviewFeedProps = {
 export function ReviewFeed({
   sort,
   onSortChange,
+  positionFilter,
+  onPositionFilterChange,
+  positionOptions,
   isLoading,
   isLoadingMore,
   loadError,
   reviews,
   currentUserId,
+  helpfulPendingReviewID,
+  onMarkHelpful,
   canDeleteReviews,
   onDeleteReview,
   hasMore,
   onLoadMore,
 }: ReviewFeedProps) {
+  const positionFilterData = [
+    { value: "all", label: "Все позиции" },
+    ...positionOptions.map((item) => ({
+      value: item.key,
+      label: item.label,
+    })),
+  ];
+
   return (
     <>
-      <Group justify="space-between" align="center">
+      <Group justify="space-between" align="flex-end" wrap="wrap">
         <Text fw={600} size="sm">
           Отзывы
         </Text>
-        <SegmentedControl
-          value={sort}
-          onChange={(value) => onSortChange(value as ReviewSort)}
-          size="xs"
-          data={[
-            { label: "Новые", value: "new" },
-            { label: "Полезные", value: "helpful" },
-            { label: "С визитом", value: "verified" },
-          ]}
-        />
+        <Group gap={8} wrap="wrap" justify="flex-end">
+          <SegmentedControl
+            value={sort}
+            onChange={(value) => onSortChange(value as ReviewSort)}
+            size="xs"
+            data={[
+              { label: "Новые", value: "new" },
+              { label: "Полезные", value: "helpful" },
+              { label: "С визитом", value: "verified" },
+            ]}
+          />
+          <Select
+            size="xs"
+            value={positionFilter}
+            data={positionFilterData}
+            onChange={(value) => onPositionFilterChange(value || "all")}
+            w={220}
+          />
+        </Group>
       </Group>
 
       {isLoading && (
@@ -94,6 +121,8 @@ export function ReviewFeed({
             key={review.id}
             review={review}
             isOwn={review.user_id === currentUserId}
+            helpfulLoading={helpfulPendingReviewID === review.id}
+            onMarkHelpful={onMarkHelpful}
             canDeleteReviews={canDeleteReviews}
             onDeleteReview={onDeleteReview}
           />
@@ -111,11 +140,25 @@ export function ReviewFeed({
 type ReviewCardProps = {
   review: CafeReview;
   isOwn: boolean;
+  helpfulLoading: boolean;
+  onMarkHelpful: (review: CafeReview) => void;
   canDeleteReviews: boolean;
   onDeleteReview: (review: CafeReview) => void;
 };
 
-function ReviewCard({ review, isOwn, canDeleteReviews, onDeleteReview }: ReviewCardProps) {
+function ReviewCard({
+  review,
+  isOwn,
+  helpfulLoading,
+  onMarkHelpful,
+  canDeleteReviews,
+  onDeleteReview,
+}: ReviewCardProps) {
+  const positionLabels =
+    review.positions.length > 0
+      ? review.positions.map((item) => item.drink_name || item.drink_id).filter(Boolean)
+      : [review.drink_name || review.drink_id].filter(Boolean);
+
   return (
     <Paper
       withBorder
@@ -182,10 +225,29 @@ function ReviewCard({ review, isOwn, canDeleteReviews, onDeleteReview }: ReviewC
           </Group>
         )}
 
-        <Group gap={6}>
-          <Badge variant="outline">{review.drink_name || review.drink_id}</Badge>
+        <Group gap={6} wrap="wrap">
+          {positionLabels.map((name, index) => (
+            <Badge key={`${review.id}:position:${index}`} variant="outline">
+              {name}
+            </Badge>
+          ))}
           <Badge variant="outline">Полезно: {review.helpful_votes}</Badge>
           <Badge variant="outline">Качество: {review.quality_score}/100</Badge>
+        </Group>
+        <Text size="xs" c="dimmed">
+          Качество учитывает напиток, теги, детали текста, фото, визит и жалобы.
+        </Text>
+
+        <Group justify="space-between" align="center">
+          <Button
+            size="xs"
+            variant="light"
+            onClick={() => onMarkHelpful(review)}
+            loading={helpfulLoading}
+            disabled={isOwn}
+          >
+            Полезно
+          </Button>
         </Group>
 
         {canDeleteReviews && (

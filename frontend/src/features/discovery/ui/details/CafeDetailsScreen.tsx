@@ -39,6 +39,7 @@ type CafeDetailsScreenProps = {
   showRoutes?: boolean;
   onOpen2gis?: () => void;
   onOpenYandex?: () => void;
+  onStartDescriptionEdit?: () => boolean;
   onSaveDescription?: (
     description: string,
   ) => Promise<{ applied: boolean; description?: string; message?: string }>;
@@ -64,6 +65,7 @@ export default function CafeDetailsScreen({
   showRoutes = true,
   onOpen2gis,
   onOpenYandex,
+  onStartDescriptionEdit,
   onSaveDescription,
   isFavorite = false,
   onToggleFavorite,
@@ -287,6 +289,9 @@ export default function CafeDetailsScreen({
   ];
 
   const handleStartDescription = () => {
+    if (onStartDescriptionEdit && !onStartDescriptionEdit()) {
+      return;
+    }
     setDescriptionDraft(description);
     setDescriptionError(null);
     setDescriptionHint(null);

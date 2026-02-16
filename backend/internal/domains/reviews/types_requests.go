@@ -1,22 +1,29 @@
 package reviews
 
 type PublishReviewRequest struct {
-	CafeID    string   `json:"cafe_id"`
-	Rating    int      `json:"rating"`
-	DrinkID   string   `json:"drink_id"`
-	Drink     string   `json:"drink"`
-	TasteTags []string `json:"taste_tags"`
-	Summary   string   `json:"summary"`
-	Photos    []string `json:"photos"`
+	CafeID    string              `json:"cafe_id"`
+	Rating    int                 `json:"rating"`
+	DrinkID   string              `json:"drink_id"`
+	Drink     string              `json:"drink"`
+	Positions []ReviewPositionDTO `json:"positions"`
+	TasteTags []string            `json:"taste_tags"`
+	Summary   string              `json:"summary"`
+	Photos    []string            `json:"photos"`
 }
 
 type UpdateReviewRequest struct {
-	Rating    *int      `json:"rating"`
-	DrinkID   *string   `json:"drink_id"`
-	Drink     *string   `json:"drink"`
-	TasteTags *[]string `json:"taste_tags"`
-	Summary   *string   `json:"summary"`
-	Photos    *[]string `json:"photos"`
+	Rating    *int                 `json:"rating"`
+	DrinkID   *string              `json:"drink_id"`
+	Drink     *string              `json:"drink"`
+	Positions *[]ReviewPositionDTO `json:"positions"`
+	TasteTags *[]string            `json:"taste_tags"`
+	Summary   *string              `json:"summary"`
+	Photos    *[]string            `json:"photos"`
+}
+
+type ReviewPositionDTO struct {
+	DrinkID string `json:"drink_id"`
+	Drink   string `json:"drink"`
 }
 
 type PresignReviewPhotoRequest struct {

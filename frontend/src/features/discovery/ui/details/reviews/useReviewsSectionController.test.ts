@@ -11,6 +11,7 @@ vi.mock("../../../../../api/drinks", () => ({
 }));
 
 vi.mock("../../../../../api/reviews", () => ({
+  addHelpfulVote: vi.fn(),
   listCafeReviews: vi.fn(),
   createReview: vi.fn(),
   updateReview: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock("../../../../../components/AuthGate", () => ({
 
 import { searchDrinks } from "../../../../../api/drinks";
 import {
+  addHelpfulVote,
   confirmReviewPhotoUpload,
   createReview,
   deleteReview,
@@ -38,6 +40,7 @@ import {
 import { useAuth } from "../../../../../components/AuthGate";
 
 const mockSearchDrinks = vi.mocked(searchDrinks);
+const mockAddHelpfulVote = vi.mocked(addHelpfulVote);
 const mockListCafeReviews = vi.mocked(listCafeReviews);
 const mockCreateReview = vi.mocked(createReview);
 const mockUpdateReview = vi.mocked(updateReview);
@@ -57,6 +60,7 @@ function makeReview(overrides: Partial<CafeReview> = {}): CafeReview {
       "Очень стабильная чашка с чистой кислотностью, плотным телом и длинным сладким послевкусием без горечи.",
     drink_id: "espresso",
     drink_name: "эспрессо",
+    positions: [{ position: 1, drink_id: "espresso", drink_name: "эспрессо" }],
     taste_tags: ["шоколад", "орех"],
     photos: [],
     photo_count: 0,
@@ -91,7 +95,13 @@ describe("useReviewsSectionController", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchDrinks.mockResolvedValue([]);
-    mockListCafeReviews.mockResolvedValue({ reviews: [], hasMore: false, nextCursor: "" });
+    mockListCafeReviews.mockResolvedValue({ reviews: [], hasMore: false, nextCursor: "", position: "", positionOptions: [] });
+    mockAddHelpfulVote.mockResolvedValue({
+      vote_id: "vote-1",
+      review_id: "review-1",
+      weight: 0.91,
+      already_exists: false,
+    });
     mockCreateReview.mockResolvedValue({
       review_id: "new-review",
       cafe_id: "cafe-1",
@@ -151,11 +161,15 @@ describe("useReviewsSectionController", () => {
         reviews: [firstPageReview],
         hasMore: true,
         nextCursor: "cursor-1",
+        position: "",
+        positionOptions: [],
       })
       .mockResolvedValueOnce({
         reviews: [secondPageReview],
         hasMore: false,
         nextCursor: "",
+        position: "",
+        positionOptions: [],
       });
 
     const { result } = renderHook(() =>
@@ -166,7 +180,11 @@ describe("useReviewsSectionController", () => {
     );
 
     await waitFor(() => {
-      expect(mockListCafeReviews).toHaveBeenCalledWith("cafe-1", { sort: "new", limit: 20 });
+      expect(mockListCafeReviews).toHaveBeenCalledWith("cafe-1", {
+        sort: "new",
+        position: undefined,
+        limit: 20,
+      });
     });
 
     await waitFor(() => {
@@ -181,6 +199,7 @@ describe("useReviewsSectionController", () => {
     await waitFor(() => {
       expect(mockListCafeReviews).toHaveBeenNthCalledWith(2, "cafe-1", {
         sort: "new",
+        position: undefined,
         cursor: "cursor-1",
         limit: 20,
       });
@@ -193,8 +212,8 @@ describe("useReviewsSectionController", () => {
     const ownReview = makeReview({ id: "review-own", user_id: "user-1" });
 
     mockListCafeReviews
-      .mockResolvedValueOnce({ reviews: [ownReview], hasMore: false, nextCursor: "" })
-      .mockResolvedValueOnce({ reviews: [ownReview], hasMore: false, nextCursor: "" });
+      .mockResolvedValueOnce({ reviews: [ownReview], hasMore: false, nextCursor: "", position: "", positionOptions: [] })
+      .mockResolvedValueOnce({ reviews: [ownReview], hasMore: false, nextCursor: "", position: "", positionOptions: [] });
 
     const { result } = renderHook(() =>
       useReviewsSectionController({
@@ -216,6 +235,7 @@ describe("useReviewsSectionController", () => {
       expect(mockUpdateReview).toHaveBeenCalledTimes(1);
       expect(mockUpdateReview).toHaveBeenCalledWith("review-own", {
         rating: 5,
+        positions: [{ drink_id: "espresso" }],
         drink_id: "espresso",
         taste_tags: ["шоколад", "орех"],
         summary: ownReview.summary,
@@ -238,7 +258,7 @@ describe("useReviewsSectionController", () => {
     } as any);
 
     const ownReview = makeReview({ id: "review-own", user_id: "user-1" });
-    mockListCafeReviews.mockResolvedValue({ reviews: [ownReview], hasMore: false, nextCursor: "" });
+    mockListCafeReviews.mockResolvedValue({ reviews: [ownReview], hasMore: false, nextCursor: "", position: "", positionOptions: [] });
 
     const { result } = renderHook(() =>
       useReviewsSectionController({
@@ -329,8 +349,8 @@ describe("useReviewsSectionController", () => {
     const targetReview = makeReview({ id: "review-to-delete", user_id: "user-2" });
 
     mockListCafeReviews
-      .mockResolvedValueOnce({ reviews: [ownReview, targetReview], hasMore: false, nextCursor: "" })
-      .mockResolvedValueOnce({ reviews: [ownReview], hasMore: false, nextCursor: "" });
+      .mockResolvedValueOnce({ reviews: [ownReview, targetReview], hasMore: false, nextCursor: "", position: "", positionOptions: [] })
+      .mockResolvedValueOnce({ reviews: [ownReview], hasMore: false, nextCursor: "", position: "", positionOptions: [] });
 
     const { result } = renderHook(() =>
       useReviewsSectionController({
@@ -357,5 +377,66 @@ describe("useReviewsSectionController", () => {
       expect(result.current.submitHint).toBe("Отзыв удален.");
       expect(mockListCafeReviews).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("marks review as helpful and refreshes list", async () => {
+    const ownReview = makeReview({ id: "review-own", user_id: "user-1" });
+    const otherReview = makeReview({ id: "review-helpful", user_id: "user-2" });
+
+    mockListCafeReviews
+      .mockResolvedValueOnce({ reviews: [ownReview, otherReview], hasMore: false, nextCursor: "", position: "", positionOptions: [] })
+      .mockResolvedValueOnce({ reviews: [ownReview, otherReview], hasMore: false, nextCursor: "", position: "", positionOptions: [] });
+
+    const { result } = renderHook(() =>
+      useReviewsSectionController({
+        cafeId: "cafe-1",
+        opened: true,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.reviews).toHaveLength(2);
+    });
+
+    act(() => {
+      result.current.onMarkHelpful(otherReview);
+    });
+
+    await waitFor(() => {
+      expect(mockAddHelpfulVote).toHaveBeenCalledWith("review-helpful");
+      expect(result.current.submitHint).toBe("Спасибо, голос учтен.");
+      expect(mockListCafeReviews).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("opens auth modal when non-authed user marks review as helpful", async () => {
+    const openAuthModal = vi.fn();
+    mockUseAuth.mockReturnValue({
+      user: { id: "user-1", role: "user" } as any,
+      status: "unauth",
+      openAuthModal,
+    } as any);
+    const otherReview = makeReview({ id: "review-helpful", user_id: "user-2" });
+    mockListCafeReviews.mockResolvedValue({ reviews: [otherReview], hasMore: false, nextCursor: "", position: "", positionOptions: [] });
+
+    const { result } = renderHook(() =>
+      useReviewsSectionController({
+        cafeId: "cafe-1",
+        opened: true,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.reviews).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.onMarkHelpful(otherReview);
+    });
+
+    await waitFor(() => {
+      expect(openAuthModal).toHaveBeenCalledWith("login");
+    });
+    expect(mockAddHelpfulVote).not.toHaveBeenCalled();
   });
 });

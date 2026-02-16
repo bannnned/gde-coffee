@@ -105,6 +105,7 @@ export default function useDiscoveryPageController() {
   const handleOpenPhotoAdmin = (kind: "cafe" | "menu") => {
     if (!selectedCafe) return;
     if (!user) {
+      modals.setDetailsOpen(false);
       openAuthModal("login");
       return;
     }
@@ -126,6 +127,7 @@ export default function useDiscoveryPageController() {
       throw new Error("Кофейня не выбрана.");
     }
     if (!user) {
+      modals.setDetailsOpen(false);
       openAuthModal("login");
       throw new Error("Войдите в аккаунт, чтобы добавить описание.");
     }
@@ -145,6 +147,13 @@ export default function useDiscoveryPageController() {
       applied: false,
       message: "Заявка на описание отправлена на модерацию.",
     };
+  };
+
+  const handleStartCafeDescriptionEdit = () => {
+    if (user) return true;
+    modals.setDetailsOpen(false);
+    openAuthModal("login");
+    return false;
   };
 
   const handleOpenCafeProposal = () => {
@@ -211,6 +220,7 @@ export default function useDiscoveryPageController() {
     handleToggleFavorite: () => handleToggleFavorite(() => cafesQuery.refetch()),
     handleOpenPhotoAdmin,
     handlePhotosChanged,
+    handleStartCafeDescriptionEdit,
     handleSaveCafeDescription,
     handleOpenCafeProposal,
     open2gisRoute,

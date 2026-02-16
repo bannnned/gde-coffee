@@ -8,6 +8,7 @@ export type FormPhoto = {
 
 export const MIN_SUMMARY_LENGTH = 60;
 export const MAX_REVIEW_PHOTOS = 8;
+export const MAX_REVIEW_POSITIONS = 8;
 export const MAX_UPLOAD_CONCURRENCY = 3;
 export const REVIEWS_PAGE_SIZE = 20;
 export const DRINK_SUGGESTIONS_LIMIT = 12;
@@ -21,22 +22,18 @@ const formPhotoSchema = z.object({
 export const reviewFormSchema = z
   .object({
     ratingValue: z.enum(["1", "2", "3", "4", "5"]),
-    drinkId: z.string(),
-    drinkQuery: z.string(),
+    positionsInput: z.array(z.string()).max(MAX_REVIEW_POSITIONS),
     tagsInput: z.string(),
     summary: z.string(),
     photos: z.array(formPhotoSchema).max(MAX_REVIEW_PHOTOS),
   })
   .superRefine((value, ctx) => {
-    // Cross-field rule: the user must either select a known drink ID
-    // or provide a valid free-form drink name for unknown formats.
-    const hasDrinkId = value.drinkId.trim().length > 0;
-    const normalizedDrinkName = normalizeDrinkInput(value.drinkQuery);
-    if (!hasDrinkId && normalizedDrinkName.length === 0) {
+    const positions = parseReviewPositions(value.positionsInput);
+    if (positions.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["drinkQuery"],
-        message: "Укажите напиток: выберите из подсказок или введите новый.",
+        path: ["positionsInput"],
+        message: "Добавьте хотя бы один напиток.",
       });
     }
 
@@ -53,8 +50,7 @@ export type ReviewFormValues = z.infer<typeof reviewFormSchema>;
 
 export const DEFAULT_REVIEW_FORM_VALUES: ReviewFormValues = {
   ratingValue: "5",
-  drinkId: "",
-  drinkQuery: "",
+  positionsInput: [],
   tagsInput: "",
   summary: "",
   photos: [],
@@ -109,6 +105,20 @@ export function normalizeDrinkInput(value: string): string {
     .split(/\s+/)
     .filter(Boolean)
     .join(" ");
+}
+
+export function parseReviewPositions(values: string[]): string[] {
+  if (!Array.isArray(values) || values.length === 0) return [];
+  const seen = new Set<string>();
+  const parsed: string[] = [];
+  for (const value of values) {
+    const normalized = normalizeDrinkInput(value);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    parsed.push(normalized);
+    if (parsed.length >= MAX_REVIEW_POSITIONS) break;
+  }
+  return parsed;
 }
 
 export function formatReviewDate(value: string): string {

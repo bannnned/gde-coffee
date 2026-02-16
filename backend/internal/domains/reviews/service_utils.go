@@ -14,15 +14,58 @@ import (
 
 func sanitizePublishReviewRequest(req PublishReviewRequest) PublishReviewRequest {
 	clean := PublishReviewRequest{
-		CafeID:  strings.TrimSpace(req.CafeID),
-		Rating:  req.Rating,
-		DrinkID: normalizeDrinkToken(req.DrinkID),
-		Drink:   normalizeDrinkText(req.Drink),
-		Summary: strings.TrimSpace(req.Summary),
+		CafeID:    strings.TrimSpace(req.CafeID),
+		Rating:    req.Rating,
+		DrinkID:   normalizeDrinkToken(req.DrinkID),
+		Drink:     normalizeDrinkText(req.Drink),
+		Positions: normalizeReviewPositions(req.Positions),
+		Summary:   strings.TrimSpace(req.Summary),
+	}
+	// Backward compatibility: if client still sends single drink fields,
+	// treat them as the first position.
+	if len(clean.Positions) == 0 && (clean.DrinkID != "" || clean.Drink != "") {
+		clean.Positions = []ReviewPositionDTO{
+			{
+				DrinkID: clean.DrinkID,
+				Drink:   clean.Drink,
+			},
+		}
+	}
+	if len(clean.Positions) > 0 {
+		clean.DrinkID = clean.Positions[0].DrinkID
+		clean.Drink = clean.Positions[0].Drink
 	}
 	clean.TasteTags = normalizeTags(req.TasteTags)
 	clean.Photos = normalizePhotos(req.Photos)
 	return clean
+}
+
+func normalizeReviewPositions(values []ReviewPositionDTO) []ReviewPositionDTO {
+	seen := map[string]struct{}{}
+	out := make([]ReviewPositionDTO, 0, len(values))
+	for _, item := range values {
+		drinkID := normalizeDrinkToken(item.DrinkID)
+		drinkName := normalizeDrinkText(item.Drink)
+		if drinkID == "" && drinkName == "" {
+			continue
+		}
+		key := "name:" + drinkName
+		if drinkID != "" {
+			key = "id:" + drinkID
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, ReviewPositionDTO{
+			DrinkID: drinkID,
+			Drink:   drinkName,
+		})
+		if len(out) >= maxReviewPositions {
+			break
+		}
+	}
+	return out
 }
 
 func normalizeTags(tags []string) []string {

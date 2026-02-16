@@ -3,6 +3,18 @@ import { uploadByPresignedUrl } from "./presignedUpload";
 
 export type ReviewSort = "new" | "helpful" | "verified";
 
+export type ReviewPosition = {
+  position: number;
+  drink_id: string;
+  drink_name: string;
+};
+
+export type ReviewPositionOption = {
+  key: string;
+  label: string;
+  reviews_count: number;
+};
+
 export type CafeReview = {
   id: string;
   user_id: string;
@@ -11,6 +23,7 @@ export type CafeReview = {
   summary: string;
   drink_id: string;
   drink_name: string;
+  positions: ReviewPosition[];
   taste_tags: string[];
   photos: string[];
   photo_count: number;
@@ -24,10 +37,16 @@ export type CafeReview = {
   updated_at: string;
 };
 
+export type ReviewWritePosition = {
+  drink_id?: string;
+  drink?: string;
+};
+
 export type ReviewWritePayload = {
   rating: number;
   drink_id?: string;
   drink?: string;
+  positions?: ReviewWritePosition[];
   taste_tags?: string[];
   summary: string;
   photos?: string[];
@@ -51,18 +70,23 @@ type ListCafeReviewsResponse = {
   reviews?: CafeReview[];
   has_more?: boolean;
   next_cursor?: string;
+  position?: string;
+  position_options?: ReviewPositionOption[];
 };
 
 export type ListCafeReviewsParams = {
   sort?: ReviewSort;
   cursor?: string;
   limit?: number;
+  position?: string;
 };
 
 export type ListCafeReviewsResult = {
   reviews: CafeReview[];
   hasMore: boolean;
   nextCursor: string;
+  position: string;
+  positionOptions: ReviewPositionOption[];
 };
 
 export type ReviewPhotoPresignPayload = {
@@ -92,6 +116,13 @@ export type ReviewDeleteResponse = {
   event_type?: string;
   removed: boolean;
   updated_at?: string;
+};
+
+export type HelpfulVoteResponse = {
+  vote_id: string;
+  review_id: string;
+  weight: number;
+  already_exists: boolean;
 };
 
 function makeIdempotencyKey(): string {
@@ -139,6 +170,22 @@ export async function deleteReview(
   return res.data;
 }
 
+export async function addHelpfulVote(
+  reviewId: string,
+  idempotencyKey: string = makeIdempotencyKey(),
+): Promise<HelpfulVoteResponse> {
+  const res = await http.post<HelpfulVoteResponse>(
+    `/api/reviews/${encodeURIComponent(reviewId)}/helpful`,
+    {},
+    {
+      headers: {
+        "Idempotency-Key": idempotencyKey,
+      },
+    },
+  );
+  return res.data;
+}
+
 export async function listCafeReviews(
   cafeId: string,
   params: ListCafeReviewsParams = {},
@@ -151,6 +198,7 @@ export async function listCafeReviews(
         sort,
         cursor: params.cursor,
         limit: params.limit,
+        position: params.position,
       },
     },
   );
@@ -160,12 +208,20 @@ export async function listCafeReviews(
       reviews: [],
       hasMore: false,
       nextCursor: "",
+      position: "",
+      positionOptions: [],
     };
   }
+  const reviews = res.data.reviews.map((review) => ({
+    ...review,
+    positions: Array.isArray(review.positions) ? review.positions : [],
+  }));
   return {
-    reviews: res.data.reviews,
+    reviews,
     hasMore: Boolean(res.data?.has_more),
     nextCursor: typeof res.data?.next_cursor === "string" ? res.data.next_cursor : "",
+    position: typeof res.data?.position === "string" ? res.data.position : "",
+    positionOptions: Array.isArray(res.data?.position_options) ? res.data.position_options : [],
   };
 }
 

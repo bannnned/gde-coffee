@@ -99,6 +99,19 @@ do update set
   where review_id = $1::uuid
   order by position asc`
 
+	sqlDeleteReviewPositions = `delete from review_positions where review_id = $1::uuid`
+
+	sqlInsertReviewPosition = `insert into review_positions (review_id, position, drink_id, drink_name)
+ values ($1::uuid, $2, $3, $4)`
+
+	sqlSelectReviewPositions = `select
+	position,
+	coalesce(drink_id, ''),
+	coalesce(drink_name, '')
+from review_positions
+where review_id = $1::uuid
+order by position asc`
+
 	sqlExistsDuplicateSummary = `select exists(
 	select 1
 	  from review_attributes ra
@@ -136,6 +149,20 @@ const sqlListCafeReviewsBase = `select
 		  from review_photos rp
 		 where rp.review_id = r.id
 	), '{}'::text[]) as photos
+	,
+	coalesce((
+		select jsonb_agg(
+			jsonb_build_object(
+				'position', rp.position,
+				'drink_id', coalesce(rp.drink_id, ''),
+				'drink_name', coalesce(nullif(trim(drp.name), ''), coalesce(rp.drink_name, ''))
+			)
+			order by rp.position asc
+		)
+		  from review_positions rp
+		  left join drinks drp on drp.id = rp.drink_id
+		 where rp.review_id = r.id
+	), '[]'::jsonb) as positions
 from reviews r
 join users u on u.id = r.user_id
 left join review_attributes ra on ra.review_id = r.id
@@ -150,7 +177,28 @@ left join lateral (
 ) hs on true
 where r.cafe_id = $1::uuid
   and r.status = 'published'
+  and (
+	$4 = ''
+	or exists (
+		select 1
+		  from review_positions rp
+		 where rp.review_id = r.id
+		   and coalesce(nullif(rp.drink_id, ''), rp.drink_name) = $4
+	)
+  )
 `
+
+const sqlListCafeReviewPositionOptions = `select
+	coalesce(nullif(rp.drink_id, ''), rp.drink_name) as option_key,
+	coalesce(nullif(trim(d.name), ''), rp.drink_name) as option_label,
+	count(*)::int as reviews_count
+from review_positions rp
+join reviews r on r.id = rp.review_id
+left join drinks d on d.id = rp.drink_id
+where r.cafe_id = $1::uuid
+  and r.status = 'published'
+group by option_key, option_label
+order by reviews_count desc, option_label asc`
 
 var reviewSortOrderClause = map[string]string{
 	"new":      "order by r.created_at desc, r.id desc",
@@ -173,6 +221,13 @@ type cafeReviewState struct {
 	Status     string
 	HasReview  bool
 	PhotoCount int
+	Positions  []reviewPositionState
+}
+
+type reviewPositionState struct {
+	Position  int    `json:"position"`
+	DrinkID   string `json:"drink_id"`
+	DrinkName string `json:"drink_name"`
 }
 
 type resolvedDrink struct {
