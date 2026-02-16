@@ -266,9 +266,9 @@ export default function CafeCard({
                 transform: "scale(1.08)",
                 transformOrigin: "center",
                 WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 24%, rgba(0,0,0,0.14) 38%, rgba(0,0,0,0.42) 54%, rgba(0,0,0,0.78) 76%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 9%, rgba(0,0,0,0.14) 23%, rgba(0,0,0,0.42) 39%, rgba(0,0,0,0.78) 61%, rgba(0,0,0,1) 100%)",
                 maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 24%, rgba(0,0,0,0.14) 38%, rgba(0,0,0,0.42) 54%, rgba(0,0,0,0.78) 76%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 9%, rgba(0,0,0,0.14) 23%, rgba(0,0,0,0.42) 39%, rgba(0,0,0,0.78) 61%, rgba(0,0,0,1) 100%)",
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
                 pointerEvents: "none",
@@ -293,9 +293,9 @@ export default function CafeCard({
                 transform: "scale(1.16)",
                 transformOrigin: "center",
                 WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 43%, rgba(0,0,0,0.16) 54%, rgba(0,0,0,0.52) 66%, rgba(0,0,0,0.92) 86%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 28%, rgba(0,0,0,0.16) 39%, rgba(0,0,0,0.52) 51%, rgba(0,0,0,0.92) 71%, rgba(0,0,0,1) 100%)",
                 maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 43%, rgba(0,0,0,0.16) 54%, rgba(0,0,0,0.52) 66%, rgba(0,0,0,0.92) 86%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 28%, rgba(0,0,0,0.16) 39%, rgba(0,0,0,0.52) 51%, rgba(0,0,0,0.92) 71%, rgba(0,0,0,1) 100%)",
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
                 pointerEvents: "none",
@@ -381,10 +381,9 @@ export default function CafeCard({
               position: "absolute",
               left: 0,
               right: 0,
-              top: "50%",
-              transform: "translateY(-50%)",
+              bottom: 6,
               pointerEvents: "none",
-              zIndex: 2,
+              zIndex: 4,
             }}
           >
             {photoUrls.map((_, index) => (
