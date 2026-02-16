@@ -242,6 +242,7 @@ export default function CafeCard({
                 height: "100%",
                 objectFit: "cover",
                 display: "block",
+                zIndex: 0,
                 opacity: photoReady ? 1 : 0.36,
                 filter: photoReady ? "blur(0px)" : "blur(2px)",
                 transition: "opacity 200ms ease, filter 220ms ease",
@@ -259,14 +260,13 @@ export default function CafeCard({
                 height: "100%",
                 objectFit: "cover",
                 display: "block",
-                opacity: photoReady ? 1 : 0,
-                filter: "blur(26px) saturate(128%)",
-                transform: "scale(1.12)",
+                zIndex: 1,
+                opacity: photoReady ? 0.96 : 0,
+                filter: "blur(30px) saturate(140%) brightness(0.92)",
+                transform: "scale(1.16)",
                 transformOrigin: "center",
-                WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 56%, rgba(0,0,0,0.14) 68%, rgba(0,0,0,0.58) 83%, rgba(0,0,0,1) 100%)",
-                maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 56%, rgba(0,0,0,0.14) 68%, rgba(0,0,0,0.58) 83%, rgba(0,0,0,1) 100%)",
+                WebkitClipPath: "inset(54% 0 0 0)",
+                clipPath: "inset(54% 0 0 0)",
                 pointerEvents: "none",
                 transition: "opacity 240ms ease",
               }}
