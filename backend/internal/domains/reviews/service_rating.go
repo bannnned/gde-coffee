@@ -17,7 +17,7 @@ const (
 	r.user_id::text,
 	r.rating::float8,
 	extract(epoch from (now() - r.updated_at)) / 86400.0 as age_days,
-	coalesce(ra.drink_name, ''),
+	coalesce(nullif(ra.drink_id, ''), coalesce(ra.drink_name, '')),
 	coalesce(cardinality(ra.taste_tags), 0),
 	coalesce(ra.summary_length, 0),
 	coalesce(ra.photo_count, 0),
@@ -100,7 +100,7 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		AuthorUserID     string
 		Rating           float64
 		AgeDays          float64
-		DrinkName        string
+		DrinkID          string
 		TagsCount        int
 		SummaryLength    int
 		PhotoCount       int
@@ -126,7 +126,7 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 			&item.AuthorUserID,
 			&item.Rating,
 			&item.AgeDays,
-			&item.DrinkName,
+			&item.DrinkID,
 			&item.TagsCount,
 			&item.SummaryLength,
 			&item.PhotoCount,
@@ -187,7 +187,7 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		}
 
 		qualityScore := calculateReviewQualityV1(
-			item.DrinkName,
+			item.DrinkID,
 			item.TagsCount,
 			item.SummaryLength,
 			item.PhotoCount,

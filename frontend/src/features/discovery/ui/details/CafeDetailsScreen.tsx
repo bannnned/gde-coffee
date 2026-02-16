@@ -11,7 +11,6 @@ import {
   Stack,
   Text,
   Textarea,
-  ThemeIcon,
   useMantineTheme,
 } from "@mantine/core";
 import {
@@ -20,9 +19,9 @@ import {
   IconChevronRight,
   IconHeart,
   IconHeartFilled,
-  IconLock,
 } from "@tabler/icons-react";
 import { getCafePhotos } from "../../../../api/cafePhotos";
+import ReviewsSection from "./ReviewsSection";
 
 import type {
   Cafe,
@@ -373,32 +372,6 @@ export default function CafeDetailsScreen({
       ? "Редактировать описание"
       : "Предложить правку описания"
     : "Добавить описание";
-
-  const lockedBlock = (title: string, blockDescription: string) => (
-    <Paper
-      withBorder
-      radius="md"
-      p="md"
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-      }}
-    >
-      <Group align="flex-start" wrap="nowrap">
-        <ThemeIcon variant="light" color="gray" radius="xl" size="lg" mt={2}>
-          <IconLock size={16} />
-        </ThemeIcon>
-        <Stack gap={2}>
-          <Text fw={600} size="sm">
-            {title}
-          </Text>
-          <Text c="dimmed" size="sm">
-            {blockDescription}
-          </Text>
-        </Stack>
-      </Group>
-    </Paper>
-  );
 
   return (
     <Modal
@@ -764,11 +737,7 @@ export default function CafeDetailsScreen({
             </Stack>
           )}
 
-          {section === "reviews" &&
-            lockedBlock(
-              "Отзывы скоро",
-              "Раздел отзывов временно недоступен. Подключим в одном из следующих релизов.",
-            )}
+          {section === "reviews" && <ReviewsSection cafeId={cafe.id} opened={opened} />}
         </Stack>
       </Paper>
 

@@ -1,12 +1,20 @@
 package reviews
 
 type PublishReviewRequest struct {
-	CafeID     string   `json:"cafe_id"`
-	Rating     int      `json:"rating"`
-	DrinkName  string   `json:"drink_name"`
-	TasteTags  []string `json:"taste_tags"`
-	Summary    string   `json:"summary"`
-	PhotoCount int      `json:"photo_count"`
+	CafeID    string   `json:"cafe_id"`
+	Rating    int      `json:"rating"`
+	DrinkID   string   `json:"drink_id"`
+	TasteTags []string `json:"taste_tags"`
+	Summary   string   `json:"summary"`
+	Photos    []string `json:"photos"`
+}
+
+type UpdateReviewRequest struct {
+	Rating    *int      `json:"rating"`
+	DrinkID   *string   `json:"drink_id"`
+	TasteTags *[]string `json:"taste_tags"`
+	Summary   *string   `json:"summary"`
+	Photos    *[]string `json:"photos"`
 }
 
 type VerifyVisitRequest struct {

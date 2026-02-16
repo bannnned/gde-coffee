@@ -11,6 +11,8 @@ const (
 
 const (
 	IdempotencyScopeReviewPublish = "review.publish"
+	IdempotencyScopeReviewCreate  = "review.create"
+	IdempotencyScopeReviewUpdate  = "review.update"
 	IdempotencyScopeHelpfulVote   = "vote.helpful"
 	IdempotencyScopeCheckIn       = "checkin.verify"
 )

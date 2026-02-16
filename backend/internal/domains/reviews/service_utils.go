@@ -5,23 +5,21 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"math"
+	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 )
 
 func sanitizePublishReviewRequest(req PublishReviewRequest) PublishReviewRequest {
 	clean := PublishReviewRequest{
-		CafeID:     strings.TrimSpace(req.CafeID),
-		Rating:     req.Rating,
-		DrinkName:  strings.TrimSpace(req.DrinkName),
-		Summary:    strings.TrimSpace(req.Summary),
-		PhotoCount: req.PhotoCount,
+		CafeID:  strings.TrimSpace(req.CafeID),
+		Rating:  req.Rating,
+		DrinkID: strings.TrimSpace(req.DrinkID),
+		Summary: strings.TrimSpace(req.Summary),
 	}
-	if clean.PhotoCount < 0 {
-		clean.PhotoCount = 0
-	}
-
 	clean.TasteTags = normalizeTags(req.TasteTags)
+	clean.Photos = normalizePhotos(req.Photos)
 	return clean
 }
 
@@ -44,6 +42,122 @@ func normalizeTags(tags []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func normalizePhotos(photos []string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(photos))
+	for _, raw := range photos {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+		if len(out) >= 8 {
+			break
+		}
+	}
+	return out
+}
+
+func validPhotoURL(raw string) bool {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return false
+	}
+	if strings.HasPrefix(value, "/") {
+		return true
+	}
+	parsed, err := url.Parse(value)
+	if err != nil || parsed == nil {
+		return false
+	}
+	scheme := strings.ToLower(strings.TrimSpace(parsed.Scheme))
+	if scheme != "http" && scheme != "https" {
+		return false
+	}
+	return strings.TrimSpace(parsed.Host) != ""
+}
+
+var (
+	reMultiSpace = regexp.MustCompile(`\s+`)
+	reWordToken  = regexp.MustCompile(`[\p{L}\p{N}]+`)
+	reURLLike    = regexp.MustCompile(`(?i)(https?://|www\.|t\.me/|telegram\.me/)`)
+)
+
+func normalizeSummaryForFingerprint(value string) string {
+	lowered := strings.ToLower(strings.TrimSpace(value))
+	if lowered == "" {
+		return ""
+	}
+	normalized := reMultiSpace.ReplaceAllString(lowered, " ")
+	return strings.TrimSpace(normalized)
+}
+
+func summaryFingerprint(value string) string {
+	normalized := normalizeSummaryForFingerprint(value)
+	if normalized == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(normalized))
+	return hex.EncodeToString(sum[:])
+}
+
+func looksLikeSpamSummary(value string) bool {
+	summary := strings.TrimSpace(value)
+	if summary == "" {
+		return false
+	}
+	if reURLLike.MatchString(summary) {
+		return true
+	}
+
+	// Heuristic anti-spam check:
+	// long identical rune runs and highly repetitive token patterns are usually low-signal spam.
+	runes := []rune(strings.ToLower(summary))
+	run := 1
+	maxRun := 1
+	for i := 1; i < len(runes); i++ {
+		if runes[i] == runes[i-1] {
+			run++
+			if run > maxRun {
+				maxRun = run
+			}
+			continue
+		}
+		run = 1
+	}
+	if maxRun >= 8 {
+		return true
+	}
+
+	tokens := reWordToken.FindAllString(strings.ToLower(summary), -1)
+	if len(tokens) < 6 {
+		return false
+	}
+
+	maxFreq := 0
+	unique := map[string]struct{}{}
+	freq := map[string]int{}
+	for _, token := range tokens {
+		if token == "" {
+			continue
+		}
+		unique[token] = struct{}{}
+		freq[token]++
+		if freq[token] > maxFreq {
+			maxFreq = freq[token]
+		}
+	}
+
+	if maxFreq*2 >= len(tokens) {
+		return true
+	}
+	return len(tokens) >= 12 && len(unique) <= 3
 }
 
 func payloadString(payload map[string]interface{}, key string) string {

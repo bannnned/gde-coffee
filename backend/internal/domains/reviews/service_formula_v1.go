@@ -7,7 +7,7 @@ import (
 
 // calculateReviewQualityV1 implements the public formula agreed in stage 0.
 func calculateReviewQualityV1(
-	drinkName string,
+	drinkID string,
 	tagsCount int,
 	summaryLength int,
 	photoCount int,
@@ -15,7 +15,7 @@ func calculateReviewQualityV1(
 	confirmedReports int,
 ) float64 {
 	drink := 0.0
-	if strings.TrimSpace(drinkName) != "" {
+	if strings.TrimSpace(drinkID) != "" {
 		drink = 1.0
 	}
 
