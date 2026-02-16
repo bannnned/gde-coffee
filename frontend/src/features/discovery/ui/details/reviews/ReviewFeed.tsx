@@ -258,6 +258,16 @@ function ReviewCard({
               <Text fw={600} size="sm">
                 {review.author_name || "Участник"}
               </Text>
+              {review.author_badge && (
+                <Badge size="xs" variant="light">
+                  {review.author_badge}
+                </Badge>
+              )}
+              {review.author_trusted && (
+                <Badge color="blue" size="xs" variant="light">
+                  Доверенный участник
+                </Badge>
+              )}
               {isOwn && <Badge size="xs">Вы</Badge>}
               {review.visit_verified && (
                 <Badge color="teal" size="xs" variant="light">

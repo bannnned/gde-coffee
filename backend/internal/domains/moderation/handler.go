@@ -13,6 +13,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/domains/photos"
 	"backend/internal/media"
+	"backend/internal/reputation"
 	"backend/internal/shared/httpx"
 	"backend/internal/shared/validation"
 
@@ -585,6 +586,10 @@ func (h *Handler) decide(c *gin.Context, decision string) {
 			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 			return
 		}
+		if err := applyReputationForApprovedSubmission(ctx, tx, submission); err != nil {
+			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+			return
+		}
 	}
 
 	var commentArg any
@@ -655,6 +660,50 @@ func (h *Handler) applySubmission(
 	default:
 		return fmt.Errorf("Этот тип заявки пока не поддерживается")
 	}
+}
+
+func applyReputationForApprovedSubmission(
+	ctx context.Context,
+	tx pgx.Tx,
+	submission moderationSubmissionResponse,
+) error {
+	points := 0
+	eventType := ""
+
+	switch submission.EntityType {
+	case entityTypeCafe:
+		if submission.ActionType != actionTypeCreate {
+			return nil
+		}
+		points = reputation.PointsCafeCreateApproved
+		eventType = reputation.EventCafeCreateApproved
+	case entityTypeCafeDescription, entityTypeCafePhoto, entityTypeMenuPhoto:
+		points = reputation.PointsDataUpdateApproved
+		eventType = reputation.EventDataUpdateApproved
+	default:
+		return nil
+	}
+
+	metadata := map[string]any{
+		"entity_type": submission.EntityType,
+		"action_type": submission.ActionType,
+	}
+	if submission.TargetID != nil {
+		if targetID := strings.TrimSpace(*submission.TargetID); targetID != "" {
+			metadata["target_id"] = targetID
+		}
+	}
+
+	return insertReputationEventTx(
+		ctx,
+		tx,
+		submission.AuthorUserID,
+		eventType,
+		points,
+		reputation.SourceModerationSubmission,
+		submission.ID,
+		metadata,
+	)
 }
 
 func (h *Handler) applyCafeCreate(

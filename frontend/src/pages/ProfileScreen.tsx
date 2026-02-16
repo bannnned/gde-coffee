@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Badge,
   Box,
   Button,
   Container,
@@ -211,6 +212,16 @@ export default function ProfileScreen() {
                     <Text className={classes.heroCaption}>
                       Здесь будет история, избранные места и персональные настройки.
                     </Text>
+                    <Group gap={8}>
+                      <Badge variant="light">
+                        {user.reputationBadge ?? "Участник"}
+                      </Badge>
+                      {user.trustedParticipant && (
+                        <Badge color="blue" variant="light">
+                          Доверенный участник
+                        </Badge>
+                      )}
+                    </Group>
                   </div>
                 </div>
 

@@ -10,6 +10,8 @@ export type AuthUser = {
   emailVerifiedAt?: string | null;
   avatarUrl?: string | null;
   role?: string;
+  reputationBadge?: string;
+  trustedParticipant?: boolean;
 };
 
 export type LoginPayload = {
@@ -93,6 +95,10 @@ function normalizeUser(data: any): AuthUser {
       raw.email_verified_at ?? raw.emailVerifiedAt ?? raw.email_verified ?? null,
     avatarUrl: raw.avatar_url ?? raw.avatarUrl ?? raw.avatar ?? null,
     role: typeof raw.role === "string" ? raw.role : undefined,
+    reputationBadge:
+      typeof raw.reputation_badge === "string" ? raw.reputation_badge : undefined,
+    trustedParticipant:
+      typeof raw.trusted_participant === "boolean" ? raw.trusted_participant : false,
   };
 }
 

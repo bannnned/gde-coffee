@@ -77,3 +77,8 @@ type ReportAbuseRequest struct {
 	Reason  string `json:"reason"`
 	Details string `json:"details"`
 }
+
+type DeleteReviewRequest struct {
+	Reason  string `json:"reason"`
+	Details string `json:"details"`
+}

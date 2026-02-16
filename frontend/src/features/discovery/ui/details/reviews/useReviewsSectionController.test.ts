@@ -181,6 +181,12 @@ describe("useReviewsSectionController", () => {
     } as any);
 
     vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(window, "prompt").mockImplementation((message: string | undefined) => {
+      if ((message ?? "").toLowerCase().includes("причину удаления")) {
+        return "abuse";
+      }
+      return "";
+    });
   });
 
   afterEach(() => {
@@ -445,7 +451,11 @@ describe("useReviewsSectionController", () => {
 
     await waitFor(() => {
       expect(window.confirm).toHaveBeenCalled();
-      expect(mockDeleteReview).toHaveBeenCalledWith("review-to-delete");
+      expect(window.prompt).toHaveBeenCalled();
+      expect(mockDeleteReview).toHaveBeenCalledWith("review-to-delete", {
+        reason: "abuse",
+        details: "",
+      });
     });
 
     await waitFor(() => {

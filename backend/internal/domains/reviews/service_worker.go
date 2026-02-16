@@ -7,6 +7,8 @@ import (
 	"math"
 	"time"
 
+	"backend/internal/reputation"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -114,7 +116,7 @@ func (s *Service) applyHelpfulReputation(ctx context.Context, payload map[string
 	}
 
 	// Reputation v1: each helpful vote gives +2 points scaled by voter weight.
-	points := int(math.Round(2.0 * weight))
+	points := int(math.Round(reputation.PointsHelpfulBase * weight))
 	if points < 1 {
 		points = 1
 	}
@@ -122,9 +124,9 @@ func (s *Service) applyHelpfulReputation(ctx context.Context, payload map[string
 	return s.repository.AddReputationEvent(
 		ctx,
 		reviewAuthorID,
-		"helpful_received",
+		reputation.EventHelpfulReceived,
 		points,
-		"helpful_vote",
+		reputation.SourceHelpfulVote,
 		voteID,
 		map[string]interface{}{"weight": weight},
 	)
@@ -156,9 +158,9 @@ func (s *Service) applyVisitReputation(ctx context.Context, payload map[string]i
 	points := 0
 	switch normalizeConfidence(confidence) {
 	case "low":
-		points = 1
+		points = reputation.PointsVisitLow
 	case "medium", "high":
-		points = 3
+		points = reputation.PointsVisitMediumHigh
 	}
 	if points == 0 {
 		return nil
@@ -167,9 +169,9 @@ func (s *Service) applyVisitReputation(ctx context.Context, payload map[string]i
 	return s.repository.AddReputationEvent(
 		ctx,
 		reviewAuthorID,
-		"visit_verified",
+		reputation.EventVisitVerified,
 		points,
-		"visit_verification",
+		reputation.SourceVisitVerification,
 		verificationID,
 		nil,
 	)
@@ -197,9 +199,9 @@ func (s *Service) applyAbusePenalty(ctx context.Context, payload map[string]inte
 	return s.repository.AddReputationEvent(
 		ctx,
 		reviewAuthorID,
-		"abuse_confirmed",
-		-25,
-		"abuse_report",
+		reputation.EventAbuseConfirmed,
+		reputation.PointsAbuseConfirmed,
+		reputation.SourceAbuseReport,
 		reportID,
 		nil,
 	)

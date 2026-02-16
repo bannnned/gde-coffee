@@ -571,10 +571,28 @@ export function useReviewsSectionController({
       const ok = window.confirm("Удалить этот отзыв?");
       if (!ok) return;
 
+      const rawReason = window.prompt(
+        "Укажите причину удаления: abuse или violation",
+        "abuse",
+      );
+      const normalizedReason = (rawReason ?? "").trim().toLowerCase();
+      if (normalizedReason !== "abuse" && normalizedReason !== "violation") {
+        setSubmitError("Нужно указать причину удаления: abuse или violation.");
+        return;
+      }
+
+      const rawDetails = window.prompt(
+        "Комментарий модератора (необязательно)",
+        "",
+      );
+
       setSubmitError(null);
       setSubmitHint(null);
       try {
-        await deleteReview(review.id);
+        await deleteReview(review.id, {
+          reason: normalizedReason,
+          details: (rawDetails ?? "").trim(),
+        });
         setSubmitHint("Отзыв удален.");
         await loadFirstPage();
       } catch (error: any) {

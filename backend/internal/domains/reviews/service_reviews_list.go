@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
+	"backend/internal/reputation"
 )
 
 func (s *Service) ListCafeReviews(
@@ -41,6 +43,7 @@ func (s *Service) ListCafeReviews(
 		var (
 			item             cafeReviewState
 			authorName       string
+			authorRepScore   float64
 			tasteTags        []string
 			helpfulVotes     int
 			helpfulScore     float64
@@ -55,6 +58,7 @@ func (s *Service) ListCafeReviews(
 			&item.ReviewID,
 			&item.UserID,
 			&authorName,
+			&authorRepScore,
 			&item.Rating,
 			&item.Summary,
 			&item.DrinkID,
@@ -98,6 +102,8 @@ func (s *Service) ListCafeReviews(
 			"id":                item.ReviewID,
 			"user_id":           item.UserID,
 			"author_name":       authorName,
+			"author_badge":      reputation.BadgeFromScore(authorRepScore),
+			"author_trusted":    reputation.IsTrustedParticipant(authorRepScore),
 			"rating":            item.Rating,
 			"summary":           item.Summary,
 			"drink_id":          item.DrinkID,

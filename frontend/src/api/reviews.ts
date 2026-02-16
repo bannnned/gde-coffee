@@ -19,6 +19,8 @@ export type CafeReview = {
   id: string;
   user_id: string;
   author_name: string;
+  author_badge?: string;
+  author_trusted?: boolean;
   rating: number;
   summary: string;
   drink_id: string;
@@ -119,7 +121,13 @@ export type ReviewDeleteResponse = {
   cafe_id: string;
   event_type?: string;
   removed: boolean;
+  removal_reason?: "abuse" | "violation";
   updated_at?: string;
+};
+
+export type ReviewDeletePayload = {
+  reason: "abuse" | "violation";
+  details?: string;
 };
 
 export type HelpfulVoteResponse = {
@@ -197,9 +205,13 @@ export async function updateReview(
 
 export async function deleteReview(
   reviewId: string,
+  payload: ReviewDeletePayload,
 ): Promise<ReviewDeleteResponse> {
   const res = await http.delete<ReviewDeleteResponse>(
     `/api/reviews/${encodeURIComponent(reviewId)}`,
+    {
+      data: payload,
+    },
   );
   return res.data;
 }

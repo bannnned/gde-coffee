@@ -229,6 +229,9 @@ func main() {
 	api.POST("/abuse-reports/:id/confirm", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.ConfirmAbuse)
 	api.GET("/cafes/:id/rating", reviewsHandler.GetCafeRating)
 	api.GET("/cafes/:id/reviews", reviewsHandler.ListCafeReviews)
+	api.GET("/reputation/me", auth.RequireAuth(pool), reviewsHandler.GetMyReputation)
+	api.GET("/reputation/me/events", auth.RequireAuth(pool), reviewsHandler.GetMyReputationEvents)
+	api.GET("/reputation/users/:id/events", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.GetUserReputationEvents)
 
 	adminDrinksGroup := api.Group("/admin/drinks")
 	adminDrinksGroup.Use(auth.RequireRole(pool, "admin", "moderator"))

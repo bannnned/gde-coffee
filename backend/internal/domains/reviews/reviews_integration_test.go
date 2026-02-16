@@ -729,7 +729,10 @@ func TestDeleteReviewByModeratorOnly(t *testing.T) {
 			"X-Test-User-ID": moderatorID,
 			"X-Test-Role":    "moderator",
 		},
-		nil,
+		map[string]interface{}{
+			"reason":  "violation",
+			"details": "manual moderation",
+		},
 	)
 	if modDeleteRec.Code != http.StatusOK {
 		t.Fatalf("moderator delete expected 200, got %d, body=%s", modDeleteRec.Code, modDeleteRec.Body.String())
@@ -747,6 +750,89 @@ func TestDeleteReviewByModeratorOnly(t *testing.T) {
 	}
 	if status != "removed" {
 		t.Fatalf("expected review status=removed, got %q", status)
+	}
+
+	var (
+		eventType string
+		points    int
+	)
+	if err := pool.QueryRow(
+		ctx,
+		`select event_type, points
+		   from reputation_events
+		  where user_id = $1::uuid
+		    and source_type = 'review_moderation'
+		    and source_id = $2
+		  order by id desc
+		  limit 1`,
+		userID,
+		createResp.ReviewID,
+	).Scan(&eventType, &points); err != nil {
+		t.Fatalf("load review moderation reputation event: %v", err)
+	}
+	if eventType != "review_removed_violation" {
+		t.Fatalf("expected review_removed_violation event, got %q", eventType)
+	}
+	if points != -15 {
+		t.Fatalf("expected points=-15, got %d", points)
+	}
+}
+
+func TestDeleteReviewRequiresReason(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userID := mustCreateTestUser(t, pool, "user")
+	moderatorID := mustCreateTestUser(t, pool, "moderator")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, moderatorID)
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-delete-reason-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     5,
+			"drink_id":   "espresso",
+			"taste_tags": []string{"sweet"},
+			"summary":    "Стабильная чашка с карамельной сладостью, округлым телом и аккуратной кислотностью без резких тонов.",
+			"photos":     []string{},
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+	var createResp struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	deleteRec := performJSONRequest(
+		t,
+		router,
+		http.MethodDelete,
+		"/api/reviews/"+createResp.ReviewID,
+		map[string]string{
+			"X-Test-User-ID": moderatorID,
+			"X-Test-Role":    "moderator",
+		},
+		nil,
+	)
+	if deleteRec.Code != http.StatusBadRequest {
+		t.Fatalf("delete without reason expected 400, got %d, body=%s", deleteRec.Code, deleteRec.Body.String())
 	}
 }
 

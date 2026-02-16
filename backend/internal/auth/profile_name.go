@@ -97,6 +97,10 @@ func (h Handler) ProfileNameUpdate(c *gin.Context) {
 		respondError(c, http.StatusInternalServerError, "internal", "db update failed", nil)
 		return
 	}
+	if err := populateUserReputation(ctx, h.Pool, &user); err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }

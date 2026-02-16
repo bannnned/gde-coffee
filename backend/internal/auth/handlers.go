@@ -48,6 +48,8 @@ type User struct {
 	AvatarURL       *string    `json:"avatar_url,omitempty"`
 	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
 	Role            string     `json:"role"`
+	ReputationBadge string     `json:"reputation_badge"`
+	TrustedMember   bool       `json:"trusted_participant"`
 }
 
 type registerRequest struct {
@@ -141,6 +143,10 @@ func (h Handler) Register(c *gin.Context) {
 		respondError(c, http.StatusInternalServerError, "internal", "user create failed", nil)
 		return
 	}
+	if err := populateUserReputation(ctx, tx, &user); err != nil {
+		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
+		return
+	}
 
 	_, err = tx.Exec(ctx, `insert into local_credentials (user_id, password_hash) values ($1, $2)`, user.ID, string(passwordHash))
 	if err != nil {
@@ -231,6 +237,11 @@ func (h Handler) Login(c *gin.Context) {
 		respondError(c, http.StatusInternalServerError, "internal", "internal error", nil)
 		return
 	}
+	if err := populateUserReputation(ctx, h.Pool, &user); err != nil {
+		log.Printf("login failed (reputation query): %v", err)
+		respondError(c, http.StatusInternalServerError, "internal", "internal error", nil)
+		return
+	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
 		log.Printf("login failed (bad password): email=%s ip=%s", email, c.ClientIP())
@@ -280,6 +291,10 @@ func (h Handler) Me(c *gin.Context) {
 			respondError(c, http.StatusUnauthorized, "unauthorized", "invalid session", nil)
 			return
 		}
+		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
+		return
+	}
+	if err := populateUserReputation(ctx, h.Pool, &user); err != nil {
 		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
 		return
 	}
