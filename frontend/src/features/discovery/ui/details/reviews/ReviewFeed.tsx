@@ -40,6 +40,31 @@ export function ReviewFeed({
   hasMore,
   onLoadMore,
 }: ReviewFeedProps) {
+  const filterSelectStyles = {
+    label: {
+      fontSize: 11,
+      letterSpacing: "0.04em",
+      textTransform: "uppercase",
+      color: "var(--muted)",
+      marginBottom: 4,
+    },
+    input: {
+      borderRadius: 14,
+      border: "1px solid var(--glass-border)",
+      background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+      boxShadow: "var(--glass-shadow)",
+      backdropFilter: "blur(10px) saturate(130%)",
+      WebkitBackdropFilter: "blur(10px) saturate(130%)",
+      minHeight: 38,
+      fontWeight: 600,
+    },
+    dropdown: {
+      borderRadius: 14,
+      border: "1px solid var(--glass-border)",
+      background: "var(--surface)",
+    },
+  } as const;
+
   const positionFilterData = [
     { value: "all", label: "Все позиции" },
     ...positionOptions.map((item) => ({
@@ -56,9 +81,6 @@ export function ReviewFeed({
 
   return (
     <>
-      <Text fw={600} size="sm">
-        Отзывы
-      </Text>
       <Group grow align="flex-end" gap={8} wrap="nowrap">
         <Select
           size="xs"
@@ -66,6 +88,7 @@ export function ReviewFeed({
           value={sort}
           data={sortSelectData}
           onChange={(value) => onSortChange((value as ReviewSort) || "new")}
+          styles={filterSelectStyles}
           style={{ flex: 1 }}
         />
         <Select
@@ -74,6 +97,7 @@ export function ReviewFeed({
           value={positionFilter}
           data={positionFilterData}
           onChange={(value) => onPositionFilterChange(value || "all")}
+          styles={filterSelectStyles}
           style={{ flex: 1 }}
         />
       </Group>

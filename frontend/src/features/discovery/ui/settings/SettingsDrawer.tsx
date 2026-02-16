@@ -67,21 +67,27 @@ export default function SettingsDrawer({
       background: "var(--glass-bg)",
       backdropFilter: "blur(18px) saturate(180%)",
       WebkitBackdropFilter: "blur(18px) saturate(180%)",
-      borderTopLeftRadius: theme.radius.xl,
-      borderTopRightRadius: theme.radius.xl,
+      borderRadius: 0,
+      height: "100dvh",
+      maxHeight: "100dvh",
       border: "1px solid var(--glass-border)",
       boxShadow: "var(--shadow)",
     },
     header: {
-      background: "transparent",
+      position: "sticky",
+      top: 0,
+      zIndex: 8,
+      background: "color-mix(in srgb, var(--glass-bg) 88%, transparent)",
+      backdropFilter: "blur(20px) saturate(170%)",
+      WebkitBackdropFilter: "blur(20px) saturate(170%)",
       borderBottom: "1px solid var(--glass-border)",
     },
     body: {
       paddingTop: theme.spacing.sm,
     },
     overlay: {
-      backdropFilter: "blur(2px)",
-      backgroundColor: "var(--color-surface-overlay-soft)",
+      backdropFilter: "blur(10px)",
+      backgroundColor: "var(--color-surface-overlay-strong)",
     },
   } as const;
   const amenityChipLabelStyles = createDiscoveryAmenityChipLabelStyles(theme.fontSizes.xs);
@@ -90,9 +96,9 @@ export default function SettingsDrawer({
     <Drawer
       opened={opened}
       onClose={onClose}
-      position="bottom"
-      size="sm"
-      title={DISCOVERY_UI_TEXT.settingsAria}
+      position="right"
+      size="100%"
+      title="Настройки"
       styles={drawerStyles}
     >
       <Stack gap="md">

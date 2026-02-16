@@ -13,7 +13,6 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { IconHeart, IconHeartFilled, IconLogin } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
-import { ColorSchemeToggle } from "../../../components/ColorSchemeToggle";
 import { useAuth } from "../../../components/AuthGate";
 import type { Amenity } from "../../../entities/cafe/model/types";
 import { AMENITY_LABELS, DISCOVERY_ICONS, DISCOVERY_UI_TEXT } from "../constants";
@@ -225,8 +224,6 @@ export default function FiltersBar({
           >
             <DISCOVERY_ICONS.settings size={18} />
           </ActionIcon>
-
-          <ColorSchemeToggle />
         </Group>
       </Group>
 

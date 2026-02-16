@@ -239,7 +239,7 @@ export default function BottomSheet({
     >
       <MotionPaper
         withBorder
-        radius="lg"
+        radius={22}
         p="xs"
         className={classes.sheet}
         data-state={effectiveSheetState}

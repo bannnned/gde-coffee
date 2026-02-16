@@ -15,10 +15,12 @@ import {
 } from "@mantine/core";
 import {
   IconArrowsLeftRight,
+  IconCamera,
   IconChevronLeft,
   IconChevronRight,
   IconHeart,
   IconHeartFilled,
+  IconPlus,
 } from "@tabler/icons-react";
 import { getCafePhotos } from "../../../../api/cafePhotos";
 import ReviewsSection from "./ReviewsSection";
@@ -91,8 +93,6 @@ export default function CafeDetailsScreen({
   const [descriptionSaving, setDescriptionSaving] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [descriptionHint, setDescriptionHint] = useState<string | null>(null);
-  const [aboutActiveIndex, setAboutActiveIndex] = useState(0);
-  const [menuActiveIndex, setMenuActiveIndex] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerKind, setViewerKind] = useState<CafePhotoKind>("cafe");
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -121,8 +121,10 @@ export default function CafeDetailsScreen({
     ];
   }, [cafePhotos, coverPhotoUrl]);
   const menuPhotoItems = menuPhotos;
-  const aboutMainPhoto = aboutPhotoItems[aboutActiveIndex] ?? null;
-  const menuMainPhoto = menuPhotoItems[menuActiveIndex] ?? null;
+  const aboutMainPhoto = aboutPhotoItems[0] ?? null;
+  const aboutExtraPhotoItems = aboutPhotoItems.slice(1);
+  const menuMainPhoto = menuPhotoItems[0] ?? null;
+  const menuExtraPhotoItems = menuPhotoItems.slice(1);
   const viewerPhotos = viewerKind === "menu" ? menuPhotoItems : aboutPhotoItems;
   const viewerPhoto = viewerPhotos[viewerIndex] ?? null;
 
@@ -163,23 +165,9 @@ export default function CafeDetailsScreen({
     setDescriptionSaving(false);
     setDescriptionError(null);
     setDescriptionHint(null);
-    setAboutActiveIndex(0);
-    setMenuActiveIndex(0);
     setViewerOpen(false);
     setViewerIndex(0);
   }, [cafe?.id, opened]);
-
-  useEffect(() => {
-    setAboutActiveIndex((prev) =>
-      aboutPhotoItems.length === 0 ? 0 : Math.min(prev, aboutPhotoItems.length - 1),
-    );
-  }, [aboutPhotoItems.length]);
-
-  useEffect(() => {
-    setMenuActiveIndex((prev) =>
-      menuPhotoItems.length === 0 ? 0 : Math.min(prev, menuPhotoItems.length - 1),
-    );
-  }, [menuPhotoItems.length]);
 
   useEffect(() => {
     setViewerIndex((prev) =>
@@ -270,6 +258,7 @@ export default function CafeDetailsScreen({
     boxShadow: "var(--shadow)",
     backdropFilter: "blur(18px) saturate(160%)",
     WebkitBackdropFilter: "blur(18px) saturate(160%)",
+    overflow: "hidden",
   } as const;
 
   const badgeStyles = {
@@ -289,6 +278,7 @@ export default function CafeDetailsScreen({
   ];
 
   const handleStartDescription = () => {
+    if (!canManageDirectly) return;
     if (onStartDescriptionEdit && !onStartDescriptionEdit()) {
       return;
     }
@@ -372,11 +362,7 @@ export default function CafeDetailsScreen({
     if (deltaX > 0) stepViewer(-1);
   };
 
-  const descriptionActionLabel = description
-    ? canManageDirectly
-      ? "Редактировать описание"
-      : "Предложить правку описания"
-    : "Добавить описание";
+  const descriptionActionLabel = description ? "Редактировать описание" : "Добавить описание";
 
   return (
     <Modal
@@ -414,50 +400,50 @@ export default function CafeDetailsScreen({
       }
       styles={modalStyles}
     >
-      <Paper withBorder radius="lg" p="md" style={cardStyles}>
-        <Stack gap="md">
-          <SegmentedControl
-            fullWidth
-            data={sectionControlData}
-            value={section}
-            onChange={(value) => setSection(value as DetailsSection)}
-            styles={{
-              root: {
-                background:
-                  "linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "var(--glass-shadow)",
-                backdropFilter: "blur(14px) saturate(140%)",
-                WebkitBackdropFilter: "blur(14px) saturate(140%)",
-                transition: "background 220ms ease, box-shadow 220ms ease",
-              },
-              indicator: {
-                background:
-                  "linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong))",
-                border: "1px solid var(--color-border-soft)",
-                boxShadow: "0 6px 16px var(--color-brand-accent-soft)",
-                transition: "all 220ms ease",
-              },
-              label: {
-                color: "var(--text)",
-                fontWeight: 600,
-                transition: "color 180ms ease",
-              },
-            }}
-          />
+      <Paper withBorder radius="lg" p={0} style={cardStyles}>
+        <Stack gap={0}>
+          <Box p="md" pb="xs">
+            <SegmentedControl
+              fullWidth
+              data={sectionControlData}
+              value={section}
+              onChange={(value) => setSection(value as DetailsSection)}
+              styles={{
+                root: {
+                  background:
+                    "linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
+                  border: "1px solid var(--glass-border)",
+                  boxShadow: "var(--glass-shadow)",
+                  backdropFilter: "blur(14px) saturate(140%)",
+                  WebkitBackdropFilter: "blur(14px) saturate(140%)",
+                  transition: "background 220ms ease, box-shadow 220ms ease",
+                },
+                indicator: {
+                  background:
+                    "linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong))",
+                  border: "1px solid var(--color-border-soft)",
+                  boxShadow: "0 6px 16px var(--color-brand-accent-soft)",
+                  transition: "all 220ms ease",
+                },
+                label: {
+                  color: "var(--text)",
+                  fontWeight: 600,
+                  transition: "color 180ms ease",
+                },
+              }}
+            />
+          </Box>
 
           {section === "about" && (
-            <Stack gap="xs">
+            <Stack gap={0}>
               {aboutMainPhoto && (
-                <Paper
-                  withBorder
-                  radius="md"
-                  onClick={() => openViewer("cafe", aboutActiveIndex)}
+                <Box
+                  onClick={() => openViewer("cafe", 0)}
                   style={{
                     overflow: "hidden",
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
                     cursor: "pointer",
+                    borderTop: "1px solid var(--border)",
+                    borderBottom: "1px solid var(--border)",
                   }}
                 >
                   <img
@@ -473,7 +459,7 @@ export default function CafeDetailsScreen({
                     onError={() => setAboutImageReady(true)}
                     style={{
                       width: "100%",
-                      maxHeight: 260,
+                      height: 260,
                       objectFit: "cover",
                       display: "block",
                       opacity: aboutImageReady ? 1 : 0.38,
@@ -481,65 +467,40 @@ export default function CafeDetailsScreen({
                       transition: "opacity 220ms ease, filter 240ms ease",
                     }}
                   />
-                </Paper>
+                </Box>
               )}
-              {aboutPhotoItems.length > 1 && (
-                <Group
-                  wrap="nowrap"
-                  gap={8}
-                  style={{ overflowX: "auto", paddingBottom: 2 }}
-                >
-                  {aboutPhotoItems.map((photo, index) => (
-                    <Paper
-                      key={photo.id}
-                      withBorder
-                      radius="sm"
-                      onClick={() => setAboutActiveIndex(index)}
-                      style={{
-                        width: 96,
-                        minWidth: 96,
-                        height: 72,
-                        overflow: "hidden",
-                        border:
-                          index === aboutActiveIndex
-                            ? "1px solid var(--color-brand-accent)"
-                            : "1px solid var(--border)",
-                        background: "var(--surface)",
-                        cursor: "pointer",
-                        transform: index === aboutActiveIndex ? "translateY(-1px)" : "none",
-                        transition: "border-color 160ms ease, transform 160ms ease",
-                      }}
-                    >
-                      <img
-                        src={photo.url}
-                        alt={`Фото: ${cafe.name}`}
-                        loading="lazy"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                    </Paper>
-                  ))}
-                </Group>
-              )}
-              <Text c="dimmed" size="sm">
-                {cafe.address}
-              </Text>
-              {showDistance && <Text size="sm">{formatDistance(cafe.distance_m)}</Text>}
 
-              {descriptionEditing ? (
-                <Paper
-                  withBorder
-                  radius="md"
-                  p="md"
+              {aboutExtraPhotoItems.map((photo, index) => (
+                <Box
+                  key={photo.id}
+                  onClick={() => openViewer("cafe", index + 1)}
                   style={{
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
+                    overflow: "hidden",
+                    cursor: "pointer",
+                    borderBottom: "1px solid var(--border)",
                   }}
                 >
+                  <img
+                    src={photo.url}
+                    alt={`Фото: ${cafe.name}`}
+                    loading="lazy"
+                    style={{
+                      width: "100%",
+                      height: 220,
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </Box>
+              ))}
+
+              <Stack gap="xs" px="md" py="md">
+                <Text c="dimmed" size="sm">
+                  {cafe.address}
+                </Text>
+                {showDistance && <Text size="sm">{formatDistance(cafe.distance_m)}</Text>}
+
+                {descriptionEditing ? (
                   <Stack gap="xs">
                     <Textarea
                       value={descriptionDraft}
@@ -567,182 +528,161 @@ export default function CafeDetailsScreen({
                       </Button>
                     </Group>
                   </Stack>
-                </Paper>
-              ) : description ? (
-                <Paper
-                  withBorder
-                  radius="md"
-                  p="md"
-                  style={{
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                    {description}
-                  </Text>
-                </Paper>
-              ) : (
-                <Button
-                  variant="light"
-                  onClick={handleStartDescription}
-                  disabled={!onSaveDescription}
-                >
-                  {descriptionActionLabel}
-                </Button>
-              )}
-              {description && !descriptionEditing && (
-                <Button
-                  variant="subtle"
-                  onClick={handleStartDescription}
-                  disabled={!onSaveDescription}
-                >
-                  {descriptionActionLabel}
-                </Button>
-              )}
-              {descriptionHint && (
-                <Text size="sm" c="teal.6">
-                  {descriptionHint}
-                </Text>
-              )}
+                ) : (
+                  <>
+                    {description ? (
+                      <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                        {description}
+                      </Text>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        Описание пока не добавлено.
+                      </Text>
+                    )}
+                    {canManageDirectly && (
+                      <Button
+                        variant="subtle"
+                        onClick={handleStartDescription}
+                        disabled={!onSaveDescription}
+                      >
+                        {descriptionActionLabel}
+                      </Button>
+                    )}
+                  </>
+                )}
 
-              {cafe.amenities.length > 0 && (
-                <Group gap={6} wrap="wrap">
-                  {cafe.amenities.map((a) => (
-                    <Badge key={a} variant="light" styles={badgeStyles}>
-                      {AMENITY_LABELS[a] ?? a}
-                    </Badge>
-                  ))}
-                </Group>
-              )}
-              {showRoutes && (onOpen2gis || onOpenYandex) && (
-                <Group mt="xs" grow>
-                  {onOpen2gis && <Button onClick={onOpen2gis}>2GIS</Button>}
-                  {onOpenYandex && (
-                    <Button variant="light" onClick={onOpenYandex}>
-                      Яндекс
-                    </Button>
-                  )}
-                </Group>
-              )}
-              {onManagePhotos && (
-                <Button mt="xs" variant="light" onClick={() => onManagePhotos("cafe")}>
-                  {canManageDirectly ? "Фото места" : "Добавить фото"}
-                </Button>
-              )}
+                {canManageDirectly && descriptionHint && (
+                  <Text size="sm" c="teal.6">
+                    {descriptionHint}
+                  </Text>
+                )}
+
+                {cafe.amenities.length > 0 && (
+                  <Group gap={6} wrap="wrap">
+                    {cafe.amenities.map((a) => (
+                      <Badge key={a} variant="light" styles={badgeStyles}>
+                        {AMENITY_LABELS[a] ?? a}
+                      </Badge>
+                    ))}
+                  </Group>
+                )}
+                {showRoutes && (onOpen2gis || onOpenYandex) && (
+                  <Group mt="xs" grow>
+                    {onOpen2gis && <Button onClick={onOpen2gis}>2GIS</Button>}
+                    {onOpenYandex && (
+                      <Button variant="light" onClick={onOpenYandex}>
+                        Яндекс
+                      </Button>
+                    )}
+                  </Group>
+                )}
+                {onManagePhotos && (
+                  <Group mt="xs" gap="xs">
+                    <ActionIcon
+                      variant="light"
+                      size="lg"
+                      radius="xl"
+                      aria-label="Фото места"
+                      onClick={() => onManagePhotos("cafe")}
+                    >
+                      <IconCamera size={18} />
+                    </ActionIcon>
+                    <ActionIcon
+                      variant="light"
+                      size="lg"
+                      radius="xl"
+                      aria-label="Добавить фото"
+                      onClick={() => onManagePhotos("cafe")}
+                    >
+                      <IconPlus size={18} />
+                    </ActionIcon>
+                  </Group>
+                )}
+              </Stack>
             </Stack>
           )}
 
           {section === "menu" && (
-            <Stack gap="sm">
-              <Text size="sm" fw={600}>
-                Фото меню и позиций
-              </Text>
-              {menuPhotoItems.length > 0 ? (
-                <Stack gap="xs">
-                  {menuMainPhoto && (
-                    <Paper
-                      withBorder
-                      radius="md"
-                      onClick={() => openViewer("menu", menuActiveIndex)}
-                      style={{
-                        overflow: "hidden",
-                        border: "1px solid var(--border)",
-                        background: "var(--surface)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <img
-                        src={menuMainPhoto.url}
-                        alt={`Меню: ${cafe.name}`}
-                        loading="lazy"
-                        onLoad={(event) => {
-                          const src = event.currentTarget.currentSrc || event.currentTarget.src;
-                          if (src) {
-                            loadedMenuUrlsRef.current.add(src);
-                          }
-                          setMenuImageReady(true);
-                        }}
-                        onError={() => setMenuImageReady(true)}
-                        style={{
-                          width: "100%",
-                          maxHeight: 260,
-                          objectFit: "cover",
-                          display: "block",
-                          opacity: menuImageReady ? 1 : 0.38,
-                          filter: menuImageReady ? "blur(0px)" : "blur(2px)",
-                          transition: "opacity 220ms ease, filter 240ms ease",
-                        }}
-                      />
-                    </Paper>
-                  )}
-                  {menuPhotoItems.length > 1 && (
-                    <Group
-                      wrap="nowrap"
-                      gap={8}
-                      style={{ overflowX: "auto", paddingBottom: 2 }}
-                    >
-                      {menuPhotoItems.map((photo, index) => (
-                        <Paper
-                          key={photo.id}
-                          withBorder
-                          radius="sm"
-                          onClick={() => setMenuActiveIndex(index)}
-                          style={{
-                            width: 96,
-                            minWidth: 96,
-                            height: 72,
-                            overflow: "hidden",
-                            border:
-                              index === menuActiveIndex
-                                ? "1px solid var(--color-brand-accent)"
-                                : "1px solid var(--border)",
-                            background: "var(--surface)",
-                            cursor: "pointer",
-                            transform: index === menuActiveIndex ? "translateY(-1px)" : "none",
-                            transition: "border-color 160ms ease, transform 160ms ease",
-                          }}
-                        >
-                          <img
-                            src={photo.url}
-                            alt={`Меню: ${cafe.name}`}
-                            loading="lazy"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                              display: "block",
-                            }}
-                          />
-                        </Paper>
-                      ))}
-                    </Group>
-                  )}
-                </Stack>
-              ) : (
-                <Paper
-                  withBorder
-                  radius="md"
-                  p="md"
+            <Stack gap={0}>
+              {menuMainPhoto && (
+                <Box
+                  onClick={() => openViewer("menu", 0)}
                   style={{
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
+                    overflow: "hidden",
+                    cursor: "pointer",
+                    borderTop: "1px solid var(--border)",
+                    borderBottom: "1px solid var(--border)",
                   }}
                 >
+                  <img
+                    src={menuMainPhoto.url}
+                    alt={`Меню: ${cafe.name}`}
+                    loading="lazy"
+                    onLoad={(event) => {
+                      const src = event.currentTarget.currentSrc || event.currentTarget.src;
+                      if (src) {
+                        loadedMenuUrlsRef.current.add(src);
+                      }
+                      setMenuImageReady(true);
+                    }}
+                    onError={() => setMenuImageReady(true)}
+                    style={{
+                      width: "100%",
+                      height: 260,
+                      objectFit: "cover",
+                      display: "block",
+                      opacity: menuImageReady ? 1 : 0.38,
+                      filter: menuImageReady ? "blur(0px)" : "blur(2px)",
+                      transition: "opacity 220ms ease, filter 240ms ease",
+                    }}
+                  />
+                </Box>
+              )}
+
+              {menuExtraPhotoItems.map((photo, index) => (
+                <Box
+                  key={photo.id}
+                  onClick={() => openViewer("menu", index + 1)}
+                  style={{
+                    overflow: "hidden",
+                    cursor: "pointer",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  <img
+                    src={photo.url}
+                    alt={`Меню: ${cafe.name}`}
+                    loading="lazy"
+                    style={{
+                      width: "100%",
+                      height: 220,
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </Box>
+              ))}
+
+              <Box px="md" py="md">
+                {menuPhotoItems.length === 0 && (
                   <Text size="sm" c="dimmed">
                     Фото меню и позиций
                   </Text>
-                </Paper>
-              )}
-              {onManagePhotos && (
-                <Button variant="light" onClick={() => onManagePhotos("menu")}>
-                  {canManageDirectly ? "Фото меню" : "Добавить фото меню"}
-                </Button>
-              )}
+                )}
+                {onManagePhotos && (
+                  <Button mt={menuPhotoItems.length === 0 ? "xs" : 0} variant="light" onClick={() => onManagePhotos("menu")}>
+                    {canManageDirectly ? "Фото меню" : "Добавить фото меню"}
+                  </Button>
+                )}
+              </Box>
             </Stack>
           )}
 
-          {section === "reviews" && <ReviewsSection cafeId={cafe.id} opened={opened} />}
+          {section === "reviews" && (
+            <Box px="md" pb="md">
+              <ReviewsSection cafeId={cafe.id} opened={opened} />
+            </Box>
+          )}
         </Stack>
       </Paper>
 

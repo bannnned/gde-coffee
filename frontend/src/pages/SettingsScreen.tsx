@@ -9,13 +9,17 @@
   Text,
   TextInput,
   Title,
+  useComputedColorScheme,
+  useMantineColorScheme,
 } from "@mantine/core";
 import {
   IconArrowLeft,
   IconCircleCheck,
   IconCircleX,
   IconMail,
+  IconMoon,
   IconShieldCheck,
+  IconSun,
 } from "@tabler/icons-react";
 import { useCallback, useMemo, useState, type FocusEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -41,6 +45,10 @@ export default function SettingsScreen() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, status, refreshAuth } = useAuth();
+  const { setColorScheme } = useMantineColorScheme();
+  const computedColorScheme = useComputedColorScheme("light", {
+    getInitialValueInEffect: true,
+  });
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [verifySuccess, setVerifySuccess] = useState<string | null>(null);
   const [emailChangeResult, setEmailChangeResult] = useState<string | null>(null);
@@ -211,6 +219,40 @@ export default function SettingsScreen() {
                 </Group>
               </div>
             )}
+
+            <div className={classes.section}>
+              <div className={classes.sectionHeader}>
+                <Group gap="xs">
+                  {computedColorScheme === "dark" ? (
+                    <IconMoon size={18} />
+                  ) : (
+                    <IconSun size={18} />
+                  )}
+                  <Title order={4}>Тема</Title>
+                </Group>
+              </div>
+              <Text size="sm" className={classes.muted} mb="sm">
+                Выберите оформление интерфейса.
+              </Text>
+              <Group className={classes.actionsRow}>
+                <Button
+                  variant={computedColorScheme === "light" ? "filled" : "light"}
+                  className={classes.actionButton}
+                  leftSection={<IconSun size={16} />}
+                  onClick={() => setColorScheme("light")}
+                >
+                  Светлая
+                </Button>
+                <Button
+                  variant={computedColorScheme === "dark" ? "filled" : "light"}
+                  className={classes.actionButton}
+                  leftSection={<IconMoon size={16} />}
+                  onClick={() => setColorScheme("dark")}
+                >
+                  Тёмная
+                </Button>
+              </Group>
+            </div>
 
             <div className={classes.section}>
               <div className={classes.sectionHeader}>

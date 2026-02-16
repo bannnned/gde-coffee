@@ -35,7 +35,7 @@
 }
 
 .profileCard {
-  border-radius: 28px;
+  border-radius: 22px;
   padding: clamp(16px, 3.5vw, 28px);
   background: linear-gradient(150deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2));
   border: 1px solid var(--glass-border);

@@ -19,7 +19,7 @@ import {
 
 import { getCafePhotos } from "../../../api/cafePhotos";
 import type { Cafe } from "../../../entities/cafe/model/types";
-import { AMENITY_LABELS, DISCOVERY_UI_TEXT } from "../constants";
+import { AMENITY_LABELS } from "../constants";
 import { formatDistance } from "../utils";
 
 const AUTO_SLIDE_MS = 4000;
@@ -123,6 +123,7 @@ export default function CafeCard({
     boxShadow: "var(--shadow)",
     backdropFilter: "blur(18px) saturate(160%)",
     WebkitBackdropFilter: "blur(18px) saturate(160%)",
+    overflow: "hidden",
   } as const;
 
   const badgeStyles = {
@@ -196,8 +197,8 @@ export default function CafeCard({
   return (
     <Paper
       withBorder
-      radius="lg"
-      p="sm"
+      radius={22}
+      p={0}
       style={{
         ...cardStyles,
         cursor: onOpenDetails ? "pointer" : "default",
@@ -209,20 +210,18 @@ export default function CafeCard({
       onPointerCancel={handlePointerCancel}
       onKeyDown={handleKeyDown}
     >
-      {activePhotoUrl && (
-        <Box
-          mb="sm"
-          onTouchStart={handlePhotoTouchStart}
-          onTouchEnd={handlePhotoTouchEnd}
-          style={{
-            position: "relative",
-            height: 126,
-            borderRadius: 12,
-            overflow: "hidden",
-            border: "1px solid var(--border)",
-            background: "var(--surface)",
-          }}
-        >
+      <Box
+        onTouchStart={handlePhotoTouchStart}
+        onTouchEnd={handlePhotoTouchEnd}
+        style={{
+          position: "relative",
+          minHeight: 216,
+          height: 216,
+          background:
+            "radial-gradient(circle at 20% 20%, var(--bg-accent-1), transparent 45%), var(--surface)",
+        }}
+      >
+        {activePhotoUrl ? (
           <img
             src={activePhotoUrl}
             alt={`Фото: ${cafe.name}`}
@@ -236,6 +235,8 @@ export default function CafeCard({
             }}
             onError={() => setPhotoReady(true)}
             style={{
+              position: "absolute",
+              inset: 0,
               width: "100%",
               height: "100%",
               objectFit: "cover",
@@ -245,62 +246,147 @@ export default function CafeCard({
               transition: "opacity 200ms ease, filter 220ms ease",
             }}
           />
-          {photoUrls.length > 1 && (
-            <Group
-              gap={4}
-              justify="center"
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 8,
-                pointerEvents: "none",
+        ) : null}
+
+        {showDistance && (
+          <Badge
+            styles={badgeStyles}
+            style={{
+              position: "absolute",
+              left: 12,
+              top: 12,
+              zIndex: 2,
+            }}
+          >
+            {formatDistance(cafe.distance_m)}
+          </Badge>
+        )}
+
+        {showRoutes && (
+          <Stack
+            gap={6}
+            style={{
+              position: "absolute",
+              right: 12,
+              top: 12,
+              zIndex: 2,
+            }}
+            data-no-drag="true"
+          >
+            <Button
+              size="compact-xs"
+              variant="default"
+              styles={{
+                root: {
+                  borderRadius: 999,
+                  border: "1px solid var(--glass-border)",
+                  background: "var(--glass-bg)",
+                  color: "var(--cafe-hero-title-color)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                },
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen2gis(cafe);
               }}
             >
-              {photoUrls.map((_, index) => (
-                <Box
-                  key={`photo-dot-${index + 1}`}
-                  style={{
-                    width: 16,
-                    height: 3,
-                    borderRadius: 999,
-                    background:
-                      index === activePhotoIndex
-                        ? "rgba(255, 255, 255, 0.94)"
-                        : "rgba(255, 255, 255, 0.42)",
-                    boxShadow:
-                      index === activePhotoIndex
-                        ? "0 0 0 1px rgba(0, 0, 0, 0.18)"
-                        : "none",
-                    transition: "background 180ms ease, box-shadow 180ms ease",
-                  }}
-                />
-              ))}
-            </Group>
-          )}
-        </Box>
-      )}
-      <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
-        <Box style={{ minWidth: 0, flex: 1 }}>
-          <Text fw={700} c="text" size="md" lineClamp={1} title={cafe.name}>
+              2GIS
+            </Button>
+            <Button
+              size="compact-xs"
+              variant="default"
+              styles={{
+                root: {
+                  borderRadius: 999,
+                  border: "1px solid var(--glass-border)",
+                  background: "var(--glass-bg)",
+                  color: "var(--cafe-hero-title-color)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                },
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenYandex(cafe);
+              }}
+            >
+              Yandex
+            </Button>
+          </Stack>
+        )}
+
+        {photoUrls.length > 1 && (
+          <Group
+            gap={5}
+            justify="center"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: "50%",
+              transform: "translateY(-50%)",
+              pointerEvents: "none",
+              zIndex: 2,
+            }}
+          >
+            {photoUrls.map((_, index) => (
+              <Box
+                key={`photo-dot-${index + 1}`}
+                style={{
+                  width: 22,
+                  height: 3,
+                  borderRadius: 999,
+                  background:
+                    index === activePhotoIndex
+                      ? "var(--cafe-hero-indicator-active)"
+                      : "var(--cafe-hero-indicator-idle)",
+                  transition: "background 180ms ease",
+                }}
+              />
+            ))}
+          </Group>
+        )}
+
+        <Box
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            padding: "36px 14px 12px",
+            background:
+              "linear-gradient(180deg, var(--cafe-hero-overlay-1) 0%, var(--cafe-hero-overlay-2) 55%, var(--cafe-hero-overlay-3) 100%)",
+            backdropFilter: "blur(13px) saturate(135%)",
+            WebkitBackdropFilter: "blur(13px) saturate(135%)",
+            zIndex: 1,
+          }}
+        >
+          <Text
+            fw={700}
+            size="md"
+            lineClamp={1}
+            title={cafe.name}
+            style={{ color: "var(--cafe-hero-title-color)" }}
+          >
             {cafe.name}
           </Text>
-          <Text c="dimmed" size="sm" lineClamp={1} title={cafe.address}>
+          <Text
+            size="sm"
+            lineClamp={1}
+            title={cafe.address}
+            style={{ color: "var(--cafe-hero-subtitle-color)" }}
+          >
             {cafe.address}
           </Text>
-          {showDistance && (
-            <Text size="sm" mt={6}>
-              {formatDistance(cafe.distance_m)}
-            </Text>
-          )}
           <Group
             gap={6}
             mt={8}
             wrap="nowrap"
             style={{
               overflow: "hidden",
-              WebkitMaskImage: "linear-gradient(90deg, currentColor 85%, transparent)",
-              maskImage: "linear-gradient(90deg, currentColor 85%, transparent)",
+              WebkitMaskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
+              maskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
             }}
           >
             {cafe.amenities.map((a) => (
@@ -310,31 +396,7 @@ export default function CafeCard({
             ))}
           </Group>
         </Box>
-
-        {showRoutes && (
-          <Stack gap={6} miw={160} style={{ flexShrink: 0 }}>
-            <Button
-              size="xs"
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpen2gis(cafe);
-              }}
-            >
-              {DISCOVERY_UI_TEXT.route2gis}
-            </Button>
-            <Button
-              size="xs"
-              variant="light"
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenYandex(cafe);
-              }}
-            >
-              {DISCOVERY_UI_TEXT.routeYandex}
-            </Button>
-          </Stack>
-        )}
-      </Group>
+      </Box>
     </Paper>
   );
 }

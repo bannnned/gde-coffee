@@ -14,48 +14,55 @@
   -moz-osx-font-smoothing: grayscale;
 
   /* Palette categories (light fallback, can be overridden at runtime). */
-  --color-brand-accent: #457E73;
-  --color-brand-accent-soft: rgba(69, 126, 115, 0.28);
-  --color-brand-accent-strong: #2f5f55;
-  --color-on-accent: #FFFFF0;
+  --color-brand-accent: #FF6A3D;
+  --color-brand-accent-soft: rgba(255, 106, 61, 0.24);
+  --color-brand-accent-strong: #E5572E;
+  --color-on-accent: #FFF8F2;
 
-  --color-bg-base: #EADCC8;
-  --color-bg-accent-1: rgba(69, 126, 115, 0.18);
-  --color-bg-accent-2: rgba(255, 255, 240, 0.35);
+  --color-bg-base: #FFF8F2;
+  --color-bg-accent-1: rgba(255, 106, 61, 0.16);
+  --color-bg-accent-2: rgba(255, 200, 87, 0.2);
 
-  --color-surface-card: #FFFFF0;
-  --color-surface-main: rgba(255, 255, 240, 0.72);
-  --color-surface-overlay-soft: rgba(26, 26, 26, 0.12);
-  --color-surface-overlay-strong: rgba(26, 26, 26, 0.35);
+  --color-surface-card: #FFFFFF;
+  --color-surface-main: rgba(255, 255, 255, 0.76);
+  --color-surface-overlay-soft: rgba(31, 26, 23, 0.1);
+  --color-surface-overlay-strong: rgba(31, 26, 23, 0.34);
 
-  --color-text-primary: #1A1A1A;
-  --color-text-muted: rgba(26, 26, 26, 0.65);
-  --color-text-inverse: #FFFFF0;
+  --color-text-primary: #1F1A17;
+  --color-text-muted: #6B625C;
+  --color-text-inverse: #FFF8F2;
 
-  --color-border-soft: rgba(26, 26, 26, 0.12);
-  --color-border-strong: rgba(255, 255, 240, 0.8);
-  --color-border-glass: rgba(255, 255, 240, 0.75);
+  --color-border-soft: rgba(31, 26, 23, 0.12);
+  --color-border-strong: rgba(255, 255, 255, 0.82);
+  --color-border-glass: rgba(255, 255, 255, 0.78);
 
-  --color-glass-bg: rgba(255, 255, 240, 0.65);
-  --color-glass-shadow: 0 12px 30px rgba(26, 26, 26, 0.14);
-  --color-glass-grad-1: rgba(255, 255, 240, 0.95);
-  --color-glass-grad-2: rgba(255, 255, 240, 0.65);
-  --color-glass-grad-hover-1: rgba(255, 255, 240, 0.98);
-  --color-glass-grad-hover-2: rgba(255, 255, 240, 0.75);
+  --color-glass-bg: rgba(255, 255, 255, 0.68);
+  --color-glass-shadow: 0 12px 30px rgba(31, 26, 23, 0.14);
+  --color-glass-grad-1: rgba(255, 255, 255, 0.96);
+  --color-glass-grad-2: rgba(255, 248, 242, 0.72);
+  --color-glass-grad-hover-1: rgba(255, 255, 255, 0.99);
+  --color-glass-grad-hover-2: rgba(255, 248, 242, 0.82);
 
-  --color-shadow-lg: 0 18px 40px rgba(26, 26, 26, 0.16);
-  --color-attention-ring: rgba(69, 126, 115, 0.42);
-  --color-attention-glow: rgba(69, 126, 115, 0.28);
+  --color-shadow-lg: 0 18px 40px rgba(31, 26, 23, 0.16);
+  --color-attention-ring: rgba(255, 106, 61, 0.42);
+  --color-attention-glow: rgba(255, 106, 61, 0.28);
 
-  --color-status-success: #2b8a3e;
-  --color-status-warning: #e67700;
-  --color-status-error: #c92a2a;
-  --color-status-info: #1971c2;
+  --color-status-success: #22C7A6;
+  --color-status-warning: #FFC857;
+  --color-status-error: #E24A4A;
+  --color-status-info: #0E7C86;
 
-  --color-map-user-marker: #FFFFF0;
-  --color-map-cafe-marker: #457E73;
-  --color-map-label-text: #1A1A1A;
-  --color-map-label-halo: rgba(255, 255, 240, 0.9);
+  --color-map-user-marker: #FFFFFF;
+  --color-map-cafe-marker: #FF6A3D;
+  --color-map-label-text: #1F1A17;
+  --color-map-label-halo: rgba(255, 248, 242, 0.9);
+  --color-cafe-hero-overlay-1: rgba(255, 248, 242, 0.04);
+  --color-cafe-hero-overlay-2: rgba(255, 248, 242, 0.58);
+  --color-cafe-hero-overlay-3: rgba(255, 248, 242, 0.86);
+  --color-cafe-hero-title: #1F1A17;
+  --color-cafe-hero-subtitle: rgba(31, 26, 23, 0.78);
+  --color-cafe-hero-indicator-active: rgba(31, 26, 23, 0.82);
+  --color-cafe-hero-indicator-idle: rgba(31, 26, 23, 0.32);
 
   /* Compatibility aliases used by existing components/styles. */
   --coffee: var(--color-bg-base);
@@ -82,52 +89,66 @@
   --bg-accent-2: var(--color-bg-accent-2);
   --attention-ring: var(--color-attention-ring);
   --attention-glow: var(--color-attention-glow);
+  --cafe-hero-overlay-1: var(--color-cafe-hero-overlay-1);
+  --cafe-hero-overlay-2: var(--color-cafe-hero-overlay-2);
+  --cafe-hero-overlay-3: var(--color-cafe-hero-overlay-3);
+  --cafe-hero-title-color: var(--color-cafe-hero-title);
+  --cafe-hero-subtitle-color: var(--color-cafe-hero-subtitle);
+  --cafe-hero-indicator-active: var(--color-cafe-hero-indicator-active);
+  --cafe-hero-indicator-idle: var(--color-cafe-hero-indicator-idle);
   --sheet-height: 240px;
 }
 
 :root[data-mantine-color-scheme='dark'] {
-  --color-brand-accent: #5aa294;
-  --color-brand-accent-soft: rgba(90, 162, 148, 0.28);
-  --color-brand-accent-strong: #6ec0b1;
-  --color-on-accent: #0f1917;
+  --color-brand-accent: #FF7D57;
+  --color-brand-accent-soft: rgba(255, 125, 87, 0.3);
+  --color-brand-accent-strong: #FF9A78;
+  --color-on-accent: #2B1712;
 
-  --color-bg-base: #1A1A1A;
-  --color-bg-accent-1: rgba(69, 126, 115, 0.22);
-  --color-bg-accent-2: rgba(234, 220, 200, 0.14);
+  --color-bg-base: #1D1715;
+  --color-bg-accent-1: rgba(255, 106, 61, 0.24);
+  --color-bg-accent-2: rgba(14, 124, 134, 0.18);
 
-  --color-surface-card: rgba(255, 255, 240, 0.07);
-  --color-surface-main: rgba(255, 255, 240, 0.05);
-  --color-surface-overlay-soft: rgba(26, 26, 26, 0.45);
-  --color-surface-overlay-strong: rgba(26, 26, 26, 0.65);
+  --color-surface-card: rgba(255, 248, 242, 0.08);
+  --color-surface-main: rgba(255, 248, 242, 0.06);
+  --color-surface-overlay-soft: rgba(22, 16, 14, 0.5);
+  --color-surface-overlay-strong: rgba(22, 16, 14, 0.68);
 
-  --color-text-primary: #FFFFF0;
-  --color-text-muted: rgba(255, 255, 240, 0.7);
-  --color-text-inverse: #1A1A1A;
+  --color-text-primary: #FFF8F2;
+  --color-text-muted: rgba(226, 213, 205, 0.78);
+  --color-text-inverse: #1D1715;
 
-  --color-border-soft: rgba(255, 255, 240, 0.16);
-  --color-border-strong: rgba(255, 255, 240, 0.18);
-  --color-border-glass: rgba(255, 255, 240, 0.14);
+  --color-border-soft: rgba(255, 248, 242, 0.16);
+  --color-border-strong: rgba(255, 248, 242, 0.22);
+  --color-border-glass: rgba(255, 248, 242, 0.16);
 
-  --color-glass-bg: rgba(26, 26, 26, 0.7);
-  --color-glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
-  --color-glass-grad-1: rgba(26, 26, 26, 0.85);
-  --color-glass-grad-2: rgba(26, 26, 26, 0.5);
-  --color-glass-grad-hover-1: rgba(26, 26, 26, 0.95);
-  --color-glass-grad-hover-2: rgba(26, 26, 26, 0.6);
+  --color-glass-bg: rgba(24, 18, 16, 0.72);
+  --color-glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.62);
+  --color-glass-grad-1: rgba(29, 23, 21, 0.9);
+  --color-glass-grad-2: rgba(29, 23, 21, 0.56);
+  --color-glass-grad-hover-1: rgba(29, 23, 21, 0.98);
+  --color-glass-grad-hover-2: rgba(29, 23, 21, 0.66);
 
-  --color-shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.6);
-  --color-attention-ring: rgba(90, 162, 148, 0.5);
-  --color-attention-glow: rgba(90, 162, 148, 0.32);
+  --color-shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.62);
+  --color-attention-ring: rgba(255, 125, 87, 0.5);
+  --color-attention-glow: rgba(255, 125, 87, 0.34);
 
-  --color-status-success: #40c057;
-  --color-status-warning: #fab005;
-  --color-status-error: #ff6b6b;
-  --color-status-info: #4dabf7;
+  --color-status-success: #2ED9B5;
+  --color-status-warning: #FFD36E;
+  --color-status-error: #FF7A7A;
+  --color-status-info: #45B8C1;
 
-  --color-map-user-marker: #FFFFF0;
-  --color-map-cafe-marker: #5aa294;
-  --color-map-label-text: #FFFFF0;
-  --color-map-label-halo: rgba(26, 26, 26, 0.92);
+  --color-map-user-marker: #FFF8F2;
+  --color-map-cafe-marker: #FF7D57;
+  --color-map-label-text: #FFF8F2;
+  --color-map-label-halo: rgba(24, 18, 16, 0.92);
+  --color-cafe-hero-overlay-1: rgba(24, 18, 16, 0.1);
+  --color-cafe-hero-overlay-2: rgba(24, 18, 16, 0.56);
+  --color-cafe-hero-overlay-3: rgba(0, 0, 0, 0.74);
+  --color-cafe-hero-title: #FFF8F2;
+  --color-cafe-hero-subtitle: rgba(255, 248, 242, 0.82);
+  --color-cafe-hero-indicator-active: rgba(255, 248, 242, 0.92);
+  --color-cafe-hero-indicator-idle: rgba(255, 248, 242, 0.38);
 
   --coffee: var(--color-bg-base);
   --emerald: var(--color-brand-accent);
@@ -153,6 +174,13 @@
   --bg-accent-2: var(--color-bg-accent-2);
   --attention-ring: var(--color-attention-ring);
   --attention-glow: var(--color-attention-glow);
+  --cafe-hero-overlay-1: var(--color-cafe-hero-overlay-1);
+  --cafe-hero-overlay-2: var(--color-cafe-hero-overlay-2);
+  --cafe-hero-overlay-3: var(--color-cafe-hero-overlay-3);
+  --cafe-hero-title-color: var(--color-cafe-hero-title);
+  --cafe-hero-subtitle-color: var(--color-cafe-hero-subtitle);
+  --cafe-hero-indicator-active: var(--color-cafe-hero-indicator-active);
+  --cafe-hero-indicator-idle: var(--color-cafe-hero-indicator-idle);
   --mantine-color-text: var(--color-text-primary);
   --mantine-color-dimmed: var(--color-text-muted);
 }
@@ -177,18 +205,18 @@
 
 :root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group {
   /* Keep built-in dark SVG icons readable inside MapLibre controls. */
-  background: rgba(255, 255, 240, 0.88);
-  border-color: rgba(255, 255, 240, 0.72);
+  background: rgba(255, 248, 242, 0.9);
+  border-color: rgba(255, 248, 242, 0.74);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
 :root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button + button {
-  border-top-color: rgba(26, 26, 26, 0.14);
+  border-top-color: rgba(29, 23, 21, 0.16);
 }
 
 :root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button:not(:disabled):hover,
 :root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button:not(:disabled):active {
-  background-color: rgba(26, 26, 26, 0.08);
+  background-color: rgba(29, 23, 21, 0.1);
 }
 
 .glass-action {
@@ -233,6 +261,25 @@
 
 .glass-action svg {
   shape-rendering: geometricPrecision;
+}
+
+@keyframes review-submit-pulse {
+  0% {
+    transform: translateY(0);
+    box-shadow: 0 0 0 rgba(69, 126, 115, 0);
+  }
+  50% {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px var(--color-brand-accent-soft);
+  }
+  100% {
+    transform: translateY(0);
+    box-shadow: 0 0 0 rgba(69, 126, 115, 0);
+  }
+}
+
+.review-submit-button[data-submitting="true"] {
+  animation: review-submit-pulse 0.9s ease-in-out infinite;
 }
 
 :root[data-mantine-color-scheme='dark'] .glass-action {

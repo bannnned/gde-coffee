@@ -2,17 +2,26 @@ import type { FormEvent, RefObject } from "react";
 import {
   ActionIcon,
   Badge,
+  Box,
   Button,
   Group,
   Paper,
-  Rating,
+  Popover,
   Stack,
   TagsInput,
   Text,
   TextInput,
   Textarea,
+  UnstyledButton,
 } from "@mantine/core";
-import { IconPhotoPlus, IconTrash } from "@tabler/icons-react";
+import {
+  IconHelpCircle,
+  IconPhotoPlus,
+  IconPlus,
+  IconStar,
+  IconStarFilled,
+  IconTrash,
+} from "@tabler/icons-react";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
 
 import type { CafeReview } from "../../../../../api/reviews";
@@ -84,15 +93,41 @@ export function ReviewComposerCard({
   onStartCheckIn,
   onVerifyCurrentVisit,
 }: ReviewComposerCardProps) {
+  const submitLoading = isSubmitting || uploadingPhotos;
+  const remainingPhotoSlots = Math.max(0, 8 - photos.length);
+  const addPhotoTilesCount = Math.min(3, remainingPhotoSlots);
+
+  const roundedInputStyles = {
+    input: {
+      borderRadius: 14,
+      border: "1px solid var(--glass-border)",
+      background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+      boxShadow: "var(--glass-shadow)",
+      backdropFilter: "blur(10px) saturate(130%)",
+      WebkitBackdropFilter: "blur(10px) saturate(130%)",
+    },
+    label: {
+      fontWeight: 600,
+      marginBottom: 4,
+    },
+    description: {
+      color: "var(--muted)",
+    },
+  } as const;
+
   return (
     <Paper
       withBorder
-      radius="md"
+      radius="lg"
       p="md"
-      style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+      style={{
+        background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--glass-shadow)",
+      }}
     >
       <form onSubmit={onFormSubmit}>
-        <Stack gap="xs">
+        <Stack gap="sm">
           <Text fw={600} size="sm">
             {ownReview ? "Редактировать отзыв" : "Оставить отзыв"}
           </Text>
@@ -100,14 +135,46 @@ export function ReviewComposerCard({
           <Controller
             control={control}
             name="ratingValue"
-            render={({ field }) => (
-              <Rating
-                value={Number(field.value)}
-                onChange={(value) => field.onChange(String(value))}
-                count={5}
-                allowDeselect={false}
-              />
-            )}
+            render={({ field }) => {
+              const ratingValue = Number(field.value) || 0;
+              return (
+                <Stack gap={6}>
+                  <Text size="sm" fw={600}>
+                    Оценка
+                  </Text>
+                  <Group gap={8} wrap="nowrap" grow>
+                    {Array.from({ length: 5 }, (_, idx) => {
+                      const starValue = idx + 1;
+                      const isActive = starValue <= ratingValue;
+                      return (
+                        <UnstyledButton
+                          key={`rating-star-${starValue}`}
+                          type="button"
+                          aria-label={`Поставить ${starValue} из 5`}
+                          onClick={() => field.onChange(String(starValue))}
+                          style={{
+                            height: 42,
+                            borderRadius: 14,
+                            border: "1px solid var(--glass-border)",
+                            background: isActive
+                              ? "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent) 70%, white), var(--color-brand-accent))"
+                              : "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+                            color: isActive ? "var(--color-on-accent)" : "var(--muted)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: "var(--glass-shadow)",
+                            transition: "transform 140ms ease, background 180ms ease, color 180ms ease",
+                          }}
+                        >
+                          {isActive ? <IconStarFilled size={18} /> : <IconStar size={18} />}
+                        </UnstyledButton>
+                      );
+                    })}
+                  </Group>
+                </Stack>
+              );
+            }}
           />
 
           <Controller
@@ -129,6 +196,7 @@ export function ReviewComposerCard({
                 onChange={(value) => field.onChange(value)}
                 nothingFoundMessage={drinksLoading ? "Ищем..." : "Ничего не найдено"}
                 error={errors.positionsInput?.message}
+                styles={roundedInputStyles}
               />
             )}
           />
@@ -147,6 +215,7 @@ export function ReviewComposerCard({
                 placeholder="кислинка, шоколад, орех"
                 value={field.value}
                 onChange={(event) => field.onChange(event.currentTarget.value)}
+                styles={roundedInputStyles}
               />
             )}
           />
@@ -163,7 +232,14 @@ export function ReviewComposerCard({
                 onChange={(event) => field.onChange(event.currentTarget.value)}
                 placeholder="Что именно пили, какие вкусовые ноты, стоит ли брать повторно"
                 required
-                styles={{ input: { whiteSpace: "pre-wrap" } }}
+                styles={{
+                  ...roundedInputStyles,
+                  input: {
+                    ...roundedInputStyles.input,
+                    whiteSpace: "pre-wrap",
+                    minHeight: 124,
+                  },
+                }}
                 error={errors.summary?.message}
               />
             )}
@@ -173,100 +249,80 @@ export function ReviewComposerCard({
             Символы: {summaryLength}. Минимум: {MIN_SUMMARY_LENGTH}.
           </Text>
 
-          <Paper
-            withBorder
-            p="sm"
-            radius="md"
-            style={{ border: "1px solid var(--border)", background: "var(--surface)" }}
-          >
-            <Stack gap={6}>
-              <Group justify="space-between" align="center">
+          <Stack gap={6}>
+            <Group justify="space-between" align="center">
+              <Group gap={6} align="center">
                 <Text size="sm" fw={600}>
                   Верификация визита
                 </Text>
-                {activeCheckIn && (
-                  <Badge size="xs" variant="light" color="teal">
-                    check-in активен
-                  </Badge>
-                )}
+                <Popover width={240} position="bottom-start" withArrow shadow="md">
+                  <Popover.Target>
+                    <ActionIcon size="sm" radius="xl" variant="subtle" aria-label="Как работает верификация">
+                      <IconHelpCircle size={15} />
+                    </ActionIcon>
+                  </Popover.Target>
+                  <Popover.Dropdown>
+                    <Text size="xs">
+                      Нажмите I&apos;m here в кофейне, подождите несколько минут и опубликуйте/обновите отзыв.
+                      Если check-in активен, можно отдельно нажать подтверждение.
+                    </Text>
+                  </Popover.Dropdown>
+                </Popover>
               </Group>
+              {activeCheckIn && (
+                <Badge size="xs" variant="light" color="teal">
+                  check-in активен
+                </Badge>
+              )}
+            </Group>
+            <Group gap={8} wrap="wrap">
               <Button
                 type="button"
                 variant="light"
                 loading={checkInStarting}
                 onClick={onStartCheckIn}
+                radius="xl"
               >
                 I&apos;m here
               </Button>
               {ownReview && activeCheckIn && (
                 <Button
                   type="button"
-                  variant="subtle"
+                  variant="default"
                   loading={verifyVisitPending}
                   onClick={onVerifyCurrentVisit}
+                  radius="xl"
                 >
                   Подтвердить визит
                 </Button>
               )}
-              {activeCheckIn && (
-                <Text size="xs" c="dimmed">
-                  Дистанция: {activeCheckIn.distanceMeters}м. После выдержки времени опубликуйте отзыв: визит подтвердится автоматически.
-                </Text>
-              )}
-            </Stack>
-          </Paper>
+            </Group>
+            {activeCheckIn && (
+              <Text size="xs" c="dimmed">
+                Дистанция: {activeCheckIn.distanceMeters}м. После выдержки времени опубликуйте отзыв: визит подтвердится автоматически.
+              </Text>
+            )}
+          </Stack>
 
-          <Paper
-            withBorder
-            p="sm"
-            radius="md"
-            style={{
-              border: "1px dashed var(--border)",
-              background: "var(--surface)",
-            }}
-          >
-            <Stack gap="xs">
-              <Group justify="space-between" align="center">
-                <Text size="sm" fw={600}>
-                  Фото отзыва
-                </Text>
-                <Badge variant="light">{photos.length}/8</Badge>
-              </Group>
-              <Group grow>
-                <Button
-                  type="button"
-                  leftSection={<IconPhotoPlus size={16} />}
-                  onClick={() => fileInputRef.current?.click()}
-                  loading={uploadingPhotos}
-                >
-                  Добавить фото
-                </Button>
-              </Group>
-              <input
-                ref={fileInputRef}
-                type="file"
-                hidden
-                multiple
-                accept="image/jpeg,image/png,image/webp,image/avif"
-                onChange={(event) => onAppendFiles(event.currentTarget.files)}
-              />
-            </Stack>
-          </Paper>
+          <Stack gap="xs">
+            <Group justify="space-between" align="center">
+              <Text size="sm" fw={600}>
+                Фото отзыва
+              </Text>
+              <Badge variant="light">{photos.length}/8</Badge>
+            </Group>
 
-          {photos.length > 0 && (
-            <Group wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
+            <Group gap={8} wrap="wrap">
               {photos.map((photo) => (
-                <Paper
+                <Box
                   key={photo.id}
-                  withBorder
-                  radius="sm"
                   style={{
-                    width: 96,
-                    minWidth: 96,
-                    height: 72,
+                    width: 94,
+                    height: 94,
                     overflow: "hidden",
+                    borderRadius: 14,
                     position: "relative",
-                    border: "1px solid var(--border)",
+                    border: "1px solid var(--glass-border)",
                     background: "var(--surface)",
                   }}
                 >
@@ -286,15 +342,48 @@ export function ReviewComposerCard({
                     color="red"
                     variant="filled"
                     aria-label="Удалить фото"
-                    style={{ position: "absolute", top: 4, right: 4 }}
+                    style={{ position: "absolute", top: 6, right: 6 }}
                     onClick={() => onRemovePhoto(photo.id)}
                   >
                     <IconTrash size={12} />
                   </ActionIcon>
-                </Paper>
+                </Box>
+              ))}
+
+              {Array.from({ length: addPhotoTilesCount }, (_, idx) => (
+                <UnstyledButton
+                  key={`add-photo-slot-${idx + 1}`}
+                  type="button"
+                  aria-label="Добавить фото"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    width: 94,
+                    height: 94,
+                    borderRadius: 14,
+                    border: "1px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
+                    background:
+                      "repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 30%, transparent), color-mix(in srgb, var(--color-brand-accent-soft) 30%, transparent) 6px, transparent 6px, transparent 12px)",
+                    color: "var(--color-brand-accent)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "var(--glass-shadow)",
+                  }}
+                >
+                  {uploadingPhotos ? <IconPhotoPlus size={20} /> : <IconPlus size={22} />}
+                </UnstyledButton>
               ))}
             </Group>
-          )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              hidden
+              multiple
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              onChange={(event) => onAppendFiles(event.currentTarget.files)}
+            />
+          </Stack>
 
           {submitError && (
             <Text size="sm" c="red">
@@ -347,7 +436,13 @@ export function ReviewComposerCard({
             </Text>
           )}
 
-          <Button type="submit" loading={isSubmitting || uploadingPhotos}>
+          <Button
+            type="submit"
+            loading={submitLoading}
+            className="review-submit-button"
+            data-submitting={submitLoading ? "true" : "false"}
+            radius="xl"
+          >
             {ownReview ? "Сохранить изменения" : "Опубликовать отзыв"}
           </Button>
         </Stack>

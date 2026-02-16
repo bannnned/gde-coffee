@@ -42,6 +42,19 @@ export default function CafeList({
           variant={c.id === selectedCafeId ? "filled" : "default"}
           size="sm"
           fullWidth
+          radius={22}
+          styles={{
+            root: {
+              justifyContent: "flex-start",
+            },
+            inner: {
+              justifyContent: "flex-start",
+            },
+            label: {
+              width: "100%",
+              textAlign: "left",
+            },
+          }}
         >
           <span>
             {c.name}
