@@ -428,6 +428,7 @@ export default function CafeDetailsScreen({
                   border: "none",
                   boxShadow: "none",
                   padding: 0,
+                  overflow: "visible",
                 },
                 indicator: {
                   background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
@@ -612,16 +613,12 @@ export default function CafeDetailsScreen({
                   </Group>
                 )}
                 {onManagePhotos && (
-                  <Button
+                  <ActionIcon
                     mt="xs"
+                    size="xl"
                     radius="xl"
                     variant="default"
-                    leftSection={
-                      <Group gap={2} wrap="nowrap">
-                        <IconCamera size={15} />
-                        <IconPlus size={14} />
-                      </Group>
-                    }
+                    aria-label="Фото места"
                     onClick={() => onManagePhotos("cafe")}
                     styles={{
                       root: {
@@ -633,8 +630,11 @@ export default function CafeDetailsScreen({
                       },
                     }}
                   >
-                    Фото места
-                  </Button>
+                    <Group gap={2} wrap="nowrap">
+                      <IconCamera size={16} />
+                      <IconPlus size={14} />
+                    </Group>
+                  </ActionIcon>
                 )}
               </Stack>
             </Stack>

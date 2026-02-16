@@ -351,16 +351,29 @@ export default function CafeCard({
         <Box
           style={{
             position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            backdropFilter: "blur(16px) saturate(140%)",
+            WebkitBackdropFilter: "blur(16px) saturate(140%)",
+            background:
+              "linear-gradient(180deg, transparent 0%, transparent 56%, var(--cafe-hero-overlay-1) 72%, var(--cafe-hero-overlay-2) 86%, var(--cafe-hero-overlay-3) 100%)",
+            WebkitMaskImage:
+              "linear-gradient(180deg, transparent 0%, transparent 54%, rgba(0,0,0,0.08) 64%, rgba(0,0,0,0.35) 76%, rgba(0,0,0,0.72) 90%, rgba(0,0,0,1) 100%)",
+            maskImage:
+              "linear-gradient(180deg, transparent 0%, transparent 54%, rgba(0,0,0,0.08) 64%, rgba(0,0,0,0.35) 76%, rgba(0,0,0,0.72) 90%, rgba(0,0,0,1) 100%)",
+            transition: "background 260ms ease, backdrop-filter 260ms ease",
+            zIndex: 1,
+          }}
+        />
+
+        <Box
+          style={{
+            position: "absolute",
             left: 0,
             right: 0,
             bottom: 0,
             padding: "44px 14px 12px",
-            background:
-              "linear-gradient(180deg, transparent 0%, var(--cafe-hero-overlay-1) 30%, var(--cafe-hero-overlay-2) 64%, var(--cafe-hero-overlay-3) 100%)",
-            backdropFilter: "blur(16px) saturate(140%)",
-            WebkitBackdropFilter: "blur(16px) saturate(140%)",
-            transition: "background 260ms ease, backdrop-filter 260ms ease",
-            zIndex: 1,
+            zIndex: 3,
           }}
         >
           <Text
