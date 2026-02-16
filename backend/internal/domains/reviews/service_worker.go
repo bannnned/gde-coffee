@@ -83,6 +83,8 @@ func (s *Service) handleDomainEvent(ctx context.Context, evt domainEvent) error 
 			return err
 		}
 		return s.recalculateCafeRatingSnapshot(ctx, evt.AggregateID)
+	case EventReviewPhotoProcessRequested:
+		return s.processReviewPhotoUploadEvent(ctx, evt.Payload)
 	default:
 		return nil
 	}

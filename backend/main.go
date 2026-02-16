@@ -207,6 +207,7 @@ func main() {
 	reviewsHandler := reviews.NewDefaultHandler(pool, mediaService, cfg.Media)
 
 	go reviewsHandler.Service().StartEventWorker(context.Background(), 2*time.Second)
+	go reviewsHandler.Service().StartPhotoCleanupWorker(context.Background(), 15*time.Minute)
 
 	api := r.Group("/api")
 	api.GET("/geocode", cafesHandler.GeocodeLookup)
@@ -220,6 +221,7 @@ func main() {
 	api.DELETE("/reviews/:id", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.DeleteReview)
 	api.POST("/reviews/photos/presign", auth.RequireAuth(pool), reviewsHandler.PresignPhoto)
 	api.POST("/reviews/photos/confirm", auth.RequireAuth(pool), reviewsHandler.ConfirmPhoto)
+	api.GET("/reviews/photos/:id/status", auth.RequireAuth(pool), reviewsHandler.GetPhotoStatus)
 	api.POST("/reviews/:id/helpful", auth.RequireAuth(pool), reviewsHandler.AddHelpful)
 	api.POST("/reviews/:id/visit/verify", auth.RequireAuth(pool), reviewsHandler.VerifyVisit)
 	api.POST("/reviews/:id/abuse", auth.RequireAuth(pool), reviewsHandler.ReportAbuse)

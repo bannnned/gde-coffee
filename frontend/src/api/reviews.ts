@@ -104,10 +104,14 @@ export type ReviewPhotoPresignResponse = {
 };
 
 export type ReviewPhotoConfirmResponse = {
-  object_key: string;
-  file_url: string;
-  mime_type: string;
-  size_bytes: number;
+  photo_id?: string;
+  status?: "pending" | "processing" | "ready" | "failed";
+  object_key?: string;
+  file_url?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  retry_after_ms?: number;
+  error?: string;
 };
 
 export type ReviewDeleteResponse = {
@@ -249,5 +253,14 @@ export async function confirmReviewPhotoUpload(
   const res = await http.post<ReviewPhotoConfirmResponse>("/api/reviews/photos/confirm", {
     object_key: objectKey,
   });
+  return res.data;
+}
+
+export async function getReviewPhotoStatus(
+  photoID: string,
+): Promise<ReviewPhotoConfirmResponse> {
+  const res = await http.get<ReviewPhotoConfirmResponse>(
+    `/api/reviews/photos/${encodeURIComponent(photoID)}/status`,
+  );
   return res.data;
 }

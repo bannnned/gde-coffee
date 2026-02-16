@@ -16,6 +16,7 @@ vi.mock("../../../../../api/reviews", () => ({
   createReview: vi.fn(),
   updateReview: vi.fn(),
   deleteReview: vi.fn(),
+  getReviewPhotoStatus: vi.fn(),
   presignReviewPhotoUpload: vi.fn(),
   uploadReviewPhotoByPresignedUrl: vi.fn(),
   confirmReviewPhotoUpload: vi.fn(),
@@ -31,6 +32,7 @@ import {
   confirmReviewPhotoUpload,
   createReview,
   deleteReview,
+  getReviewPhotoStatus,
   listCafeReviews,
   presignReviewPhotoUpload,
   updateReview,
@@ -45,6 +47,7 @@ const mockListCafeReviews = vi.mocked(listCafeReviews);
 const mockCreateReview = vi.mocked(createReview);
 const mockUpdateReview = vi.mocked(updateReview);
 const mockDeleteReview = vi.mocked(deleteReview);
+const mockGetReviewPhotoStatus = vi.mocked(getReviewPhotoStatus);
 const mockPresignReviewPhotoUpload = vi.mocked(presignReviewPhotoUpload);
 const mockUploadReviewPhotoByPresignedUrl = vi.mocked(uploadReviewPhotoByPresignedUrl);
 const mockConfirmReviewPhotoUpload = vi.mocked(confirmReviewPhotoUpload);
@@ -133,6 +136,16 @@ describe("useReviewsSectionController", () => {
     });
     mockUploadReviewPhotoByPresignedUrl.mockResolvedValue();
     mockConfirmReviewPhotoUpload.mockResolvedValue({
+      photo_id: "photo-1",
+      status: "ready",
+      object_key: "reviews/photo-1.jpg",
+      file_url: "https://cdn.example.com/reviews/photo-1.jpg",
+      mime_type: "image/jpeg",
+      size_bytes: 10,
+    });
+    mockGetReviewPhotoStatus.mockResolvedValue({
+      photo_id: "photo-1",
+      status: "ready",
       object_key: "reviews/photo-1.jpg",
       file_url: "https://cdn.example.com/reviews/photo-1.jpg",
       mime_type: "image/jpeg",
@@ -314,6 +327,46 @@ describe("useReviewsSectionController", () => {
     await waitFor(() => {
       expect(result.current.photos).toHaveLength(1);
       expect(result.current.photos[0]?.url).toBe("https://cdn.example.com/reviews/photo-1.jpg");
+    });
+  });
+
+  it("polls photo status when confirm returns pending", async () => {
+    mockConfirmReviewPhotoUpload.mockResolvedValueOnce({
+      photo_id: "photo-2",
+      status: "pending",
+    });
+    mockGetReviewPhotoStatus.mockResolvedValueOnce({
+      photo_id: "photo-2",
+      status: "ready",
+      object_key: "reviews/photo-2.jpg",
+      file_url: "https://cdn.example.com/reviews/photo-2.jpg",
+      mime_type: "image/jpeg",
+      size_bytes: 14,
+    });
+
+    const { result } = renderHook(() =>
+      useReviewsSectionController({
+        cafeId: "cafe-1",
+        opened: true,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(mockListCafeReviews).toHaveBeenCalledTimes(1);
+    });
+
+    const file = new File(["photo2"], "photo2.jpg", { type: "image/jpeg" });
+    const files = fileListFrom([file]);
+
+    act(() => {
+      result.current.onAppendFiles(files);
+    });
+
+    await waitFor(() => {
+      expect(mockGetReviewPhotoStatus).toHaveBeenCalledWith("photo-2");
+    });
+    await waitFor(() => {
+      expect(result.current.photos.some((item) => item.url.includes("photo-2.jpg"))).toBe(true);
     });
   });
 

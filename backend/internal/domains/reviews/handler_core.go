@@ -19,6 +19,9 @@ type Handler struct {
 }
 
 func NewHandler(service *Service, s3 *media.Service, cfg config.MediaConfig) *Handler {
+	if service != nil {
+		service.SetMedia(s3, cfg)
+	}
 	return &Handler{
 		service: service,
 		s3:      s3,
@@ -29,6 +32,7 @@ func NewHandler(service *Service, s3 *media.Service, cfg config.MediaConfig) *Ha
 func NewDefaultHandler(pool *pgxpool.Pool, s3 *media.Service, cfg config.MediaConfig) *Handler {
 	repository := NewRepository(pool)
 	service := NewService(repository)
+	service.SetMedia(s3, cfg)
 	return NewHandler(service, s3, cfg)
 }
 

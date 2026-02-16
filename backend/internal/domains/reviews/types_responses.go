@@ -18,10 +18,13 @@ type PresignReviewPhotoResponse struct {
 }
 
 type ConfirmReviewPhotoResponse struct {
+	PhotoID   string `json:"photo_id,omitempty"`
+	Status    string `json:"status,omitempty"`
 	ObjectKey string `json:"object_key"`
 	FileURL   string `json:"file_url"`
 	MimeType  string `json:"mime_type"`
 	SizeBytes int64  `json:"size_bytes"`
+	Error     string `json:"error,omitempty"`
 }
 
 type HelpfulVoteResponse struct {

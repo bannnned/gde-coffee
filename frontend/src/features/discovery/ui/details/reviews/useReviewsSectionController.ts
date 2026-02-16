@@ -8,6 +8,7 @@ import {
   confirmReviewPhotoUpload,
   createReview,
   deleteReview,
+  getReviewPhotoStatus,
   listCafeReviews,
   presignReviewPhotoUpload,
   updateReview,
@@ -49,6 +50,33 @@ export type ReviewQualityInsight = {
 
 function extractErrorMessage(error: any, fallback: string): string {
   return error?.normalized?.message ?? error?.response?.data?.message ?? error?.message ?? fallback;
+}
+
+async function waitUntilReviewPhotoReady(photoID: string): Promise<{
+  objectKey: string;
+  fileURL: string;
+}> {
+  const timeoutMs = 45_000;
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const status = await getReviewPhotoStatus(photoID);
+    const nextStatus = (status.status ?? "").toLowerCase();
+    if (nextStatus === "ready" && status.file_url && status.object_key) {
+      return {
+        objectKey: status.object_key,
+        fileURL: status.file_url,
+      };
+    }
+    if (nextStatus === "failed") {
+      throw new Error(status.error || "Не удалось обработать фото. Загрузите его снова.");
+    }
+    const retryAfter = Number(status.retry_after_ms);
+    const delayMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 1200;
+    await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+  }
+
+  throw new Error("Обработка фото заняла слишком много времени. Попробуйте снова.");
 }
 
 function buildQualityInsight(review: CafeReview | undefined): ReviewQualityInsight | null {
@@ -321,10 +349,24 @@ export function useReviewsSectionController({
           });
           await uploadReviewPhotoByPresignedUrl(presigned.upload_url, file, presigned.headers ?? {});
           const confirmed = await confirmReviewPhotoUpload(presigned.object_key);
+          let fileURL = confirmed.file_url;
+          let objectKey = confirmed.object_key;
+          const status = (confirmed.status ?? "").toLowerCase();
+          const photoID = (confirmed.photo_id ?? "").trim();
+
+          if ((status === "pending" || status === "processing") && photoID) {
+            const ready = await waitUntilReviewPhotoReady(photoID);
+            fileURL = ready.fileURL;
+            objectKey = ready.objectKey;
+          }
+          if (!fileURL || !objectKey) {
+            throw new Error("Сервер не вернул данные обработанного фото.");
+          }
+
           uploaded[index] = {
             id: makePhotoId(),
-            url: confirmed.file_url,
-            objectKey: confirmed.object_key,
+            url: fileURL,
+            objectKey,
           };
         });
 

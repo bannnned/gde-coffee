@@ -1,8 +1,10 @@
 package media
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
 	"time"
@@ -149,6 +151,58 @@ func (s *Service) HeadObject(ctx context.Context, key string) (int64, string, er
 		sizeBytes = *out.ContentLength
 	}
 	return sizeBytes, contentType, nil
+}
+
+func (s *Service) GetObject(ctx context.Context, key string) ([]byte, string, error) {
+	if !s.Enabled() {
+		return nil, "", fmt.Errorf("s3 is not enabled")
+	}
+	key = strings.TrimSpace(strings.TrimPrefix(key, "/"))
+	if key == "" {
+		return nil, "", fmt.Errorf("object key is required")
+	}
+	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.cfg.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, "", fmt.Errorf("get object: %w", err)
+	}
+	defer out.Body.Close()
+
+	payload, err := io.ReadAll(out.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("read object body: %w", err)
+	}
+	contentType := ""
+	if out.ContentType != nil {
+		contentType = strings.TrimSpace(*out.ContentType)
+	}
+	return payload, contentType, nil
+}
+
+func (s *Service) PutObject(ctx context.Context, key string, contentType string, payload []byte) error {
+	if !s.Enabled() {
+		return fmt.Errorf("s3 is not enabled")
+	}
+	key = strings.TrimSpace(strings.TrimPrefix(key, "/"))
+	if key == "" {
+		return fmt.Errorf("object key is required")
+	}
+	if len(payload) == 0 {
+		return fmt.Errorf("payload must not be empty")
+	}
+	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:       aws.String(s.cfg.Bucket),
+		Key:          aws.String(key),
+		Body:         bytes.NewReader(payload),
+		ContentType:  aws.String(strings.TrimSpace(contentType)),
+		CacheControl: aws.String(uploadCacheControl),
+	})
+	if err != nil {
+		return fmt.Errorf("put object: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) DeleteObject(ctx context.Context, key string) error {
