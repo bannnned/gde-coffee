@@ -354,11 +354,12 @@ export default function CafeCard({
             left: 0,
             right: 0,
             bottom: 0,
-            padding: "36px 14px 12px",
+            padding: "44px 14px 12px",
             background:
-              "linear-gradient(180deg, var(--cafe-hero-overlay-1) 0%, var(--cafe-hero-overlay-2) 55%, var(--cafe-hero-overlay-3) 100%)",
-            backdropFilter: "blur(13px) saturate(135%)",
-            WebkitBackdropFilter: "blur(13px) saturate(135%)",
+              "linear-gradient(180deg, transparent 0%, var(--cafe-hero-overlay-1) 30%, var(--cafe-hero-overlay-2) 64%, var(--cafe-hero-overlay-3) 100%)",
+            backdropFilter: "blur(16px) saturate(140%)",
+            WebkitBackdropFilter: "blur(16px) saturate(140%)",
+            transition: "background 260ms ease, backdrop-filter 260ms ease",
             zIndex: 1,
           }}
         >

@@ -312,13 +312,19 @@ export function ReviewComposerCard({
               <Badge variant="light">{photos.length}/8</Badge>
             </Group>
 
-            <Group gap={8} wrap="wrap">
+            <Box
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                gap: 8,
+              }}
+            >
               {photos.map((photo) => (
                 <Box
                   key={photo.id}
                   style={{
-                    width: 94,
-                    height: 94,
+                    width: "100%",
+                    aspectRatio: "1 / 1",
                     overflow: "hidden",
                     borderRadius: 14,
                     position: "relative",
@@ -357,8 +363,8 @@ export function ReviewComposerCard({
                   aria-label="Добавить фото"
                   onClick={() => fileInputRef.current?.click()}
                   style={{
-                    width: 94,
-                    height: 94,
+                    width: "100%",
+                    aspectRatio: "1 / 1",
                     borderRadius: 14,
                     border: "1px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
                     background:
@@ -373,7 +379,7 @@ export function ReviewComposerCard({
                   {uploadingPhotos ? <IconPhotoPlus size={20} /> : <IconPlus size={22} />}
                 </UnstyledButton>
               ))}
-            </Group>
+            </Box>
 
             <input
               ref={fileInputRef}

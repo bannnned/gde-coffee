@@ -61,7 +61,16 @@ export function ReviewFeed({
     dropdown: {
       borderRadius: 14,
       border: "1px solid var(--glass-border)",
-      background: "var(--surface)",
+      background: "var(--color-surface-card)",
+      backdropFilter: "none",
+      WebkitBackdropFilter: "none",
+    },
+    option: {
+      background: "var(--color-surface-card)",
+      color: "var(--text)",
+    },
+    options: {
+      background: "var(--color-surface-card)",
     },
   } as const;
 

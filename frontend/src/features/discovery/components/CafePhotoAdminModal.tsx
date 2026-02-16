@@ -130,6 +130,17 @@ export default function CafePhotoAdminModal({
   const canSaveOrder = orderDirty && !isSavingOrder && !isUploading && Boolean(cafeId);
   const isCafeKind = kind === "cafe";
   const photoKindLabel = isCafeKind ? "места" : "меню";
+  const glassButtonStyles = {
+    root: {
+      borderRadius: 14,
+      border: "1px solid var(--glass-border)",
+      background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+      boxShadow: "var(--glass-shadow)",
+      backdropFilter: "blur(12px) saturate(140%)",
+      WebkitBackdropFilter: "blur(12px) saturate(140%)",
+      color: "var(--text)",
+    },
+  } as const;
   const photosCountLabel = useMemo(() => {
     if (photos.length === 0) return "Фото пока нет";
     return photos.length === 1 ? "1 фото" : `${photos.length} фото`;
@@ -336,12 +347,14 @@ export default function CafePhotoAdminModal({
     >
       <Stack gap="md">
         <Button
-          variant="subtle"
+          variant="default"
           leftSection={<IconArrowLeft size={16} />}
           onClick={onClose}
+          radius="xl"
+          styles={glassButtonStyles}
           style={{ alignSelf: "flex-start" }}
         >
-          Назад к карточке
+          К карточке
         </Button>
 
         <Paper
@@ -368,16 +381,20 @@ export default function CafePhotoAdminModal({
                 leftSection={<IconPhotoPlus size={16} />}
                 onClick={handlePickFiles}
                 loading={isUploading}
+                radius="xl"
+                styles={glassButtonStyles}
               >
                 Выбрать фото
               </Button>
               <Button
-                variant="light"
+                variant="default"
                 leftSection={<IconUpload size={16} />}
                 onClick={handlePickFiles}
                 loading={isUploading}
+                radius="xl"
+                styles={glassButtonStyles}
               >
-                Drag and drop
+                Перетащить фото
               </Button>
             </Group>
             <input
@@ -526,6 +543,8 @@ export default function CafePhotoAdminModal({
           disabled={!canSaveOrder}
           loading={isSavingOrder}
           leftSection={<IconArrowsSort size={16} />}
+          radius="xl"
+          styles={glassButtonStyles}
         >
           Сохранить порядок
         </Button>

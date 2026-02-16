@@ -12,7 +12,7 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPhotoPlus, IconTrash, IconUpload } from "@tabler/icons-react";
+import { IconArrowLeft, IconPhotoPlus, IconTrash, IconUpload } from "@tabler/icons-react";
 
 import { uploadCafePhotoByPresignedUrl } from "../../../api/cafePhotos";
 import {
@@ -64,6 +64,17 @@ export default function CafePhotoSubmissionModal({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"cafe" | "menu">(kind);
+  const glassButtonStyles = {
+    root: {
+      borderRadius: 14,
+      border: "1px solid var(--glass-border)",
+      background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+      boxShadow: "var(--glass-shadow)",
+      backdropFilter: "blur(12px) saturate(140%)",
+      WebkitBackdropFilter: "blur(12px) saturate(140%)",
+      color: "var(--text)",
+    },
+  } as const;
 
   useEffect(() => {
     if (!opened) return;
@@ -194,6 +205,17 @@ export default function CafePhotoSubmissionModal({
       }}
     >
       <Stack gap="md">
+        <Button
+          variant="default"
+          leftSection={<IconArrowLeft size={16} />}
+          onClick={onClose}
+          radius="xl"
+          styles={glassButtonStyles}
+          style={{ alignSelf: "flex-start" }}
+        >
+          К карточке
+        </Button>
+
         <SegmentedControl
           fullWidth
           value={mode}
@@ -202,6 +224,25 @@ export default function CafePhotoSubmissionModal({
             { value: "cafe", label: "Фото места" },
             { value: "menu", label: "Фото меню" },
           ]}
+          styles={{
+            root: {
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
+              padding: 0,
+            },
+            indicator: {
+              border: "1px solid var(--glass-border)",
+              borderRadius: 14,
+              background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+              boxShadow: "var(--glass-shadow)",
+            },
+            label: {
+              borderRadius: 14,
+              fontWeight: 600,
+              color: "var(--text)",
+            },
+          }}
         />
 
         <Paper
@@ -228,15 +269,19 @@ export default function CafePhotoSubmissionModal({
               <Button
                 leftSection={<IconPhotoPlus size={16} />}
                 onClick={() => fileInputRef.current?.click()}
+                radius="xl"
+                styles={glassButtonStyles}
               >
                 Выбрать фото
               </Button>
               <Button
-                variant="light"
+                variant="default"
                 leftSection={<IconUpload size={16} />}
                 onClick={() => fileInputRef.current?.click()}
+                radius="xl"
+                styles={glassButtonStyles}
               >
-                Drag and drop
+                Перетащить фото
               </Button>
             </Group>
             <input
@@ -329,6 +374,8 @@ export default function CafePhotoSubmissionModal({
             onClick={() => void handleSubmit()}
             loading={isUploading}
             disabled={!cafeId || files.length === 0}
+            radius="xl"
+            styles={glassButtonStyles}
           >
             Отправить на модерацию
           </Button>

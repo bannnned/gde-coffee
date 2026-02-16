@@ -93,6 +93,8 @@ export default function CafeDetailsScreen({
   const [descriptionSaving, setDescriptionSaving] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [descriptionHint, setDescriptionHint] = useState<string | null>(null);
+  const [aboutActiveIndex, setAboutActiveIndex] = useState(0);
+  const [menuActiveIndex, setMenuActiveIndex] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerKind, setViewerKind] = useState<CafePhotoKind>("cafe");
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -121,10 +123,8 @@ export default function CafeDetailsScreen({
     ];
   }, [cafePhotos, coverPhotoUrl]);
   const menuPhotoItems = menuPhotos;
-  const aboutMainPhoto = aboutPhotoItems[0] ?? null;
-  const aboutExtraPhotoItems = aboutPhotoItems.slice(1);
-  const menuMainPhoto = menuPhotoItems[0] ?? null;
-  const menuExtraPhotoItems = menuPhotoItems.slice(1);
+  const aboutMainPhoto = aboutPhotoItems[aboutActiveIndex] ?? null;
+  const menuMainPhoto = menuPhotoItems[menuActiveIndex] ?? null;
   const viewerPhotos = viewerKind === "menu" ? menuPhotoItems : aboutPhotoItems;
   const viewerPhoto = viewerPhotos[viewerIndex] ?? null;
 
@@ -165,9 +165,23 @@ export default function CafeDetailsScreen({
     setDescriptionSaving(false);
     setDescriptionError(null);
     setDescriptionHint(null);
+    setAboutActiveIndex(0);
+    setMenuActiveIndex(0);
     setViewerOpen(false);
     setViewerIndex(0);
   }, [cafe?.id, opened]);
+
+  useEffect(() => {
+    setAboutActiveIndex((prev) =>
+      aboutPhotoItems.length === 0 ? 0 : Math.min(prev, aboutPhotoItems.length - 1),
+    );
+  }, [aboutPhotoItems.length]);
+
+  useEffect(() => {
+    setMenuActiveIndex((prev) =>
+      menuPhotoItems.length === 0 ? 0 : Math.min(prev, menuPhotoItems.length - 1),
+    );
+  }, [menuPhotoItems.length]);
 
   useEffect(() => {
     setViewerIndex((prev) =>
@@ -410,25 +424,25 @@ export default function CafeDetailsScreen({
               onChange={(value) => setSection(value as DetailsSection)}
               styles={{
                 root: {
-                  background:
-                    "linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
-                  border: "1px solid var(--glass-border)",
-                  boxShadow: "var(--glass-shadow)",
-                  backdropFilter: "blur(14px) saturate(140%)",
-                  WebkitBackdropFilter: "blur(14px) saturate(140%)",
-                  transition: "background 220ms ease, box-shadow 220ms ease",
+                  background: "transparent",
+                  border: "none",
+                  boxShadow: "none",
+                  padding: 0,
                 },
                 indicator: {
-                  background:
-                    "linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong))",
-                  border: "1px solid var(--color-border-soft)",
-                  boxShadow: "0 6px 16px var(--color-brand-accent-soft)",
-                  transition: "all 220ms ease",
+                  background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+                  border: "1px solid var(--glass-border)",
+                  borderRadius: 14,
+                  boxShadow: "var(--glass-shadow)",
+                  backdropFilter: "blur(12px) saturate(140%)",
+                  WebkitBackdropFilter: "blur(12px) saturate(140%)",
                 },
                 label: {
                   color: "var(--text)",
                   fontWeight: 600,
-                  transition: "color 180ms ease",
+                  borderRadius: 14,
+                  padding: "10px 8px",
+                  transition: "color 180ms ease, transform 160ms ease",
                 },
               }}
             />
@@ -438,7 +452,7 @@ export default function CafeDetailsScreen({
             <Stack gap={0}>
               {aboutMainPhoto && (
                 <Box
-                  onClick={() => openViewer("cafe", 0)}
+                  onClick={() => openViewer("cafe", aboutActiveIndex)}
                   style={{
                     overflow: "hidden",
                     cursor: "pointer",
@@ -470,29 +484,50 @@ export default function CafeDetailsScreen({
                 </Box>
               )}
 
-              {aboutExtraPhotoItems.map((photo, index) => (
-                <Box
-                  key={photo.id}
-                  onClick={() => openViewer("cafe", index + 1)}
-                  style={{
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    borderBottom: "1px solid var(--border)",
-                  }}
+              {aboutPhotoItems.length > 1 && (
+                <Group
+                  wrap="nowrap"
+                  gap={8}
+                  px="md"
+                  py="sm"
+                  style={{ overflowX: "auto", borderBottom: "1px solid var(--border)" }}
                 >
-                  <img
-                    src={photo.url}
-                    alt={`Фото: ${cafe.name}`}
-                    loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: 220,
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-                </Box>
-              ))}
+                  {aboutPhotoItems.map((photo, index) => (
+                    <Paper
+                      key={photo.id}
+                      withBorder
+                      radius="md"
+                      onClick={() => setAboutActiveIndex(index)}
+                      style={{
+                        width: 108,
+                        minWidth: 108,
+                        height: 78,
+                        overflow: "hidden",
+                        border:
+                          index === aboutActiveIndex
+                            ? "1px solid var(--color-brand-accent)"
+                            : "1px solid var(--border)",
+                        background: "var(--surface)",
+                        cursor: "pointer",
+                        transform: index === aboutActiveIndex ? "translateY(-1px)" : "none",
+                        transition: "border-color 160ms ease, transform 160ms ease",
+                      }}
+                    >
+                      <img
+                        src={photo.url}
+                        alt={`Фото: ${cafe.name}`}
+                        loading="lazy"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    </Paper>
+                  ))}
+                </Group>
+              )}
 
               <Stack gap="xs" px="md" py="md">
                 <Text c="dimmed" size="sm">
@@ -577,26 +612,29 @@ export default function CafeDetailsScreen({
                   </Group>
                 )}
                 {onManagePhotos && (
-                  <Group mt="xs" gap="xs">
-                    <ActionIcon
-                      variant="light"
-                      size="lg"
-                      radius="xl"
-                      aria-label="Фото места"
-                      onClick={() => onManagePhotos("cafe")}
-                    >
-                      <IconCamera size={18} />
-                    </ActionIcon>
-                    <ActionIcon
-                      variant="light"
-                      size="lg"
-                      radius="xl"
-                      aria-label="Добавить фото"
-                      onClick={() => onManagePhotos("cafe")}
-                    >
-                      <IconPlus size={18} />
-                    </ActionIcon>
-                  </Group>
+                  <Button
+                    mt="xs"
+                    radius="xl"
+                    variant="default"
+                    leftSection={
+                      <Group gap={2} wrap="nowrap">
+                        <IconCamera size={15} />
+                        <IconPlus size={14} />
+                      </Group>
+                    }
+                    onClick={() => onManagePhotos("cafe")}
+                    styles={{
+                      root: {
+                        border: "1px solid var(--glass-border)",
+                        background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+                        boxShadow: "var(--glass-shadow)",
+                        backdropFilter: "blur(12px) saturate(140%)",
+                        WebkitBackdropFilter: "blur(12px) saturate(140%)",
+                      },
+                    }}
+                  >
+                    Фото места
+                  </Button>
                 )}
               </Stack>
             </Stack>
@@ -606,7 +644,7 @@ export default function CafeDetailsScreen({
             <Stack gap={0}>
               {menuMainPhoto && (
                 <Box
-                  onClick={() => openViewer("menu", 0)}
+                  onClick={() => openViewer("menu", menuActiveIndex)}
                   style={{
                     overflow: "hidden",
                     cursor: "pointer",
@@ -639,29 +677,50 @@ export default function CafeDetailsScreen({
                 </Box>
               )}
 
-              {menuExtraPhotoItems.map((photo, index) => (
-                <Box
-                  key={photo.id}
-                  onClick={() => openViewer("menu", index + 1)}
-                  style={{
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    borderBottom: "1px solid var(--border)",
-                  }}
+              {menuPhotoItems.length > 1 && (
+                <Group
+                  wrap="nowrap"
+                  gap={8}
+                  px="md"
+                  py="sm"
+                  style={{ overflowX: "auto", borderBottom: "1px solid var(--border)" }}
                 >
-                  <img
-                    src={photo.url}
-                    alt={`Меню: ${cafe.name}`}
-                    loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: 220,
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-                </Box>
-              ))}
+                  {menuPhotoItems.map((photo, index) => (
+                    <Paper
+                      key={photo.id}
+                      withBorder
+                      radius="md"
+                      onClick={() => setMenuActiveIndex(index)}
+                      style={{
+                        width: 108,
+                        minWidth: 108,
+                        height: 78,
+                        overflow: "hidden",
+                        border:
+                          index === menuActiveIndex
+                            ? "1px solid var(--color-brand-accent)"
+                            : "1px solid var(--border)",
+                        background: "var(--surface)",
+                        cursor: "pointer",
+                        transform: index === menuActiveIndex ? "translateY(-1px)" : "none",
+                        transition: "border-color 160ms ease, transform 160ms ease",
+                      }}
+                    >
+                      <img
+                        src={photo.url}
+                        alt={`Меню: ${cafe.name}`}
+                        loading="lazy"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    </Paper>
+                  ))}
+                </Group>
+              )}
 
               <Box px="md" py="md">
                 {menuPhotoItems.length === 0 && (
@@ -670,8 +729,23 @@ export default function CafeDetailsScreen({
                   </Text>
                 )}
                 {onManagePhotos && (
-                  <Button mt={menuPhotoItems.length === 0 ? "xs" : 0} variant="light" onClick={() => onManagePhotos("menu")}>
-                    {canManageDirectly ? "Фото меню" : "Добавить фото меню"}
+                  <Button
+                    mt={menuPhotoItems.length === 0 ? "xs" : 0}
+                    radius="xl"
+                    variant="default"
+                    onClick={() => onManagePhotos("menu")}
+                    styles={{
+                      root: {
+                        border: "1px solid var(--glass-border)",
+                        background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+                        boxShadow: "var(--glass-shadow)",
+                        backdropFilter: "blur(12px) saturate(140%)",
+                        WebkitBackdropFilter: "blur(12px) saturate(140%)",
+                        paddingInline: 16,
+                      },
+                    }}
+                  >
+                    Фото меню
                   </Button>
                 )}
               </Box>
