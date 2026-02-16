@@ -1,28 +1,14 @@
+import { Paper } from "@mantine/core";
 import {
-  Badge,
-  Box,
-  Button,
-  Group,
-  Paper,
-  Stack,
-  Text,
-} from "@mantine/core";
-import {
-  useEffect,
-  useMemo,
   useRef,
-  useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
-  type TouchEvent as ReactTouchEvent,
 } from "react";
 
-import { getCafePhotos } from "../../../api/cafePhotos";
 import type { Cafe } from "../../../entities/cafe/model/types";
-import { AMENITY_LABELS } from "../constants";
-import { formatDistance } from "../utils";
-
-const AUTO_SLIDE_MS = 4000;
+import CafeCardFooter from "./cafe-card/CafeCardFooter";
+import CafeCardHero from "./cafe-card/CafeCardHero";
+import { useCafeCardPhotos } from "./cafe-card/useCafeCardPhotos";
 
 type CafeCardProps = {
   cafe: Cafe;
@@ -42,79 +28,17 @@ export default function CafeCard({
   showRoutes = true,
 }: CafeCardProps) {
   const clickStartRef = useRef<{ x: number; y: number } | null>(null);
-  const touchStartXRef = useRef<number | null>(null);
-  const loadedPhotoUrlsRef = useRef<Set<string>>(new Set());
 
-  const fallbackPhotoUrls = useMemo(() => {
-    const direct = (cafe.photos ?? [])
-      .filter((photo) => photo.kind === "cafe")
-      .map((photo) => photo.url)
-      .filter(Boolean);
-    const cover = cafe.cover_photo_url?.trim() || "";
-
-    if (cover && !direct.includes(cover)) {
-      return [cover, ...direct];
-    }
-    return cover ? (direct.length > 0 ? direct : [cover]) : direct;
-  }, [cafe.cover_photo_url, cafe.photos]);
-
-  const [photoUrls, setPhotoUrls] = useState<string[]>(fallbackPhotoUrls);
-  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
-  const [photoReady, setPhotoReady] = useState(true);
-  const activePhotoUrl = photoUrls[activePhotoIndex] ?? null;
-
-  useEffect(() => {
-    setPhotoUrls(fallbackPhotoUrls);
-    setActivePhotoIndex(0);
-  }, [cafe.id, fallbackPhotoUrls]);
-
-  useEffect(() => {
-    if (!cafe.id) return;
-    let cancelled = false;
-
-    getCafePhotos(cafe.id, "cafe")
-      .then((list) => {
-        if (cancelled) return;
-        const fetched = list.map((photo) => photo.url).filter(Boolean);
-        if (fetched.length === 0) return;
-
-        const cover = cafe.cover_photo_url?.trim() || "";
-        if (cover && !fetched.includes(cover)) {
-          setPhotoUrls([cover, ...fetched]);
-          return;
-        }
-        setPhotoUrls(fetched);
-      })
-      .catch(() => {
-        // Keep fallback photos on error.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [cafe.id, cafe.cover_photo_url]);
-
-  useEffect(() => {
-    setActivePhotoIndex((prev) =>
-      photoUrls.length === 0 ? 0 : Math.min(prev, photoUrls.length - 1),
-    );
-  }, [photoUrls.length]);
-
-  useEffect(() => {
-    if (!activePhotoUrl) {
-      setPhotoReady(true);
-      return;
-    }
-    setPhotoReady(loadedPhotoUrlsRef.current.has(activePhotoUrl));
-  }, [activePhotoUrl]);
-
-  useEffect(() => {
-    if (photoUrls.length <= 1) return;
-    const timer = window.setInterval(() => {
-      setActivePhotoIndex((prev) => (prev + 1) % photoUrls.length);
-    }, AUTO_SLIDE_MS);
-    return () => window.clearInterval(timer);
-  }, [photoUrls.length]);
+  const {
+    photoURLs,
+    activePhotoIndex,
+    activePhotoURL,
+    photoReady,
+    handlePhotoTouchStart,
+    handlePhotoTouchEnd,
+    handlePhotoLoad,
+    handlePhotoError,
+  } = useCafeCardPhotos(cafe);
 
   const cardStyles = {
     zIndex: 1,
@@ -140,11 +64,7 @@ export default function CafeCard({
     if (!onOpenDetails) return;
     const target = event.target as HTMLElement | null;
     if (!target) return;
-    if (
-      target.closest(
-        'button, a, input, textarea, select, [data-no-drag="true"]',
-      )
-    ) {
+    if (target.closest('button, a, input, textarea, select, [data-no-drag="true"]')) {
       return;
     }
     clickStartRef.current = { x: event.clientX, y: event.clientY };
@@ -174,26 +94,6 @@ export default function CafeCard({
     }
   };
 
-  const stepPhoto = (direction: -1 | 1) => {
-    if (photoUrls.length <= 1) return;
-    setActivePhotoIndex((prev) => (prev + direction + photoUrls.length) % photoUrls.length);
-  };
-
-  const handlePhotoTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
-    touchStartXRef.current = event.touches[0]?.clientX ?? null;
-  };
-
-  const handlePhotoTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
-    const startX = touchStartXRef.current;
-    const endX = event.changedTouches[0]?.clientX ?? null;
-    touchStartXRef.current = null;
-    if (startX == null || endX == null || photoUrls.length <= 1) return;
-    const deltaX = endX - startX;
-    if (Math.abs(deltaX) < 40) return;
-    if (deltaX < 0) stepPhoto(1);
-    if (deltaX > 0) stepPhoto(-1);
-  };
-
   return (
     <Paper
       withBorder
@@ -210,273 +110,24 @@ export default function CafeCard({
       onPointerCancel={handlePointerCancel}
       onKeyDown={handleKeyDown}
     >
-      <Box
+      <CafeCardHero
+        cafe={cafe}
+        activePhotoURL={activePhotoURL}
+        photoReady={photoReady}
+        photoURLs={photoURLs}
+        activePhotoIndex={activePhotoIndex}
+        showDistance={showDistance}
+        showRoutes={showRoutes}
+        onOpen2gis={onOpen2gis}
+        onOpenYandex={onOpenYandex}
+        onPhotoLoad={handlePhotoLoad}
+        onPhotoError={handlePhotoError}
         onTouchStart={handlePhotoTouchStart}
         onTouchEnd={handlePhotoTouchEnd}
-        style={{
-          position: "relative",
-          minHeight: 216,
-          height: 216,
-          background:
-            "radial-gradient(circle at 20% 20%, var(--bg-accent-1), transparent 45%), var(--surface)",
-        }}
+        badgeStyles={badgeStyles}
       >
-        {activePhotoUrl ? (
-          <>
-            <img
-              src={activePhotoUrl}
-              alt={`Фото: ${cafe.name}`}
-              loading="lazy"
-              onLoad={(event) => {
-                const src = event.currentTarget.currentSrc || event.currentTarget.src;
-                if (src) {
-                  loadedPhotoUrlsRef.current.add(src);
-                }
-                setPhotoReady(true);
-              }}
-              onError={() => setPhotoReady(true)}
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-                zIndex: 0,
-                opacity: photoReady ? 1 : 0.36,
-                filter: photoReady ? "blur(0px)" : "blur(2px)",
-                transition: "opacity 200ms ease, filter 220ms ease",
-              }}
-            />
-            <img
-              src={activePhotoUrl}
-              alt=""
-              loading="lazy"
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-                zIndex: 1,
-                opacity: photoReady ? 0.92 : 0,
-                filter: "blur(14px) saturate(124%)",
-                transform: "scale(1.08)",
-                transformOrigin: "center",
-                WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 19%, rgba(0,0,0,0.14) 33%, rgba(0,0,0,0.42) 49%, rgba(0,0,0,0.78) 71%, rgba(0,0,0,1) 100%)",
-                maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 19%, rgba(0,0,0,0.14) 33%, rgba(0,0,0,0.42) 49%, rgba(0,0,0,0.78) 71%, rgba(0,0,0,1) 100%)",
-                WebkitMaskRepeat: "no-repeat",
-                maskRepeat: "no-repeat",
-                pointerEvents: "none",
-                transition: "opacity 240ms ease",
-              }}
-            />
-            <img
-              src={activePhotoUrl}
-              alt=""
-              loading="lazy"
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-                zIndex: 1,
-                opacity: photoReady ? 0.92 : 0,
-                filter: "blur(32px) saturate(138%) brightness(0.94)",
-                transform: "scale(1.16)",
-                transformOrigin: "center",
-                WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(0,0,0,0.16) 49%, rgba(0,0,0,0.52) 61%, rgba(0,0,0,0.92) 81%, rgba(0,0,0,1) 100%)",
-                maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(0,0,0,0.16) 49%, rgba(0,0,0,0.52) 61%, rgba(0,0,0,0.92) 81%, rgba(0,0,0,1) 100%)",
-                WebkitMaskRepeat: "no-repeat",
-                maskRepeat: "no-repeat",
-                pointerEvents: "none",
-                transition: "opacity 240ms ease",
-              }}
-            />
-          </>
-        ) : null}
-
-        {showDistance && (
-          <Badge
-            styles={badgeStyles}
-            style={{
-              position: "absolute",
-              left: 12,
-              top: 12,
-              zIndex: 2,
-            }}
-          >
-            {formatDistance(cafe.distance_m)}
-          </Badge>
-        )}
-
-        {showRoutes && (
-          <Stack
-            gap={6}
-            style={{
-              position: "absolute",
-              right: 12,
-              top: 12,
-              zIndex: 2,
-            }}
-            data-no-drag="true"
-          >
-            <Button
-              size="compact-xs"
-              variant="default"
-              styles={{
-                root: {
-                  borderRadius: 999,
-                  border: "1px solid var(--glass-border)",
-                  background: "var(--glass-bg)",
-                  color: "var(--cafe-hero-title-color)",
-                  backdropFilter: "blur(10px)",
-                  WebkitBackdropFilter: "blur(10px)",
-                },
-              }}
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpen2gis(cafe);
-              }}
-            >
-              2GIS
-            </Button>
-            <Button
-              size="compact-xs"
-              variant="default"
-              styles={{
-                root: {
-                  borderRadius: 999,
-                  border: "1px solid var(--glass-border)",
-                  background: "var(--glass-bg)",
-                  color: "var(--cafe-hero-title-color)",
-                  backdropFilter: "blur(10px)",
-                  WebkitBackdropFilter: "blur(10px)",
-                },
-              }}
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenYandex(cafe);
-              }}
-            >
-              Yandex
-            </Button>
-          </Stack>
-        )}
-
-        {photoUrls.length > 1 && (
-          <Group
-            gap={5}
-            justify="center"
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 6,
-              pointerEvents: "none",
-              zIndex: 4,
-            }}
-          >
-            {photoUrls.map((_, index) => (
-              <Box
-                key={`photo-dot-${index + 1}`}
-                style={{
-                  width: 22,
-                  height: 3,
-                  borderRadius: 999,
-                  background:
-                    index === activePhotoIndex
-                      ? "var(--cafe-hero-indicator-active)"
-                      : "var(--cafe-hero-indicator-idle)",
-                  transition: "background 180ms ease",
-                }}
-              />
-            ))}
-          </Group>
-        )}
-
-        <Box
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            background:
-              "linear-gradient(180deg, transparent 0%, transparent 60%, var(--cafe-hero-overlay-1) 74%, var(--cafe-hero-overlay-2) 88%, var(--cafe-hero-overlay-3) 100%)",
-            transition: "background 260ms ease",
-            zIndex: 1,
-          }}
-        />
-        <Box
-          style={{
-            position: "absolute",
-            left: -16,
-            right: -16,
-            bottom: 22,
-            height: 64,
-            pointerEvents: "none",
-            background:
-              "radial-gradient(90% 110% at 50% 100%, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.17) 42%, rgba(255,255,255,0.08) 68%, rgba(255,255,255,0) 100%)",
-            filter: "blur(12px)",
-            opacity: 0.72,
-            transition: "opacity 220ms ease",
-            zIndex: 2,
-          }}
-        />
-
-        <Box
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: "44px 14px 12px",
-            zIndex: 3,
-          }}
-        >
-          <Text
-            fw={700}
-            size="md"
-            lineClamp={1}
-            title={cafe.name}
-            style={{ color: "var(--cafe-hero-title-color)" }}
-          >
-            {cafe.name}
-          </Text>
-          <Text
-            size="sm"
-            lineClamp={1}
-            title={cafe.address}
-            style={{ color: "var(--cafe-hero-subtitle-color)" }}
-          >
-            {cafe.address}
-          </Text>
-          <Group
-            gap={6}
-            mt={8}
-            wrap="nowrap"
-            style={{
-              overflow: "hidden",
-              WebkitMaskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
-              maskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
-            }}
-          >
-            {cafe.amenities.map((a) => (
-              <Badge key={a} variant="light" styles={badgeStyles}>
-                {AMENITY_LABELS[a] ?? a}
-              </Badge>
-            ))}
-          </Group>
-        </Box>
-      </Box>
+        <CafeCardFooter cafe={cafe} badgeStyles={badgeStyles} />
+      </CafeCardHero>
     </Paper>
   );
 }

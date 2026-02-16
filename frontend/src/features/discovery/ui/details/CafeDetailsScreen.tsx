@@ -1,43 +1,31 @@
-import { useEffect, useMemo, useRef, useState, type TouchEventHandler } from "react";
+import { useEffect, useRef, useState, type TouchEventHandler } from "react";
 import {
   ActionIcon,
-  Badge,
   Box,
-  Button,
   Group,
   Modal,
   Paper,
   SegmentedControl,
   Stack,
   Text,
-  Textarea,
   useMantineTheme,
 } from "@mantine/core";
 import {
   IconArrowsLeftRight,
-  IconCamera,
   IconChevronLeft,
   IconChevronRight,
   IconHeart,
   IconHeartFilled,
-  IconPlus,
 } from "@tabler/icons-react";
-import { getCafePhotos } from "../../../../api/cafePhotos";
-import {
-  getCafeRatingDiagnostics,
-  getCafeRatingSnapshot,
-  type CafeRatingDiagnostics,
-  type CafeRatingSnapshot,
-} from "../../../../api/reviews";
-import ReviewsSection from "./ReviewsSection";
 
-import type {
-  Cafe,
-  CafePhoto,
-  CafePhotoKind,
-} from "../../../../entities/cafe/model/types";
-import { AMENITY_LABELS } from "../../constants";
-import { formatDistance } from "../../utils";
+import ReviewsSection from "./ReviewsSection";
+import { useCafeDetailsComputed } from "./hooks/useCafeDetailsComputed";
+import { useCafeDetailsData } from "./hooks/useCafeDetailsData";
+import AboutSection from "./sections/AboutSection";
+import MenuSection from "./sections/MenuSection";
+import RatingPanel from "./sections/RatingPanel";
+
+import type { Cafe, CafePhotoKind } from "../../../../entities/cafe/model/types";
 
 type CafeDetailsScreenProps = {
   opened: boolean;
@@ -61,11 +49,6 @@ type CafeDetailsScreenProps = {
 
 type DetailsSection = "about" | "menu" | "reviews";
 
-function filterPhotosByKind(photos: CafePhoto[] | undefined, kind: CafePhotoKind): CafePhoto[] {
-  if (!Array.isArray(photos) || photos.length === 0) return [];
-  return photos.filter((photo) => photo.kind === kind);
-}
-
 export default function CafeDetailsScreen({
   opened,
   cafe,
@@ -84,163 +67,71 @@ export default function CafeDetailsScreen({
   canViewAdminDiagnostics = false,
 }: CafeDetailsScreenProps) {
   const theme = useMantineTheme();
-  const [cafePhotos, setCafePhotos] = useState<CafePhoto[]>(
-    filterPhotosByKind(cafe?.photos, "cafe"),
-  );
-  const [menuPhotos, setMenuPhotos] = useState<CafePhoto[]>(
-    filterPhotosByKind(cafe?.photos, "menu"),
-  );
+
   const [section, setSection] = useState<DetailsSection>("about");
-  const [description, setDescription] = useState(
-    (cafe?.description ?? "").trim(),
-  );
-  const [descriptionDraft, setDescriptionDraft] = useState(
-    (cafe?.description ?? "").trim(),
-  );
+  const [description, setDescription] = useState((cafe?.description ?? "").trim());
+  const [descriptionDraft, setDescriptionDraft] = useState((cafe?.description ?? "").trim());
   const [descriptionEditing, setDescriptionEditing] = useState(false);
   const [descriptionSaving, setDescriptionSaving] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
   const [descriptionHint, setDescriptionHint] = useState<string | null>(null);
+
   const [aboutActiveIndex, setAboutActiveIndex] = useState(0);
   const [menuActiveIndex, setMenuActiveIndex] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerKind, setViewerKind] = useState<CafePhotoKind>("cafe");
   const [viewerIndex, setViewerIndex] = useState(0);
+
   const [aboutImageReady, setAboutImageReady] = useState(true);
   const [menuImageReady, setMenuImageReady] = useState(true);
   const [viewerImageReady, setViewerImageReady] = useState(true);
-  const [ratingSnapshot, setRatingSnapshot] = useState<CafeRatingSnapshot | null>(null);
-  const [ratingLoading, setRatingLoading] = useState(false);
-  const [ratingError, setRatingError] = useState<string | null>(null);
-  const [ratingDiagnostics, setRatingDiagnostics] = useState<CafeRatingDiagnostics | null>(null);
-  const [ratingDiagnosticsLoading, setRatingDiagnosticsLoading] = useState(false);
-  const [ratingDiagnosticsError, setRatingDiagnosticsError] = useState<string | null>(null);
   const [ratingDiagnosticsExpanded, setRatingDiagnosticsExpanded] = useState(false);
+
   const touchStartXRef = useRef<number | null>(null);
   const loadedAboutUrlsRef = useRef<Set<string>>(new Set());
   const loadedMenuUrlsRef = useRef<Set<string>>(new Set());
   const loadedViewerUrlsRef = useRef<Set<string>>(new Set());
-  const coverPhotoUrl =
-    cafe?.cover_photo_url ??
-    cafePhotos.find((photo) => photo.is_cover)?.url ??
-    cafePhotos[0]?.url;
-  const aboutPhotoItems = useMemo(() => {
-    if (cafePhotos.length > 0) return cafePhotos;
-    if (!coverPhotoUrl) return [];
-    return [
-      {
-        id: "__cover__",
-        url: coverPhotoUrl,
-        kind: "cafe" as const,
-        is_cover: true,
-        position: 1,
-      },
-    ];
-  }, [cafePhotos, coverPhotoUrl]);
-  const menuPhotoItems = menuPhotos;
-  const aboutMainPhoto = aboutPhotoItems[aboutActiveIndex] ?? null;
-  const menuMainPhoto = menuPhotoItems[menuActiveIndex] ?? null;
-  const viewerPhotos = viewerKind === "menu" ? menuPhotoItems : aboutPhotoItems;
-  const viewerPhoto = viewerPhotos[viewerIndex] ?? null;
 
-  useEffect(() => {
-    if (!opened || !cafe?.id) {
-      setCafePhotos(filterPhotosByKind(cafe?.photos, "cafe"));
-      setMenuPhotos(filterPhotosByKind(cafe?.photos, "menu"));
-      return;
-    }
+  const {
+    cafePhotos,
+    menuPhotos,
+    ratingSnapshot,
+    ratingLoading,
+    ratingError,
+    ratingDiagnostics,
+    ratingDiagnosticsLoading,
+    ratingDiagnosticsError,
+  } = useCafeDetailsData({
+    opened,
+    cafe,
+    canViewAdminDiagnostics,
+  });
 
-    let cancelled = false;
-    setCafePhotos(filterPhotosByKind(cafe.photos, "cafe"));
-    setMenuPhotos(filterPhotosByKind(cafe.photos, "menu"));
-    Promise.all([getCafePhotos(cafe.id, "cafe"), getCafePhotos(cafe.id, "menu")])
-      .then(([nextCafePhotos, nextMenuPhotos]) => {
-        if (cancelled) return;
-        setCafePhotos(nextCafePhotos);
-        setMenuPhotos(nextMenuPhotos);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setCafePhotos(filterPhotosByKind(cafe.photos, "cafe"));
-        setMenuPhotos(filterPhotosByKind(cafe.photos, "menu"));
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [cafe?.id, cafe?.photos, opened]);
-
-  useEffect(() => {
-    if (!opened || !cafe?.id) {
-      setRatingSnapshot(null);
-      setRatingLoading(false);
-      setRatingError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setRatingLoading(true);
-    setRatingError(null);
-    getCafeRatingSnapshot(cafe.id)
-      .then((snapshot) => {
-        if (cancelled) return;
-        setRatingSnapshot(snapshot);
-      })
-      .catch((error: any) => {
-        if (cancelled) return;
-        const message =
-          error?.normalized?.message ??
-          error?.response?.data?.message ??
-          error?.message ??
-          "Не удалось загрузить рейтинг.";
-        setRatingError(message);
-        setRatingSnapshot(null);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setRatingLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [cafe?.id, opened]);
-
-  useEffect(() => {
-    if (!opened || !cafe?.id || !canViewAdminDiagnostics) {
-      setRatingDiagnostics(null);
-      setRatingDiagnosticsLoading(false);
-      setRatingDiagnosticsError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setRatingDiagnosticsLoading(true);
-    setRatingDiagnosticsError(null);
-    getCafeRatingDiagnostics(cafe.id)
-      .then((diagnostics) => {
-        if (cancelled) return;
-        setRatingDiagnostics(diagnostics);
-      })
-      .catch((error: any) => {
-        if (cancelled) return;
-        const message =
-          error?.normalized?.message ??
-          error?.response?.data?.message ??
-          error?.message ??
-          "Не удалось загрузить диагностику рейтинга.";
-        setRatingDiagnosticsError(message);
-        setRatingDiagnostics(null);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setRatingDiagnosticsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [cafe?.id, canViewAdminDiagnostics, opened]);
+  const {
+    aboutPhotoItems,
+    menuPhotoItems,
+    aboutMainPhoto,
+    menuMainPhoto,
+    viewerPhotos,
+    viewerPhoto,
+    ratingLabel,
+    ratingReviews,
+    verifiedSharePercent,
+    bestReview,
+    diagnosticsTrust,
+    diagnosticsBase,
+    diagnosticsTopReviews,
+  } = useCafeDetailsComputed({
+    cafe,
+    cafePhotos,
+    menuPhotos,
+    aboutActiveIndex,
+    menuActiveIndex,
+    viewerKind,
+    viewerIndex,
+    ratingSnapshot,
+    ratingDiagnostics,
+  });
 
   useEffect(() => {
     if (!opened) return;
@@ -278,30 +169,30 @@ export default function CafeDetailsScreen({
   }, [viewerPhotos.length]);
 
   useEffect(() => {
-    const nextUrl = aboutMainPhoto?.url?.trim();
-    if (!nextUrl) {
+    const nextURL = aboutMainPhoto?.url?.trim();
+    if (!nextURL) {
       setAboutImageReady(true);
       return;
     }
-    setAboutImageReady(loadedAboutUrlsRef.current.has(nextUrl));
+    setAboutImageReady(loadedAboutUrlsRef.current.has(nextURL));
   }, [aboutMainPhoto?.url]);
 
   useEffect(() => {
-    const nextUrl = menuMainPhoto?.url?.trim();
-    if (!nextUrl) {
+    const nextURL = menuMainPhoto?.url?.trim();
+    if (!nextURL) {
       setMenuImageReady(true);
       return;
     }
-    setMenuImageReady(loadedMenuUrlsRef.current.has(nextUrl));
+    setMenuImageReady(loadedMenuUrlsRef.current.has(nextURL));
   }, [menuMainPhoto?.url]);
 
   useEffect(() => {
-    const nextUrl = viewerPhoto?.url?.trim();
-    if (!nextUrl) {
+    const nextURL = viewerPhoto?.url?.trim();
+    if (!nextURL) {
       setViewerImageReady(true);
       return;
     }
-    setViewerImageReady(loadedViewerUrlsRef.current.has(nextUrl));
+    setViewerImageReady(loadedViewerUrlsRef.current.has(nextURL));
   }, [viewerPhoto?.url]);
 
   useEffect(() => {
@@ -465,14 +356,26 @@ export default function CafeDetailsScreen({
   };
 
   const descriptionActionLabel = description ? "Редактировать описание" : "Добавить описание";
-  const ratingLabel = ratingSnapshot ? ratingSnapshot.rating.toFixed(2) : "—";
-  const ratingReviews = ratingSnapshot?.reviews_count ?? 0;
-  const verifiedSharePercent = Math.round((ratingSnapshot?.verified_share ?? 0) * 100);
-  const bestReview = ratingSnapshot?.best_review ?? null;
-  const diagnosticsComponents = ratingDiagnostics?.components ?? {};
-  const diagnosticsTrust = Number(diagnosticsComponents.trust) || 0;
-  const diagnosticsBase = Number(diagnosticsComponents.bayesian_base) || 0;
-  const diagnosticsTopReviews = ratingDiagnostics?.reviews.slice(0, 3) ?? [];
+
+  const ratingPanel = (
+    <RatingPanel
+      ratingLabel={ratingLabel}
+      ratingReviews={ratingReviews}
+      verifiedSharePercent={verifiedSharePercent}
+      ratingLoading={ratingLoading}
+      ratingError={ratingError}
+      bestReview={bestReview}
+      canViewAdminDiagnostics={canViewAdminDiagnostics}
+      ratingDiagnostics={ratingDiagnostics}
+      ratingDiagnosticsLoading={ratingDiagnosticsLoading}
+      ratingDiagnosticsError={ratingDiagnosticsError}
+      ratingDiagnosticsExpanded={ratingDiagnosticsExpanded}
+      onToggleDiagnosticsExpanded={() => setRatingDiagnosticsExpanded((value) => !value)}
+      diagnosticsTrust={diagnosticsTrust}
+      diagnosticsBase={diagnosticsBase}
+      diagnosticsTopReviews={diagnosticsTopReviews}
+    />
+  );
 
   return (
     <Modal
@@ -495,8 +398,7 @@ export default function CafeDetailsScreen({
             loading={favoriteLoading}
             style={{
               border: "1px solid var(--glass-border)",
-              background:
-                "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+              background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
               boxShadow: "var(--shadow)",
               backdropFilter: "blur(14px) saturate(140%)",
               WebkitBackdropFilter: "blur(14px) saturate(140%)",
@@ -546,477 +448,62 @@ export default function CafeDetailsScreen({
           </Box>
 
           {section === "about" && (
-            <Stack gap={0}>
-              {aboutMainPhoto && (
-                <Box
-                  onClick={() => openViewer("cafe", aboutActiveIndex)}
-                  style={{
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    borderTop: "1px solid var(--border)",
-                    borderBottom: "1px solid var(--border)",
-                  }}
-                >
-                  <img
-                    src={aboutMainPhoto.url}
-                    alt={`Фото: ${cafe.name}`}
-                    onLoad={(event) => {
-                      const src = event.currentTarget.currentSrc || event.currentTarget.src;
-                      if (src) {
-                        loadedAboutUrlsRef.current.add(src);
-                      }
-                      setAboutImageReady(true);
-                    }}
-                    onError={() => setAboutImageReady(true)}
-                    style={{
-                      width: "100%",
-                      height: 260,
-                      objectFit: "cover",
-                      display: "block",
-                      opacity: aboutImageReady ? 1 : 0.38,
-                      filter: aboutImageReady ? "blur(0px)" : "blur(2px)",
-                      transition: "opacity 220ms ease, filter 240ms ease",
-                    }}
-                  />
-                </Box>
-              )}
-
-              {aboutPhotoItems.length > 1 && (
-                <Group
-                  wrap="nowrap"
-                  gap={8}
-                  px="md"
-                  py="sm"
-                  style={{ overflowX: "auto", borderBottom: "1px solid var(--border)" }}
-                >
-                  {aboutPhotoItems.map((photo, index) => (
-                    <Paper
-                      key={photo.id}
-                      withBorder
-                      radius="md"
-                      onClick={() => setAboutActiveIndex(index)}
-                      style={{
-                        width: 108,
-                        minWidth: 108,
-                        height: 78,
-                        overflow: "hidden",
-                        border:
-                          index === aboutActiveIndex
-                            ? "1px solid var(--color-brand-accent)"
-                            : "1px solid var(--border)",
-                        background: "var(--surface)",
-                        cursor: "pointer",
-                        transform: index === aboutActiveIndex ? "translateY(-1px)" : "none",
-                        transition: "border-color 160ms ease, transform 160ms ease",
-                      }}
-                    >
-                      <img
-                        src={photo.url}
-                        alt={`Фото: ${cafe.name}`}
-                        loading="lazy"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                    </Paper>
-                  ))}
-                </Group>
-              )}
-
-              <Stack gap="xs" px="md" py="md">
-                <Group gap={6} wrap="wrap">
-                  <Badge variant="light">Рейтинг: {ratingLabel}</Badge>
-                  <Badge variant="light">Отзывы: {ratingReviews}</Badge>
-                  <Badge variant="light">Визиты: {verifiedSharePercent}%</Badge>
-                </Group>
-                {ratingLoading && (
-                  <Text size="xs" c="dimmed">
-                    Обновляем рейтинг...
-                  </Text>
-                )}
-                {ratingError && (
-                  <Text size="xs" c="dimmed">
-                    {ratingError}
-                  </Text>
-                )}
-                {canViewAdminDiagnostics && (
-                  <Paper
-                    withBorder
-                    radius="md"
-                    p="sm"
-                    style={{
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                    }}
-                  >
-                    <Stack gap={8}>
-                      <Group justify="space-between" align="center" wrap="nowrap">
-                        <Text fw={600} size="sm">
-                          Admin-диагностика рейтинга
-                        </Text>
-                        <Button
-                          variant="light"
-                          size="compact-xs"
-                          onClick={() => setRatingDiagnosticsExpanded((value) => !value)}
-                        >
-                          {ratingDiagnosticsExpanded ? "Скрыть" : "Показать"}
-                        </Button>
-                      </Group>
-
-                      {ratingDiagnosticsLoading && (
-                        <Text size="xs" c="dimmed">
-                          Загружаем диагностику...
-                        </Text>
-                      )}
-                      {ratingDiagnosticsError && (
-                        <Text size="xs" c="dimmed">
-                          {ratingDiagnosticsError}
-                        </Text>
-                      )}
-
-                      {ratingDiagnosticsExpanded && ratingDiagnostics && (
-                        <Stack gap={8}>
-                          <Group gap={6} wrap="wrap">
-                            <Badge size="xs" variant="light">
-                              Snapshot: {ratingDiagnostics.snapshot_rating.toFixed(2)}
-                            </Badge>
-                            <Badge size="xs" variant="light">
-                              Derived: {ratingDiagnostics.derived_rating.toFixed(2)}
-                            </Badge>
-                            <Badge
-                              size="xs"
-                              variant="light"
-                              color={ratingDiagnostics.is_consistent ? "teal" : "orange"}
-                            >
-                              Δ {ratingDiagnostics.rating_delta.toFixed(3)}
-                            </Badge>
-                            <Badge size="xs" variant="light">
-                              Trust: {diagnosticsTrust.toFixed(3)}
-                            </Badge>
-                            <Badge size="xs" variant="light">
-                              Base: {diagnosticsBase.toFixed(3)}
-                            </Badge>
-                          </Group>
-
-                          {ratingDiagnostics.warnings.length > 0 && (
-                            <Group gap={6} wrap="wrap">
-                              {ratingDiagnostics.warnings.map((warning, index) => (
-                                <Badge key={`rating-warning-${index}`} size="xs" color="orange">
-                                  {warning}
-                                </Badge>
-                              ))}
-                            </Group>
-                          )}
-
-                          {diagnosticsTopReviews.length > 0 && (
-                            <Stack gap={6}>
-                              <Text size="xs" fw={600} c="dimmed">
-                                Топ отзывов по влиянию
-                              </Text>
-                              {diagnosticsTopReviews.map((review) => (
-                                <Paper
-                                  key={review.review_id}
-                                  withBorder
-                                  radius="sm"
-                                  p="xs"
-                                  style={{
-                                    background: "var(--surface-2)",
-                                    border: "1px solid var(--border)",
-                                  }}
-                                >
-                                  <Group justify="space-between" align="center" gap={8}>
-                                    <Text size="xs" fw={600} lineClamp={1}>
-                                      {review.author_name}
-                                    </Text>
-                                    <Group gap={4}>
-                                      <Badge size="xs" variant="light">
-                                        Helpful {review.helpful_score.toFixed(1)}
-                                      </Badge>
-                                      <Badge size="xs" variant="light">
-                                        Q {review.quality_score.toFixed(0)}
-                                      </Badge>
-                                    </Group>
-                                  </Group>
-                                  <Text
-                                    size="xs"
-                                    c="dimmed"
-                                    mt={4}
-                                    style={{
-                                      whiteSpace: "pre-wrap",
-                                      wordBreak: "break-word",
-                                      overflowWrap: "anywhere",
-                                    }}
-                                    lineClamp={2}
-                                  >
-                                    {review.summary_excerpt}
-                                  </Text>
-                                </Paper>
-                              ))}
-                            </Stack>
-                          )}
-                        </Stack>
-                      )}
-                    </Stack>
-                  </Paper>
-                )}
-                {bestReview && bestReview.id && (
-                  <Paper
-                    withBorder
-                    radius="md"
-                    p="sm"
-                    style={{
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                    }}
-                  >
-                    <Stack gap={4}>
-                      <Group justify="space-between" align="center">
-                        <Text fw={600} size="sm">
-                          Лучший отзыв
-                        </Text>
-                        <Badge size="xs" variant="light">
-                          Полезность: {bestReview.helpful_score.toFixed(1)}
-                        </Badge>
-                      </Group>
-                      <Text size="xs" c="dimmed">
-                        {bestReview.author_name}
-                      </Text>
-                      <Text
-                        size="sm"
-                        style={{
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                          overflowWrap: "anywhere",
-                        }}
-                        lineClamp={3}
-                      >
-                        {bestReview.summary}
-                      </Text>
-                    </Stack>
-                  </Paper>
-                )}
-                <Text c="dimmed" size="sm">
-                  {cafe.address}
-                </Text>
-                {showDistance && <Text size="sm">{formatDistance(cafe.distance_m)}</Text>}
-
-                {descriptionEditing ? (
-                  <Stack gap="xs">
-                    <Textarea
-                      value={descriptionDraft}
-                      onChange={(event) => setDescriptionDraft(event.currentTarget.value)}
-                      placeholder="Опишите атмосферу, меню или особенности места"
-                      autosize
-                      minRows={3}
-                      maxRows={6}
-                    />
-                    {descriptionError && (
-                      <Text size="xs" c="red">
-                        {descriptionError}
-                      </Text>
-                    )}
-                    <Group justify="flex-end">
-                      <Button
-                        variant="default"
-                        onClick={handleCancelDescription}
-                        disabled={descriptionSaving}
-                      >
-                        Отмена
-                      </Button>
-                      <Button onClick={handleSaveDescription} loading={descriptionSaving}>
-                        Сохранить
-                      </Button>
-                    </Group>
-                  </Stack>
-                ) : (
-                  <>
-                    {description ? (
-                      <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                        {description}
-                      </Text>
-                    ) : (
-                      <Text size="sm" c="dimmed">
-                        Описание пока не добавлено.
-                      </Text>
-                    )}
-                    {canManageDirectly && (
-                      <Button
-                        variant="subtle"
-                        onClick={handleStartDescription}
-                        disabled={!onSaveDescription}
-                      >
-                        {descriptionActionLabel}
-                      </Button>
-                    )}
-                  </>
-                )}
-
-                {canManageDirectly && descriptionHint && (
-                  <Text size="sm" c="teal.6">
-                    {descriptionHint}
-                  </Text>
-                )}
-
-                {cafe.amenities.length > 0 && (
-                  <Group gap={6} wrap="wrap">
-                    {cafe.amenities.map((a) => (
-                      <Badge key={a} variant="light" styles={badgeStyles}>
-                        {AMENITY_LABELS[a] ?? a}
-                      </Badge>
-                    ))}
-                  </Group>
-                )}
-                {showRoutes && (onOpen2gis || onOpenYandex) && (
-                  <Group mt="xs" grow>
-                    {onOpen2gis && <Button onClick={onOpen2gis}>2GIS</Button>}
-                    {onOpenYandex && (
-                      <Button variant="light" onClick={onOpenYandex}>
-                        Яндекс
-                      </Button>
-                    )}
-                  </Group>
-                )}
-                {onManagePhotos && (
-                  <ActionIcon
-                    mt="xs"
-                    size="xl"
-                    radius="xl"
-                    variant="default"
-                    aria-label="Фото места"
-                    onClick={() => onManagePhotos("cafe")}
-                    styles={{
-                      root: {
-                        border: "1px solid var(--glass-border)",
-                        background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-                        boxShadow: "var(--glass-shadow)",
-                        backdropFilter: "blur(12px) saturate(140%)",
-                        WebkitBackdropFilter: "blur(12px) saturate(140%)",
-                      },
-                    }}
-                  >
-                    <Group gap={2} wrap="nowrap">
-                      <IconCamera size={16} />
-                      <IconPlus size={14} />
-                    </Group>
-                  </ActionIcon>
-                )}
-              </Stack>
-            </Stack>
+            <AboutSection
+              cafe={cafe}
+              aboutMainPhoto={aboutMainPhoto}
+              aboutPhotoItems={aboutPhotoItems}
+              aboutActiveIndex={aboutActiveIndex}
+              aboutImageReady={aboutImageReady}
+              onOpenViewer={() => openViewer("cafe", aboutActiveIndex)}
+              onAboutMainPhotoLoad={(src) => {
+                if (src) {
+                  loadedAboutUrlsRef.current.add(src);
+                }
+                setAboutImageReady(true);
+              }}
+              onAboutMainPhotoError={() => setAboutImageReady(true)}
+              onSelectAboutPhoto={setAboutActiveIndex}
+              ratingPanel={ratingPanel}
+              showDistance={showDistance}
+              showRoutes={showRoutes}
+              onOpen2gis={onOpen2gis}
+              onOpenYandex={onOpenYandex}
+              descriptionEditing={descriptionEditing}
+              description={description}
+              descriptionDraft={descriptionDraft}
+              descriptionSaving={descriptionSaving}
+              descriptionError={descriptionError}
+              descriptionHint={descriptionHint}
+              descriptionActionLabel={descriptionActionLabel}
+              canManageDirectly={canManageDirectly}
+              onDescriptionDraftChange={setDescriptionDraft}
+              onStartDescription={handleStartDescription}
+              onCancelDescription={handleCancelDescription}
+              onSaveDescription={handleSaveDescription}
+              onManagePhotos={onManagePhotos}
+              canSaveDescription={Boolean(onSaveDescription)}
+              badgeStyles={badgeStyles}
+            />
           )}
 
           {section === "menu" && (
-            <Stack gap={0}>
-              {menuMainPhoto && (
-                <Box
-                  onClick={() => openViewer("menu", menuActiveIndex)}
-                  style={{
-                    overflow: "hidden",
-                    cursor: "pointer",
-                    borderTop: "1px solid var(--border)",
-                    borderBottom: "1px solid var(--border)",
-                  }}
-                >
-                  <img
-                    src={menuMainPhoto.url}
-                    alt={`Меню: ${cafe.name}`}
-                    loading="lazy"
-                    onLoad={(event) => {
-                      const src = event.currentTarget.currentSrc || event.currentTarget.src;
-                      if (src) {
-                        loadedMenuUrlsRef.current.add(src);
-                      }
-                      setMenuImageReady(true);
-                    }}
-                    onError={() => setMenuImageReady(true)}
-                    style={{
-                      width: "100%",
-                      height: 260,
-                      objectFit: "cover",
-                      display: "block",
-                      opacity: menuImageReady ? 1 : 0.38,
-                      filter: menuImageReady ? "blur(0px)" : "blur(2px)",
-                      transition: "opacity 220ms ease, filter 240ms ease",
-                    }}
-                  />
-                </Box>
-              )}
-
-              {menuPhotoItems.length > 1 && (
-                <Group
-                  wrap="nowrap"
-                  gap={8}
-                  px="md"
-                  py="sm"
-                  style={{ overflowX: "auto", borderBottom: "1px solid var(--border)" }}
-                >
-                  {menuPhotoItems.map((photo, index) => (
-                    <Paper
-                      key={photo.id}
-                      withBorder
-                      radius="md"
-                      onClick={() => setMenuActiveIndex(index)}
-                      style={{
-                        width: 108,
-                        minWidth: 108,
-                        height: 78,
-                        overflow: "hidden",
-                        border:
-                          index === menuActiveIndex
-                            ? "1px solid var(--color-brand-accent)"
-                            : "1px solid var(--border)",
-                        background: "var(--surface)",
-                        cursor: "pointer",
-                        transform: index === menuActiveIndex ? "translateY(-1px)" : "none",
-                        transition: "border-color 160ms ease, transform 160ms ease",
-                      }}
-                    >
-                      <img
-                        src={photo.url}
-                        alt={`Меню: ${cafe.name}`}
-                        loading="lazy"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
-                    </Paper>
-                  ))}
-                </Group>
-              )}
-
-              <Box px="md" py="md">
-                {menuPhotoItems.length === 0 && (
-                  <Text size="sm" c="dimmed">
-                    Фото меню и позиций
-                  </Text>
-                )}
-                {onManagePhotos && (
-                  <Button
-                    mt={menuPhotoItems.length === 0 ? "xs" : 0}
-                    radius="xl"
-                    variant="default"
-                    onClick={() => onManagePhotos("menu")}
-                    styles={{
-                      root: {
-                        border: "1px solid var(--glass-border)",
-                        background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-                        boxShadow: "var(--glass-shadow)",
-                        backdropFilter: "blur(12px) saturate(140%)",
-                        WebkitBackdropFilter: "blur(12px) saturate(140%)",
-                        paddingInline: 16,
-                      },
-                    }}
-                  >
-                    Фото меню
-                  </Button>
-                )}
-              </Box>
-            </Stack>
+            <MenuSection
+              cafe={cafe}
+              menuMainPhoto={menuMainPhoto}
+              menuPhotoItems={menuPhotoItems}
+              menuActiveIndex={menuActiveIndex}
+              menuImageReady={menuImageReady}
+              onOpenViewer={() => openViewer("menu", menuActiveIndex)}
+              onMenuMainPhotoLoad={(src) => {
+                if (src) {
+                  loadedMenuUrlsRef.current.add(src);
+                }
+                setMenuImageReady(true);
+              }}
+              onMenuMainPhotoError={() => setMenuImageReady(true)}
+              onSelectMenuPhoto={setMenuActiveIndex}
+              onManagePhotos={onManagePhotos}
+            />
           )}
 
           {section === "reviews" && (
