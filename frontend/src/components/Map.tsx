@@ -99,6 +99,14 @@ function resolveMapColors(): MapColors {
   };
 }
 
+function removeBottomRightControls(map: MLMap) {
+  const container = map.getContainer();
+  const nodes = container.querySelectorAll(".maplibregl-ctrl-bottom-right");
+  for (const node of nodes) {
+    node.remove();
+  }
+}
+
 function addSources(map: MLMap, geojson: GeoJSON.FeatureCollection) {
   if (!map.getSource("user")) {
     map.addSource("user", {
@@ -391,6 +399,7 @@ export default function Map({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    let controlsObserver: MutationObserver | null = null;
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: MAP_STYLE_URL,
@@ -445,6 +454,13 @@ export default function Map({
         map.easeTo({ center: focusRef.current, duration: 450 });
       }
       setIsMapReady(true);
+      removeBottomRightControls(map);
+      // MapLibre can re-create control wrappers after style/layer updates.
+      // Keep removing the bottom-right controls to match product requirement.
+      controlsObserver = new MutationObserver(() => {
+        removeBottomRightControls(map);
+      });
+      controlsObserver.observe(map.getContainer(), { childList: true, subtree: true });
 
       if (!disableCafeClick) {
         map.on("click", "cafes-layer", handleClick);
@@ -473,6 +489,7 @@ export default function Map({
       map.off("load", handleLoad);
       map.off("click", handleMapClick);
       map.off("moveend", handleMoveEnd);
+      controlsObserver?.disconnect();
       if (!disableCafeClick) {
         map.off("click", "cafes-layer", handleClick);
         map.off("mouseenter", "cafes-layer", handleMouseEnter);

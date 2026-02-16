@@ -201,6 +201,13 @@ export default function SettingsScreen() {
                   >
                     Перейти в модерацию
                   </Button>
+                  <Button
+                    variant="light"
+                    className={classes.actionButton}
+                    onClick={() => navigate("/admin/drinks")}
+                  >
+                    Справочник напитков
+                  </Button>
                 </Group>
               </div>
             )}

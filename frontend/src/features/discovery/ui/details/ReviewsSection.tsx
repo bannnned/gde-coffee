@@ -5,6 +5,7 @@ import {
   Button,
   Group,
   Paper,
+  Select,
   SegmentedControl,
   Stack,
   Text,
@@ -24,6 +25,7 @@ import {
   type CafeReview,
   type ReviewSort,
 } from "../../../../api/reviews";
+import { searchDrinks, type DrinkSuggestion } from "../../../../api/drinks";
 
 type ReviewsSectionProps = {
   cafeId: string;
@@ -40,6 +42,7 @@ const MIN_SUMMARY_LENGTH = 60;
 const MAX_REVIEW_PHOTOS = 8;
 const MAX_UPLOAD_CONCURRENCY = 3;
 const REVIEWS_PAGE_SIZE = 20;
+const DRINK_SUGGESTIONS_LIMIT = 12;
 
 async function runWithConcurrency<T>(
   items: T[],
@@ -83,6 +86,15 @@ function parseTags(value: string): string[] {
   return tags;
 }
 
+function normalizeDrinkInput(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(" ");
+}
+
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -108,6 +120,9 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
 
   const [ratingValue, setRatingValue] = useState("5");
   const [drinkId, setDrinkId] = useState("");
+  const [drinkQuery, setDrinkQuery] = useState("");
+  const [drinkSuggestions, setDrinkSuggestions] = useState<DrinkSuggestion[]>([]);
+  const [drinksLoading, setDrinksLoading] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
   const [summary, setSummary] = useState("");
   const [photos, setPhotos] = useState<FormPhoto[]>([]);
@@ -119,6 +134,14 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
 
   const tags = useMemo(() => parseTags(tagsInput), [tagsInput]);
   const summaryLength = summary.trim().length;
+  const drinkSelectData = useMemo(
+    () =>
+      drinkSuggestions.map((item) => ({
+        value: item.id,
+        label: item.name,
+      })),
+    [drinkSuggestions],
+  );
 
   const ownReview = useMemo(
     () => reviews.find((item) => item.user_id === currentUserId),
@@ -175,6 +198,33 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
 
   useEffect(() => {
     if (!opened) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setDrinksLoading(true);
+      searchDrinks(drinkQuery, DRINK_SUGGESTIONS_LIMIT)
+        .then((items) => {
+          if (cancelled) return;
+          setDrinkSuggestions(items);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setDrinkSuggestions([]);
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setDrinksLoading(false);
+          }
+        });
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [drinkQuery, opened]);
+
+  useEffect(() => {
+    if (!opened) return;
     void loadFirstPage();
   }, [cafeId, opened, sort]);
 
@@ -183,6 +233,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
     if (!ownReview) {
       setRatingValue("5");
       setDrinkId("");
+      setDrinkQuery("");
       setTagsInput("");
       setSummary("");
       setPhotos([]);
@@ -191,6 +242,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
 
     setRatingValue(String(ownReview.rating));
     setDrinkId(ownReview.drink_id ?? "");
+    setDrinkQuery((ownReview.drink_name ?? ownReview.drink_id ?? "").trim());
     setTagsInput((ownReview.taste_tags ?? []).join(", "));
     setSummary(ownReview.summary ?? "");
     setPhotos(
@@ -200,6 +252,20 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
         objectKey: "",
       })),
     );
+    if ((ownReview.drink_id ?? "").trim() !== "") {
+      setDrinkSuggestions((prev) => {
+        if (prev.some((item) => item.id === ownReview.drink_id)) {
+          return prev;
+        }
+        return [
+          {
+            id: ownReview.drink_id,
+            name: (ownReview.drink_name ?? ownReview.drink_id).trim(),
+          },
+          ...prev,
+        ];
+      });
+    }
   }, [opened, ownReview?.id]);
 
   const appendFiles = async (fileList: FileList | null) => {
@@ -278,12 +344,13 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
     setSubmitError(null);
     setSubmitHint(null);
 
-    const nextDrink = drinkId.trim();
+    const nextDrinkId = drinkId.trim().toLowerCase();
+    const nextDrinkName = normalizeDrinkInput(drinkQuery);
     const nextSummary = summary.trim();
     const rating = Number(ratingValue);
 
-    if (!nextDrink) {
-      setSubmitError("Выберите или введите drink_id.");
+    if (!nextDrinkId && !nextDrinkName) {
+      setSubmitError("Укажите напиток: выберите из подсказок или введите новый.");
       return;
     }
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
@@ -297,23 +364,20 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
 
     setIsSubmitting(true);
     try {
+      const payload = {
+        rating,
+        ...(nextDrinkId ? { drink_id: nextDrinkId } : { drink: nextDrinkName }),
+        taste_tags: tags,
+        summary: nextSummary,
+        photos: photos.map((item) => item.url),
+      };
       if (ownReview) {
-        await updateReview(ownReview.id, {
-          rating,
-          drink_id: nextDrink,
-          taste_tags: tags,
-          summary: nextSummary,
-          photos: photos.map((item) => item.url),
-        });
+        await updateReview(ownReview.id, payload);
         setSubmitHint("Отзыв обновлен.");
       } else {
         await createReview({
           cafe_id: cafeId,
-          rating,
-          drink_id: nextDrink,
-          taste_tags: tags,
-          summary: nextSummary,
-          photos: photos.map((item) => item.url),
+          ...payload,
         });
         setSubmitHint("Отзыв опубликован.");
       }
@@ -356,12 +420,27 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
             ]}
           />
 
-          <TextInput
-            label="drink_id"
-            placeholder="например: cappuccino"
-            value={drinkId}
-            onChange={(event) => setDrinkId(event.currentTarget.value)}
+          <Select
+            label="Напиток"
+            placeholder="Начните вводить название напитка"
+            searchable
             required
+            value={drinkId || null}
+            data={drinkSelectData}
+            searchValue={drinkQuery}
+            onSearchChange={(value) => {
+              setDrinkQuery(value);
+              const selected = drinkSuggestions.find((item) => item.id === drinkId);
+              if (!selected || selected.name !== value) {
+                setDrinkId("");
+              }
+            }}
+            onChange={(value, option) => {
+              setDrinkId((value ?? "").trim());
+              setDrinkQuery((option?.label ?? "").trim());
+            }}
+            nothingFoundMessage={drinksLoading ? "Ищем..." : "Ничего не найдено"}
+            description="Можно выбрать из справочника или ввести новый формат вручную"
           />
 
           <TextInput
@@ -619,7 +698,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
                 )}
 
                 <Group gap={6}>
-                  <Badge variant="outline">drink: {review.drink_id}</Badge>
+                  <Badge variant="outline">{review.drink_name || review.drink_id}</Badge>
                   <Badge variant="outline">Полезно: {review.helpful_votes}</Badge>
                   <Badge variant="outline">Качество: {review.quality_score}/100</Badge>
                 </Group>

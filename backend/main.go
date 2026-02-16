@@ -210,6 +210,7 @@ func main() {
 
 	api := r.Group("/api")
 	api.GET("/geocode", cafesHandler.GeocodeLookup)
+	api.GET("/drinks", reviewsHandler.ListDrinks)
 	api.GET("/cafes", auth.OptionalAuth(pool), cafesHandler.List)
 	api.POST("/cafes/:id/favorite", auth.RequireAuth(pool), favoritesHandler.Add)
 	api.DELETE("/cafes/:id/favorite", auth.RequireAuth(pool), favoritesHandler.Remove)
@@ -224,6 +225,15 @@ func main() {
 	api.POST("/abuse-reports/:id/confirm", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.ConfirmAbuse)
 	api.GET("/cafes/:id/rating", reviewsHandler.GetCafeRating)
 	api.GET("/cafes/:id/reviews", reviewsHandler.ListCafeReviews)
+
+	adminDrinksGroup := api.Group("/admin/drinks")
+	adminDrinksGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
+	adminDrinksGroup.GET("", reviewsHandler.ListAdminDrinks)
+	adminDrinksGroup.POST("", reviewsHandler.CreateDrink)
+	adminDrinksGroup.PATCH("/:id", reviewsHandler.UpdateDrink)
+	adminDrinksGroup.GET("/unknown", reviewsHandler.ListUnknownDrinks)
+	adminDrinksGroup.POST("/unknown/:id/map", reviewsHandler.MapUnknownDrink)
+	adminDrinksGroup.POST("/unknown/:id/ignore", reviewsHandler.IgnoreUnknownDrink)
 
 	api.GET("/cafes/:id/photos", photosHandler.List)
 	api.POST("/cafes/:id/photos/presign", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Presign)

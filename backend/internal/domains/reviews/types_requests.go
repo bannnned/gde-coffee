@@ -4,6 +4,7 @@ type PublishReviewRequest struct {
 	CafeID    string   `json:"cafe_id"`
 	Rating    int      `json:"rating"`
 	DrinkID   string   `json:"drink_id"`
+	Drink     string   `json:"drink"`
 	TasteTags []string `json:"taste_tags"`
 	Summary   string   `json:"summary"`
 	Photos    []string `json:"photos"`
@@ -12,6 +13,7 @@ type PublishReviewRequest struct {
 type UpdateReviewRequest struct {
 	Rating    *int      `json:"rating"`
 	DrinkID   *string   `json:"drink_id"`
+	Drink     *string   `json:"drink"`
 	TasteTags *[]string `json:"taste_tags"`
 	Summary   *string   `json:"summary"`
 	Photos    *[]string `json:"photos"`
@@ -24,6 +26,30 @@ type PresignReviewPhotoRequest struct {
 
 type ConfirmReviewPhotoRequest struct {
 	ObjectKey string `json:"object_key"`
+}
+
+type AdminCreateDrinkRequest struct {
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Aliases        []string `json:"aliases"`
+	Description    string   `json:"description"`
+	Category       string   `json:"category"`
+	PopularityRank *int     `json:"popularity_rank"`
+	IsActive       *bool    `json:"is_active"`
+}
+
+type AdminUpdateDrinkRequest struct {
+	Name           *string   `json:"name"`
+	Aliases        *[]string `json:"aliases"`
+	Description    *string   `json:"description"`
+	Category       *string   `json:"category"`
+	PopularityRank *int      `json:"popularity_rank"`
+	IsActive       *bool     `json:"is_active"`
+}
+
+type AdminMapUnknownDrinkRequest struct {
+	DrinkID  string `json:"drink_id"`
+	AddAlias *bool  `json:"add_alias"`
 }
 
 type VerifyVisitRequest struct {

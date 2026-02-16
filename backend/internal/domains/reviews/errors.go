@@ -12,4 +12,5 @@ var (
 	ErrRateLimited           = errors.New("rate limited")
 	ErrSpamDetected          = errors.New("spam detected")
 	ErrDuplicateContent      = errors.New("duplicate content")
+	ErrInvalidDrink          = errors.New("invalid drink")
 )

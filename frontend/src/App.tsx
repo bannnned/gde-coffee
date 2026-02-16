@@ -4,6 +4,7 @@ import ConfirmEmailChangePage from "./pages/ConfirmEmailChangePage";
 import FavoritesPage from "./pages/FavoritesPage";
 import LoginPage from "./pages/LoginPage";
 import AdminModerationPage from "./pages/AdminModerationPage";
+import AdminDrinksPage from "./pages/AdminDrinksPage";
 import ProfileScreen from "./pages/ProfileScreen";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SettingsScreen from "./pages/SettingsScreen";
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/settings" element={<SettingsScreen />} />
           <Route path="/admin/moderation" element={<AdminModerationPage />} />
+          <Route path="/admin/drinks" element={<AdminDrinksPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route
             path="/confirm-email-change"

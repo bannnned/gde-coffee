@@ -224,8 +224,10 @@ func normalizeAndValidateCreateRequest(req PublishReviewRequest) (PublishReviewR
 	if normalized.Rating < 1 || normalized.Rating > 5 {
 		return normalized, errInvalid("rating должен быть в диапазоне от 1 до 5.")
 	}
-	if strings.TrimSpace(normalized.DrinkID) == "" {
-		return normalized, errInvalid("drink_id обязателен.")
+	normalized.Drink = normalizeDrinkText(normalized.Drink)
+	normalized.DrinkID = normalizeDrinkToken(normalized.DrinkID)
+	if strings.TrimSpace(normalized.DrinkID) == "" && strings.TrimSpace(normalized.Drink) == "" {
+		return normalized, errInvalid("Поле напиток обязательно.")
 	}
 	if utfRuneLen(normalized.Summary) < minReviewSummaryLength {
 		return normalized, errInvalid("summary должен быть не короче 60 символов.")
@@ -254,11 +256,13 @@ func normalizeAndValidateUpdateRequest(req UpdateReviewRequest) (UpdateReviewReq
 	}
 	if req.DrinkID != nil {
 		hasAnyField = true
-		value := strings.TrimSpace(*req.DrinkID)
+		value := normalizeDrinkToken(*req.DrinkID)
 		req.DrinkID = &value
-		if value == "" {
-			return req, errInvalid("drink_id не может быть пустым.")
-		}
+	}
+	if req.Drink != nil {
+		hasAnyField = true
+		value := normalizeDrinkText(*req.Drink)
+		req.Drink = &value
 	}
 	if req.Summary != nil {
 		hasAnyField = true
@@ -291,6 +295,9 @@ func normalizeAndValidateUpdateRequest(req UpdateReviewRequest) (UpdateReviewReq
 	}
 	if !hasAnyField {
 		return req, errInvalid("Нужно передать хотя бы одно поле для обновления.")
+	}
+	if req.DrinkID != nil && req.Drink != nil && strings.TrimSpace(*req.DrinkID) == "" && strings.TrimSpace(*req.Drink) == "" {
+		return req, errInvalid("Поле напиток не может быть пустым.")
 	}
 	return req, nil
 }

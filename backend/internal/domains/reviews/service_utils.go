@@ -9,13 +9,15 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 func sanitizePublishReviewRequest(req PublishReviewRequest) PublishReviewRequest {
 	clean := PublishReviewRequest{
 		CafeID:  strings.TrimSpace(req.CafeID),
 		Rating:  req.Rating,
-		DrinkID: strings.TrimSpace(req.DrinkID),
+		DrinkID: normalizeDrinkToken(req.DrinkID),
+		Drink:   normalizeDrinkText(req.Drink),
 		Summary: strings.TrimSpace(req.Summary),
 	}
 	clean.TasteTags = normalizeTags(req.TasteTags)
@@ -62,6 +64,67 @@ func normalizePhotos(photos []string) []string {
 		}
 	}
 	return out
+}
+
+func normalizeDrinkText(raw string) string {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	if value == "" {
+		return ""
+	}
+	return strings.Join(strings.Fields(value), " ")
+}
+
+func normalizeDrinkToken(raw string) string {
+	value := strings.ToLower(strings.TrimSpace(raw))
+	if value == "" {
+		return ""
+	}
+	runes := make([]rune, 0, len(value))
+	lastDash := false
+	for _, r := range value {
+		switch {
+		case unicode.IsLetter(r), unicode.IsDigit(r):
+			runes = append(runes, r)
+			lastDash = false
+		case r == ' ', r == '-', r == '_', r == '/':
+			if lastDash {
+				continue
+			}
+			runes = append(runes, '-')
+			lastDash = true
+		}
+	}
+	out := strings.Trim(string(runes), "-")
+	return out
+}
+
+func normalizeDrinkAliases(values []string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(values))
+	for _, raw := range values {
+		value := normalizeDrinkText(raw)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+		if len(out) >= 40 {
+			break
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+func normalizeDrinkCategory(raw string) string {
+	value := normalizeDrinkToken(raw)
+	if value == "" {
+		return "other"
+	}
+	return value
 }
 
 func validPhotoURL(raw string) bool {

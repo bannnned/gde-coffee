@@ -52,6 +52,8 @@ func (h *Handler) respondDomainError(c *gin.Context, err error) {
 		httpx.RespondError(c, http.StatusTooManyRequests, "rate_limited", "Слишком много попыток. Попробуйте чуть позже.", nil)
 	case errors.Is(err, ErrSpamDetected):
 		httpx.RespondError(c, http.StatusBadRequest, "spam_detected", "Текст выглядит как спам. Перепишите отзыв более содержательно.", nil)
+	case errors.Is(err, ErrInvalidDrink):
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный напиток.", nil)
 	case errors.Is(err, ErrIdempotencyConflict):
 		httpx.RespondError(c, http.StatusConflict, "idempotency_conflict", "Idempotency-Key уже использован с другим payload.", nil)
 	case errors.Is(err, ErrIdempotencyInProgress):

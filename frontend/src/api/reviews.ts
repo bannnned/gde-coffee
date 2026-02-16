@@ -10,6 +10,7 @@ export type CafeReview = {
   rating: number;
   summary: string;
   drink_id: string;
+  drink_name: string;
   taste_tags: string[];
   photos: string[];
   photo_count: number;
@@ -25,7 +26,8 @@ export type CafeReview = {
 
 export type ReviewWritePayload = {
   rating: number;
-  drink_id: string;
+  drink_id?: string;
+  drink?: string;
   taste_tags?: string[];
   summary: string;
   photos?: string[];
