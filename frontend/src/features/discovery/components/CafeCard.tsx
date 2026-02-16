@@ -266,9 +266,9 @@ export default function CafeCard({
                 transform: "scale(1.08)",
                 transformOrigin: "center",
                 WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 44%, rgba(0,0,0,0.14) 58%, rgba(0,0,0,0.42) 74%, rgba(0,0,0,0.78) 90%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 24%, rgba(0,0,0,0.14) 38%, rgba(0,0,0,0.42) 54%, rgba(0,0,0,0.78) 76%, rgba(0,0,0,1) 100%)",
                 maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 44%, rgba(0,0,0,0.14) 58%, rgba(0,0,0,0.42) 74%, rgba(0,0,0,0.78) 90%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 24%, rgba(0,0,0,0.14) 38%, rgba(0,0,0,0.42) 54%, rgba(0,0,0,0.78) 76%, rgba(0,0,0,1) 100%)",
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
                 pointerEvents: "none",
@@ -293,9 +293,9 @@ export default function CafeCard({
                 transform: "scale(1.16)",
                 transformOrigin: "center",
                 WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 63%, rgba(0,0,0,0.16) 74%, rgba(0,0,0,0.52) 86%, rgba(0,0,0,0.92) 96%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 43%, rgba(0,0,0,0.16) 54%, rgba(0,0,0,0.52) 66%, rgba(0,0,0,0.92) 86%, rgba(0,0,0,1) 100%)",
                 maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 63%, rgba(0,0,0,0.16) 74%, rgba(0,0,0,0.52) 86%, rgba(0,0,0,0.92) 96%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 43%, rgba(0,0,0,0.16) 54%, rgba(0,0,0,0.52) 66%, rgba(0,0,0,0.92) 86%, rgba(0,0,0,1) 100%)",
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
                 pointerEvents: "none",
