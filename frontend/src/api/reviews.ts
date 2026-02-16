@@ -141,6 +141,19 @@ export type ReplayReviewsDLQResponse = {
   replayed_at: string;
 };
 
+export type ReplayOpenReviewsDLQResponse = {
+  limit: number;
+  processed: number;
+  replayed: number;
+  failed: number;
+  errors: string[];
+};
+
+export type ResolveOpenReviewsDLQResponse = {
+  limit: number;
+  resolved: number;
+};
+
 export type CafeReview = {
   id: string;
   user_id: string;
@@ -742,5 +755,40 @@ export async function replayReviewsDLQEvent(
     event_type: typeof raw?.event_type === "string" ? raw.event_type : "",
     was_resolved: Boolean(raw?.was_resolved),
     replayed_at: typeof raw?.replayed_at === "string" ? raw.replayed_at : "",
+  };
+}
+
+export async function replayAllOpenReviewsDLQ(
+  limit?: number,
+): Promise<ReplayOpenReviewsDLQResponse> {
+  const res = await http.post("/api/admin/reviews/dlq/replay-open", null, {
+    params: {
+      limit,
+    },
+  });
+  const raw = res.data ?? {};
+  return {
+    limit: Number(raw?.limit) || 0,
+    processed: Number(raw?.processed) || 0,
+    replayed: Number(raw?.replayed) || 0,
+    failed: Number(raw?.failed) || 0,
+    errors: Array.isArray(raw?.errors)
+      ? raw.errors.filter((item: unknown): item is string => typeof item === "string")
+      : [],
+  };
+}
+
+export async function resolveOpenReviewsDLQWithoutReplay(
+  limit?: number,
+): Promise<ResolveOpenReviewsDLQResponse> {
+  const res = await http.post("/api/admin/reviews/dlq/resolve-open", null, {
+    params: {
+      limit,
+    },
+  });
+  const raw = res.data ?? {};
+  return {
+    limit: Number(raw?.limit) || 0,
+    resolved: Number(raw?.resolved) || 0,
   };
 }

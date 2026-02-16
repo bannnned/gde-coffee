@@ -244,7 +244,7 @@ export default function CafeCardHero({
           position: "absolute",
           left: -16,
           right: -16,
-          bottom: "calc(44px + 10%)",
+          bottom: "calc(44px + 25%)",
           height: 64,
           pointerEvents: "none",
           background:

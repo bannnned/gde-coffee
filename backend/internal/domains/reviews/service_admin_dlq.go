@@ -13,6 +13,7 @@ import (
 const (
 	defaultAdminDLQLimit = 30
 	maxAdminDLQLimit     = 200
+	maxAdminDLQBulkLimit = 1000
 
 	sqlListDomainEventDLQ = `select
 	id,
@@ -88,6 +89,26 @@ returning id`
 set inbox_event_id = $2,
 	resolved_at = now()
 where id = $1`
+
+	sqlSelectOpenDomainEventDLQIDs = `select id
+from domain_event_dlq
+where resolved_at is null
+order by failed_at asc, id asc
+limit $1`
+
+	sqlResolveOpenDomainEventDLQ = `with target as (
+	select id
+	  from domain_event_dlq
+	 where resolved_at is null
+	 order by failed_at asc, id asc
+	 limit $1
+	 for update skip locked
+)
+update domain_event_dlq d
+   set resolved_at = now()
+  from target
+ where d.id = target.id
+ returning d.id`
 )
 
 type adminDLQEventRecord struct {
@@ -207,6 +228,81 @@ func (s *Service) ReplayDomainEventDLQ(
 	}, nil
 }
 
+func (s *Service) ReplayAllOpenDomainEventDLQ(
+	ctx context.Context,
+	limit int,
+) (map[string]interface{}, error) {
+	bulkLimit := normalizeDLQBulkLimit(limit)
+	rows, err := s.repository.Pool().Query(ctx, sqlSelectOpenDomainEventDLQIDs, bulkLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	ids := make([]int64, 0, bulkLimit)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	replayed := 0
+	failed := 0
+	errorsList := make([]string, 0, 8)
+	for _, id := range ids {
+		if _, err := s.ReplayDomainEventDLQ(ctx, id); err != nil {
+			failed++
+			if len(errorsList) < 8 {
+				errorsList = append(errorsList, truncateError(err.Error()))
+			}
+			continue
+		}
+		replayed++
+	}
+
+	return map[string]interface{}{
+		"limit":     bulkLimit,
+		"processed": len(ids),
+		"replayed":  replayed,
+		"failed":    failed,
+		"errors":    errorsList,
+	}, nil
+}
+
+func (s *Service) ResolveOpenDomainEventDLQWithoutReplay(
+	ctx context.Context,
+	limit int,
+) (map[string]interface{}, error) {
+	bulkLimit := normalizeDLQBulkLimit(limit)
+	rows, err := s.repository.Pool().Query(ctx, sqlResolveOpenDomainEventDLQ, bulkLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	resolved := 0
+	for rows.Next() {
+		var ignoredID int64
+		if err := rows.Scan(&ignoredID); err != nil {
+			return nil, err
+		}
+		resolved++
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"limit":    bulkLimit,
+		"resolved": resolved,
+	}, nil
+}
+
 func normalizeDLQStatusFilter(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "resolved":
@@ -216,6 +312,16 @@ func normalizeDLQStatusFilter(raw string) string {
 	default:
 		return "open"
 	}
+}
+
+func normalizeDLQBulkLimit(limit int) int {
+	if limit <= 0 {
+		return maxAdminDLQBulkLimit
+	}
+	if limit > maxAdminDLQBulkLimit {
+		return maxAdminDLQBulkLimit
+	}
+	return limit
 }
 
 func scanAdminDLQEvent(row pgx.Row) (adminDLQEventRecord, error) {

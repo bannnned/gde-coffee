@@ -29,7 +29,9 @@ import * as authApi from "../api/auth";
 import {
   getReviewsVersioningStatus,
   listReviewsDLQ,
+  replayAllOpenReviewsDLQ,
   replayReviewsDLQEvent,
+  resolveOpenReviewsDLQWithoutReplay,
   type ReviewsDLQEvent,
   type ReviewsDLQStatus,
   type ReviewsVersioningStatus,
@@ -71,6 +73,8 @@ export default function SettingsScreen() {
   const [dlqLoading, setDlqLoading] = useState(false);
   const [dlqError, setDlqError] = useState<string | null>(null);
   const [dlqReplayError, setDlqReplayError] = useState<string | null>(null);
+  const [dlqBulkMessage, setDlqBulkMessage] = useState<string | null>(null);
+  const [dlqBulkLoading, setDlqBulkLoading] = useState<"replay" | "resolve" | null>(null);
   const [dlqReplayingID, setDlqReplayingID] = useState<number | null>(null);
 
   const verifiedParam = searchParams.get("verified") === "1";
@@ -233,6 +237,7 @@ export default function SettingsScreen() {
 
   const handleReplayDLQ = useCallback(
     async (eventID: number) => {
+      setDlqBulkMessage(null);
       setDlqReplayError(null);
       setDlqReplayingID(eventID);
       try {
@@ -250,6 +255,48 @@ export default function SettingsScreen() {
     },
     [loadDLQ],
   );
+
+  const handleReplayAllOpenDLQ = useCallback(async () => {
+    setDlqBulkMessage(null);
+    setDlqReplayError(null);
+    setDlqBulkLoading("replay");
+    try {
+      const result = await replayAllOpenReviewsDLQ();
+      const failedSuffix =
+        result.failed > 0
+          ? `, ошибок: ${result.failed}${result.errors.length > 0 ? ` (${result.errors[0]})` : ""}`
+          : "";
+      setDlqBulkMessage(`Replay open завершен: ${result.replayed}/${result.processed}${failedSuffix}.`);
+      await loadDLQ();
+    } catch (err: any) {
+      setDlqReplayError(
+        err?.response?.data?.message ??
+          err?.normalized?.message ??
+          "Не удалось выполнить replay всех open сообщений.",
+      );
+    } finally {
+      setDlqBulkLoading(null);
+    }
+  }, [loadDLQ]);
+
+  const handleResolveOpenDLQ = useCallback(async () => {
+    setDlqBulkMessage(null);
+    setDlqReplayError(null);
+    setDlqBulkLoading("resolve");
+    try {
+      const result = await resolveOpenReviewsDLQWithoutReplay();
+      setDlqBulkMessage(`Resolve without replay завершен: закрыто ${result.resolved} сообщений.`);
+      await loadDLQ();
+    } catch (err: any) {
+      setDlqReplayError(
+        err?.response?.data?.message ??
+          err?.normalized?.message ??
+          "Не удалось закрыть open сообщения без replay.",
+      );
+    } finally {
+      setDlqBulkLoading(null);
+    }
+  }, [loadDLQ]);
 
   const handleVerifyRequest = async () => {
     setVerifyError(null);
@@ -478,10 +525,39 @@ export default function SettingsScreen() {
                       </Button>
                     ))}
                   </Group>
+                  <Group className={classes.dlqBulkActions}>
+                    <Button
+                      size="xs"
+                      variant="filled"
+                      className={classes.actionButton}
+                      onClick={() => {
+                        void handleReplayAllOpenDLQ();
+                      }}
+                      loading={dlqBulkLoading === "replay"}
+                    >
+                      Replay all open
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      className={classes.actionButton}
+                      onClick={() => {
+                        void handleResolveOpenDLQ();
+                      }}
+                      loading={dlqBulkLoading === "resolve"}
+                    >
+                      Resolve without replay
+                    </Button>
+                  </Group>
 
                   {dlqReplayError && (
                     <div className={classes.error} style={{ marginTop: 10 }}>
                       {dlqReplayError}
+                    </div>
+                  )}
+                  {dlqBulkMessage && (
+                    <div className={classes.banner} style={{ marginTop: 10 }}>
+                      {dlqBulkMessage}
                     </div>
                   )}
                   {dlqError && !dlqLoading && (

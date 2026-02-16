@@ -223,6 +223,10 @@
   margin-top: 10px;
 }
 
+.dlqBulkActions {
+  margin-top: 8px;
+}
+
 .dlqList {
   margin-top: 10px;
   display: grid;

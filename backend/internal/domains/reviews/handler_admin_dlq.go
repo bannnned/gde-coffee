@@ -78,3 +78,47 @@ func (h *Handler) ReplayDLQEvent(c *gin.Context) {
 
 	c.JSON(http.StatusOK, result)
 }
+
+func (h *Handler) ReplayAllOpenDLQ(c *gin.Context) {
+	limit := 0
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		value, err := strconv.Atoi(rawLimit)
+		if err != nil || value <= 0 {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "limit должен быть целым числом > 0.", nil)
+			return
+		}
+		limit = value
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
+	defer cancel()
+
+	result, err := h.service.ReplayAllOpenDomainEventDLQ(ctx, limit)
+	if err != nil {
+		h.respondDomainError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) ResolveOpenDLQWithoutReplay(c *gin.Context) {
+	limit := 0
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		value, err := strconv.Atoi(rawLimit)
+		if err != nil || value <= 0 {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "limit должен быть целым числом > 0.", nil)
+			return
+		}
+		limit = value
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)
+	defer cancel()
+
+	result, err := h.service.ResolveOpenDomainEventDLQWithoutReplay(ctx, limit)
+	if err != nil {
+		h.respondDomainError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}

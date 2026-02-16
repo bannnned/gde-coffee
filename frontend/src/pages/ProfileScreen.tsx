@@ -105,7 +105,7 @@ export default function ProfileScreen() {
         </header>
 
         <Stack gap="lg">
-          <Paper className={classes.profileCard}>
+          <Paper className={classes.profileCard} radius={22}>
             {status === "loading" ? (
               <Text>Загружаем профиль...</Text>
             ) : !user ? (
@@ -212,7 +212,7 @@ export default function ProfileScreen() {
                     <Text className={classes.heroCaption}>
                       Здесь будет история, избранные места и персональные настройки.
                     </Text>
-                    <Group gap={8}>
+                    <Group gap={8} justify="center">
                       <Badge variant="light">
                         {user.reputationBadge ?? "Участник"}
                       </Badge>

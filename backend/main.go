@@ -252,6 +252,8 @@ func main() {
 	adminReviewsGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
 	adminReviewsGroup.GET("/versioning", reviewsHandler.GetVersioningStatus)
 	adminReviewsGroup.GET("/dlq", reviewsHandler.ListDLQ)
+	adminReviewsGroup.POST("/dlq/replay-open", reviewsHandler.ReplayAllOpenDLQ)
+	adminReviewsGroup.POST("/dlq/resolve-open", reviewsHandler.ResolveOpenDLQWithoutReplay)
 	adminReviewsGroup.POST("/dlq/:id/replay", reviewsHandler.ReplayDLQEvent)
 
 	api.GET("/cafes/:id/photos", photosHandler.List)

@@ -23,6 +23,8 @@ type BottomSheetProps = PropsWithChildren<{
   header?: ReactNode;
   isListEmpty?: boolean;
   lockedState?: SheetState | null;
+  disableMidState?: boolean;
+  hideHeaderContentInPeek?: boolean;
 }>;
 
 type SheetState = "peek" | "mid" | "expanded";
@@ -40,6 +42,8 @@ export default function BottomSheet({
   header,
   isListEmpty,
   lockedState = null,
+  disableMidState = false,
+  hideHeaderContentInPeek = false,
   children,
 }: BottomSheetProps) {
   const {
@@ -75,7 +79,13 @@ export default function BottomSheet({
     setSheetState(lockedState);
   }, [lockedState]);
 
+  useLayoutEffect(() => {
+    if (!disableMidState) return;
+    setSheetState((prev) => (prev === "mid" ? "expanded" : prev));
+  }, [disableMidState]);
+
   const effectiveSheetState = lockedState ?? sheetState;
+  const hideHeaderContent = hideHeaderContentInPeek && effectiveSheetState === "peek";
 
   const heights = useMemo(() => {
     const chromeReserve = 24;
@@ -84,17 +94,20 @@ export default function BottomSheet({
       filtersBarHeight > 0 ? Math.max(0, filtersBarHeight + 12) : 0;
     const available = Math.max(0, safeViewport - topReserved);
     const maxPeek = Math.round(safeViewport * 0.9);
+    const peekHeaderHeight = hideHeaderContentInPeek ? PEEK_HEIGHT_PX : headerHeight;
     const peek = Math.min(
       maxPeek,
-      Math.round(headerHeight + SHEET_PADDING_PX * 2),
+      Math.round(peekHeaderHeight + SHEET_PADDING_PX * 2),
     );
     const expanded = Math.max(peek, Math.round(available));
-    const mid = Math.min(
-      expanded,
-      Math.max(peek + 120, Math.round(available * 0.33)),
-    );
+    const mid = disableMidState
+      ? expanded
+      : Math.min(
+          expanded,
+          Math.max(peek + 120, Math.round(available * 0.33)),
+        );
     return { mid, expanded, peek };
-  }, [filtersBarHeight, headerHeight, safeViewportHeight]);
+  }, [disableMidState, filtersBarHeight, headerHeight, hideHeaderContentInPeek, safeViewportHeight]);
 
   const height = useMotionValue(heights.mid);
 
@@ -147,7 +160,9 @@ export default function BottomSheet({
   }, [effectiveSheetState, setLayoutSheetState]);
 
   const pickClosest = (value: number) => {
-    const points = [heights.expanded, heights.mid, heights.peek];
+    const points = disableMidState
+      ? [heights.expanded, heights.peek]
+      : [heights.expanded, heights.mid, heights.peek];
     return points.reduce((prev, point) =>
       Math.abs(point - value) < Math.abs(prev - value) ? point : prev,
     );
@@ -174,9 +189,15 @@ export default function BottomSheet({
         ? current - info.velocity.y * 0.2
         : current - info.offset.y * 0.2;
     const snap = pickClosest(projected);
-    if (snap === heights.expanded) setSheetState("expanded");
-    else if (snap === heights.peek) setSheetState("peek");
-    else setSheetState("mid");
+    if (snap === heights.peek) {
+      setSheetState("peek");
+      return;
+    }
+    if (disableMidState || snap === heights.expanded) {
+      setSheetState("expanded");
+      return;
+    }
+    setSheetState("mid");
   };
 
   const handleHeaderPointerDown = (
@@ -273,7 +294,7 @@ export default function BottomSheet({
               {errorText}
             </Text>
           )}
-          {header}
+          {!hideHeaderContent && header}
         </div>
         <div
           className={classes.list}

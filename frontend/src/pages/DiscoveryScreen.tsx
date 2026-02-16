@@ -84,6 +84,13 @@ export default function DiscoveryScreen() {
     resetFilters,
   } = useDiscoveryPageController();
 
+  const singleSelectedCafeMode = Boolean(
+    !manualPickMode &&
+      !showFirstChoice &&
+      selectedCafe &&
+      visibleCafes.length === 1,
+  );
+
   return (
     <Box
       pos="relative"
@@ -140,6 +147,8 @@ export default function DiscoveryScreen() {
         errorText={DISCOVERY_UI_TEXT.errorLoad}
         isListEmpty={manualPickMode || showFirstChoice || visibleCafes.length === 0}
         lockedState={manualPickMode ? "peek" : null}
+        disableMidState={singleSelectedCafeMode}
+        hideHeaderContentInPeek={singleSelectedCafeMode}
         header={
           showFirstChoice ? (
             <DiscoveryLocationChoiceHeader

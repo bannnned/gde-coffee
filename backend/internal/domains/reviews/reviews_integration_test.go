@@ -114,6 +114,8 @@ func newIntegrationRouter(pool *pgxpool.Pool) *gin.Engine {
 	adminReviews.Use(testRequireRoles("admin", "moderator"))
 	adminReviews.GET("/versioning", handler.GetVersioningStatus)
 	adminReviews.GET("/dlq", handler.ListDLQ)
+	adminReviews.POST("/dlq/replay-open", handler.ReplayAllOpenDLQ)
+	adminReviews.POST("/dlq/resolve-open", handler.ResolveOpenDLQWithoutReplay)
 	adminReviews.POST("/dlq/:id/replay", handler.ReplayDLQEvent)
 
 	return router
@@ -1848,5 +1850,267 @@ func TestAdminDLQReplayEndpoint(t *testing.T) {
 	}
 	if inboxAttempts != 0 {
 		t.Fatalf("expected inbox attempts reset to 0, got %d", inboxAttempts)
+	}
+}
+
+func TestAdminDLQReplayAllOpenEndpoint(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	adminID := mustCreateTestUser(t, pool, "admin")
+	userID := mustCreateTestUser(t, pool, "user")
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, adminID)
+		mustDeleteTestUser(t, pool, userID)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	insertCase := func(suffix string) (int64, int64) {
+		var aggregateID string
+		if err := pool.QueryRow(ctx, `select uuid_generate_v4()::text`).Scan(&aggregateID); err != nil {
+			t.Fatalf("generate aggregate uuid: %v", err)
+		}
+
+		dedupeKey := fmt.Sprintf("it-admin-dlq-replay-open-%s-%d", suffix, time.Now().UnixNano())
+		var outboxID int64
+		if err := pool.QueryRow(
+			ctx,
+			`insert into domain_events (event_type, aggregate_type, aggregate_id, dedupe_key, payload, status)
+			 values ($1, 'cafe', $2::uuid, $3, $4::jsonb, 'processed')
+			 returning id`,
+			EventReviewUpdated,
+			aggregateID,
+			dedupeKey,
+			`{"source":"bulk-replay-test"}`,
+		).Scan(&outboxID); err != nil {
+			t.Fatalf("insert outbox event: %v", err)
+		}
+
+		var dlqID int64
+		if err := pool.QueryRow(
+			ctx,
+			`insert into domain_event_dlq (
+				outbox_event_id,
+				consumer,
+				event_type,
+				aggregate_id,
+				payload,
+				attempts,
+				last_error
+			)
+			 values ($1, $2, $3, $4::uuid, $5::jsonb, $6, $7)
+			 returning id`,
+			outboxID,
+			inboxConsumerCafeRating,
+			EventReviewUpdated,
+			aggregateID,
+			`{"source":"bulk-replay-test"}`,
+			20,
+			"forced replay error",
+		).Scan(&dlqID); err != nil {
+			t.Fatalf("insert dlq event: %v", err)
+		}
+
+		return outboxID, dlqID
+	}
+
+	outboxA, dlqA := insertCase("a")
+	outboxB, dlqB := insertCase("b")
+	t.Cleanup(func() {
+		mustExec(t, pool, `delete from domain_events where id in ($1, $2)`, outboxA, outboxB)
+	})
+
+	forbiddenRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/admin/reviews/dlq/replay-open",
+		map[string]string{
+			"X-Test-User-ID": userID,
+			"X-Test-Role":    "user",
+		},
+		nil,
+	)
+	if forbiddenRec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin replay-open expected 403, got %d, body=%s", forbiddenRec.Code, forbiddenRec.Body.String())
+	}
+
+	adminRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/admin/reviews/dlq/replay-open",
+		map[string]string{
+			"X-Test-User-ID": adminID,
+			"X-Test-Role":    "admin",
+		},
+		nil,
+	)
+	if adminRec.Code != http.StatusOK {
+		t.Fatalf("admin replay-open expected 200, got %d, body=%s", adminRec.Code, adminRec.Body.String())
+	}
+
+	var replayResp struct {
+		Replayed int `json:"replayed"`
+		Failed   int `json:"failed"`
+	}
+	if err := json.Unmarshal(adminRec.Body.Bytes(), &replayResp); err != nil {
+		t.Fatalf("decode replay-open response: %v", err)
+	}
+	if replayResp.Replayed < 2 {
+		t.Fatalf("expected replayed >= 2, got %d", replayResp.Replayed)
+	}
+	if replayResp.Failed != 0 {
+		t.Fatalf("expected failed=0 for replay-open, got %d", replayResp.Failed)
+	}
+
+	var (
+		resolvedA *time.Time
+		resolvedB *time.Time
+		inboxCnt  int
+	)
+	if err := pool.QueryRow(ctx, `select resolved_at from domain_event_dlq where id = $1`, dlqA).Scan(&resolvedA); err != nil {
+		t.Fatalf("load dlqA resolved_at: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `select resolved_at from domain_event_dlq where id = $1`, dlqB).Scan(&resolvedB); err != nil {
+		t.Fatalf("load dlqB resolved_at: %v", err)
+	}
+	if resolvedA == nil || resolvedB == nil {
+		t.Fatalf("expected both DLQ rows to be resolved after replay-open")
+	}
+
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*)::int
+		   from domain_event_inbox
+		  where outbox_event_id in ($1, $2)
+		    and consumer = $3
+		    and status = 'pending'`,
+		outboxA,
+		outboxB,
+		inboxConsumerCafeRating,
+	).Scan(&inboxCnt); err != nil {
+		t.Fatalf("count replayed inbox rows: %v", err)
+	}
+	if inboxCnt < 2 {
+		t.Fatalf("expected at least 2 pending inbox rows, got %d", inboxCnt)
+	}
+}
+
+func TestAdminDLQResolveOpenWithoutReplayEndpoint(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	adminID := mustCreateTestUser(t, pool, "admin")
+	userID := mustCreateTestUser(t, pool, "user")
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, adminID)
+		mustDeleteTestUser(t, pool, userID)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var aggregateID string
+	if err := pool.QueryRow(ctx, `select uuid_generate_v4()::text`).Scan(&aggregateID); err != nil {
+		t.Fatalf("generate aggregate uuid: %v", err)
+	}
+
+	dedupeKey := fmt.Sprintf("it-admin-dlq-resolve-open-%d", time.Now().UnixNano())
+	var outboxID int64
+	if err := pool.QueryRow(
+		ctx,
+		`insert into domain_events (event_type, aggregate_type, aggregate_id, dedupe_key, payload, status)
+		 values ($1, 'cafe', $2::uuid, $3, '{}'::jsonb, 'processed')
+		 returning id`,
+		EventReviewUpdated,
+		aggregateID,
+		dedupeKey,
+	).Scan(&outboxID); err != nil {
+		t.Fatalf("insert outbox event: %v", err)
+	}
+
+	var dlqID int64
+	if err := pool.QueryRow(
+		ctx,
+		`insert into domain_event_dlq (
+			outbox_event_id,
+			consumer,
+			event_type,
+			aggregate_id,
+			payload,
+			attempts,
+			last_error
+		)
+		 values ($1, $2, $3, $4::uuid, '{}'::jsonb, $5, $6)
+		 returning id`,
+		outboxID,
+		inboxConsumerCafeRating,
+		EventReviewUpdated,
+		aggregateID,
+		20,
+		"forced resolve-only error",
+	).Scan(&dlqID); err != nil {
+		t.Fatalf("insert dlq event: %v", err)
+	}
+
+	t.Cleanup(func() {
+		mustExec(t, pool, `delete from domain_events where id = $1`, outboxID)
+	})
+
+	forbiddenRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/admin/reviews/dlq/resolve-open",
+		map[string]string{
+			"X-Test-User-ID": userID,
+			"X-Test-Role":    "user",
+		},
+		nil,
+	)
+	if forbiddenRec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin resolve-open expected 403, got %d, body=%s", forbiddenRec.Code, forbiddenRec.Body.String())
+	}
+
+	adminRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/admin/reviews/dlq/resolve-open",
+		map[string]string{
+			"X-Test-User-ID": adminID,
+			"X-Test-Role":    "admin",
+		},
+		nil,
+	)
+	if adminRec.Code != http.StatusOK {
+		t.Fatalf("admin resolve-open expected 200, got %d, body=%s", adminRec.Code, adminRec.Body.String())
+	}
+
+	var (
+		resolvedAt *time.Time
+		inboxCount int
+	)
+	if err := pool.QueryRow(ctx, `select resolved_at from domain_event_dlq where id = $1`, dlqID).Scan(&resolvedAt); err != nil {
+		t.Fatalf("load dlq resolved_at: %v", err)
+	}
+	if resolvedAt == nil {
+		t.Fatalf("expected resolved_at to be set after resolve-open")
+	}
+
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*)::int
+		   from domain_event_inbox
+		  where outbox_event_id = $1`,
+		outboxID,
+	).Scan(&inboxCount); err != nil {
+		t.Fatalf("count inbox rows after resolve-open: %v", err)
+	}
+	if inboxCount != 0 {
+		t.Fatalf("expected no inbox rows for resolve-only flow, got %d", inboxCount)
 	}
 }
