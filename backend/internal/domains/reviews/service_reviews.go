@@ -131,6 +131,7 @@ func (s *Service) CreateReview(
 			"created":    true,
 			"updated_at": updatedAt.UTC().Format(time.RFC3339),
 		}
+		s.appendVersionMetadata(response)
 		return 201, response, nil
 	})
 }
@@ -278,6 +279,7 @@ func (s *Service) UpdateReview(
 			"created":    false,
 			"updated_at": updatedAt.UTC().Format(time.RFC3339),
 		}
+		s.appendVersionMetadata(response)
 		return 200, response, nil
 	})
 }

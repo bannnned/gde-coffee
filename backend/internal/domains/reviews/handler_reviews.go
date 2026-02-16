@@ -156,7 +156,7 @@ func (h *Handler) ListCafeReviews(c *gin.Context) {
 		nextCursor = encodeReviewCursor(nextOffset, sortBy)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response := map[string]interface{}{
 		"cafe_id":          cafeID,
 		"sort":             sortBy,
 		"limit":            limit,
@@ -166,7 +166,9 @@ func (h *Handler) ListCafeReviews(c *gin.Context) {
 		"next_cursor":      nextCursor,
 		"position_options": positionOptions,
 		"reviews":          reviewsList,
-	})
+	}
+	h.service.appendVersionMetadata(response)
+	c.JSON(http.StatusOK, response)
 }
 
 func normalizeReviewPositionFilter(raw string) string {

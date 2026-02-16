@@ -184,9 +184,11 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 	if err != nil {
 		return err
 	}
+	ratingFormulaVersion := s.versioning.RatingFormula
+	qualityFormulaVersion := s.versioning.QualityFormula
 
 	if len(reviews) == 0 {
-		return s.saveCafeRatingSnapshot(ctx, cafeID, 0, 0, 0, 0, map[string]interface{}{
+		components := map[string]interface{}{
 			"global_mean":         roundFloat(globalMean, 4),
 			"reason":              "no_reviews",
 			"bayesian_m":          ratingBayesianM,
@@ -197,7 +199,13 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 			"author_rep_avg_norm": 0.0,
 			"trust":               1.0,
 			"best_review":         nil,
-		})
+			"rating_formula":      ratingFormulaVersion,
+			"quality_formula":     qualityFormulaVersion,
+		}
+		for key, value := range s.versioningSnapshot() {
+			components[key] = value
+		}
+		return s.saveCafeRatingSnapshot(ctx, cafeID, ratingFormulaVersion, 0, 0, 0, 0, components)
 	}
 
 	authorRepCache := map[string]float64{}
@@ -230,7 +238,7 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 			flaggedReviewsCount++
 		}
 
-		qualityScore := calculateReviewQualityV1(
+		qualityScore, resolvedQualityFormula := s.calculateReviewQualityScore(
 			item.DrinkID,
 			item.TagsCount,
 			item.SummaryLength,
@@ -238,6 +246,7 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 			item.VisitConfidence,
 			item.ConfirmedReports,
 		)
+		qualityFormulaVersion = resolvedQualityFormula
 		confirmedReports += item.ConfirmedReports
 
 		sumRatings += item.Rating
@@ -269,12 +278,35 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 	// 1) base = bayesian_mean(cafe_ratings, global_mean, m)
 	// 2) trust = 1 + a*verified_share + b*author_rep_avg_norm - c*fraud_risk
 	// 3) final = clamp(base * trust, 1.0, 5.0)
-	base := bayesianMean(ratingsMean, float64(reviewsCount), globalMean, ratingBayesianM)
-	trust := 1 +
-		(ratingTrustCoeffVerifiedShare * verifiedShare) +
-		(ratingTrustCoeffAuthorRepNorm * authorRepAvgNorm) -
-		(ratingTrustCoeffFraudRisk * fraudRisk)
-	final := clamp(base*trust, 1, 5)
+	base := 0.0
+	trust := 1.0
+	final := 0.0
+	switch ratingFormulaVersion {
+	case RatingFormulaV2:
+		base = bayesianMean(ratingsMean, float64(reviewsCount), globalMean, ratingBayesianM)
+		trust = 1 +
+			(ratingTrustCoeffVerifiedShare * verifiedShare) +
+			(ratingTrustCoeffAuthorRepNorm * authorRepAvgNorm) -
+			(ratingTrustCoeffFraudRisk * fraudRisk)
+		final = clamp(base*trust, 1, 5)
+	case RatingFormulaV3:
+		// rating_v3 is gated and not implemented yet; fallback to stable v2.
+		ratingFormulaVersion = RatingFormulaV2
+		base = bayesianMean(ratingsMean, float64(reviewsCount), globalMean, ratingBayesianM)
+		trust = 1 +
+			(ratingTrustCoeffVerifiedShare * verifiedShare) +
+			(ratingTrustCoeffAuthorRepNorm * authorRepAvgNorm) -
+			(ratingTrustCoeffFraudRisk * fraudRisk)
+		final = clamp(base*trust, 1, 5)
+	default:
+		ratingFormulaVersion = RatingFormulaV2
+		base = bayesianMean(ratingsMean, float64(reviewsCount), globalMean, ratingBayesianM)
+		trust = 1 +
+			(ratingTrustCoeffVerifiedShare * verifiedShare) +
+			(ratingTrustCoeffAuthorRepNorm * authorRepAvgNorm) -
+			(ratingTrustCoeffFraudRisk * fraudRisk)
+		final = clamp(base*trust, 1, 5)
+	}
 
 	var bestReviewPayload interface{} = nil
 	if bestReview != nil {
@@ -304,18 +336,32 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		"fraud_risk":          roundFloat(fraudRisk, 4),
 		"flagged_reviews":     flaggedReviewsCount,
 		"confirmed_reports":   confirmedReports,
-		"formula_version":     RatingFormulaVersion,
+		"rating_formula":      ratingFormulaVersion,
+		"quality_formula":     qualityFormulaVersion,
 		"verified_reviews":    verifiedReviewsCount,
 		"published_reviews":   reviewsCount,
 		"best_review":         bestReviewPayload,
 	}
+	for key, value := range s.versioningSnapshot() {
+		components[key] = value
+	}
 
-	return s.saveCafeRatingSnapshot(ctx, cafeID, final, reviewsCount, verifiedReviewsCount, fraudRisk, components)
+	return s.saveCafeRatingSnapshot(
+		ctx,
+		cafeID,
+		ratingFormulaVersion,
+		final,
+		reviewsCount,
+		verifiedReviewsCount,
+		fraudRisk,
+		components,
+	)
 }
 
 func (s *Service) saveCafeRatingSnapshot(
 	ctx context.Context,
 	cafeID string,
+	formulaVersion string,
 	rating float64,
 	reviewsCount int,
 	verifiedReviewsCount int,
@@ -331,7 +377,7 @@ func (s *Service) saveCafeRatingSnapshot(
 		ctx,
 		sqlUpsertCafeRatingSnapshot,
 		cafeID,
-		RatingFormulaVersion,
+		formulaVersion,
 		roundFloat(rating, 2),
 		reviewsCount,
 		verifiedReviewsCount,
@@ -391,7 +437,7 @@ func (s *Service) loadCafeRatingSnapshot(ctx context.Context, cafeID string) (ma
 		bestReview = raw
 	}
 
-	return map[string]interface{}{
+	response := map[string]interface{}{
 		"cafe_id":                cafeID,
 		"formula_version":        formulaVersion,
 		"rating":                 rating,
@@ -402,7 +448,9 @@ func (s *Service) loadCafeRatingSnapshot(ctx context.Context, cafeID string) (ma
 		"best_review":            bestReview,
 		"components":             components,
 		"computed_at":            computedAt.UTC().Format(time.RFC3339),
-	}, nil
+	}
+	s.appendVersionMetadata(response)
+	return response, nil
 }
 
 func bayesianMean(localMean float64, localCount float64, globalMean float64, m float64) float64 {

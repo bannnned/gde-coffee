@@ -149,6 +149,60 @@
   padding-inline: 16px;
 }
 
+.versioningPanel {
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  background: var(--glass-bg);
+  box-shadow: inset 0 0 0 1px var(--color-surface-overlay-soft);
+}
+
+.versioningGrid {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.versioningRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.versioningKey {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.versioningValue {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.versioningBoolean {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.versioningBoolean[data-active='true'] {
+  color: var(--color-on-accent);
+  border-color: var(--color-status-success);
+  background: color-mix(in oklab, var(--color-status-success) 78%, transparent);
+}
+
 :global([data-mantine-color-scheme="dark"]) .card {
   background: transparent;
 }

@@ -247,6 +247,10 @@ func main() {
 	adminCafesGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
 	adminCafesGroup.GET("/:id/rating-diagnostics", reviewsHandler.GetCafeRatingDiagnostics)
 
+	adminReviewsGroup := api.Group("/admin/reviews")
+	adminReviewsGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
+	adminReviewsGroup.GET("/versioning", reviewsHandler.GetVersioningStatus)
+
 	api.GET("/cafes/:id/photos", photosHandler.List)
 	api.POST("/cafes/:id/photos/presign", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Presign)
 	api.POST("/cafes/:id/photos/confirm", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Confirm)

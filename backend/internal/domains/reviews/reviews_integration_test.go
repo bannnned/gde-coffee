@@ -110,6 +110,10 @@ func newIntegrationRouter(pool *pgxpool.Pool) *gin.Engine {
 	adminCafes.Use(testRequireRoles("admin", "moderator"))
 	adminCafes.GET("/:id/rating-diagnostics", handler.GetCafeRatingDiagnostics)
 
+	adminReviews := router.Group("/api/admin/reviews")
+	adminReviews.Use(testRequireRoles("admin", "moderator"))
+	adminReviews.GET("/versioning", handler.GetVersioningStatus)
+
 	return router
 }
 
@@ -1309,5 +1313,70 @@ func TestAdminCafeRatingDiagnosticsAccessAndPayload(t *testing.T) {
 	reviews, ok := body["reviews"].([]interface{})
 	if !ok || len(reviews) == 0 {
 		t.Fatalf("expected non-empty reviews diagnostics payload, got %v", body["reviews"])
+	}
+}
+
+func TestAdminReviewsVersioningAccessAndPayload(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	adminID := mustCreateTestUser(t, pool, "admin")
+	userID := mustCreateTestUser(t, pool, "user")
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, adminID)
+		mustDeleteTestUser(t, pool, userID)
+	})
+
+	forbiddenRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/admin/reviews/versioning",
+		map[string]string{
+			"X-Test-User-ID": userID,
+			"X-Test-Role":    "user",
+		},
+		nil,
+	)
+	if forbiddenRec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin versioning expected 403, got %d, body=%s", forbiddenRec.Code, forbiddenRec.Body.String())
+	}
+
+	adminRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/admin/reviews/versioning",
+		map[string]string{
+			"X-Test-User-ID": adminID,
+			"X-Test-Role":    "admin",
+		},
+		nil,
+	)
+	if adminRec.Code != http.StatusOK {
+		t.Fatalf("admin versioning expected 200, got %d, body=%s", adminRec.Code, adminRec.Body.String())
+	}
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(adminRec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode versioning response: %v", err)
+	}
+
+	apiContract := strings.TrimSpace(fmt.Sprintf("%v", body["api_contract_version"]))
+	if apiContract == "" {
+		t.Fatalf("expected api_contract_version in payload")
+	}
+
+	formulaVersions, ok := body["formula_versions"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected formula_versions object, got %T", body["formula_versions"])
+	}
+	ratingVersion := strings.TrimSpace(fmt.Sprintf("%v", formulaVersions["rating"]))
+	if ratingVersion == "" {
+		t.Fatalf("expected non-empty formula_versions.rating")
+	}
+	qualityVersion := strings.TrimSpace(fmt.Sprintf("%v", formulaVersions["quality"]))
+	if qualityVersion == "" {
+		t.Fatalf("expected non-empty formula_versions.quality")
 	}
 }

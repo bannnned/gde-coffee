@@ -89,7 +89,7 @@ func (s *Service) ListCafeReviews(
 			}
 		}
 
-		qualityScore := calculateReviewQualityV1(
+		qualityScore, qualityFormulaVersion := s.calculateReviewQualityScore(
 			item.DrinkID,
 			len(tasteTags),
 			utfRuneLen(item.Summary),
@@ -117,6 +117,7 @@ func (s *Service) ListCafeReviews(
 			"visit_confidence":  visitConfidence,
 			"visit_verified":    visitVerified,
 			"quality_score":     qualityScore,
+			"quality_formula":   qualityFormulaVersion,
 			"confirmed_reports": confirmedReports,
 			"created_at":        item.CreatedAt.UTC().Format(time.RFC3339),
 			"updated_at":        item.UpdatedAt.UTC().Format(time.RFC3339),

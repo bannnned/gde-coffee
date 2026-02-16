@@ -69,6 +69,7 @@ func (s *Service) GetCafeRatingDiagnostics(ctx context.Context, cafeID string) (
 	}
 
 	rows := make([]diagnosticsRow, 0, len(reviews))
+	qualityFormulaVersion := s.versioning.QualityFormula
 	var (
 		sumRatings           float64
 		sumAuthorRepNorm     float64
@@ -80,7 +81,7 @@ func (s *Service) GetCafeRatingDiagnostics(ctx context.Context, cafeID string) (
 	for _, item := range reviews {
 		authorRep := authorRepCache[item.AuthorUserID]
 		authorRepNorm := clamp(authorRep/ratingAuthorRepNormMax, 0, 1)
-		qualityScore := calculateReviewQualityV1(
+		qualityScore, resolvedQualityFormula := s.calculateReviewQualityScore(
 			item.DrinkID,
 			item.TagsCount,
 			item.SummaryLength,
@@ -88,6 +89,7 @@ func (s *Service) GetCafeRatingDiagnostics(ctx context.Context, cafeID string) (
 			item.VisitConfidence,
 			item.ConfirmedReports,
 		)
+		qualityFormulaVersion = resolvedQualityFormula
 
 		if item.VisitVerified {
 			verifiedReviewsCount++
@@ -189,7 +191,7 @@ func (s *Service) GetCafeRatingDiagnostics(ctx context.Context, cafeID string) (
 		warnings = append(warnings, "Снимок рейтинга расходится с пересчётом: проверьте очередь событий и воркер.")
 	}
 
-	return map[string]interface{}{
+	response := map[string]interface{}{
 		"cafe_id":                cafeID,
 		"formula_version":        snapshot["formula_version"],
 		"computed_at":            snapshot["computed_at"],
@@ -206,6 +208,8 @@ func (s *Service) GetCafeRatingDiagnostics(ctx context.Context, cafeID string) (
 			"global_mean":         roundFloat(globalMean, 4),
 			"bayesian_m":          ratingBayesianM,
 			"bayesian_base":       roundFloat(base, 4),
+			"rating_formula":      snapshot["formula_version"],
+			"quality_formula":     qualityFormulaVersion,
 			"author_rep_avg_norm": roundFloat(authorRepAvgNorm, 4),
 			"trust":               roundFloat(trust, 4),
 			"trust_coeff_a":       ratingTrustCoeffVerifiedShare,
@@ -217,7 +221,9 @@ func (s *Service) GetCafeRatingDiagnostics(ctx context.Context, cafeID string) (
 		"best_review": snapshot["best_review"],
 		"warnings":    warnings,
 		"reviews":     breakdown,
-	}, nil
+	}
+	s.appendVersionMetadata(response)
+	return response, nil
 }
 
 func (s *Service) loadRatingDiagnosticsInputs(

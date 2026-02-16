@@ -21,11 +21,15 @@ import {
   IconShieldCheck,
   IconSun,
 } from "@tabler/icons-react";
-import { useCallback, useMemo, useState, type FocusEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FocusEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import * as authApi from "../api/auth";
+import {
+  getReviewsVersioningStatus,
+  type ReviewsVersioningStatus,
+} from "../api/reviews";
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import useOauthRedirect from "../hooks/useOauthRedirect";
@@ -55,6 +59,9 @@ export default function SettingsScreen() {
   const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<string | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [reviewsVersioning, setReviewsVersioning] = useState<ReviewsVersioningStatus | null>(null);
+  const [reviewsVersioningLoading, setReviewsVersioningLoading] = useState(false);
+  const [reviewsVersioningError, setReviewsVersioningError] = useState<string | null>(null);
 
   const verifiedParam = searchParams.get("verified") === "1";
   const emailChangedParam = searchParams.get("email_changed") === "1";
@@ -104,6 +111,45 @@ export default function SettingsScreen() {
     onResultOk: refreshAuth,
     onResultLinked: refreshAuth,
   });
+
+  useEffect(() => {
+    if (!canModerate || status !== "authed") {
+      setReviewsVersioning(null);
+      setReviewsVersioningError(null);
+      setReviewsVersioningLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setReviewsVersioningLoading(true);
+    setReviewsVersioningError(null);
+    getReviewsVersioningStatus()
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        setReviewsVersioning(result);
+      })
+      .catch((err: any) => {
+        if (cancelled) {
+          return;
+        }
+        setReviewsVersioningError(
+          err?.response?.data?.message ??
+            err?.normalized?.message ??
+            "Не удалось загрузить статус версий отзывов.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setReviewsVersioningLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canModerate, status]);
 
   const handleVerifyRequest = async () => {
     setVerifyError(null);
@@ -217,6 +263,91 @@ export default function SettingsScreen() {
                     Справочник напитков
                   </Button>
                 </Group>
+                <div className={classes.versioningPanel}>
+                  <Text fw={600} size="sm">
+                    Версионирование отзывов
+                  </Text>
+                  {reviewsVersioningLoading && (
+                    <Text size="sm" className={classes.muted} mt={6}>
+                      Загружаем конфигурацию...
+                    </Text>
+                  )}
+                  {!reviewsVersioningLoading && reviewsVersioningError && (
+                    <div className={classes.error} style={{ marginTop: 10 }}>
+                      {reviewsVersioningError}
+                    </div>
+                  )}
+                  {!reviewsVersioningLoading && reviewsVersioning && (
+                    <div className={classes.versioningGrid}>
+                      <div className={classes.versioningRow}>
+                        <span className={classes.versioningKey}>API contract</span>
+                        <span className={classes.versioningValue}>
+                          {reviewsVersioning.api_contract_version}
+                        </span>
+                      </div>
+                      <div className={classes.versioningRow}>
+                        <span className={classes.versioningKey}>Rating formula</span>
+                        <span className={classes.versioningValue}>
+                          {reviewsVersioning.formula_versions.rating}
+                        </span>
+                      </div>
+                      <div className={classes.versioningRow}>
+                        <span className={classes.versioningKey}>Quality formula</span>
+                        <span className={classes.versioningValue}>
+                          {reviewsVersioning.formula_versions.quality}
+                        </span>
+                      </div>
+                      <div className={classes.versioningRow}>
+                        <span className={classes.versioningKey}>Requested rating</span>
+                        <span className={classes.versioningValue}>
+                          {reviewsVersioning.formula_requests.rating}
+                        </span>
+                      </div>
+                      <div className={classes.versioningRow}>
+                        <span className={classes.versioningKey}>Requested quality</span>
+                        <span className={classes.versioningValue}>
+                          {reviewsVersioning.formula_requests.quality}
+                        </span>
+                      </div>
+                      <div className={classes.versioningRow}>
+                        <span className={classes.versioningKey}>Fallback rating</span>
+                        <span
+                          className={classes.versioningBoolean}
+                          data-active={reviewsVersioning.formula_fallbacks.rating ? "true" : "false"}
+                        >
+                          {reviewsVersioning.formula_fallbacks.rating ? "yes" : "no"}
+                        </span>
+                      </div>
+                      <div className={classes.versioningRow}>
+                        <span className={classes.versioningKey}>Fallback quality</span>
+                        <span
+                          className={classes.versioningBoolean}
+                          data-active={reviewsVersioning.formula_fallbacks.quality ? "true" : "false"}
+                        >
+                          {reviewsVersioning.formula_fallbacks.quality ? "yes" : "no"}
+                        </span>
+                      </div>
+                      <div className={classes.versioningRow}>
+                        <span className={classes.versioningKey}>FF rating_v3</span>
+                        <span
+                          className={classes.versioningBoolean}
+                          data-active={reviewsVersioning.feature_flags.rating_v3_enabled ? "true" : "false"}
+                        >
+                          {reviewsVersioning.feature_flags.rating_v3_enabled ? "on" : "off"}
+                        </span>
+                      </div>
+                      <div className={classes.versioningRow}>
+                        <span className={classes.versioningKey}>FF quality_v2</span>
+                        <span
+                          className={classes.versioningBoolean}
+                          data-active={reviewsVersioning.feature_flags.quality_v2_enabled ? "true" : "false"}
+                        >
+                          {reviewsVersioning.feature_flags.quality_v2_enabled ? "on" : "off"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

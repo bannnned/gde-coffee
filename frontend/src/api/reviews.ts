@@ -27,6 +27,11 @@ export type CafeRatingBestReview = {
 };
 
 export type CafeRatingSnapshot = {
+  api_contract_version: string;
+  formula_versions: {
+    rating: string;
+    quality: string;
+  };
   cafe_id: string;
   formula_version: string;
   rating: number;
@@ -61,6 +66,11 @@ export type CafeRatingDiagnosticsReview = {
 };
 
 export type CafeRatingDiagnostics = {
+  api_contract_version: string;
+  formula_versions: {
+    rating: string;
+    quality: string;
+  };
   cafe_id: string;
   formula_version: string;
   computed_at: string;
@@ -76,6 +86,26 @@ export type CafeRatingDiagnostics = {
   best_review: CafeRatingBestReview | null;
   warnings: string[];
   reviews: CafeRatingDiagnosticsReview[];
+};
+
+export type ReviewsVersioningStatus = {
+  api_contract_version: string;
+  formula_versions: {
+    rating: string;
+    quality: string;
+  };
+  formula_requests: {
+    rating: string;
+    quality: string;
+  };
+  formula_fallbacks: {
+    rating: boolean;
+    quality: boolean;
+  };
+  feature_flags: {
+    rating_v3_enabled: boolean;
+    quality_v2_enabled: boolean;
+  };
 };
 
 export type CafeReview = {
@@ -97,6 +127,7 @@ export type CafeReview = {
   visit_confidence: string;
   visit_verified: boolean;
   quality_score: number;
+  quality_formula: string;
   confirmed_reports: number;
   created_at: string;
   updated_at: string;
@@ -124,6 +155,11 @@ export type CreateReviewPayload = ReviewWritePayload & {
 export type UpdateReviewPayload = Partial<ReviewWritePayload>;
 
 export type ReviewMutationResponse = {
+  api_contract_version?: string;
+  formula_versions?: {
+    rating?: string;
+    quality?: string;
+  };
   review_id: string;
   cafe_id: string;
   event_type: string;
@@ -132,6 +168,11 @@ export type ReviewMutationResponse = {
 };
 
 type ListCafeReviewsResponse = {
+  api_contract_version?: string;
+  formula_versions?: {
+    rating?: string;
+    quality?: string;
+  };
   reviews?: CafeReview[];
   has_more?: boolean;
   next_cursor?: string;
@@ -147,6 +188,11 @@ export type ListCafeReviewsParams = {
 };
 
 export type ListCafeReviewsResult = {
+  apiContractVersion: string;
+  formulaVersions: {
+    rating: string;
+    quality: string;
+  };
   reviews: CafeReview[];
   hasMore: boolean;
   nextCursor: string;
@@ -348,6 +394,20 @@ export async function listCafeReviews(
 
   if (!Array.isArray(res.data?.reviews)) {
     return {
+      apiContractVersion:
+        typeof res.data?.api_contract_version === "string"
+          ? res.data.api_contract_version
+          : "reviews_api_v1",
+      formulaVersions: {
+        rating:
+          typeof res.data?.formula_versions?.rating === "string"
+            ? res.data.formula_versions.rating
+            : "rating_v2",
+        quality:
+          typeof res.data?.formula_versions?.quality === "string"
+            ? res.data.formula_versions.quality
+            : "quality_v1",
+      },
       reviews: [],
       hasMore: false,
       nextCursor: "",
@@ -358,8 +418,24 @@ export async function listCafeReviews(
   const reviews = res.data.reviews.map((review) => ({
     ...review,
     positions: Array.isArray(review.positions) ? review.positions : [],
+    quality_formula:
+      typeof review.quality_formula === "string" ? review.quality_formula : "quality_v1",
   }));
   return {
+    apiContractVersion:
+      typeof res.data?.api_contract_version === "string"
+        ? res.data.api_contract_version
+        : "reviews_api_v1",
+    formulaVersions: {
+      rating:
+        typeof res.data?.formula_versions?.rating === "string"
+          ? res.data.formula_versions.rating
+          : "rating_v2",
+      quality:
+        typeof res.data?.formula_versions?.quality === "string"
+          ? res.data.formula_versions.quality
+          : "quality_v1",
+    },
     reviews,
     hasMore: Boolean(res.data?.has_more),
     nextCursor: typeof res.data?.next_cursor === "string" ? res.data.next_cursor : "",
@@ -425,6 +501,20 @@ export async function getCafeRatingSnapshot(
       : null;
 
   return {
+    api_contract_version:
+      typeof raw?.api_contract_version === "string"
+        ? raw.api_contract_version
+        : "reviews_api_v1",
+    formula_versions: {
+      rating:
+        typeof raw?.formula_versions?.rating === "string"
+          ? raw.formula_versions.rating
+          : "rating_v2",
+      quality:
+        typeof raw?.formula_versions?.quality === "string"
+          ? raw.formula_versions.quality
+          : "quality_v1",
+    },
     cafe_id: typeof raw?.cafe_id === "string" ? raw.cafe_id : cafeId,
     formula_version:
       typeof raw?.formula_version === "string" ? raw.formula_version : "rating_v2",
@@ -486,6 +576,20 @@ export async function getCafeRatingDiagnostics(
     : [];
 
   return {
+    api_contract_version:
+      typeof raw?.api_contract_version === "string"
+        ? raw.api_contract_version
+        : "reviews_api_v1",
+    formula_versions: {
+      rating:
+        typeof raw?.formula_versions?.rating === "string"
+          ? raw.formula_versions.rating
+          : "rating_v2",
+      quality:
+        typeof raw?.formula_versions?.quality === "string"
+          ? raw.formula_versions.quality
+          : "quality_v1",
+    },
     cafe_id: typeof raw?.cafe_id === "string" ? raw.cafe_id : cafeId,
     formula_version:
       typeof raw?.formula_version === "string" ? raw.formula_version : "rating_v2",
@@ -507,5 +611,45 @@ export async function getCafeRatingDiagnostics(
       ? raw.warnings.filter((item: unknown): item is string => typeof item === "string")
       : [],
     reviews,
+  };
+}
+
+export async function getReviewsVersioningStatus(): Promise<ReviewsVersioningStatus> {
+  const res = await http.get("/api/admin/reviews/versioning");
+  const raw = res.data ?? {};
+
+  return {
+    api_contract_version:
+      typeof raw?.api_contract_version === "string"
+        ? raw.api_contract_version
+        : "reviews_api_v1",
+    formula_versions: {
+      rating:
+        typeof raw?.formula_versions?.rating === "string"
+          ? raw.formula_versions.rating
+          : "rating_v2",
+      quality:
+        typeof raw?.formula_versions?.quality === "string"
+          ? raw.formula_versions.quality
+          : "quality_v1",
+    },
+    formula_requests: {
+      rating:
+        typeof raw?.formula_requests?.rating === "string"
+          ? raw.formula_requests.rating
+          : "rating_v2",
+      quality:
+        typeof raw?.formula_requests?.quality === "string"
+          ? raw.formula_requests.quality
+          : "quality_v1",
+    },
+    formula_fallbacks: {
+      rating: Boolean(raw?.formula_fallbacks?.rating),
+      quality: Boolean(raw?.formula_fallbacks?.quality),
+    },
+    feature_flags: {
+      rating_v3_enabled: Boolean(raw?.feature_flags?.rating_v3_enabled),
+      quality_v2_enabled: Boolean(raw?.feature_flags?.quality_v2_enabled),
+    },
   };
 }
