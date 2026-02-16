@@ -266,9 +266,9 @@ export default function CafeCard({
                 transform: "scale(1.08)",
                 transformOrigin: "center",
                 WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 9%, rgba(0,0,0,0.14) 23%, rgba(0,0,0,0.42) 39%, rgba(0,0,0,0.78) 61%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 19%, rgba(0,0,0,0.14) 33%, rgba(0,0,0,0.42) 49%, rgba(0,0,0,0.78) 71%, rgba(0,0,0,1) 100%)",
                 maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 9%, rgba(0,0,0,0.14) 23%, rgba(0,0,0,0.42) 39%, rgba(0,0,0,0.78) 61%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 19%, rgba(0,0,0,0.14) 33%, rgba(0,0,0,0.42) 49%, rgba(0,0,0,0.78) 71%, rgba(0,0,0,1) 100%)",
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
                 pointerEvents: "none",
@@ -293,9 +293,9 @@ export default function CafeCard({
                 transform: "scale(1.16)",
                 transformOrigin: "center",
                 WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 28%, rgba(0,0,0,0.16) 39%, rgba(0,0,0,0.52) 51%, rgba(0,0,0,0.92) 71%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(0,0,0,0.16) 49%, rgba(0,0,0,0.52) 61%, rgba(0,0,0,0.92) 81%, rgba(0,0,0,1) 100%)",
                 maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 28%, rgba(0,0,0,0.16) 39%, rgba(0,0,0,0.52) 51%, rgba(0,0,0,0.92) 71%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(0,0,0,0.16) 49%, rgba(0,0,0,0.52) 61%, rgba(0,0,0,0.92) 81%, rgba(0,0,0,1) 100%)",
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
                 pointerEvents: "none",
@@ -413,6 +413,22 @@ export default function CafeCard({
               "linear-gradient(180deg, transparent 0%, transparent 60%, var(--cafe-hero-overlay-1) 74%, var(--cafe-hero-overlay-2) 88%, var(--cafe-hero-overlay-3) 100%)",
             transition: "background 260ms ease",
             zIndex: 1,
+          }}
+        />
+        <Box
+          style={{
+            position: "absolute",
+            left: -16,
+            right: -16,
+            bottom: 22,
+            height: 64,
+            pointerEvents: "none",
+            background:
+              "radial-gradient(90% 110% at 50% 100%, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.17) 42%, rgba(255,255,255,0.08) 68%, rgba(255,255,255,0) 100%)",
+            filter: "blur(12px)",
+            opacity: 0.72,
+            transition: "opacity 220ms ease",
+            zIndex: 2,
           }}
         />
 
