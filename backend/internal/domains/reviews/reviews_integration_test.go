@@ -94,6 +94,9 @@ func newIntegrationRouter(pool *pgxpool.Pool) *gin.Engine {
 
 	router.POST("/api/reviews", handler.Create)
 	router.PATCH("/api/reviews/:id", handler.Update)
+	moderationReviews := router.Group("/api/reviews")
+	moderationReviews.Use(testRequireRoles("admin", "moderator"))
+	moderationReviews.DELETE("/:id", handler.DeleteReview)
 
 	admin := router.Group("/api/admin/drinks")
 	admin.Use(testRequireRoles("admin", "moderator"))
@@ -518,5 +521,95 @@ func TestAdminMapUnknownDrinkFormatEndpoint(t *testing.T) {
 	}
 	if !foundAlias {
 		t.Fatalf("expected alias %q to be added, got aliases=%v", unknownName, drinkAliases)
+	}
+}
+
+func TestDeleteReviewByModeratorOnly(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userID := mustCreateTestUser(t, pool, "user")
+	moderatorID := mustCreateTestUser(t, pool, "moderator")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, moderatorID)
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-delete-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     5,
+			"drink_id":   "espresso",
+			"taste_tags": []string{"sweet"},
+			"summary":    "Ровный эспрессо с карамельной сладостью, чистой кислотностью и приятным балансом без лишней горечи.",
+			"photos":     []string{},
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+	var createResp struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+	if strings.TrimSpace(createResp.ReviewID) == "" {
+		t.Fatalf("empty review_id: %s", createRec.Body.String())
+	}
+
+	userDeleteRec := performJSONRequest(
+		t,
+		router,
+		http.MethodDelete,
+		"/api/reviews/"+createResp.ReviewID,
+		map[string]string{
+			"X-Test-User-ID": userID,
+			"X-Test-Role":    "user",
+		},
+		nil,
+	)
+	if userDeleteRec.Code != http.StatusForbidden {
+		t.Fatalf("user delete expected 403, got %d, body=%s", userDeleteRec.Code, userDeleteRec.Body.String())
+	}
+
+	modDeleteRec := performJSONRequest(
+		t,
+		router,
+		http.MethodDelete,
+		"/api/reviews/"+createResp.ReviewID,
+		map[string]string{
+			"X-Test-User-ID": moderatorID,
+			"X-Test-Role":    "moderator",
+		},
+		nil,
+	)
+	if modDeleteRec.Code != http.StatusOK {
+		t.Fatalf("moderator delete expected 200, got %d, body=%s", modDeleteRec.Code, modDeleteRec.Body.String())
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var status string
+	if err := pool.QueryRow(
+		ctx,
+		`select status from reviews where id = $1::uuid`,
+		createResp.ReviewID,
+	).Scan(&status); err != nil {
+		t.Fatalf("load review status after delete: %v", err)
+	}
+	if status != "removed" {
+		t.Fatalf("expected review status=removed, got %q", status)
 	}
 }

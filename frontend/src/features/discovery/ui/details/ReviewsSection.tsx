@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionIcon,
   Badge,
@@ -12,12 +12,16 @@ import {
   TextInput,
   Textarea,
 } from "@mantine/core";
-import { IconPhotoPlus, IconTrash, IconUpload } from "@tabler/icons-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { IconPhotoPlus, IconTrash } from "@tabler/icons-react";
+import { Controller, useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { useAuth } from "../../../../components/AuthGate";
+import { searchDrinks, type DrinkSuggestion } from "../../../../api/drinks";
 import {
   confirmReviewPhotoUpload,
   createReview,
+  deleteReview,
   listCafeReviews,
   presignReviewPhotoUpload,
   updateReview,
@@ -25,7 +29,7 @@ import {
   type CafeReview,
   type ReviewSort,
 } from "../../../../api/reviews";
-import { searchDrinks, type DrinkSuggestion } from "../../../../api/drinks";
+import { useAuth } from "../../../../components/AuthGate";
 
 type ReviewsSectionProps = {
   cafeId: string;
@@ -105,9 +109,58 @@ function formatDate(value: string): string {
   });
 }
 
+const formPhotoSchema = z.object({
+  id: z.string(),
+  url: z.string().min(1),
+  objectKey: z.string(),
+});
+
+const reviewFormSchema = z
+  .object({
+    ratingValue: z.enum(["1", "2", "3", "4", "5"]),
+    drinkId: z.string(),
+    drinkQuery: z.string(),
+    tagsInput: z.string(),
+    summary: z.string(),
+    photos: z.array(formPhotoSchema).max(MAX_REVIEW_PHOTOS),
+  })
+  .superRefine((value, ctx) => {
+    // Cross-field rules keep drink selection honest: either known ID or non-empty free-form name.
+    const hasDrinkId = value.drinkId.trim().length > 0;
+    const normalizedDrinkName = normalizeDrinkInput(value.drinkQuery);
+    if (!hasDrinkId && normalizedDrinkName.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["drinkQuery"],
+        message: "Укажите напиток: выберите из подсказок или введите новый.",
+      });
+    }
+
+    if (value.summary.trim().length < MIN_SUMMARY_LENGTH) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["summary"],
+        message: `Короткий вывод должен быть не короче ${MIN_SUMMARY_LENGTH} символов.`,
+      });
+    }
+  });
+
+type ReviewFormValues = z.infer<typeof reviewFormSchema>;
+
+const DEFAULT_FORM_VALUES: ReviewFormValues = {
+  ratingValue: "5",
+  drinkId: "",
+  drinkQuery: "",
+  tagsInput: "",
+  summary: "",
+  photos: [],
+};
+
 export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) {
   const { user, status, openAuthModal } = useAuth();
   const currentUserId = (user?.id ?? "").trim();
+  const userRole = (user?.role ?? "").toLowerCase();
+  const canDeleteReviews = userRole === "admin" || userRole === "moderator";
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [sort, setSort] = useState<ReviewSort>("new");
@@ -118,22 +171,35 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState("");
 
-  const [ratingValue, setRatingValue] = useState("5");
-  const [drinkId, setDrinkId] = useState("");
-  const [drinkQuery, setDrinkQuery] = useState("");
   const [drinkSuggestions, setDrinkSuggestions] = useState<DrinkSuggestion[]>([]);
   const [drinksLoading, setDrinksLoading] = useState(false);
-  const [tagsInput, setTagsInput] = useState("");
-  const [summary, setSummary] = useState("");
-  const [photos, setPhotos] = useState<FormPhoto[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitHint, setSubmitHint] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const tags = useMemo(() => parseTags(tagsInput), [tagsInput]);
-  const summaryLength = summary.trim().length;
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setValue,
+    getValues,
+    clearErrors,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<ReviewFormValues>({
+    resolver: zodResolver(reviewFormSchema),
+    defaultValues: DEFAULT_FORM_VALUES,
+  });
+
+  const drinkIdValue = watch("drinkId");
+  const drinkQueryValue = watch("drinkQuery");
+  const summaryValue = watch("summary");
+  const photos = watch("photos");
+
+  const summaryLength = summaryValue.length;
+  const summaryTrimmedLength = summaryValue.trim().length;
+
   const drinkSelectData = useMemo(
     () =>
       drinkSuggestions.map((item) => ({
@@ -201,7 +267,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
     let cancelled = false;
     const timer = window.setTimeout(() => {
       setDrinksLoading(true);
-      searchDrinks(drinkQuery, DRINK_SUGGESTIONS_LIMIT)
+      searchDrinks(drinkQueryValue, DRINK_SUGGESTIONS_LIMIT)
         .then((items) => {
           if (cancelled) return;
           setDrinkSuggestions(items);
@@ -221,7 +287,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [drinkQuery, opened]);
+  }, [drinkQueryValue, opened]);
 
   useEffect(() => {
     if (!opened) return;
@@ -231,27 +297,23 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
   useEffect(() => {
     if (!opened) return;
     if (!ownReview) {
-      setRatingValue("5");
-      setDrinkId("");
-      setDrinkQuery("");
-      setTagsInput("");
-      setSummary("");
-      setPhotos([]);
+      reset(DEFAULT_FORM_VALUES);
       return;
     }
 
-    setRatingValue(String(ownReview.rating));
-    setDrinkId(ownReview.drink_id ?? "");
-    setDrinkQuery((ownReview.drink_name ?? ownReview.drink_id ?? "").trim());
-    setTagsInput((ownReview.taste_tags ?? []).join(", "));
-    setSummary(ownReview.summary ?? "");
-    setPhotos(
-      (ownReview.photos ?? []).map((url) => ({
+    reset({
+      ratingValue: String(ownReview.rating) as ReviewFormValues["ratingValue"],
+      drinkId: ownReview.drink_id ?? "",
+      drinkQuery: (ownReview.drink_name ?? ownReview.drink_id ?? "").trim(),
+      tagsInput: (ownReview.taste_tags ?? []).join(", "),
+      summary: ownReview.summary ?? "",
+      photos: (ownReview.photos ?? []).map((url) => ({
         id: makePhotoId(),
         url,
         objectKey: "",
       })),
-    );
+    });
+
     if ((ownReview.drink_id ?? "").trim() !== "") {
       setDrinkSuggestions((prev) => {
         if (prev.some((item) => item.id === ownReview.drink_id)) {
@@ -266,17 +328,18 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
         ];
       });
     }
-  }, [opened, ownReview?.id]);
+  }, [opened, ownReview, reset]);
 
   const appendFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0 || uploadingPhotos) return;
+    const currentPhotos = getValues("photos");
     const imageFiles = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
     if (imageFiles.length === 0) {
       setSubmitError("Поддерживаются только изображения.");
       return;
     }
 
-    const availableSlots = Math.max(0, MAX_REVIEW_PHOTOS - photos.length);
+    const availableSlots = Math.max(0, MAX_REVIEW_PHOTOS - currentPhotos.length);
     if (availableSlots <= 0) {
       setSubmitError("Можно добавить не больше 8 фото к отзыву.");
       return;
@@ -305,7 +368,12 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
         };
       });
 
-      setPhotos((prev) => [...prev, ...uploaded.filter(Boolean)].slice(0, MAX_REVIEW_PHOTOS));
+      setValue("photos", [...currentPhotos, ...uploaded.filter(Boolean)].slice(0, MAX_REVIEW_PHOTOS), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      clearErrors("photos");
+
       if (imageFiles.length > files.length) {
         setSubmitHint("Часть файлов пропущена: достигнут лимит 8 фото.");
       }
@@ -324,18 +392,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
     }
   };
 
-  const handleDropUpload = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void appendFiles(event.dataTransfer?.files ?? null);
-  };
-
-  const handleDragOverUpload = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
-  };
-
-  const handleSubmit = async () => {
+  const handleReviewSubmit = handleSubmit(async (values) => {
     if (!currentUserId || status !== "authed") {
       openAuthModal("login");
       return;
@@ -344,33 +401,21 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
     setSubmitError(null);
     setSubmitHint(null);
 
-    const nextDrinkId = drinkId.trim().toLowerCase();
-    const nextDrinkName = normalizeDrinkInput(drinkQuery);
-    const nextSummary = summary.trim();
-    const rating = Number(ratingValue);
+    const nextDrinkId = values.drinkId.trim().toLowerCase();
+    const nextDrinkName = normalizeDrinkInput(values.drinkQuery);
+    const nextSummary = values.summary.trim();
+    const rating = Number(values.ratingValue);
 
-    if (!nextDrinkId && !nextDrinkName) {
-      setSubmitError("Укажите напиток: выберите из подсказок или введите новый.");
-      return;
-    }
-    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-      setSubmitError("Оценка должна быть от 1 до 5.");
-      return;
-    }
-    if (nextSummary.length < MIN_SUMMARY_LENGTH) {
-      setSubmitError("Короткий вывод должен быть не короче 60 символов.");
-      return;
-    }
+    // Keep payload normalized: either canonical drink_id or free-form drink for unknown formats.
+    const payload = {
+      rating,
+      ...(nextDrinkId ? { drink_id: nextDrinkId } : { drink: nextDrinkName }),
+      taste_tags: parseTags(values.tagsInput),
+      summary: nextSummary,
+      photos: values.photos.map((item) => item.url),
+    };
 
-    setIsSubmitting(true);
     try {
-      const payload = {
-        rating,
-        ...(nextDrinkId ? { drink_id: nextDrinkId } : { drink: nextDrinkName }),
-        taste_tags: tags,
-        summary: nextSummary,
-        photos: photos.map((item) => item.url),
-      };
       if (ownReview) {
         await updateReview(ownReview.id, payload);
         setSubmitHint("Отзыв обновлен.");
@@ -389,8 +434,27 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
         error?.message ??
         "Не удалось сохранить отзыв.";
       setSubmitError(message);
-    } finally {
-      setIsSubmitting(false);
+    }
+  });
+
+  const handleDeleteReview = async (review: CafeReview) => {
+    if (!canDeleteReviews) return;
+    const ok = window.confirm("Удалить этот отзыв?");
+    if (!ok) return;
+
+    setSubmitError(null);
+    setSubmitHint(null);
+    try {
+      await deleteReview(review.id);
+      setSubmitHint("Отзыв удален.");
+      await loadFirstPage();
+    } catch (error: any) {
+      const message =
+        error?.normalized?.message ??
+        error?.response?.data?.message ??
+        error?.message ??
+        "Не удалось удалить отзыв.";
+      setSubmitError(message);
     }
   };
 
@@ -402,173 +466,210 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
         p="md"
         style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
       >
-        <Stack gap="xs">
-          <Text fw={600} size="sm">
-            {ownReview ? "Редактировать отзыв" : "Оставить отзыв"}
-          </Text>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleReviewSubmit();
+          }}
+        >
+          <Stack gap="xs">
+            <Text fw={600} size="sm">
+              {ownReview ? "Редактировать отзыв" : "Оставить отзыв"}
+            </Text>
 
-          <SegmentedControl
-            fullWidth
-            value={ratingValue}
-            onChange={setRatingValue}
-            data={[
-              { label: "1", value: "1" },
-              { label: "2", value: "2" },
-              { label: "3", value: "3" },
-              { label: "4", value: "4" },
-              { label: "5", value: "5" },
-            ]}
-          />
+            <Controller
+              control={control}
+              name="ratingValue"
+              render={({ field }) => (
+                <SegmentedControl
+                  fullWidth
+                  value={field.value}
+                  onChange={field.onChange}
+                  data={[
+                    { label: "1", value: "1" },
+                    { label: "2", value: "2" },
+                    { label: "3", value: "3" },
+                    { label: "4", value: "4" },
+                    { label: "5", value: "5" },
+                  ]}
+                />
+              )}
+            />
 
-          <Select
-            label="Напиток"
-            placeholder="Начните вводить название напитка"
-            searchable
-            required
-            value={drinkId || null}
-            data={drinkSelectData}
-            searchValue={drinkQuery}
-            onSearchChange={(value) => {
-              setDrinkQuery(value);
-              const selected = drinkSuggestions.find((item) => item.id === drinkId);
-              if (!selected || selected.name !== value) {
-                setDrinkId("");
-              }
-            }}
-            onChange={(value, option) => {
-              setDrinkId((value ?? "").trim());
-              setDrinkQuery((option?.label ?? "").trim());
-            }}
-            nothingFoundMessage={drinksLoading ? "Ищем..." : "Ничего не найдено"}
-            description="Можно выбрать из справочника или ввести новый формат вручную"
-          />
-
-          <TextInput
-            label="Вкусовые теги"
-            description="Через запятую, до 10"
-            placeholder="кислинка, шоколад, орех"
-            value={tagsInput}
-            onChange={(event) => setTagsInput(event.currentTarget.value)}
-          />
-
-          <Textarea
-            label="Короткий вывод"
-            minRows={4}
-            maxRows={8}
-            value={summary}
-            onChange={(event) => setSummary(event.currentTarget.value)}
-            placeholder="Что именно пили, какие вкусовые ноты, стоит ли брать повторно"
-            required
-            styles={{ input: { whiteSpace: "pre-wrap" } }}
-          />
-          <Text size="xs" c={summaryLength >= MIN_SUMMARY_LENGTH ? "teal" : "dimmed"}>
-            {summaryLength}/{MIN_SUMMARY_LENGTH}+ символов
-          </Text>
-
-          <Paper
-            withBorder
-            p="sm"
-            radius="md"
-            onDrop={handleDropUpload}
-            onDragOver={handleDragOverUpload}
-            style={{
-              border: "1px dashed var(--border)",
-              background: "var(--surface)",
-            }}
-          >
-            <Stack gap="xs">
-              <Group justify="space-between" align="center">
-                <Text size="sm" fw={600}>
-                  Фото отзыва
-                </Text>
-                <Badge variant="light">{photos.length}/8</Badge>
-              </Group>
-              <Group grow>
-                <Button
-                  leftSection={<IconPhotoPlus size={16} />}
-                  onClick={() => fileInputRef.current?.click()}
-                  loading={uploadingPhotos}
-                >
-                  Выбрать фото
-                </Button>
-                <Button
-                  variant="light"
-                  leftSection={<IconUpload size={16} />}
-                  onClick={() => fileInputRef.current?.click()}
-                  loading={uploadingPhotos}
-                >
-                  Drag and drop
-                </Button>
-              </Group>
-              <input
-                ref={fileInputRef}
-                type="file"
-                hidden
-                multiple
-                accept="image/jpeg,image/png,image/webp,image/avif"
-                onChange={(event) => void appendFiles(event.currentTarget.files)}
-              />
-            </Stack>
-          </Paper>
-
-          {photos.length > 0 && (
-            <Group wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
-              {photos.map((photo) => (
-                <Paper
-                  key={photo.id}
-                  withBorder
-                  radius="sm"
-                  style={{
-                    width: 96,
-                    minWidth: 96,
-                    height: 72,
-                    overflow: "hidden",
-                    position: "relative",
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
+            <Controller
+              control={control}
+              name="drinkId"
+              render={({ field }) => (
+                <Select
+                  label="Напиток"
+                  placeholder="Начните вводить название напитка"
+                  searchable
+                  required
+                  value={field.value || null}
+                  data={drinkSelectData}
+                  searchValue={drinkQueryValue}
+                  onSearchChange={(value) => {
+                    setValue("drinkQuery", value, { shouldDirty: true, shouldValidate: true });
+                    const selected = drinkSuggestions.find((item) => item.id === drinkIdValue);
+                    if (!selected || selected.name !== value) {
+                      field.onChange("");
+                    }
+                    if (value.trim()) {
+                      clearErrors("drinkQuery");
+                    }
                   }}
-                >
-                  <img
-                    src={photo.url}
-                    alt="Фото отзыва"
-                    loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-                  <ActionIcon
-                    size="sm"
-                    color="red"
-                    variant="filled"
-                    aria-label="Удалить фото"
-                    style={{ position: "absolute", top: 4, right: 4 }}
-                    onClick={() => setPhotos((prev) => prev.filter((item) => item.id !== photo.id))}
+                  onChange={(value, option) => {
+                    field.onChange((value ?? "").trim());
+                    setValue("drinkQuery", (option?.label ?? "").trim(), {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                    clearErrors("drinkQuery");
+                  }}
+                  nothingFoundMessage={drinksLoading ? "Ищем..." : "Ничего не найдено"}
+                  description="Можно выбрать из справочника или ввести новый формат вручную"
+                  error={errors.drinkQuery?.message}
+                />
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="tagsInput"
+              render={({ field }) => (
+                <TextInput
+                  label="Вкусовые теги"
+                  description="Через запятую, до 10"
+                  placeholder="кислинка, шоколад, орех"
+                  value={field.value}
+                  onChange={(event) => field.onChange(event.currentTarget.value)}
+                />
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="summary"
+              render={({ field }) => (
+                <Textarea
+                  label="Короткий вывод"
+                  minRows={4}
+                  maxRows={8}
+                  value={field.value}
+                  onChange={(event) => field.onChange(event.currentTarget.value)}
+                  placeholder="Что именно пили, какие вкусовые ноты, стоит ли брать повторно"
+                  required
+                  styles={{ input: { whiteSpace: "pre-wrap" } }}
+                  error={errors.summary?.message}
+                />
+              )}
+            />
+            <Text size="xs" c={summaryTrimmedLength >= MIN_SUMMARY_LENGTH ? "teal" : "dimmed"}>
+              Символы: {summaryLength}. Минимум: {MIN_SUMMARY_LENGTH}.
+            </Text>
+
+            <Paper
+              withBorder
+              p="sm"
+              radius="md"
+              style={{
+                border: "1px dashed var(--border)",
+                background: "var(--surface)",
+              }}
+            >
+              <Stack gap="xs">
+                <Group justify="space-between" align="center">
+                  <Text size="sm" fw={600}>
+                    Фото отзыва
+                  </Text>
+                  <Badge variant="light">{photos.length}/8</Badge>
+                </Group>
+                <Group grow>
+                  <Button
+                    type="button"
+                    leftSection={<IconPhotoPlus size={16} />}
+                    onClick={() => fileInputRef.current?.click()}
+                    loading={uploadingPhotos}
                   >
-                    <IconTrash size={12} />
-                  </ActionIcon>
-                </Paper>
-              ))}
-            </Group>
-          )}
+                    Добавить фото
+                  </Button>
+                </Group>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  hidden
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  onChange={(event) => void appendFiles(event.currentTarget.files)}
+                />
+              </Stack>
+            </Paper>
 
-          {submitError && (
-            <Text size="sm" c="red">
-              {submitError}
-            </Text>
-          )}
-          {submitHint && (
-            <Text size="sm" c="teal">
-              {submitHint}
-            </Text>
-          )}
+            {photos.length > 0 && (
+              <Group wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
+                {photos.map((photo) => (
+                  <Paper
+                    key={photo.id}
+                    withBorder
+                    radius="sm"
+                    style={{
+                      width: 96,
+                      minWidth: 96,
+                      height: 72,
+                      overflow: "hidden",
+                      position: "relative",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface)",
+                    }}
+                  >
+                    <img
+                      src={photo.url}
+                      alt="Фото отзыва"
+                      loading="lazy"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                    <ActionIcon
+                      size="sm"
+                      color="red"
+                      variant="filled"
+                      aria-label="Удалить фото"
+                      style={{ position: "absolute", top: 4, right: 4 }}
+                      onClick={() => {
+                        setValue(
+                          "photos",
+                          photos.filter((item) => item.id !== photo.id),
+                          { shouldDirty: true, shouldValidate: true },
+                        );
+                      }}
+                    >
+                      <IconTrash size={12} />
+                    </ActionIcon>
+                  </Paper>
+                ))}
+              </Group>
+            )}
 
-          <Button onClick={handleSubmit} loading={isSubmitting || uploadingPhotos}>
-            {ownReview ? "Сохранить изменения" : "Опубликовать отзыв"}
-          </Button>
-        </Stack>
+            {submitError && (
+              <Text size="sm" c="red">
+                {submitError}
+              </Text>
+            )}
+            {submitHint && (
+              <Text size="sm" c="teal">
+                {submitHint}
+              </Text>
+            )}
+
+            <Button type="submit" loading={isSubmitting || uploadingPhotos}>
+              {ownReview ? "Сохранить изменения" : "Опубликовать отзыв"}
+            </Button>
+          </Stack>
+        </form>
       </Paper>
 
       <Group justify="space-between" align="center">
@@ -702,6 +803,19 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
                   <Badge variant="outline">Полезно: {review.helpful_votes}</Badge>
                   <Badge variant="outline">Качество: {review.quality_score}/100</Badge>
                 </Group>
+
+                {canDeleteReviews && (
+                  <Group justify="flex-end">
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      color="red"
+                      onClick={() => void handleDeleteReview(review)}
+                    >
+                      Удалить отзыв
+                    </Button>
+                  </Group>
+                )}
 
                 {review.taste_tags.length > 0 && (
                   <Group gap={6} wrap="wrap">

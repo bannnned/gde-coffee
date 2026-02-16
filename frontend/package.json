@@ -11,6 +11,7 @@
     "build": "npm run typecheck && vite build"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@mantine/core": "^8.3.13",
     "@mantine/form": "^8.3.13",
     "@mantine/hooks": "^8.3.13",
@@ -28,7 +29,8 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.71.1",
-    "react-router-dom": "^7.13.0"
+    "react-router-dom": "^7.13.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

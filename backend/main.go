@@ -217,6 +217,7 @@ func main() {
 	api.PATCH("/cafes/:id/description", auth.RequireRole(pool, "admin", "moderator"), cafesHandler.UpdateDescription)
 	api.POST("/reviews", auth.RequireAuth(pool), reviewsHandler.Create)
 	api.PATCH("/reviews/:id", auth.RequireAuth(pool), reviewsHandler.Update)
+	api.DELETE("/reviews/:id", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.DeleteReview)
 	api.POST("/reviews/photos/presign", auth.RequireAuth(pool), reviewsHandler.PresignPhoto)
 	api.POST("/reviews/photos/confirm", auth.RequireAuth(pool), reviewsHandler.ConfirmPhoto)
 	api.POST("/reviews/:id/helpful", auth.RequireAuth(pool), reviewsHandler.AddHelpful)

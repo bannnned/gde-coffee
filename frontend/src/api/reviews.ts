@@ -86,6 +86,14 @@ export type ReviewPhotoConfirmResponse = {
   size_bytes: number;
 };
 
+export type ReviewDeleteResponse = {
+  review_id: string;
+  cafe_id: string;
+  event_type?: string;
+  removed: boolean;
+  updated_at?: string;
+};
+
 function makeIdempotencyKey(): string {
   if (typeof globalThis.crypto?.randomUUID === "function") {
     return globalThis.crypto.randomUUID();
@@ -118,6 +126,15 @@ export async function updateReview(
         "Idempotency-Key": idempotencyKey,
       },
     },
+  );
+  return res.data;
+}
+
+export async function deleteReview(
+  reviewId: string,
+): Promise<ReviewDeleteResponse> {
+  const res = await http.delete<ReviewDeleteResponse>(
+    `/api/reviews/${encodeURIComponent(reviewId)}`,
   );
   return res.data;
 }
