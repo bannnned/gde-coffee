@@ -222,30 +222,56 @@ export default function CafeCard({
         }}
       >
         {activePhotoUrl ? (
-          <img
-            src={activePhotoUrl}
-            alt={`Фото: ${cafe.name}`}
-            loading="lazy"
-            onLoad={(event) => {
-              const src = event.currentTarget.currentSrc || event.currentTarget.src;
-              if (src) {
-                loadedPhotoUrlsRef.current.add(src);
-              }
-              setPhotoReady(true);
-            }}
-            onError={() => setPhotoReady(true)}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-              opacity: photoReady ? 1 : 0.36,
-              filter: photoReady ? "blur(0px)" : "blur(2px)",
-              transition: "opacity 200ms ease, filter 220ms ease",
-            }}
-          />
+          <>
+            <img
+              src={activePhotoUrl}
+              alt=""
+              loading="lazy"
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+                opacity: photoReady ? 1 : 0,
+                filter: "blur(24px) saturate(125%)",
+                transform: "scale(1.1)",
+                transformOrigin: "center",
+                WebkitMaskImage:
+                  "linear-gradient(180deg, transparent 0%, transparent 58%, rgba(0,0,0,0.16) 70%, rgba(0,0,0,0.56) 84%, rgba(0,0,0,1) 100%)",
+                maskImage:
+                  "linear-gradient(180deg, transparent 0%, transparent 58%, rgba(0,0,0,0.16) 70%, rgba(0,0,0,0.56) 84%, rgba(0,0,0,1) 100%)",
+                pointerEvents: "none",
+                transition: "opacity 240ms ease",
+              }}
+            />
+            <img
+              src={activePhotoUrl}
+              alt={`Фото: ${cafe.name}`}
+              loading="lazy"
+              onLoad={(event) => {
+                const src = event.currentTarget.currentSrc || event.currentTarget.src;
+                if (src) {
+                  loadedPhotoUrlsRef.current.add(src);
+                }
+                setPhotoReady(true);
+              }}
+              onError={() => setPhotoReady(true)}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+                opacity: photoReady ? 1 : 0.36,
+                filter: photoReady ? "blur(0px)" : "blur(2px)",
+                transition: "opacity 200ms ease, filter 220ms ease",
+              }}
+            />
+          </>
         ) : null}
 
         {showDistance && (
@@ -353,15 +379,9 @@ export default function CafeCard({
             position: "absolute",
             inset: 0,
             pointerEvents: "none",
-            backdropFilter: "blur(22px) saturate(145%)",
-            WebkitBackdropFilter: "blur(22px) saturate(145%)",
             background:
               "linear-gradient(180deg, transparent 0%, transparent 60%, var(--cafe-hero-overlay-1) 74%, var(--cafe-hero-overlay-2) 88%, var(--cafe-hero-overlay-3) 100%)",
-            WebkitMaskImage:
-              "linear-gradient(180deg, transparent 0%, transparent 60%, rgba(0,0,0,0.1) 70%, rgba(0,0,0,0.32) 80%, rgba(0,0,0,0.72) 92%, rgba(0,0,0,1) 100%)",
-            maskImage:
-              "linear-gradient(180deg, transparent 0%, transparent 60%, rgba(0,0,0,0.1) 70%, rgba(0,0,0,0.32) 80%, rgba(0,0,0,0.72) 92%, rgba(0,0,0,1) 100%)",
-            transition: "background 260ms ease, backdrop-filter 260ms ease",
+            transition: "background 260ms ease",
             zIndex: 1,
           }}
         />
