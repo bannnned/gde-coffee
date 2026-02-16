@@ -17,6 +17,15 @@ type UpdateReviewRequest struct {
 	Photos    *[]string `json:"photos"`
 }
 
+type PresignReviewPhotoRequest struct {
+	ContentType string `json:"content_type"`
+	SizeBytes   int64  `json:"size_bytes"`
+}
+
+type ConfirmReviewPhotoRequest struct {
+	ObjectKey string `json:"object_key"`
+}
+
 type VerifyVisitRequest struct {
 	Confidence   string `json:"confidence"`
 	DwellSeconds int    `json:"dwell_seconds"`

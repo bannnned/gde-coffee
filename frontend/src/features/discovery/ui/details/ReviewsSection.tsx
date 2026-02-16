@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import {
+  ActionIcon,
   Badge,
   Button,
   Group,
@@ -10,12 +11,16 @@ import {
   TextInput,
   Textarea,
 } from "@mantine/core";
+import { IconPhotoPlus, IconTrash, IconUpload } from "@tabler/icons-react";
 
 import { useAuth } from "../../../../components/AuthGate";
 import {
+  confirmReviewPhotoUpload,
   createReview,
   listCafeReviews,
+  presignReviewPhotoUpload,
   updateReview,
+  uploadReviewPhotoByPresignedUrl,
   type CafeReview,
   type ReviewSort,
 } from "../../../../api/reviews";
@@ -25,7 +30,44 @@ type ReviewsSectionProps = {
   opened: boolean;
 };
 
+type FormPhoto = {
+  id: string;
+  url: string;
+  objectKey: string;
+};
+
 const MIN_SUMMARY_LENGTH = 60;
+const MAX_REVIEW_PHOTOS = 8;
+const MAX_UPLOAD_CONCURRENCY = 3;
+const REVIEWS_PAGE_SIZE = 20;
+
+async function runWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  const safeConcurrency = Math.max(1, Math.min(concurrency, items.length));
+  let cursor = 0;
+
+  const runners = Array.from({ length: safeConcurrency }, async () => {
+    while (true) {
+      const current = cursor;
+      cursor += 1;
+      if (current >= items.length) return;
+      await worker(items[current], current);
+    }
+  });
+
+  await Promise.all(runners);
+}
+
+function makePhotoId(): string {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  return `photo-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function parseTags(value: string): string[] {
   if (!value.trim()) return [];
@@ -39,20 +81,6 @@ function parseTags(value: string): string[] {
     if (tags.length >= 10) break;
   }
   return tags;
-}
-
-function parsePhotoUrls(value: string): string[] {
-  if (!value.trim()) return [];
-  const seen = new Set<string>();
-  const photos: string[] = [];
-  for (const raw of value.split(/\n/g)) {
-    const photoUrl = raw.trim();
-    if (!photoUrl || seen.has(photoUrl)) continue;
-    seen.add(photoUrl);
-    photos.push(photoUrl);
-    if (photos.length >= 8) break;
-  }
-  return photos;
 }
 
 function formatDate(value: string): string {
@@ -69,22 +97,27 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
   const { user, status, openAuthModal } = useAuth();
   const currentUserId = (user?.id ?? "").trim();
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [sort, setSort] = useState<ReviewSort>("new");
   const [reviews, setReviews] = useState<CafeReview[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState("");
 
   const [ratingValue, setRatingValue] = useState("5");
   const [drinkId, setDrinkId] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [summary, setSummary] = useState("");
-  const [photosInput, setPhotosInput] = useState("");
+  const [photos, setPhotos] = useState<FormPhoto[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitHint, setSubmitHint] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const tags = useMemo(() => parseTags(tagsInput), [tagsInput]);
-  const photos = useMemo(() => parsePhotoUrls(photosInput), [photosInput]);
   const summaryLength = summary.trim().length;
 
   const ownReview = useMemo(
@@ -92,12 +125,14 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
     [currentUserId, reviews],
   );
 
-  const loadReviews = async () => {
+  const loadFirstPage = async () => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const next = await listCafeReviews(cafeId, sort);
-      setReviews(next);
+      const page = await listCafeReviews(cafeId, { sort, limit: REVIEWS_PAGE_SIZE });
+      setReviews(page.reviews);
+      setHasMore(page.hasMore);
+      setNextCursor(page.nextCursor);
     } catch (error: any) {
       const message =
         error?.normalized?.message ??
@@ -105,14 +140,42 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
         error?.message ??
         "Не удалось загрузить отзывы.";
       setLoadError(message);
+      setReviews([]);
+      setHasMore(false);
+      setNextCursor("");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleLoadMore = async () => {
+    if (!hasMore || !nextCursor || isLoadingMore) return;
+    setIsLoadingMore(true);
+    setLoadError(null);
+    try {
+      const page = await listCafeReviews(cafeId, {
+        sort,
+        cursor: nextCursor,
+        limit: REVIEWS_PAGE_SIZE,
+      });
+      setReviews((prev) => [...prev, ...page.reviews]);
+      setHasMore(page.hasMore);
+      setNextCursor(page.nextCursor);
+    } catch (error: any) {
+      const message =
+        error?.normalized?.message ??
+        error?.response?.data?.message ??
+        error?.message ??
+        "Не удалось догрузить отзывы.";
+      setLoadError(message);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
     if (!opened) return;
-    void loadReviews();
+    void loadFirstPage();
   }, [cafeId, opened, sort]);
 
   useEffect(() => {
@@ -122,7 +185,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
       setDrinkId("");
       setTagsInput("");
       setSummary("");
-      setPhotosInput("");
+      setPhotos([]);
       return;
     }
 
@@ -130,8 +193,81 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
     setDrinkId(ownReview.drink_id ?? "");
     setTagsInput((ownReview.taste_tags ?? []).join(", "));
     setSummary(ownReview.summary ?? "");
-    setPhotosInput((ownReview.photos ?? []).join("\n"));
+    setPhotos(
+      (ownReview.photos ?? []).map((url) => ({
+        id: makePhotoId(),
+        url,
+        objectKey: "",
+      })),
+    );
   }, [opened, ownReview?.id]);
+
+  const appendFiles = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0 || uploadingPhotos) return;
+    const imageFiles = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
+    if (imageFiles.length === 0) {
+      setSubmitError("Поддерживаются только изображения.");
+      return;
+    }
+
+    const availableSlots = Math.max(0, MAX_REVIEW_PHOTOS - photos.length);
+    if (availableSlots <= 0) {
+      setSubmitError("Можно добавить не больше 8 фото к отзыву.");
+      return;
+    }
+    const files = imageFiles.slice(0, availableSlots);
+
+    setUploadingPhotos(true);
+    setSubmitError(null);
+    try {
+      const uploaded = new Array<FormPhoto>(files.length);
+      await runWithConcurrency(files, MAX_UPLOAD_CONCURRENCY, async (file, index) => {
+        const presigned = await presignReviewPhotoUpload({
+          contentType: file.type,
+          sizeBytes: file.size,
+        });
+        await uploadReviewPhotoByPresignedUrl(
+          presigned.upload_url,
+          file,
+          presigned.headers ?? {},
+        );
+        const confirmed = await confirmReviewPhotoUpload(presigned.object_key);
+        uploaded[index] = {
+          id: makePhotoId(),
+          url: confirmed.file_url,
+          objectKey: confirmed.object_key,
+        };
+      });
+
+      setPhotos((prev) => [...prev, ...uploaded.filter(Boolean)].slice(0, MAX_REVIEW_PHOTOS));
+      if (imageFiles.length > files.length) {
+        setSubmitHint("Часть файлов пропущена: достигнут лимит 8 фото.");
+      }
+    } catch (error: any) {
+      const message =
+        error?.normalized?.message ??
+        error?.response?.data?.message ??
+        error?.message ??
+        "Не удалось загрузить фото отзыва.";
+      setSubmitError(message);
+    } finally {
+      setUploadingPhotos(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleDropUpload = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void appendFiles(event.dataTransfer?.files ?? null);
+  };
+
+  const handleDragOverUpload = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  };
 
   const handleSubmit = async () => {
     if (!currentUserId || status !== "authed") {
@@ -167,7 +303,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
           drink_id: nextDrink,
           taste_tags: tags,
           summary: nextSummary,
-          photos,
+          photos: photos.map((item) => item.url),
         });
         setSubmitHint("Отзыв обновлен.");
       } else {
@@ -177,11 +313,11 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
           drink_id: nextDrink,
           taste_tags: tags,
           summary: nextSummary,
-          photos,
+          photos: photos.map((item) => item.url),
         });
         setSubmitHint("Отзыв опубликован.");
       }
-      await loadReviews();
+      await loadFirstPage();
     } catch (error: any) {
       const message =
         error?.normalized?.message ??
@@ -250,15 +386,94 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
             {summaryLength}/{MIN_SUMMARY_LENGTH}+ символов
           </Text>
 
-          <Textarea
-            label="Фото (URL)"
-            description="По одному URL в строке, до 8 фото"
-            minRows={3}
-            maxRows={6}
-            value={photosInput}
-            onChange={(event) => setPhotosInput(event.currentTarget.value)}
-            placeholder="https://..."
-          />
+          <Paper
+            withBorder
+            p="sm"
+            radius="md"
+            onDrop={handleDropUpload}
+            onDragOver={handleDragOverUpload}
+            style={{
+              border: "1px dashed var(--border)",
+              background: "var(--surface)",
+            }}
+          >
+            <Stack gap="xs">
+              <Group justify="space-between" align="center">
+                <Text size="sm" fw={600}>
+                  Фото отзыва
+                </Text>
+                <Badge variant="light">{photos.length}/8</Badge>
+              </Group>
+              <Group grow>
+                <Button
+                  leftSection={<IconPhotoPlus size={16} />}
+                  onClick={() => fileInputRef.current?.click()}
+                  loading={uploadingPhotos}
+                >
+                  Выбрать фото
+                </Button>
+                <Button
+                  variant="light"
+                  leftSection={<IconUpload size={16} />}
+                  onClick={() => fileInputRef.current?.click()}
+                  loading={uploadingPhotos}
+                >
+                  Drag and drop
+                </Button>
+              </Group>
+              <input
+                ref={fileInputRef}
+                type="file"
+                hidden
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                onChange={(event) => void appendFiles(event.currentTarget.files)}
+              />
+            </Stack>
+          </Paper>
+
+          {photos.length > 0 && (
+            <Group wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
+              {photos.map((photo) => (
+                <Paper
+                  key={photo.id}
+                  withBorder
+                  radius="sm"
+                  style={{
+                    width: 96,
+                    minWidth: 96,
+                    height: 72,
+                    overflow: "hidden",
+                    position: "relative",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                  }}
+                >
+                  <img
+                    src={photo.url}
+                    alt="Фото отзыва"
+                    loading="lazy"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                  <ActionIcon
+                    size="sm"
+                    color="red"
+                    variant="filled"
+                    aria-label="Удалить фото"
+                    style={{ position: "absolute", top: 4, right: 4 }}
+                    onClick={() => setPhotos((prev) => prev.filter((item) => item.id !== photo.id))}
+                  >
+                    <IconTrash size={12} />
+                  </ActionIcon>
+                </Paper>
+              ))}
+            </Group>
+          )}
 
           {submitError && (
             <Text size="sm" c="red">
@@ -271,7 +486,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
             </Text>
           )}
 
-          <Button onClick={handleSubmit} loading={isSubmitting}>
+          <Button onClick={handleSubmit} loading={isSubmitting || uploadingPhotos}>
             {ownReview ? "Сохранить изменения" : "Опубликовать отзыв"}
           </Button>
         </Stack>
@@ -422,6 +637,12 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
             </Paper>
           );
         })}
+
+      {!isLoading && !loadError && hasMore && (
+        <Button variant="light" onClick={() => void handleLoadMore()} loading={isLoadingMore}>
+          Показать еще
+        </Button>
+      )}
     </Stack>
   );
 }

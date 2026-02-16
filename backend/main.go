@@ -204,7 +204,7 @@ func main() {
 	favoritesHandler := favorites.NewDefaultHandler(pool, cfg.Media)
 	photosHandler := photos.NewHandler(pool, mediaService, cfg.Media)
 	moderationHandler := moderation.NewHandler(pool, mediaService, cfg.Media)
-	reviewsHandler := reviews.NewDefaultHandler(pool)
+	reviewsHandler := reviews.NewDefaultHandler(pool, mediaService, cfg.Media)
 
 	go reviewsHandler.Service().StartEventWorker(context.Background(), 2*time.Second)
 
@@ -216,6 +216,8 @@ func main() {
 	api.PATCH("/cafes/:id/description", auth.RequireRole(pool, "admin", "moderator"), cafesHandler.UpdateDescription)
 	api.POST("/reviews", auth.RequireAuth(pool), reviewsHandler.Create)
 	api.PATCH("/reviews/:id", auth.RequireAuth(pool), reviewsHandler.Update)
+	api.POST("/reviews/photos/presign", auth.RequireAuth(pool), reviewsHandler.PresignPhoto)
+	api.POST("/reviews/photos/confirm", auth.RequireAuth(pool), reviewsHandler.ConfirmPhoto)
 	api.POST("/reviews/:id/helpful", auth.RequireAuth(pool), reviewsHandler.AddHelpful)
 	api.POST("/reviews/:id/visit/verify", auth.RequireAuth(pool), reviewsHandler.VerifyVisit)
 	api.POST("/reviews/:id/abuse", auth.RequireAuth(pool), reviewsHandler.ReportAbuse)

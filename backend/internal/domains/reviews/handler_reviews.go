@@ -2,7 +2,10 @@ package reviews
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,8 +17,11 @@ import (
 )
 
 const (
-	maxTasteTags    = 10
-	maxReviewPhotos = 8
+	maxTasteTags          = 10
+	maxReviewPhotos       = 8
+	defaultReviewPageSize = 20
+	maxReviewPageSize     = 50
+	maxReviewCursorOffset = 200000
 )
 
 func (h *Handler) Publish(c *gin.Context) {
@@ -117,21 +123,97 @@ func (h *Handler) ListCafeReviews(c *gin.Context) {
 		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "sort должен быть new, helpful или verified.", nil)
 		return
 	}
+	limit, err := parseReviewPageSize(c.Query("limit"))
+	if err != nil {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		return
+	}
+	offset, err := parseReviewCursorOffset(c.Query("cursor"), sortBy)
+	if err != nil {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 	defer cancel()
 
-	reviewsList, err := h.service.ListCafeReviews(ctx, cafeID, sortBy)
+	reviewsList, hasMore, nextOffset, err := h.service.ListCafeReviews(ctx, cafeID, sortBy, offset, limit)
 	if err != nil {
 		h.respondDomainError(c, err)
 		return
 	}
+	nextCursor := ""
+	if hasMore {
+		nextCursor = encodeReviewCursor(nextOffset, sortBy)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"cafe_id": cafeID,
-		"sort":    sortBy,
-		"reviews": reviewsList,
+		"cafe_id":     cafeID,
+		"sort":        sortBy,
+		"limit":       limit,
+		"cursor":      strings.TrimSpace(c.Query("cursor")),
+		"has_more":    hasMore,
+		"next_cursor": nextCursor,
+		"reviews":     reviewsList,
 	})
+}
+
+func parseReviewPageSize(raw string) (int, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return defaultReviewPageSize, nil
+	}
+	size, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, errInvalid("limit должен быть целым числом.")
+	}
+	if size <= 0 {
+		return 0, errInvalid("limit должен быть больше 0.")
+	}
+	if size > maxReviewPageSize {
+		return 0, errInvalid("limit не может быть больше 50.")
+	}
+	return size, nil
+}
+
+func parseReviewCursorOffset(raw string, sortBy string) (int, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return 0, nil
+	}
+
+	payload, err := base64.RawURLEncoding.DecodeString(value)
+	if err != nil {
+		return 0, errInvalid("cursor имеет некорректный формат.")
+	}
+
+	var cursor struct {
+		Offset int    `json:"offset"`
+		Sort   string `json:"sort"`
+	}
+	if err := json.Unmarshal(payload, &cursor); err != nil {
+		return 0, errInvalid("cursor имеет некорректный формат.")
+	}
+
+	// Cursor pins sort to keep pagination stable across user interactions.
+	if strings.TrimSpace(cursor.Sort) != "" && strings.TrimSpace(cursor.Sort) != sortBy {
+		return 0, errInvalid("cursor не соответствует выбранной сортировке.")
+	}
+	if cursor.Offset < 0 || cursor.Offset > maxReviewCursorOffset {
+		return 0, errInvalid("cursor содержит некорректное смещение.")
+	}
+	return cursor.Offset, nil
+}
+
+func encodeReviewCursor(offset int, sortBy string) string {
+	if offset < 0 {
+		offset = 0
+	}
+	payload, _ := json.Marshal(map[string]interface{}{
+		"offset": offset,
+		"sort":   sortBy,
+	})
+	return base64.RawURLEncoding.EncodeToString(payload)
 }
 
 func normalizeAndValidateCreateRequest(req PublishReviewRequest) (PublishReviewRequest, error) {

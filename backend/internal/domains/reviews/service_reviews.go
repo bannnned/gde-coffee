@@ -12,6 +12,7 @@ import (
 
 const (
 	minReviewSummaryLength = 60
+	defaultReviewListLimit = 20
 
 	sqlCheckCafeExists = `select exists(select 1 from cafes where id = $1::uuid)`
 
@@ -128,8 +129,8 @@ where r.cafe_id = $1::uuid
 
 var reviewSortOrderClause = map[string]string{
 	"new":      "order by r.created_at desc, r.id desc",
-	"helpful":  "order by hs.helpful_score desc, hs.helpful_votes desc, r.created_at desc",
-	"verified": "order by visit_verified desc, hs.helpful_score desc, r.created_at desc",
+	"helpful":  "order by hs.helpful_score desc, hs.helpful_votes desc, r.created_at desc, r.id desc",
+	"verified": "order by visit_verified desc, hs.helpful_score desc, hs.helpful_votes desc, r.created_at desc, r.id desc",
 }
 
 type cafeReviewState struct {
@@ -367,20 +368,31 @@ func (s *Service) ListCafeReviews(
 	ctx context.Context,
 	cafeID string,
 	sortBy string,
-) ([]map[string]interface{}, error) {
+	offset int,
+	limit int,
+) ([]map[string]interface{}, bool, int, error) {
+	if limit <= 0 {
+		limit = defaultReviewListLimit
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	orderClause, ok := reviewSortOrderClause[sortBy]
 	if !ok {
 		orderClause = reviewSortOrderClause["new"]
 	}
-	query := sqlListCafeReviewsBase + "\n" + orderClause + "\nlimit 200"
+	// Offset-based cursor pagination keeps API simple while preserving stable ordering.
+	query := sqlListCafeReviewsBase + "\n" + orderClause + "\noffset $2 limit $3"
+	fetchLimit := limit + 1
 
-	rows, err := s.repository.Pool().Query(ctx, query, cafeID)
+	rows, err := s.repository.Pool().Query(ctx, query, cafeID, offset, fetchLimit)
 	if err != nil {
-		return nil, err
+		return nil, false, offset, err
 	}
 	defer rows.Close()
 
-	result := make([]map[string]interface{}, 0, 32)
+	result := make([]map[string]interface{}, 0, fetchLimit)
 	for rows.Next() {
 		var (
 			item             cafeReviewState
@@ -412,7 +424,7 @@ func (s *Service) ListCafeReviews(
 			&item.UpdatedAt,
 			&reviewPhotos,
 		); err != nil {
-			return nil, err
+			return nil, false, offset, err
 		}
 
 		qualityScore := calculateReviewQualityV1(
@@ -445,10 +457,16 @@ func (s *Service) ListCafeReviews(
 		})
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, false, offset, err
 	}
 
-	return result, nil
+	hasMore := len(result) > limit
+	if hasMore {
+		result = result[:limit]
+	}
+	nextOffset := offset + len(result)
+
+	return result, hasMore, nextOffset, nil
 }
 
 func validateCreateReviewRequest(req PublishReviewRequest) error {

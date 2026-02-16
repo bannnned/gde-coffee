@@ -8,6 +8,22 @@ type PublishReviewResponse struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
+type PresignReviewPhotoResponse struct {
+	UploadURL string            `json:"upload_url"`
+	Method    string            `json:"method"`
+	Headers   map[string]string `json:"headers"`
+	ObjectKey string            `json:"object_key"`
+	FileURL   string            `json:"file_url"`
+	ExpiresAt string            `json:"expires_at"`
+}
+
+type ConfirmReviewPhotoResponse struct {
+	ObjectKey string `json:"object_key"`
+	FileURL   string `json:"file_url"`
+	MimeType  string `json:"mime_type"`
+	SizeBytes int64  `json:"size_bytes"`
+}
+
 type HelpfulVoteResponse struct {
 	VoteID        string  `json:"vote_id"`
 	ReviewID      string  `json:"review_id"`

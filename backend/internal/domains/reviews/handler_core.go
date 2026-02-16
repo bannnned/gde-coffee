@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 
+	"backend/internal/config"
+	"backend/internal/media"
 	"backend/internal/shared/httpx"
 
 	"github.com/gin-gonic/gin"
@@ -12,16 +14,22 @@ import (
 
 type Handler struct {
 	service *Service
+	s3      *media.Service
+	cfg     config.MediaConfig
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, s3 *media.Service, cfg config.MediaConfig) *Handler {
+	return &Handler{
+		service: service,
+		s3:      s3,
+		cfg:     cfg,
+	}
 }
 
-func NewDefaultHandler(pool *pgxpool.Pool) *Handler {
+func NewDefaultHandler(pool *pgxpool.Pool, s3 *media.Service, cfg config.MediaConfig) *Handler {
 	repository := NewRepository(pool)
 	service := NewService(repository)
-	return NewHandler(service)
+	return NewHandler(service, s3, cfg)
 }
 
 func (h *Handler) Service() *Service {

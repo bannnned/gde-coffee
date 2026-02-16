@@ -1,4 +1,5 @@
 import { http } from "./http";
+import { uploadByPresignedUrl } from "./presignedUpload";
 
 export type ReviewSort = "new" | "helpful" | "verified";
 
@@ -46,6 +47,41 @@ export type ReviewMutationResponse = {
 
 type ListCafeReviewsResponse = {
   reviews?: CafeReview[];
+  has_more?: boolean;
+  next_cursor?: string;
+};
+
+export type ListCafeReviewsParams = {
+  sort?: ReviewSort;
+  cursor?: string;
+  limit?: number;
+};
+
+export type ListCafeReviewsResult = {
+  reviews: CafeReview[];
+  hasMore: boolean;
+  nextCursor: string;
+};
+
+export type ReviewPhotoPresignPayload = {
+  contentType: string;
+  sizeBytes: number;
+};
+
+export type ReviewPhotoPresignResponse = {
+  upload_url: string;
+  method: string;
+  headers: Record<string, string>;
+  object_key: string;
+  file_url: string;
+  expires_at: string;
+};
+
+export type ReviewPhotoConfirmResponse = {
+  object_key: string;
+  file_url: string;
+  mime_type: string;
+  size_bytes: number;
 };
 
 function makeIdempotencyKey(): string {
@@ -86,19 +122,57 @@ export async function updateReview(
 
 export async function listCafeReviews(
   cafeId: string,
-  sort: ReviewSort = "new",
-): Promise<CafeReview[]> {
+  params: ListCafeReviewsParams = {},
+): Promise<ListCafeReviewsResult> {
+  const sort = params.sort ?? "new";
   const res = await http.get<ListCafeReviewsResponse>(
     `/api/cafes/${encodeURIComponent(cafeId)}/reviews`,
     {
       params: {
         sort,
+        cursor: params.cursor,
+        limit: params.limit,
       },
     },
   );
 
   if (!Array.isArray(res.data?.reviews)) {
-    return [];
+    return {
+      reviews: [],
+      hasMore: false,
+      nextCursor: "",
+    };
   }
-  return res.data.reviews;
+  return {
+    reviews: res.data.reviews,
+    hasMore: Boolean(res.data?.has_more),
+    nextCursor: typeof res.data?.next_cursor === "string" ? res.data.next_cursor : "",
+  };
+}
+
+export async function presignReviewPhotoUpload(
+  payload: ReviewPhotoPresignPayload,
+): Promise<ReviewPhotoPresignResponse> {
+  const res = await http.post<ReviewPhotoPresignResponse>("/api/reviews/photos/presign", {
+    content_type: payload.contentType,
+    size_bytes: payload.sizeBytes,
+  });
+  return res.data;
+}
+
+export async function uploadReviewPhotoByPresignedUrl(
+  uploadUrl: string,
+  file: File,
+  headers: Record<string, string>,
+): Promise<void> {
+  await uploadByPresignedUrl(uploadUrl, file, headers);
+}
+
+export async function confirmReviewPhotoUpload(
+  objectKey: string,
+): Promise<ReviewPhotoConfirmResponse> {
+  const res = await http.post<ReviewPhotoConfirmResponse>("/api/reviews/photos/confirm", {
+    object_key: objectKey,
+  });
+  return res.data;
 }
