@@ -261,12 +261,43 @@ export default function CafeCard({
                 objectFit: "cover",
                 display: "block",
                 zIndex: 1,
-                opacity: photoReady ? 0.96 : 0,
-                filter: "blur(30px) saturate(140%) brightness(0.92)",
+                opacity: photoReady ? 0.92 : 0,
+                filter: "blur(14px) saturate(124%)",
+                transform: "scale(1.08)",
+                transformOrigin: "center",
+                WebkitMaskImage:
+                  "linear-gradient(180deg, transparent 0%, transparent 44%, rgba(0,0,0,0.14) 58%, rgba(0,0,0,0.42) 74%, rgba(0,0,0,0.78) 90%, rgba(0,0,0,1) 100%)",
+                maskImage:
+                  "linear-gradient(180deg, transparent 0%, transparent 44%, rgba(0,0,0,0.14) 58%, rgba(0,0,0,0.42) 74%, rgba(0,0,0,0.78) 90%, rgba(0,0,0,1) 100%)",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                pointerEvents: "none",
+                transition: "opacity 240ms ease",
+              }}
+            />
+            <img
+              src={activePhotoUrl}
+              alt=""
+              loading="lazy"
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+                zIndex: 1,
+                opacity: photoReady ? 0.92 : 0,
+                filter: "blur(32px) saturate(138%) brightness(0.94)",
                 transform: "scale(1.16)",
                 transformOrigin: "center",
-                WebkitClipPath: "inset(54% 0 0 0)",
-                clipPath: "inset(54% 0 0 0)",
+                WebkitMaskImage:
+                  "linear-gradient(180deg, transparent 0%, transparent 63%, rgba(0,0,0,0.16) 74%, rgba(0,0,0,0.52) 86%, rgba(0,0,0,0.92) 96%, rgba(0,0,0,1) 100%)",
+                maskImage:
+                  "linear-gradient(180deg, transparent 0%, transparent 63%, rgba(0,0,0,0.16) 74%, rgba(0,0,0,0.52) 86%, rgba(0,0,0,0.92) 96%, rgba(0,0,0,1) 100%)",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
                 pointerEvents: "none",
                 transition: "opacity 240ms ease",
               }}
