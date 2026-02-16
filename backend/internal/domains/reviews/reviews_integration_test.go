@@ -106,6 +106,10 @@ func newIntegrationRouter(pool *pgxpool.Pool) *gin.Engine {
 	admin.Use(testRequireRoles("admin", "moderator"))
 	admin.POST("/unknown/:id/map", handler.MapUnknownDrink)
 
+	adminCafes := router.Group("/api/admin/cafes")
+	adminCafes.Use(testRequireRoles("admin", "moderator"))
+	adminCafes.GET("/:id/rating-diagnostics", handler.GetCafeRatingDiagnostics)
+
 	return router
 }
 
@@ -1224,5 +1228,86 @@ func TestCheckInAdminBypassRestrictions(t *testing.T) {
 	}
 	if strings.TrimSpace(verifyResp.Confidence) == "" || verifyResp.Confidence == "none" {
 		t.Fatalf("expected non-empty confidence for admin bypass flow, got %q", verifyResp.Confidence)
+	}
+}
+
+func TestAdminCafeRatingDiagnosticsAccessAndPayload(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	adminID := mustCreateTestUser(t, pool, "admin")
+	userID := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, adminID)
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-rating-diag-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     5,
+			"drink_id":   "v60",
+			"taste_tags": []string{"berry", "floral"},
+			"summary":    "Очень чистая чашка с ягодной кислотностью, насыщенным ароматом и длинным сладким послевкусием. Удобная посадка и хороший сервис.",
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create review expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+
+	forbiddenRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/admin/cafes/"+cafeID+"/rating-diagnostics",
+		map[string]string{
+			"X-Test-User-ID": userID,
+			"X-Test-Role":    "user",
+		},
+		nil,
+	)
+	if forbiddenRec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin diagnostics expected 403, got %d, body=%s", forbiddenRec.Code, forbiddenRec.Body.String())
+	}
+
+	adminRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/admin/cafes/"+cafeID+"/rating-diagnostics",
+		map[string]string{
+			"X-Test-User-ID": adminID,
+			"X-Test-Role":    "admin",
+		},
+		nil,
+	)
+	if adminRec.Code != http.StatusOK {
+		t.Fatalf("admin diagnostics expected 200, got %d, body=%s", adminRec.Code, adminRec.Body.String())
+	}
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(adminRec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode diagnostics response: %v", err)
+	}
+	if gotCafeID := strings.TrimSpace(fmt.Sprintf("%v", body["cafe_id"])); gotCafeID != cafeID {
+		t.Fatalf("unexpected cafe_id in diagnostics: got=%q expected=%q", gotCafeID, cafeID)
+	}
+	if valueFloat(body["derived_rating"]) <= 0 {
+		t.Fatalf("expected positive derived_rating, got %v", body["derived_rating"])
+	}
+	reviews, ok := body["reviews"].([]interface{})
+	if !ok || len(reviews) == 0 {
+		t.Fatalf("expected non-empty reviews diagnostics payload, got %v", body["reviews"])
 	}
 }

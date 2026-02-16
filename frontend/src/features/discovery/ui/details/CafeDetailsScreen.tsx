@@ -23,6 +23,12 @@ import {
   IconPlus,
 } from "@tabler/icons-react";
 import { getCafePhotos } from "../../../../api/cafePhotos";
+import {
+  getCafeRatingDiagnostics,
+  getCafeRatingSnapshot,
+  type CafeRatingDiagnostics,
+  type CafeRatingSnapshot,
+} from "../../../../api/reviews";
 import ReviewsSection from "./ReviewsSection";
 
 import type {
@@ -50,6 +56,7 @@ type CafeDetailsScreenProps = {
   favoriteLoading?: boolean;
   onManagePhotos?: (kind: "cafe" | "menu") => void;
   canManageDirectly?: boolean;
+  canViewAdminDiagnostics?: boolean;
 };
 
 type DetailsSection = "about" | "menu" | "reviews";
@@ -74,6 +81,7 @@ export default function CafeDetailsScreen({
   favoriteLoading = false,
   onManagePhotos,
   canManageDirectly = false,
+  canViewAdminDiagnostics = false,
 }: CafeDetailsScreenProps) {
   const theme = useMantineTheme();
   const [cafePhotos, setCafePhotos] = useState<CafePhoto[]>(
@@ -101,6 +109,13 @@ export default function CafeDetailsScreen({
   const [aboutImageReady, setAboutImageReady] = useState(true);
   const [menuImageReady, setMenuImageReady] = useState(true);
   const [viewerImageReady, setViewerImageReady] = useState(true);
+  const [ratingSnapshot, setRatingSnapshot] = useState<CafeRatingSnapshot | null>(null);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingError, setRatingError] = useState<string | null>(null);
+  const [ratingDiagnostics, setRatingDiagnostics] = useState<CafeRatingDiagnostics | null>(null);
+  const [ratingDiagnosticsLoading, setRatingDiagnosticsLoading] = useState(false);
+  const [ratingDiagnosticsError, setRatingDiagnosticsError] = useState<string | null>(null);
+  const [ratingDiagnosticsExpanded, setRatingDiagnosticsExpanded] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
   const loadedAboutUrlsRef = useRef<Set<string>>(new Set());
   const loadedMenuUrlsRef = useRef<Set<string>>(new Set());
@@ -156,6 +171,78 @@ export default function CafeDetailsScreen({
   }, [cafe?.id, cafe?.photos, opened]);
 
   useEffect(() => {
+    if (!opened || !cafe?.id) {
+      setRatingSnapshot(null);
+      setRatingLoading(false);
+      setRatingError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setRatingLoading(true);
+    setRatingError(null);
+    getCafeRatingSnapshot(cafe.id)
+      .then((snapshot) => {
+        if (cancelled) return;
+        setRatingSnapshot(snapshot);
+      })
+      .catch((error: any) => {
+        if (cancelled) return;
+        const message =
+          error?.normalized?.message ??
+          error?.response?.data?.message ??
+          error?.message ??
+          "Не удалось загрузить рейтинг.";
+        setRatingError(message);
+        setRatingSnapshot(null);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setRatingLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cafe?.id, opened]);
+
+  useEffect(() => {
+    if (!opened || !cafe?.id || !canViewAdminDiagnostics) {
+      setRatingDiagnostics(null);
+      setRatingDiagnosticsLoading(false);
+      setRatingDiagnosticsError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setRatingDiagnosticsLoading(true);
+    setRatingDiagnosticsError(null);
+    getCafeRatingDiagnostics(cafe.id)
+      .then((diagnostics) => {
+        if (cancelled) return;
+        setRatingDiagnostics(diagnostics);
+      })
+      .catch((error: any) => {
+        if (cancelled) return;
+        const message =
+          error?.normalized?.message ??
+          error?.response?.data?.message ??
+          error?.message ??
+          "Не удалось загрузить диагностику рейтинга.";
+        setRatingDiagnosticsError(message);
+        setRatingDiagnostics(null);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setRatingDiagnosticsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cafe?.id, canViewAdminDiagnostics, opened]);
+
+  useEffect(() => {
     if (!opened) return;
     setSection("about");
     const nextDescription = (cafe?.description ?? "").trim();
@@ -165,6 +252,7 @@ export default function CafeDetailsScreen({
     setDescriptionSaving(false);
     setDescriptionError(null);
     setDescriptionHint(null);
+    setRatingDiagnosticsExpanded(false);
     setAboutActiveIndex(0);
     setMenuActiveIndex(0);
     setViewerOpen(false);
@@ -377,6 +465,14 @@ export default function CafeDetailsScreen({
   };
 
   const descriptionActionLabel = description ? "Редактировать описание" : "Добавить описание";
+  const ratingLabel = ratingSnapshot ? ratingSnapshot.rating.toFixed(2) : "—";
+  const ratingReviews = ratingSnapshot?.reviews_count ?? 0;
+  const verifiedSharePercent = Math.round((ratingSnapshot?.verified_share ?? 0) * 100);
+  const bestReview = ratingSnapshot?.best_review ?? null;
+  const diagnosticsComponents = ratingDiagnostics?.components ?? {};
+  const diagnosticsTrust = Number(diagnosticsComponents.trust) || 0;
+  const diagnosticsBase = Number(diagnosticsComponents.bayesian_base) || 0;
+  const diagnosticsTopReviews = ratingDiagnostics?.reviews.slice(0, 3) ?? [];
 
   return (
     <Modal
@@ -531,6 +627,177 @@ export default function CafeDetailsScreen({
               )}
 
               <Stack gap="xs" px="md" py="md">
+                <Group gap={6} wrap="wrap">
+                  <Badge variant="light">Рейтинг: {ratingLabel}</Badge>
+                  <Badge variant="light">Отзывы: {ratingReviews}</Badge>
+                  <Badge variant="light">Визиты: {verifiedSharePercent}%</Badge>
+                </Group>
+                {ratingLoading && (
+                  <Text size="xs" c="dimmed">
+                    Обновляем рейтинг...
+                  </Text>
+                )}
+                {ratingError && (
+                  <Text size="xs" c="dimmed">
+                    {ratingError}
+                  </Text>
+                )}
+                {canViewAdminDiagnostics && (
+                  <Paper
+                    withBorder
+                    radius="md"
+                    p="sm"
+                    style={{
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <Stack gap={8}>
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <Text fw={600} size="sm">
+                          Admin-диагностика рейтинга
+                        </Text>
+                        <Button
+                          variant="light"
+                          size="compact-xs"
+                          onClick={() => setRatingDiagnosticsExpanded((value) => !value)}
+                        >
+                          {ratingDiagnosticsExpanded ? "Скрыть" : "Показать"}
+                        </Button>
+                      </Group>
+
+                      {ratingDiagnosticsLoading && (
+                        <Text size="xs" c="dimmed">
+                          Загружаем диагностику...
+                        </Text>
+                      )}
+                      {ratingDiagnosticsError && (
+                        <Text size="xs" c="dimmed">
+                          {ratingDiagnosticsError}
+                        </Text>
+                      )}
+
+                      {ratingDiagnosticsExpanded && ratingDiagnostics && (
+                        <Stack gap={8}>
+                          <Group gap={6} wrap="wrap">
+                            <Badge size="xs" variant="light">
+                              Snapshot: {ratingDiagnostics.snapshot_rating.toFixed(2)}
+                            </Badge>
+                            <Badge size="xs" variant="light">
+                              Derived: {ratingDiagnostics.derived_rating.toFixed(2)}
+                            </Badge>
+                            <Badge
+                              size="xs"
+                              variant="light"
+                              color={ratingDiagnostics.is_consistent ? "teal" : "orange"}
+                            >
+                              Δ {ratingDiagnostics.rating_delta.toFixed(3)}
+                            </Badge>
+                            <Badge size="xs" variant="light">
+                              Trust: {diagnosticsTrust.toFixed(3)}
+                            </Badge>
+                            <Badge size="xs" variant="light">
+                              Base: {diagnosticsBase.toFixed(3)}
+                            </Badge>
+                          </Group>
+
+                          {ratingDiagnostics.warnings.length > 0 && (
+                            <Group gap={6} wrap="wrap">
+                              {ratingDiagnostics.warnings.map((warning, index) => (
+                                <Badge key={`rating-warning-${index}`} size="xs" color="orange">
+                                  {warning}
+                                </Badge>
+                              ))}
+                            </Group>
+                          )}
+
+                          {diagnosticsTopReviews.length > 0 && (
+                            <Stack gap={6}>
+                              <Text size="xs" fw={600} c="dimmed">
+                                Топ отзывов по влиянию
+                              </Text>
+                              {diagnosticsTopReviews.map((review) => (
+                                <Paper
+                                  key={review.review_id}
+                                  withBorder
+                                  radius="sm"
+                                  p="xs"
+                                  style={{
+                                    background: "var(--surface-2)",
+                                    border: "1px solid var(--border)",
+                                  }}
+                                >
+                                  <Group justify="space-between" align="center" gap={8}>
+                                    <Text size="xs" fw={600} lineClamp={1}>
+                                      {review.author_name}
+                                    </Text>
+                                    <Group gap={4}>
+                                      <Badge size="xs" variant="light">
+                                        Helpful {review.helpful_score.toFixed(1)}
+                                      </Badge>
+                                      <Badge size="xs" variant="light">
+                                        Q {review.quality_score.toFixed(0)}
+                                      </Badge>
+                                    </Group>
+                                  </Group>
+                                  <Text
+                                    size="xs"
+                                    c="dimmed"
+                                    mt={4}
+                                    style={{
+                                      whiteSpace: "pre-wrap",
+                                      wordBreak: "break-word",
+                                      overflowWrap: "anywhere",
+                                    }}
+                                    lineClamp={2}
+                                  >
+                                    {review.summary_excerpt}
+                                  </Text>
+                                </Paper>
+                              ))}
+                            </Stack>
+                          )}
+                        </Stack>
+                      )}
+                    </Stack>
+                  </Paper>
+                )}
+                {bestReview && bestReview.id && (
+                  <Paper
+                    withBorder
+                    radius="md"
+                    p="sm"
+                    style={{
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <Stack gap={4}>
+                      <Group justify="space-between" align="center">
+                        <Text fw={600} size="sm">
+                          Лучший отзыв
+                        </Text>
+                        <Badge size="xs" variant="light">
+                          Полезность: {bestReview.helpful_score.toFixed(1)}
+                        </Badge>
+                      </Group>
+                      <Text size="xs" c="dimmed">
+                        {bestReview.author_name}
+                      </Text>
+                      <Text
+                        size="sm"
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          overflowWrap: "anywhere",
+                        }}
+                        lineClamp={3}
+                      >
+                        {bestReview.summary}
+                      </Text>
+                    </Stack>
+                  </Paper>
+                )}
                 <Text c="dimmed" size="sm">
                   {cafe.address}
                 </Text>

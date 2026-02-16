@@ -67,7 +67,9 @@ type CafeRatingSnapshotResponse struct {
 	Rating               float64                `json:"rating"`
 	ReviewsCount         int                    `json:"reviews_count"`
 	VerifiedReviewsCount int                    `json:"verified_reviews_count"`
+	VerifiedShare        float64                `json:"verified_share"`
 	FraudRisk            float64                `json:"fraud_risk"`
+	BestReview           map[string]interface{} `json:"best_review,omitempty"`
 	Components           map[string]interface{} `json:"components"`
 	ComputedAt           string                 `json:"computed_at"`
 }

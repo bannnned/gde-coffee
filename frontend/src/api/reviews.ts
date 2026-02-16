@@ -15,6 +15,69 @@ export type ReviewPositionOption = {
   reviews_count: number;
 };
 
+export type CafeRatingBestReview = {
+  id: string;
+  author_name: string;
+  rating: number;
+  summary: string;
+  helpful_score: number;
+  quality_score: number;
+  visit_verified: boolean;
+  created_at: string;
+};
+
+export type CafeRatingSnapshot = {
+  cafe_id: string;
+  formula_version: string;
+  rating: number;
+  reviews_count: number;
+  verified_reviews_count: number;
+  verified_share: number;
+  fraud_risk: number;
+  best_review: CafeRatingBestReview | null;
+  components: Record<string, unknown>;
+  computed_at: string;
+};
+
+export type CafeRatingDiagnosticsReview = {
+  review_id: string;
+  author_user_id: string;
+  author_name: string;
+  rating: number;
+  helpful_score: number;
+  quality_score: number;
+  author_reputation: number;
+  author_rep_norm: number;
+  visit_verified: boolean;
+  visit_confidence: string;
+  confirmed_reports: number;
+  fraud_suspicion: boolean;
+  summary_length: number;
+  summary_excerpt: string;
+  tags_count: number;
+  photo_count: number;
+  drink_selected: boolean;
+  created_at: string;
+};
+
+export type CafeRatingDiagnostics = {
+  cafe_id: string;
+  formula_version: string;
+  computed_at: string;
+  snapshot_rating: number;
+  derived_rating: number;
+  rating_delta: number;
+  is_consistent: boolean;
+  reviews_count: number;
+  verified_reviews_count: number;
+  verified_share: number;
+  fraud_risk: number;
+  components: Record<string, unknown>;
+  best_review: CafeRatingBestReview | null;
+  warnings: string[];
+  reviews: CafeRatingDiagnosticsReview[];
+};
+
 export type CafeReview = {
   id: string;
   user_id: string;
@@ -339,4 +402,110 @@ export async function getReviewPhotoStatus(
     `/api/reviews/photos/${encodeURIComponent(photoID)}/status`,
   );
   return res.data;
+}
+
+export async function getCafeRatingSnapshot(
+  cafeId: string,
+): Promise<CafeRatingSnapshot> {
+  const res = await http.get(`/api/cafes/${encodeURIComponent(cafeId)}/rating`);
+  const raw = res.data ?? {};
+  const bestRaw = raw?.best_review ?? null;
+  const bestReview =
+    bestRaw && typeof bestRaw === "object"
+      ? {
+          id: typeof bestRaw.id === "string" ? bestRaw.id : "",
+          author_name: typeof bestRaw.author_name === "string" ? bestRaw.author_name : "Участник",
+          rating: Number(bestRaw.rating) || 0,
+          summary: typeof bestRaw.summary === "string" ? bestRaw.summary : "",
+          helpful_score: Number(bestRaw.helpful_score) || 0,
+          quality_score: Number(bestRaw.quality_score) || 0,
+          visit_verified: Boolean(bestRaw.visit_verified),
+          created_at: typeof bestRaw.created_at === "string" ? bestRaw.created_at : "",
+        }
+      : null;
+
+  return {
+    cafe_id: typeof raw?.cafe_id === "string" ? raw.cafe_id : cafeId,
+    formula_version:
+      typeof raw?.formula_version === "string" ? raw.formula_version : "rating_v2",
+    rating: Number(raw?.rating) || 0,
+    reviews_count: Number(raw?.reviews_count) || 0,
+    verified_reviews_count: Number(raw?.verified_reviews_count) || 0,
+    verified_share: Number(raw?.verified_share) || 0,
+    fraud_risk: Number(raw?.fraud_risk) || 0,
+    best_review: bestReview,
+    components:
+      raw?.components && typeof raw.components === "object" && !Array.isArray(raw.components)
+        ? raw.components
+        : {},
+    computed_at: typeof raw?.computed_at === "string" ? raw.computed_at : "",
+  };
+}
+
+export async function getCafeRatingDiagnostics(
+  cafeId: string,
+): Promise<CafeRatingDiagnostics> {
+  const res = await http.get(`/api/admin/cafes/${encodeURIComponent(cafeId)}/rating-diagnostics`);
+  const raw = res.data ?? {};
+  const bestRaw = raw?.best_review ?? null;
+  const bestReview =
+    bestRaw && typeof bestRaw === "object"
+      ? {
+          id: typeof bestRaw.id === "string" ? bestRaw.id : "",
+          author_name: typeof bestRaw.author_name === "string" ? bestRaw.author_name : "Участник",
+          rating: Number(bestRaw.rating) || 0,
+          summary: typeof bestRaw.summary === "string" ? bestRaw.summary : "",
+          helpful_score: Number(bestRaw.helpful_score) || 0,
+          quality_score: Number(bestRaw.quality_score) || 0,
+          visit_verified: Boolean(bestRaw.visit_verified),
+          created_at: typeof bestRaw.created_at === "string" ? bestRaw.created_at : "",
+        }
+      : null;
+
+  const reviews = Array.isArray(raw?.reviews)
+    ? raw.reviews.map((item: any) => ({
+        review_id: typeof item?.review_id === "string" ? item.review_id : "",
+        author_user_id: typeof item?.author_user_id === "string" ? item.author_user_id : "",
+        author_name: typeof item?.author_name === "string" ? item.author_name : "Участник",
+        rating: Number(item?.rating) || 0,
+        helpful_score: Number(item?.helpful_score) || 0,
+        quality_score: Number(item?.quality_score) || 0,
+        author_reputation: Number(item?.author_reputation) || 0,
+        author_rep_norm: Number(item?.author_rep_norm) || 0,
+        visit_verified: Boolean(item?.visit_verified),
+        visit_confidence: typeof item?.visit_confidence === "string" ? item.visit_confidence : "none",
+        confirmed_reports: Number(item?.confirmed_reports) || 0,
+        fraud_suspicion: Boolean(item?.fraud_suspicion),
+        summary_length: Number(item?.summary_length) || 0,
+        summary_excerpt: typeof item?.summary_excerpt === "string" ? item.summary_excerpt : "",
+        tags_count: Number(item?.tags_count) || 0,
+        photo_count: Number(item?.photo_count) || 0,
+        drink_selected: Boolean(item?.drink_selected),
+        created_at: typeof item?.created_at === "string" ? item.created_at : "",
+      }))
+    : [];
+
+  return {
+    cafe_id: typeof raw?.cafe_id === "string" ? raw.cafe_id : cafeId,
+    formula_version:
+      typeof raw?.formula_version === "string" ? raw.formula_version : "rating_v2",
+    computed_at: typeof raw?.computed_at === "string" ? raw.computed_at : "",
+    snapshot_rating: Number(raw?.snapshot_rating) || 0,
+    derived_rating: Number(raw?.derived_rating) || 0,
+    rating_delta: Number(raw?.rating_delta) || 0,
+    is_consistent: Boolean(raw?.is_consistent),
+    reviews_count: Number(raw?.reviews_count) || 0,
+    verified_reviews_count: Number(raw?.verified_reviews_count) || 0,
+    verified_share: Number(raw?.verified_share) || 0,
+    fraud_risk: Number(raw?.fraud_risk) || 0,
+    components:
+      raw?.components && typeof raw.components === "object" && !Array.isArray(raw.components)
+        ? raw.components
+        : {},
+    best_review: bestReview,
+    warnings: Array.isArray(raw?.warnings)
+      ? raw.warnings.filter((item: unknown): item is string => typeof item === "string")
+      : [],
+    reviews,
+  };
 }

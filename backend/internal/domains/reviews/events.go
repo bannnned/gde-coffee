@@ -7,7 +7,7 @@ const (
 	EventVisitVerified               = "visit.verified"
 	EventAbuseConfirmed              = "abuse.confirmed"
 	EventReviewPhotoProcessRequested = "review.photo.process_requested"
-	RatingFormulaVersion             = "rating_v1"
+	RatingFormulaVersion             = "rating_v2"
 )
 
 const (

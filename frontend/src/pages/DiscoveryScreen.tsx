@@ -55,6 +55,7 @@ export default function DiscoveryScreen() {
     selectedLocationId,
     locationLabel,
     proposalCity,
+    isPrivilegedUser,
     isPhotoAdmin,
     setSettingsOpen,
     setDetailsOpen,
@@ -213,6 +214,7 @@ export default function DiscoveryScreen() {
         favoriteLoading={Boolean(selectedCafe?.id) && selectedCafe?.id === favoriteBusyCafeId}
         onManagePhotos={handleOpenPhotoAdmin}
         canManageDirectly={isPhotoAdmin}
+        canViewAdminDiagnostics={isPrivilegedUser}
       />
 
       <CafePhotoAdminModal

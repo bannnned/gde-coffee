@@ -208,6 +208,7 @@ func main() {
 
 	go reviewsHandler.Service().StartEventWorker(context.Background(), 2*time.Second)
 	go reviewsHandler.Service().StartPhotoCleanupWorker(context.Background(), 15*time.Minute)
+	go reviewsHandler.Service().StartRatingRebuildWorker(context.Background(), 15*time.Minute)
 
 	api := r.Group("/api")
 	api.GET("/geocode", cafesHandler.GeocodeLookup)
@@ -241,6 +242,10 @@ func main() {
 	adminDrinksGroup.GET("/unknown", reviewsHandler.ListUnknownDrinks)
 	adminDrinksGroup.POST("/unknown/:id/map", reviewsHandler.MapUnknownDrink)
 	adminDrinksGroup.POST("/unknown/:id/ignore", reviewsHandler.IgnoreUnknownDrink)
+
+	adminCafesGroup := api.Group("/admin/cafes")
+	adminCafesGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
+	adminCafesGroup.GET("/:id/rating-diagnostics", reviewsHandler.GetCafeRatingDiagnostics)
 
 	api.GET("/cafes/:id/photos", photosHandler.List)
 	api.POST("/cafes/:id/photos/presign", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Presign)

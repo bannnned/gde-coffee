@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
-	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -15,19 +14,28 @@ const (
 	sqlSelectCafeReviewInputs = `select
 	r.id::text,
 	r.user_id::text,
+	coalesce(nullif(trim(u.display_name), ''), 'Участник') as author_name,
 	r.rating::float8,
-	extract(epoch from (now() - r.updated_at)) / 86400.0 as age_days,
+	r.summary,
 	coalesce(nullif(ra.drink_id, ''), coalesce(ra.drink_name, '')),
 	coalesce(cardinality(ra.taste_tags), 0),
 	coalesce(ra.summary_length, 0),
 	coalesce(ra.photo_count, 0),
 	coalesce(vv.confidence, 'none'),
+	coalesce(vv.verified_at is not null and vv.confidence in ('low', 'medium', 'high'), false) as visit_verified,
 	coalesce((
 		select count(*)
 		  from abuse_reports ar
 		 where ar.review_id = r.id and ar.status = 'confirmed'
-	), 0)
+	), 0),
+	coalesce((
+		select sum(hv.weight)
+		  from helpful_votes hv
+		 where hv.review_id = r.id
+	), 0)::float8 as helpful_score,
+	r.created_at
 from reviews r
+join users u on u.id = r.user_id
 left join review_attributes ra on ra.review_id = r.id
 left join visit_verifications vv on vv.review_id = r.id
 where r.cafe_id = $1::uuid and r.status = 'published'`
@@ -79,6 +87,29 @@ where user_id = $1::uuid`
   where status = 'published'`
 )
 
+const (
+	// rating_v2 parameters (agreed defaults):
+	// - bayesian_m controls smoothing strength for small-N cafes.
+	// - trust coefficients shape the multiplier:
+	//   trust = 1 + a*verified_share + b*author_rep_avg_norm - c*fraud_risk.
+	ratingBayesianM               = 20.0
+	ratingTrustCoeffVerifiedShare = 0.25
+	ratingTrustCoeffAuthorRepNorm = 0.20
+	ratingTrustCoeffFraudRisk     = 0.35
+	ratingAuthorRepNormMax        = 300.0
+)
+
+type bestReviewCandidate struct {
+	ReviewID      string
+	AuthorName    string
+	Rating        float64
+	Summary       string
+	HelpfulScore  float64
+	QualityScore  float64
+	VisitVerified bool
+	CreatedAt     time.Time
+}
+
 func (s *Service) GetCafeRatingSnapshot(ctx context.Context, cafeID string) (map[string]interface{}, error) {
 	snapshot, err := s.loadCafeRatingSnapshot(ctx, cafeID)
 	if err == nil {
@@ -98,14 +129,18 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 	type reviewInput struct {
 		ReviewID         string
 		AuthorUserID     string
+		AuthorName       string
 		Rating           float64
-		AgeDays          float64
+		Summary          string
 		DrinkID          string
 		TagsCount        int
 		SummaryLength    int
 		PhotoCount       int
 		VisitConfidence  string
+		VisitVerified    bool
 		ConfirmedReports int
+		HelpfulScore     float64
+		CreatedAt        time.Time
 	}
 
 	reviews := make([]reviewInput, 0, 32)
@@ -124,14 +159,18 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		if err := rows.Scan(
 			&item.ReviewID,
 			&item.AuthorUserID,
+			&item.AuthorName,
 			&item.Rating,
-			&item.AgeDays,
+			&item.Summary,
 			&item.DrinkID,
 			&item.TagsCount,
 			&item.SummaryLength,
 			&item.PhotoCount,
 			&item.VisitConfidence,
+			&item.VisitVerified,
 			&item.ConfirmedReports,
+			&item.HelpfulScore,
+			&item.CreatedAt,
 		); err != nil {
 			return err
 		}
@@ -148,42 +187,47 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 
 	if len(reviews) == 0 {
 		return s.saveCafeRatingSnapshot(ctx, cafeID, 0, 0, 0, 0, map[string]interface{}{
-			"global_mean": globalMean,
-			"reason":      "no_reviews",
+			"global_mean":         roundFloat(globalMean, 4),
+			"reason":              "no_reviews",
+			"bayesian_m":          ratingBayesianM,
+			"trust_coeff_a":       ratingTrustCoeffVerifiedShare,
+			"trust_coeff_b":       ratingTrustCoeffAuthorRepNorm,
+			"trust_coeff_c":       ratingTrustCoeffFraudRisk,
+			"verified_share":      0.0,
+			"author_rep_avg_norm": 0.0,
+			"trust":               1.0,
+			"best_review":         nil,
 		})
 	}
 
 	authorRepCache := map[string]float64{}
-	uniqueAuthors := make([]string, 0, len(reviews))
-	seenAuthors := map[string]struct{}{}
 	for _, item := range reviews {
-		if _, ok := seenAuthors[item.AuthorUserID]; ok {
+		if _, ok := authorRepCache[item.AuthorUserID]; ok {
 			continue
 		}
-		seenAuthors[item.AuthorUserID] = struct{}{}
-		uniqueAuthors = append(uniqueAuthors, item.AuthorUserID)
-	}
-	sort.Strings(uniqueAuthors)
-	for _, userID := range uniqueAuthors {
-		rep, err := s.lookupUserReputationScore(ctx, userID)
+		rep, err := s.lookupUserReputationScore(ctx, item.AuthorUserID)
 		if err != nil {
 			return err
 		}
-		authorRepCache[userID] = rep
+		authorRepCache[item.AuthorUserID] = rep
 	}
 
 	var (
-		sumWeightedRatings   float64
-		sumWeights           float64
+		sumRatings           float64
+		sumAuthorRepNorm     float64
 		verifiedReviewsCount int
+		flaggedReviewsCount  int
 		confirmedReports     int
+		bestReview           *bestReviewCandidate
 	)
 
 	for _, item := range reviews {
 		authorRep := authorRepCache[item.AuthorUserID]
-		visitScore := visitScoreFromConfidence(item.VisitConfidence)
-		if visitScore >= 0.7 {
+		if item.VisitVerified {
 			verifiedReviewsCount++
+		}
+		if item.ConfirmedReports > 0 {
+			flaggedReviewsCount++
 		}
 
 		qualityScore := calculateReviewQualityV1(
@@ -196,44 +240,77 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		)
 		confirmedReports += item.ConfirmedReports
 
-		// rating_v1 weight model:
-		// w_i = time_i * quality_i * author_i * visit_i
-		// This makes fresh, detailed and trustworthy reviews influence ranking more.
-		timeWeight := math.Exp(-math.Ln2 * clamp(item.AgeDays, 0, 3650) / 180.0)
-		qualityWeight := 0.8 + 0.4*(qualityScore/100.0)
-		authorWeight := 0.85 + 0.3*(authorRep/1000.0)
-		visitWeight := 1.0 + 0.15*visitScore
-		weight := timeWeight * qualityWeight * authorWeight * visitWeight
+		sumRatings += item.Rating
+		sumAuthorRepNorm += clamp(authorRep/ratingAuthorRepNormMax, 0, 1)
 
-		sumWeights += weight
-		sumWeightedRatings += weight * item.Rating
+		candidate := bestReviewCandidate{
+			ReviewID:      item.ReviewID,
+			AuthorName:    item.AuthorName,
+			Rating:        item.Rating,
+			Summary:       item.Summary,
+			HelpfulScore:  item.HelpfulScore,
+			QualityScore:  qualityScore,
+			VisitVerified: item.VisitVerified,
+			CreatedAt:     item.CreatedAt,
+		}
+		if bestReview == nil || isBetterBestReviewCandidate(candidate, *bestReview) {
+			next := candidate
+			bestReview = &next
+		}
 	}
 
-	mu := globalMean
-	if sumWeights > 0 {
-		mu = sumWeightedRatings / sumWeights
+	reviewsCount := len(reviews)
+	ratingsMean := sumRatings / float64(reviewsCount)
+	verifiedShare := float64(verifiedReviewsCount) / float64(reviewsCount)
+	authorRepAvgNorm := sumAuthorRepNorm / float64(reviewsCount)
+	fraudRisk := clamp(float64(flaggedReviewsCount)/float64(reviewsCount), 0, 1)
+
+	// rating_v2 formula:
+	// 1) base = bayesian_mean(cafe_ratings, global_mean, m)
+	// 2) trust = 1 + a*verified_share + b*author_rep_avg_norm - c*fraud_risk
+	// 3) final = clamp(base * trust, 1.0, 5.0)
+	base := bayesianMean(ratingsMean, float64(reviewsCount), globalMean, ratingBayesianM)
+	trust := 1 +
+		(ratingTrustCoeffVerifiedShare * verifiedShare) +
+		(ratingTrustCoeffAuthorRepNorm * authorRepAvgNorm) -
+		(ratingTrustCoeffFraudRisk * fraudRisk)
+	final := clamp(base*trust, 1, 5)
+
+	var bestReviewPayload interface{} = nil
+	if bestReview != nil {
+		bestReviewPayload = map[string]interface{}{
+			"id":             bestReview.ReviewID,
+			"author_name":    bestReview.AuthorName,
+			"rating":         roundFloat(bestReview.Rating, 2),
+			"summary":        bestReview.Summary,
+			"helpful_score":  roundFloat(bestReview.HelpfulScore, 3),
+			"quality_score":  roundFloat(bestReview.QualityScore, 2),
+			"visit_verified": bestReview.VisitVerified,
+			"created_at":     bestReview.CreatedAt.UTC().Format(time.RFC3339),
+		}
 	}
-
-	// Bayesian smoothing keeps low-sample cafes from jumping too high/low.
-	const m = 20.0
-	base := (sumWeights/(sumWeights+m))*mu + (m/(sumWeights+m))*globalMean
-
-	fraudRisk := clamp(float64(confirmedReports)/float64(len(reviews)), 0, 1)
-	final := clamp(base-0.6*fraudRisk, 1, 5)
 
 	components := map[string]interface{}{
-		"global_mean":       roundFloat(globalMean, 4),
-		"weighted_mean":     roundFloat(mu, 4),
-		"effective_reviews": roundFloat(sumWeights, 4),
-		"bayesian_base":     roundFloat(base, 4),
-		"fraud_risk":        roundFloat(fraudRisk, 4),
-		"confirmed_reports": confirmedReports,
-		"formula_version":   RatingFormulaVersion,
-		"verified_reviews":  verifiedReviewsCount,
-		"published_reviews": len(reviews),
+		"global_mean":         roundFloat(globalMean, 4),
+		"ratings_mean":        roundFloat(ratingsMean, 4),
+		"bayesian_base":       roundFloat(base, 4),
+		"bayesian_m":          ratingBayesianM,
+		"verified_share":      roundFloat(verifiedShare, 4),
+		"author_rep_avg_norm": roundFloat(authorRepAvgNorm, 4),
+		"trust":               roundFloat(trust, 4),
+		"trust_coeff_a":       ratingTrustCoeffVerifiedShare,
+		"trust_coeff_b":       ratingTrustCoeffAuthorRepNorm,
+		"trust_coeff_c":       ratingTrustCoeffFraudRisk,
+		"fraud_risk":          roundFloat(fraudRisk, 4),
+		"flagged_reviews":     flaggedReviewsCount,
+		"confirmed_reports":   confirmedReports,
+		"formula_version":     RatingFormulaVersion,
+		"verified_reviews":    verifiedReviewsCount,
+		"published_reviews":   reviewsCount,
+		"best_review":         bestReviewPayload,
 	}
 
-	return s.saveCafeRatingSnapshot(ctx, cafeID, final, len(reviews), verifiedReviewsCount, fraudRisk, components)
+	return s.saveCafeRatingSnapshot(ctx, cafeID, final, reviewsCount, verifiedReviewsCount, fraudRisk, components)
 }
 
 func (s *Service) saveCafeRatingSnapshot(
@@ -299,16 +376,61 @@ func (s *Service) loadCafeRatingSnapshot(ctx context.Context, cafeID string) (ma
 		}
 	}
 
+	verifiedShare := 0.0
+	if raw, ok := components["verified_share"]; ok {
+		if cast, ok := raw.(float64); ok {
+			verifiedShare = clamp(cast, 0, 1)
+		}
+	}
+	if verifiedShare == 0 && reviewsCount > 0 && verifiedReviewsCount > 0 {
+		verifiedShare = clamp(float64(verifiedReviewsCount)/float64(reviewsCount), 0, 1)
+	}
+
+	var bestReview interface{} = nil
+	if raw, ok := components["best_review"]; ok {
+		bestReview = raw
+	}
+
 	return map[string]interface{}{
 		"cafe_id":                cafeID,
 		"formula_version":        formulaVersion,
 		"rating":                 rating,
 		"reviews_count":          reviewsCount,
 		"verified_reviews_count": verifiedReviewsCount,
+		"verified_share":         roundFloat(verifiedShare, 4),
 		"fraud_risk":             fraudRisk,
+		"best_review":            bestReview,
 		"components":             components,
 		"computed_at":            computedAt.UTC().Format(time.RFC3339),
 	}, nil
+}
+
+func bayesianMean(localMean float64, localCount float64, globalMean float64, m float64) float64 {
+	total := localCount + m
+	if total <= 0 {
+		return globalMean
+	}
+	return ((localCount / total) * localMean) + ((m / total) * globalMean)
+}
+
+func isBetterBestReviewCandidate(next bestReviewCandidate, current bestReviewCandidate) bool {
+	if !almostEqual(next.HelpfulScore, current.HelpfulScore) {
+		return next.HelpfulScore > current.HelpfulScore
+	}
+	if !almostEqual(next.QualityScore, current.QualityScore) {
+		return next.QualityScore > current.QualityScore
+	}
+	if next.VisitVerified != current.VisitVerified {
+		return next.VisitVerified
+	}
+	if !next.CreatedAt.Equal(current.CreatedAt) {
+		return next.CreatedAt.After(current.CreatedAt)
+	}
+	return next.ReviewID > current.ReviewID
+}
+
+func almostEqual(a float64, b float64) bool {
+	return math.Abs(a-b) < 0.0000001
 }
 
 func (s *Service) lookupUserReputationScore(ctx context.Context, userID string) (float64, error) {

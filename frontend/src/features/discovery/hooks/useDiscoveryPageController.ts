@@ -201,6 +201,7 @@ export default function useDiscoveryPageController() {
     selectedLocationId: location.selectedLocationId,
     locationLabel: location.locationLabel,
     proposalCity: location.proposalCity,
+    isPrivilegedUser,
     isPhotoAdmin,
     setSettingsOpen: modals.setSettingsOpen,
     setDetailsOpen: modals.setDetailsOpen,
