@@ -225,30 +225,6 @@ export default function CafeCard({
           <>
             <img
               src={activePhotoUrl}
-              alt=""
-              loading="lazy"
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-                opacity: photoReady ? 1 : 0,
-                filter: "blur(24px) saturate(125%)",
-                transform: "scale(1.1)",
-                transformOrigin: "center",
-                WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 58%, rgba(0,0,0,0.16) 70%, rgba(0,0,0,0.56) 84%, rgba(0,0,0,1) 100%)",
-                maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 58%, rgba(0,0,0,0.16) 70%, rgba(0,0,0,0.56) 84%, rgba(0,0,0,1) 100%)",
-                pointerEvents: "none",
-                transition: "opacity 240ms ease",
-              }}
-            />
-            <img
-              src={activePhotoUrl}
               alt={`Фото: ${cafe.name}`}
               loading="lazy"
               onLoad={(event) => {
@@ -269,6 +245,30 @@ export default function CafeCard({
                 opacity: photoReady ? 1 : 0.36,
                 filter: photoReady ? "blur(0px)" : "blur(2px)",
                 transition: "opacity 200ms ease, filter 220ms ease",
+              }}
+            />
+            <img
+              src={activePhotoUrl}
+              alt=""
+              loading="lazy"
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+                opacity: photoReady ? 1 : 0,
+                filter: "blur(26px) saturate(128%)",
+                transform: "scale(1.12)",
+                transformOrigin: "center",
+                WebkitMaskImage:
+                  "linear-gradient(180deg, transparent 0%, transparent 56%, rgba(0,0,0,0.14) 68%, rgba(0,0,0,0.58) 83%, rgba(0,0,0,1) 100%)",
+                maskImage:
+                  "linear-gradient(180deg, transparent 0%, transparent 56%, rgba(0,0,0,0.14) 68%, rgba(0,0,0,0.58) 83%, rgba(0,0,0,1) 100%)",
+                pointerEvents: "none",
+                transition: "opacity 240ms ease",
               }}
             />
           </>
