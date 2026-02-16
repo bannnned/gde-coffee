@@ -129,6 +129,36 @@ export type HelpfulVoteResponse = {
   already_exists: boolean;
 };
 
+export type StartCafeCheckInPayload = {
+  lat: number;
+  lng: number;
+  source?: string;
+};
+
+export type StartCafeCheckInResponse = {
+  checkin_id: string;
+  cafe_id: string;
+  status: "started" | "verified" | "expired" | "rejected";
+  distance_meters: number;
+  min_dwell_seconds: number;
+  can_verify_after: string;
+  cross_cafe_cooldown?: number;
+};
+
+export type VerifyVisitPayload = {
+  checkin_id?: string;
+  lat?: number;
+  lng?: number;
+};
+
+export type VerifyVisitResponse = {
+  verification_id: string;
+  review_id: string;
+  confidence: "none" | "low" | "medium" | "high";
+  checkin_id?: string;
+  dwell_seconds?: number;
+};
+
 function makeIdempotencyKey(): string {
   if (typeof globalThis.crypto?.randomUUID === "function") {
     return globalThis.crypto.randomUUID();
@@ -181,6 +211,40 @@ export async function addHelpfulVote(
   const res = await http.post<HelpfulVoteResponse>(
     `/api/reviews/${encodeURIComponent(reviewId)}/helpful`,
     {},
+    {
+      headers: {
+        "Idempotency-Key": idempotencyKey,
+      },
+    },
+  );
+  return res.data;
+}
+
+export async function startCafeCheckIn(
+  cafeId: string,
+  payload: StartCafeCheckInPayload,
+  idempotencyKey: string = makeIdempotencyKey(),
+): Promise<StartCafeCheckInResponse> {
+  const res = await http.post<StartCafeCheckInResponse>(
+    `/api/cafes/${encodeURIComponent(cafeId)}/check-in/start`,
+    payload,
+    {
+      headers: {
+        "Idempotency-Key": idempotencyKey,
+      },
+    },
+  );
+  return res.data;
+}
+
+export async function verifyReviewVisit(
+  reviewId: string,
+  payload: VerifyVisitPayload,
+  idempotencyKey: string = makeIdempotencyKey(),
+): Promise<VerifyVisitResponse> {
+  const res = await http.post<VerifyVisitResponse>(
+    `/api/reviews/${encodeURIComponent(reviewId)}/visit/verify`,
+    payload,
     {
       headers: {
         "Idempotency-Key": idempotencyKey,

@@ -13,4 +13,8 @@ var (
 	ErrSpamDetected          = errors.New("spam detected")
 	ErrDuplicateContent      = errors.New("duplicate content")
 	ErrInvalidDrink          = errors.New("invalid drink")
+	ErrCheckInTooFar         = errors.New("check-in is outside radius")
+	ErrCheckInTooEarly       = errors.New("check-in dwell is too short")
+	ErrCheckInCooldown       = errors.New("check-in cooldown is active")
+	ErrCheckInSuspicious     = errors.New("check-in looks suspicious")
 )

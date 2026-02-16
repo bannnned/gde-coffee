@@ -35,6 +35,12 @@ type ConfirmReviewPhotoRequest struct {
 	ObjectKey string `json:"object_key"`
 }
 
+type StartCheckInRequest struct {
+	Lat    float64 `json:"lat"`
+	Lng    float64 `json:"lng"`
+	Source string  `json:"source"`
+}
+
 type AdminCreateDrinkRequest struct {
 	ID             string   `json:"id"`
 	Name           string   `json:"name"`
@@ -60,8 +66,11 @@ type AdminMapUnknownDrinkRequest struct {
 }
 
 type VerifyVisitRequest struct {
-	Confidence   string `json:"confidence"`
-	DwellSeconds int    `json:"dwell_seconds"`
+	CheckInID    string   `json:"checkin_id"`
+	Lat          *float64 `json:"lat"`
+	Lng          *float64 `json:"lng"`
+	Confidence   string   `json:"confidence"`
+	DwellSeconds int      `json:"dwell_seconds"`
 }
 
 type ReportAbuseRequest struct {

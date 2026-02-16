@@ -16,6 +16,8 @@ vi.mock("../../../../../api/reviews", () => ({
   createReview: vi.fn(),
   updateReview: vi.fn(),
   deleteReview: vi.fn(),
+  startCafeCheckIn: vi.fn(),
+  verifyReviewVisit: vi.fn(),
   getReviewPhotoStatus: vi.fn(),
   presignReviewPhotoUpload: vi.fn(),
   uploadReviewPhotoByPresignedUrl: vi.fn(),
@@ -35,8 +37,10 @@ import {
   getReviewPhotoStatus,
   listCafeReviews,
   presignReviewPhotoUpload,
+  startCafeCheckIn,
   updateReview,
   uploadReviewPhotoByPresignedUrl,
+  verifyReviewVisit,
   type CafeReview,
 } from "../../../../../api/reviews";
 import { useAuth } from "../../../../../components/AuthGate";
@@ -47,6 +51,8 @@ const mockListCafeReviews = vi.mocked(listCafeReviews);
 const mockCreateReview = vi.mocked(createReview);
 const mockUpdateReview = vi.mocked(updateReview);
 const mockDeleteReview = vi.mocked(deleteReview);
+const mockStartCafeCheckIn = vi.mocked(startCafeCheckIn);
+const mockVerifyReviewVisit = vi.mocked(verifyReviewVisit);
 const mockGetReviewPhotoStatus = vi.mocked(getReviewPhotoStatus);
 const mockPresignReviewPhotoUpload = vi.mocked(presignReviewPhotoUpload);
 const mockUploadReviewPhotoByPresignedUrl = vi.mocked(uploadReviewPhotoByPresignedUrl);
@@ -150,6 +156,22 @@ describe("useReviewsSectionController", () => {
       file_url: "https://cdn.example.com/reviews/photo-1.jpg",
       mime_type: "image/jpeg",
       size_bytes: 10,
+    });
+    mockStartCafeCheckIn.mockResolvedValue({
+      checkin_id: "checkin-1",
+      cafe_id: "cafe-1",
+      status: "started",
+      distance_meters: 42,
+      min_dwell_seconds: 300,
+      can_verify_after: "2026-01-01T10:05:00Z",
+      cross_cafe_cooldown: 300,
+    });
+    mockVerifyReviewVisit.mockResolvedValue({
+      verification_id: "visit-1",
+      review_id: "review-1",
+      confidence: "medium",
+      checkin_id: "checkin-1",
+      dwell_seconds: 360,
     });
 
     mockUseAuth.mockReturnValue({

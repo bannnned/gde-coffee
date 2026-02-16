@@ -11,8 +11,10 @@ import {
   getReviewPhotoStatus,
   listCafeReviews,
   presignReviewPhotoUpload,
+  startCafeCheckIn,
   updateReview,
   uploadReviewPhotoByPresignedUrl,
+  verifyReviewVisit,
   type CafeReview,
   type ReviewSort,
 } from "../../../../../api/reviews";
@@ -50,6 +52,59 @@ export type ReviewQualityInsight = {
 
 function extractErrorMessage(error: any, fallback: string): string {
   return error?.normalized?.message ?? error?.response?.data?.message ?? error?.message ?? fallback;
+}
+
+type GeoPoint = {
+  lat: number;
+  lng: number;
+};
+
+type ActiveCheckIn = {
+  id: string;
+  status: string;
+  distanceMeters: number;
+  canVerifyAfter: string;
+  minDwellSeconds: number;
+};
+
+function secondsToHuman(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0 сек";
+  const minutes = Math.floor(seconds / 60);
+  const leftSeconds = seconds % 60;
+  if (minutes <= 0) return `${leftSeconds} сек`;
+  if (leftSeconds <= 0) return `${minutes} мин`;
+  return `${minutes} мин ${leftSeconds} сек`;
+}
+
+function readCanVerifyInSeconds(canVerifyAfterISO: string): number {
+  const timestamp = new Date(canVerifyAfterISO).getTime();
+  if (!Number.isFinite(timestamp)) return 0;
+  const diffMs = timestamp - Date.now();
+  return diffMs > 0 ? Math.ceil(diffMs / 1000) : 0;
+}
+
+function requestCurrentPosition(): Promise<GeoPoint> {
+  if (!("geolocation" in navigator)) {
+    return Promise.reject(new Error("Геолокация недоступна в этом браузере."));
+  }
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      (error) => {
+        reject(new Error(error?.message || "Не удалось получить геопозицию."));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 30_000,
+      },
+    );
+  });
 }
 
 async function waitUntilReviewPhotoReady(photoID: string): Promise<{
@@ -147,6 +202,10 @@ export function useReviewsSectionController({
   const [drinksLoading, setDrinksLoading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [helpfulPendingReviewID, setHelpfulPendingReviewID] = useState<string>("");
+  const [activeCheckIn, setActiveCheckIn] = useState<ActiveCheckIn | null>(null);
+  const [checkInCoords, setCheckInCoords] = useState<GeoPoint | null>(null);
+  const [checkInStarting, setCheckInStarting] = useState(false);
+  const [verifyVisitPending, setVerifyVisitPending] = useState(false);
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitHint, setSubmitHint] = useState<string | null>(null);
@@ -451,22 +510,45 @@ export function useReviewsSectionController({
     };
 
     let savedMessage = "";
+    let savedReviewID = "";
     try {
       if (ownReview) {
-        await updateReview(ownReview.id, payload);
+        const updated = await updateReview(ownReview.id, payload);
+        savedReviewID = updated.review_id;
         savedMessage = "Отзыв обновлен.";
       } else {
-        await createReview({
+        const created = await createReview({
           cafe_id: cafeId,
           ...payload,
         });
+        savedReviewID = created.review_id;
         savedMessage = "Отзыв опубликован.";
       }
-      setSubmitHint(savedMessage);
     } catch (error: any) {
       setSubmitError(extractErrorMessage(error, "Не удалось сохранить отзыв."));
       return;
     }
+
+    if (activeCheckIn && checkInCoords && savedReviewID) {
+      try {
+        const verify = await verifyReviewVisit(savedReviewID, {
+          checkin_id: activeCheckIn.id,
+          lat: checkInCoords.lat,
+          lng: checkInCoords.lng,
+        });
+        setActiveCheckIn(null);
+        if (verify.confidence !== "none") {
+          savedMessage = `${savedMessage} Визит подтвержден (${verify.confidence}).`;
+        }
+      } catch (error: any) {
+        const verifyMessage = extractErrorMessage(
+          error,
+          "Отзыв сохранен, но визит пока не подтвержден.",
+        );
+        savedMessage = `${savedMessage} ${verifyMessage}`;
+      }
+    }
+    setSubmitHint(savedMessage);
 
     try {
       await loadFirstPage();
@@ -536,6 +618,76 @@ export function useReviewsSectionController({
     [currentUserId, helpfulPendingReviewID, loadFirstPage, openAuthModal, status],
   );
 
+  const startCheckIn = useCallback(async () => {
+    if (!currentUserId || status !== "authed") {
+      openAuthModal("login");
+      return;
+    }
+
+    setSubmitError(null);
+    setSubmitHint(null);
+    setCheckInStarting(true);
+    try {
+      const point = await requestCurrentPosition();
+      const checkIn = await startCafeCheckIn(cafeId, {
+        lat: point.lat,
+        lng: point.lng,
+        source: "browser",
+      });
+      const next: ActiveCheckIn = {
+        id: checkIn.checkin_id,
+        status: checkIn.status,
+        distanceMeters: Number(checkIn.distance_meters) || 0,
+        canVerifyAfter: checkIn.can_verify_after,
+        minDwellSeconds: Number(checkIn.min_dwell_seconds) || 0,
+      };
+      setActiveCheckIn(next);
+      setCheckInCoords(point);
+
+      const waitSeconds = readCanVerifyInSeconds(checkIn.can_verify_after);
+      if (waitSeconds > 0) {
+        setSubmitHint(
+          `Check-in зафиксирован (${next.distanceMeters}м). Подождите ${secondsToHuman(waitSeconds)}, затем публикуйте отзыв.`,
+        );
+      } else {
+        setSubmitHint(`Check-in зафиксирован (${next.distanceMeters}м). Можно подтверждать визит.`);
+      }
+    } catch (error: any) {
+      setSubmitError(extractErrorMessage(error, "Не удалось начать check-in."));
+    } finally {
+      setCheckInStarting(false);
+    }
+  }, [cafeId, currentUserId, openAuthModal, status]);
+
+  const verifyCurrentVisit = useCallback(async () => {
+    if (!currentUserId || status !== "authed") {
+      openAuthModal("login");
+      return;
+    }
+    if (!ownReview || !activeCheckIn || !checkInCoords) {
+      setSubmitError("Сначала начните check-in рядом с кофейней.");
+      return;
+    }
+
+    setSubmitError(null);
+    setSubmitHint(null);
+    setVerifyVisitPending(true);
+    try {
+      const verify = await verifyReviewVisit(ownReview.id, {
+        checkin_id: activeCheckIn.id,
+        lat: checkInCoords.lat,
+        lng: checkInCoords.lng,
+      });
+      setActiveCheckIn(null);
+      setSubmitHint(`Визит подтвержден (${verify.confidence}).`);
+      await loadFirstPage();
+    } catch (error: any) {
+      setSubmitError(extractErrorMessage(error, "Не удалось подтвердить визит."));
+    } finally {
+      setVerifyVisitPending(false);
+    }
+  }, [activeCheckIn, checkInCoords, currentUserId, loadFirstPage, openAuthModal, ownReview, status]);
+
   return {
     currentUserId,
     canDeleteReviews,
@@ -563,6 +715,9 @@ export function useReviewsSectionController({
     summaryTrimmedLength,
     photos,
     uploadingPhotos,
+    activeCheckIn,
+    checkInStarting,
+    verifyVisitPending,
     submitError,
     submitHint,
     fileInputRef,
@@ -580,6 +735,12 @@ export function useReviewsSectionController({
     helpfulPendingReviewID,
     onMarkHelpful: (review: CafeReview) => {
       void markHelpful(review);
+    },
+    onStartCheckIn: () => {
+      void startCheckIn();
+    },
+    onVerifyCurrentVisit: () => {
+      void verifyCurrentVisit();
     },
   };
 }

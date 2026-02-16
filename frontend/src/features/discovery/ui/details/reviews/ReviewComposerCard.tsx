@@ -38,12 +38,23 @@ type ReviewComposerCardProps = {
   summaryTrimmedLength: number;
   photos: FormPhoto[];
   uploadingPhotos: boolean;
+  activeCheckIn: {
+    id: string;
+    status: string;
+    distanceMeters: number;
+    canVerifyAfter: string;
+    minDwellSeconds: number;
+  } | null;
+  checkInStarting: boolean;
+  verifyVisitPending: boolean;
   submitError: string | null;
   submitHint: string | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onFormSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onAppendFiles: (files: FileList | null) => void;
   onRemovePhoto: (photoId: string) => void;
+  onStartCheckIn: () => void;
+  onVerifyCurrentVisit: () => void;
 };
 
 export function ReviewComposerCard({
@@ -61,12 +72,17 @@ export function ReviewComposerCard({
   summaryTrimmedLength,
   photos,
   uploadingPhotos,
+  activeCheckIn,
+  checkInStarting,
+  verifyVisitPending,
   submitError,
   submitHint,
   fileInputRef,
   onFormSubmit,
   onAppendFiles,
   onRemovePhoto,
+  onStartCheckIn,
+  onVerifyCurrentVisit,
 }: ReviewComposerCardProps) {
   return (
     <Paper
@@ -156,6 +172,49 @@ export function ReviewComposerCard({
           <Text size="xs" c={summaryTrimmedLength >= MIN_SUMMARY_LENGTH ? "teal" : "dimmed"}>
             Символы: {summaryLength}. Минимум: {MIN_SUMMARY_LENGTH}.
           </Text>
+
+          <Paper
+            withBorder
+            p="sm"
+            radius="md"
+            style={{ border: "1px solid var(--border)", background: "var(--surface)" }}
+          >
+            <Stack gap={6}>
+              <Group justify="space-between" align="center">
+                <Text size="sm" fw={600}>
+                  Верификация визита
+                </Text>
+                {activeCheckIn && (
+                  <Badge size="xs" variant="light" color="teal">
+                    check-in активен
+                  </Badge>
+                )}
+              </Group>
+              <Button
+                type="button"
+                variant="light"
+                loading={checkInStarting}
+                onClick={onStartCheckIn}
+              >
+                I&apos;m here
+              </Button>
+              {ownReview && activeCheckIn && (
+                <Button
+                  type="button"
+                  variant="subtle"
+                  loading={verifyVisitPending}
+                  onClick={onVerifyCurrentVisit}
+                >
+                  Подтвердить визит
+                </Button>
+              )}
+              {activeCheckIn && (
+                <Text size="xs" c="dimmed">
+                  Дистанция: {activeCheckIn.distanceMeters}м. После выдержки времени опубликуйте отзыв: визит подтвердится автоматически.
+                </Text>
+              )}
+            </Stack>
+          </Paper>
 
           <Paper
             withBorder

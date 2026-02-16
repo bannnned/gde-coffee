@@ -223,6 +223,7 @@ func main() {
 	api.POST("/reviews/photos/confirm", auth.RequireAuth(pool), reviewsHandler.ConfirmPhoto)
 	api.GET("/reviews/photos/:id/status", auth.RequireAuth(pool), reviewsHandler.GetPhotoStatus)
 	api.POST("/reviews/:id/helpful", auth.RequireAuth(pool), reviewsHandler.AddHelpful)
+	api.POST("/cafes/:id/check-in/start", auth.RequireAuth(pool), reviewsHandler.StartCheckIn)
 	api.POST("/reviews/:id/visit/verify", auth.RequireAuth(pool), reviewsHandler.VerifyVisit)
 	api.POST("/reviews/:id/abuse", auth.RequireAuth(pool), reviewsHandler.ReportAbuse)
 	api.POST("/abuse-reports/:id/confirm", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.ConfirmAbuse)

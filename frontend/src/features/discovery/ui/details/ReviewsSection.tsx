@@ -29,12 +29,17 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
         summaryTrimmedLength={controller.summaryTrimmedLength}
         photos={controller.photos}
         uploadingPhotos={controller.uploadingPhotos}
+        activeCheckIn={controller.activeCheckIn}
+        checkInStarting={controller.checkInStarting}
+        verifyVisitPending={controller.verifyVisitPending}
         submitError={controller.submitError}
         submitHint={controller.submitHint}
         fileInputRef={controller.fileInputRef}
         onFormSubmit={controller.onFormSubmit}
         onAppendFiles={controller.onAppendFiles}
         onRemovePhoto={controller.onRemovePhoto}
+        onStartCheckIn={controller.onStartCheckIn}
+        onVerifyCurrentVisit={controller.onVerifyCurrentVisit}
       />
 
       <ReviewFeed

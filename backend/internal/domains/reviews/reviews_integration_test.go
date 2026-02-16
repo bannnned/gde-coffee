@@ -95,6 +95,8 @@ func newIntegrationRouter(pool *pgxpool.Pool) *gin.Engine {
 	router.POST("/api/reviews", handler.Create)
 	router.PATCH("/api/reviews/:id", handler.Update)
 	router.POST("/api/reviews/:id/helpful", handler.AddHelpful)
+	router.POST("/api/cafes/:id/check-in/start", handler.StartCheckIn)
+	router.POST("/api/reviews/:id/visit/verify", handler.VerifyVisit)
 	router.GET("/api/cafes/:id/reviews", handler.ListCafeReviews)
 	moderationReviews := router.Group("/api/reviews")
 	moderationReviews.Use(testRequireRoles("admin", "moderator"))
@@ -874,5 +876,267 @@ func TestAddHelpfulVoteEndpoint(t *testing.T) {
 	}
 	if !againResp.AlreadyExists {
 		t.Fatalf("expected already_exists=true on duplicate vote")
+	}
+}
+
+func TestCheckInStartAndVerifyVisitFlow(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userID := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-checkin-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     5,
+			"drink_id":   "espresso",
+			"taste_tags": []string{"sweet"},
+			"summary":    "Сбалансированная чашка с аккуратной сладостью, выраженной кислотностью и чистым послевкусием без дефектов.",
+			"photos":     []string{},
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+	var createResp struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	startRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/cafes/"+cafeID+"/check-in/start",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-checkin-start-%d", time.Now().UnixNano()),
+			"User-Agent":      "it-agent",
+		},
+		map[string]interface{}{
+			"lat":    55.751244,
+			"lng":    37.618423,
+			"source": "integration",
+		},
+	)
+	if startRec.Code != http.StatusOK {
+		t.Fatalf("check-in start expected 200, got %d, body=%s", startRec.Code, startRec.Body.String())
+	}
+	var startResp struct {
+		CheckInID string `json:"checkin_id"`
+	}
+	if err := json.Unmarshal(startRec.Body.Bytes(), &startResp); err != nil {
+		t.Fatalf("decode check-in start response: %v", err)
+	}
+	if strings.TrimSpace(startResp.CheckInID) == "" {
+		t.Fatalf("empty checkin_id in response: %s", startRec.Body.String())
+	}
+
+	// Fast-forward dwell timer for deterministic integration test.
+	mustExec(
+		t,
+		pool,
+		`update review_checkins
+		    set started_at = now() - interval '6 minutes',
+		        updated_at = now() - interval '6 minutes'
+		  where id = $1::uuid`,
+		startResp.CheckInID,
+	)
+
+	verifyRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+createResp.ReviewID+"/visit/verify",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-checkin-verify-%d", time.Now().UnixNano()),
+			"User-Agent":      "it-agent",
+		},
+		map[string]interface{}{
+			"checkin_id": startResp.CheckInID,
+			"lat":        55.751250,
+			"lng":        37.618420,
+		},
+	)
+	if verifyRec.Code != http.StatusOK {
+		t.Fatalf("verify visit expected 200, got %d, body=%s", verifyRec.Code, verifyRec.Body.String())
+	}
+	var verifyResp struct {
+		Confidence string `json:"confidence"`
+	}
+	if err := json.Unmarshal(verifyRec.Body.Bytes(), &verifyResp); err != nil {
+		t.Fatalf("decode verify response: %v", err)
+	}
+	if verifyResp.Confidence == "none" || strings.TrimSpace(verifyResp.Confidence) == "" {
+		t.Fatalf("expected non-none confidence, got %q", verifyResp.Confidence)
+	}
+}
+
+func TestCheckInCrossCafeCooldown(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userID := mustCreateTestUser(t, pool, "user")
+	cafeA := mustCreateTestCafe(t, pool)
+	cafeB := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeA)
+		mustDeleteTestCafe(t, pool, cafeB)
+	})
+
+	firstRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/cafes/"+cafeA+"/check-in/start",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-checkin-cooldown-a-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"lat": 55.751244,
+			"lng": 37.618423,
+		},
+	)
+	if firstRec.Code != http.StatusOK {
+		t.Fatalf("first check-in expected 200, got %d, body=%s", firstRec.Code, firstRec.Body.String())
+	}
+
+	secondRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/cafes/"+cafeB+"/check-in/start",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-checkin-cooldown-b-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"lat": 55.751244,
+			"lng": 37.618423,
+		},
+	)
+	if secondRec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second check-in expected 429, got %d, body=%s", secondRec.Code, secondRec.Body.String())
+	}
+}
+
+func TestCheckInAdminBypassRestrictions(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	adminID := mustCreateTestUser(t, pool, "admin")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, adminID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  adminID,
+			"X-Test-Role":     "admin",
+			"Idempotency-Key": fmt.Sprintf("it-checkin-admin-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     5,
+			"drink_id":   "espresso",
+			"taste_tags": []string{"sweet"},
+			"summary":    "Проверка админского bypass для визита: далеко от точки кофейни и без ожидания dwell.",
+			"photos":     []string{},
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+	var createResp struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	startRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/cafes/"+cafeID+"/check-in/start",
+		map[string]string{
+			"X-Test-User-ID":  adminID,
+			"X-Test-Role":     "admin",
+			"Idempotency-Key": fmt.Sprintf("it-checkin-admin-start-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"lat": 0.0,
+			"lng": 0.0,
+		},
+	)
+	if startRec.Code != http.StatusOK {
+		t.Fatalf("admin check-in start expected 200, got %d, body=%s", startRec.Code, startRec.Body.String())
+	}
+	var startResp struct {
+		CheckInID string `json:"checkin_id"`
+	}
+	if err := json.Unmarshal(startRec.Body.Bytes(), &startResp); err != nil {
+		t.Fatalf("decode admin check-in start response: %v", err)
+	}
+	if strings.TrimSpace(startResp.CheckInID) == "" {
+		t.Fatalf("empty checkin_id in response: %s", startRec.Body.String())
+	}
+
+	verifyRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+createResp.ReviewID+"/visit/verify",
+		map[string]string{
+			"X-Test-User-ID":  adminID,
+			"X-Test-Role":     "admin",
+			"Idempotency-Key": fmt.Sprintf("it-checkin-admin-verify-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"checkin_id": startResp.CheckInID,
+			"lat":        0.0,
+			"lng":        0.0,
+		},
+	)
+	if verifyRec.Code != http.StatusOK {
+		t.Fatalf("admin verify visit expected 200, got %d, body=%s", verifyRec.Code, verifyRec.Body.String())
+	}
+	var verifyResp struct {
+		Confidence string `json:"confidence"`
+	}
+	if err := json.Unmarshal(verifyRec.Body.Bytes(), &verifyResp); err != nil {
+		t.Fatalf("decode admin verify response: %v", err)
+	}
+	if strings.TrimSpace(verifyResp.Confidence) == "" || verifyResp.Confidence == "none" {
+		t.Fatalf("expected non-empty confidence for admin bypass flow, got %q", verifyResp.Confidence)
 	}
 }

@@ -15,5 +15,6 @@ const (
 	IdempotencyScopeReviewCreate  = "review.create"
 	IdempotencyScopeReviewUpdate  = "review.update"
 	IdempotencyScopeHelpfulVote   = "vote.helpful"
+	IdempotencyScopeCheckInStart  = "checkin.start"
 	IdempotencyScopeCheckIn       = "checkin.verify"
 )

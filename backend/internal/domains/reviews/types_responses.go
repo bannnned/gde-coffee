@@ -34,10 +34,21 @@ type HelpfulVoteResponse struct {
 	AlreadyExists bool    `json:"already_exists"`
 }
 
+type StartCheckInResponse struct {
+	CheckInID       string `json:"checkin_id"`
+	CafeID          string `json:"cafe_id"`
+	Status          string `json:"status"`
+	DistanceMeters  int    `json:"distance_meters"`
+	MinDwellSeconds int    `json:"min_dwell_seconds"`
+	CanVerifyAfter  string `json:"can_verify_after"`
+}
+
 type VerifyVisitResponse struct {
 	VerificationID string `json:"verification_id"`
 	ReviewID       string `json:"review_id"`
 	Confidence     string `json:"confidence"`
+	CheckInID      string `json:"checkin_id,omitempty"`
+	DwellSeconds   int    `json:"dwell_seconds,omitempty"`
 }
 
 type ReportAbuseResponse struct {
