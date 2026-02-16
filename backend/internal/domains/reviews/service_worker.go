@@ -13,6 +13,10 @@ import (
 )
 
 const (
+	inboxConsumerCafeRating  = "rating.recalculate.v1"
+	inboxConsumerReputation  = "reputation.projector.v1"
+	inboxConsumerReviewPhoto = "review.photo.pipeline.v1"
+
 	sqlSelectHelpfulVoteAuthorAndWeight = `select r.user_id::text, hv.weight::float8
    from helpful_votes hv
    join reviews r on r.id = hv.review_id
@@ -26,7 +30,7 @@ const (
 	sqlSelectAbuseReportAuthor = `select r.user_id::text
    from abuse_reports ar
    join reviews r on r.id = ar.review_id
-  where ar.id = $1::uuid and ar.status = 'confirmed'`
+ where ar.id = $1::uuid and ar.status = 'confirmed'`
 )
 
 func (s *Service) StartEventWorker(ctx context.Context, pollInterval time.Duration) {
@@ -34,18 +38,18 @@ func (s *Service) StartEventWorker(ctx context.Context, pollInterval time.Durati
 		pollInterval = 2 * time.Second
 	}
 
-	log.Printf("reviews event worker started: interval=%s", pollInterval)
+	log.Printf("reviews outbox dispatch worker started: interval=%s", pollInterval)
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("reviews event worker stopped")
+			log.Printf("reviews outbox dispatch worker stopped")
 			return
 		default:
 		}
 
 		evt, err := s.repository.ClaimNextEvent(ctx)
 		if err != nil {
-			log.Printf("reviews event worker claim error: %v", err)
+			log.Printf("reviews outbox dispatch worker claim error: %v", err)
 			time.Sleep(pollInterval)
 			continue
 		}
@@ -54,39 +58,112 @@ func (s *Service) StartEventWorker(ctx context.Context, pollInterval time.Durati
 			continue
 		}
 
-		handleErr := s.handleDomainEvent(ctx, *evt)
-		if handleErr != nil {
-			_ = s.repository.MarkEventFailed(ctx, evt.ID, evt.Attempts, handleErr.Error())
+		dispatchErr := s.dispatchOutboxEvent(ctx, *evt)
+		if dispatchErr != nil {
+			_ = s.repository.MarkEventFailed(ctx, evt.ID, evt.Attempts, dispatchErr.Error())
 			continue
 		}
 
 		if err := s.repository.MarkEventProcessed(ctx, evt.ID); err != nil {
-			log.Printf("reviews event worker mark processed error id=%d: %v", evt.ID, err)
+			log.Printf("reviews outbox dispatch worker mark processed error id=%d: %v", evt.ID, err)
 		}
 	}
 }
 
-func (s *Service) handleDomainEvent(ctx context.Context, evt domainEvent) error {
-	switch evt.EventType {
-	case EventReviewCreated, EventReviewUpdated:
-		return s.recalculateCafeRatingSnapshot(ctx, evt.AggregateID)
-	case EventHelpfulAdded:
-		if err := s.applyHelpfulReputation(ctx, evt.Payload); err != nil {
-			return err
+func (s *Service) dispatchOutboxEvent(ctx context.Context, evt domainEvent) error {
+	consumers := inboxConsumersForEvent(evt.EventType)
+	if len(consumers) == 0 {
+		return nil
+	}
+
+	// Outbox -> inbox fan-out is idempotent via UNIQUE(outbox_event_id, consumer).
+	// This lets us retry dispatcher failures safely without duplicating consumer jobs.
+	return s.repository.EnqueueInboxEvents(ctx, evt, consumers)
+}
+
+func (s *Service) StartInboxWorker(ctx context.Context, pollInterval time.Duration) {
+	if pollInterval <= 0 {
+		pollInterval = 2 * time.Second
+	}
+
+	log.Printf("reviews inbox worker started: interval=%s", pollInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Printf("reviews inbox worker stopped")
+			return
+		default:
 		}
-		return s.recalculateCafeRatingSnapshot(ctx, evt.AggregateID)
-	case EventVisitVerified:
-		if err := s.applyVisitReputation(ctx, evt.Payload); err != nil {
-			return err
+
+		evt, err := s.repository.ClaimNextInboxEvent(ctx)
+		if err != nil {
+			log.Printf("reviews inbox worker claim error: %v", err)
+			time.Sleep(pollInterval)
+			continue
 		}
-		return s.recalculateCafeRatingSnapshot(ctx, evt.AggregateID)
-	case EventAbuseConfirmed:
-		if err := s.applyAbusePenalty(ctx, evt.Payload); err != nil {
-			return err
+		if evt == nil {
+			time.Sleep(pollInterval)
+			continue
 		}
+
+		handleErr := s.handleInboxEvent(ctx, *evt)
+		if handleErr != nil {
+			deadLettered, markErr := s.repository.MarkInboxEventFailed(ctx, *evt, handleErr.Error())
+			if markErr != nil {
+				log.Printf("reviews inbox worker mark failed error id=%d: %v", evt.ID, markErr)
+			} else if deadLettered {
+				log.Printf(
+					"reviews inbox worker moved to DLQ: inbox_id=%d outbox_id=%d consumer=%s event=%s attempts=%d",
+					evt.ID,
+					evt.OutboxEventID,
+					evt.Consumer,
+					evt.EventType,
+					evt.Attempts,
+				)
+			}
+			continue
+		}
+
+		if err := s.repository.MarkInboxEventProcessed(ctx, evt.ID); err != nil {
+			log.Printf("reviews inbox worker mark processed error id=%d: %v", evt.ID, err)
+		}
+	}
+}
+
+func (s *Service) handleInboxEvent(ctx context.Context, evt domainInboxEvent) error {
+	switch evt.Consumer {
+	case inboxConsumerCafeRating:
 		return s.recalculateCafeRatingSnapshot(ctx, evt.AggregateID)
-	case EventReviewPhotoProcessRequested:
+	case inboxConsumerReputation:
+		return s.applyReputationProjection(ctx, evt)
+	case inboxConsumerReviewPhoto:
 		return s.processReviewPhotoUploadEvent(ctx, evt.Payload)
+	default:
+		return nil
+	}
+}
+
+func (s *Service) applyReputationProjection(ctx context.Context, evt domainInboxEvent) error {
+	switch evt.EventType {
+	case EventHelpfulAdded:
+		return s.applyHelpfulReputation(ctx, evt.Payload)
+	case EventVisitVerified:
+		return s.applyVisitReputation(ctx, evt.Payload)
+	case EventAbuseConfirmed:
+		return s.applyAbusePenalty(ctx, evt.Payload)
+	default:
+		return nil
+	}
+}
+
+func inboxConsumersForEvent(eventType string) []string {
+	switch eventType {
+	case EventReviewCreated, EventReviewUpdated:
+		return []string{inboxConsumerCafeRating}
+	case EventHelpfulAdded, EventVisitVerified, EventAbuseConfirmed:
+		return []string{inboxConsumerCafeRating, inboxConsumerReputation}
+	case EventReviewPhotoProcessRequested:
+		return []string{inboxConsumerReviewPhoto}
 	default:
 		return nil
 	}

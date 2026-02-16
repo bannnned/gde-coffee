@@ -108,6 +108,39 @@ export type ReviewsVersioningStatus = {
   };
 };
 
+export type ReviewsDLQStatus = "open" | "resolved" | "all";
+
+export type ReviewsDLQEvent = {
+  id: number;
+  inbox_event_id: number;
+  outbox_event_id: number;
+  consumer: string;
+  event_type: string;
+  aggregate_id: string;
+  payload: Record<string, unknown>;
+  attempts: number;
+  last_error: string;
+  failed_at: string;
+  resolved_at: string;
+};
+
+export type ListReviewsDLQResponse = {
+  status: ReviewsDLQStatus;
+  limit: number;
+  offset: number;
+  events: ReviewsDLQEvent[];
+};
+
+export type ReplayReviewsDLQResponse = {
+  dlq_event_id: number;
+  inbox_event_id: number;
+  outbox_event_id: number;
+  consumer: string;
+  event_type: string;
+  was_resolved: boolean;
+  replayed_at: string;
+};
+
 export type CafeReview = {
   id: string;
   user_id: string;
@@ -651,5 +684,63 @@ export async function getReviewsVersioningStatus(): Promise<ReviewsVersioningSta
       rating_v3_enabled: Boolean(raw?.feature_flags?.rating_v3_enabled),
       quality_v2_enabled: Boolean(raw?.feature_flags?.quality_v2_enabled),
     },
+  };
+}
+
+export async function listReviewsDLQ(params: {
+  status?: ReviewsDLQStatus;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<ListReviewsDLQResponse> {
+  const res = await http.get("/api/admin/reviews/dlq", {
+    params: {
+      status: params.status ?? "open",
+      limit: params.limit,
+      offset: params.offset,
+    },
+  });
+  const raw = res.data ?? {};
+  const rawEvents = Array.isArray(raw?.events) ? raw.events : [];
+  const events = rawEvents.map((item: any): ReviewsDLQEvent => ({
+    id: Number(item?.id) || 0,
+    inbox_event_id: Number(item?.inbox_event_id) || 0,
+    outbox_event_id: Number(item?.outbox_event_id) || 0,
+    consumer: typeof item?.consumer === "string" ? item.consumer : "",
+    event_type: typeof item?.event_type === "string" ? item.event_type : "",
+    aggregate_id: typeof item?.aggregate_id === "string" ? item.aggregate_id : "",
+    payload:
+      item?.payload && typeof item.payload === "object" && !Array.isArray(item.payload)
+        ? item.payload
+        : {},
+    attempts: Number(item?.attempts) || 0,
+    last_error: typeof item?.last_error === "string" ? item.last_error : "",
+    failed_at: typeof item?.failed_at === "string" ? item.failed_at : "",
+    resolved_at: typeof item?.resolved_at === "string" ? item.resolved_at : "",
+  }));
+
+  const statusRaw = typeof raw?.status === "string" ? raw.status : "open";
+  const status: ReviewsDLQStatus =
+    statusRaw === "resolved" || statusRaw === "all" ? statusRaw : "open";
+  return {
+    status,
+    limit: Number(raw?.limit) || params.limit || 30,
+    offset: Number(raw?.offset) || params.offset || 0,
+    events,
+  };
+}
+
+export async function replayReviewsDLQEvent(
+  dlqEventID: number,
+): Promise<ReplayReviewsDLQResponse> {
+  const res = await http.post(`/api/admin/reviews/dlq/${encodeURIComponent(String(dlqEventID))}/replay`);
+  const raw = res.data ?? {};
+  return {
+    dlq_event_id: Number(raw?.dlq_event_id) || 0,
+    inbox_event_id: Number(raw?.inbox_event_id) || 0,
+    outbox_event_id: Number(raw?.outbox_event_id) || 0,
+    consumer: typeof raw?.consumer === "string" ? raw.consumer : "",
+    event_type: typeof raw?.event_type === "string" ? raw.event_type : "",
+    was_resolved: Boolean(raw?.was_resolved),
+    replayed_at: typeof raw?.replayed_at === "string" ? raw.replayed_at : "",
   };
 }

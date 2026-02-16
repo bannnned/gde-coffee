@@ -13,3 +13,13 @@ type domainEvent struct {
 	Payload     map[string]interface{}
 	Attempts    int
 }
+
+type domainInboxEvent struct {
+	ID            int64
+	OutboxEventID int64
+	Consumer      string
+	EventType     string
+	AggregateID   string
+	Payload       map[string]interface{}
+	Attempts      int
+}

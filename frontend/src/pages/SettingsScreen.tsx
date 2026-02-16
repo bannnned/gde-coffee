@@ -28,6 +28,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import * as authApi from "../api/auth";
 import {
   getReviewsVersioningStatus,
+  listReviewsDLQ,
+  replayReviewsDLQEvent,
+  type ReviewsDLQEvent,
+  type ReviewsDLQStatus,
   type ReviewsVersioningStatus,
 } from "../api/reviews";
 import { useAuth } from "../components/AuthGate";
@@ -62,6 +66,12 @@ export default function SettingsScreen() {
   const [reviewsVersioning, setReviewsVersioning] = useState<ReviewsVersioningStatus | null>(null);
   const [reviewsVersioningLoading, setReviewsVersioningLoading] = useState(false);
   const [reviewsVersioningError, setReviewsVersioningError] = useState<string | null>(null);
+  const [dlqStatus, setDlqStatus] = useState<ReviewsDLQStatus>("open");
+  const [dlqEvents, setDlqEvents] = useState<ReviewsDLQEvent[]>([]);
+  const [dlqLoading, setDlqLoading] = useState(false);
+  const [dlqError, setDlqError] = useState<string | null>(null);
+  const [dlqReplayError, setDlqReplayError] = useState<string | null>(null);
+  const [dlqReplayingID, setDlqReplayingID] = useState<number | null>(null);
 
   const verifiedParam = searchParams.get("verified") === "1";
   const emailChangedParam = searchParams.get("email_changed") === "1";
@@ -150,6 +160,96 @@ export default function SettingsScreen() {
       cancelled = true;
     };
   }, [canModerate, status]);
+
+  const loadDLQ = useCallback(async () => {
+    if (!canModerate || status !== "authed") {
+      setDlqEvents([]);
+      setDlqError(null);
+      setDlqLoading(false);
+      return;
+    }
+    setDlqLoading(true);
+    setDlqError(null);
+    try {
+      const response = await listReviewsDLQ({
+        status: dlqStatus,
+        limit: 20,
+        offset: 0,
+      });
+      setDlqEvents(response.events);
+    } catch (err: any) {
+      setDlqError(
+        err?.response?.data?.message ??
+          err?.normalized?.message ??
+          "Не удалось загрузить DLQ очереди.",
+      );
+    } finally {
+      setDlqLoading(false);
+    }
+  }, [canModerate, dlqStatus, status]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!canModerate || status !== "authed") {
+      setDlqEvents([]);
+      setDlqError(null);
+      setDlqLoading(false);
+      return;
+    }
+
+    setDlqLoading(true);
+    setDlqError(null);
+    listReviewsDLQ({
+      status: dlqStatus,
+      limit: 20,
+      offset: 0,
+    })
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+        setDlqEvents(response.events);
+      })
+      .catch((err: any) => {
+        if (cancelled) {
+          return;
+        }
+        setDlqError(
+          err?.response?.data?.message ??
+            err?.normalized?.message ??
+            "Не удалось загрузить DLQ очереди.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setDlqLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canModerate, dlqStatus, status]);
+
+  const handleReplayDLQ = useCallback(
+    async (eventID: number) => {
+      setDlqReplayError(null);
+      setDlqReplayingID(eventID);
+      try {
+        await replayReviewsDLQEvent(eventID);
+        await loadDLQ();
+      } catch (err: any) {
+        setDlqReplayError(
+          err?.response?.data?.message ??
+            err?.normalized?.message ??
+            "Не удалось запустить replay для сообщения.",
+        );
+      } finally {
+        setDlqReplayingID(null);
+      }
+    },
+    [loadDLQ],
+  );
 
   const handleVerifyRequest = async () => {
     setVerifyError(null);
@@ -345,6 +445,102 @@ export default function SettingsScreen() {
                           {reviewsVersioning.feature_flags.quality_v2_enabled ? "on" : "off"}
                         </span>
                       </div>
+                    </div>
+                  )}
+                </div>
+                <div className={classes.dlqPanel}>
+                  <div className={classes.dlqHeader}>
+                    <Text fw={600} size="sm">
+                      DLQ пересчетов
+                    </Text>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      className={classes.actionButton}
+                      onClick={() => {
+                        void loadDLQ();
+                      }}
+                      loading={dlqLoading}
+                    >
+                      Обновить
+                    </Button>
+                  </div>
+                  <Group className={classes.dlqStatusRow}>
+                    {(["open", "resolved", "all"] as const).map((value) => (
+                      <Button
+                        key={`dlq-status-${value}`}
+                        size="xs"
+                        variant={dlqStatus === value ? "filled" : "light"}
+                        className={classes.actionButton}
+                        onClick={() => setDlqStatus(value)}
+                      >
+                        {value === "open" ? "Открытые" : value === "resolved" ? "Решенные" : "Все"}
+                      </Button>
+                    ))}
+                  </Group>
+
+                  {dlqReplayError && (
+                    <div className={classes.error} style={{ marginTop: 10 }}>
+                      {dlqReplayError}
+                    </div>
+                  )}
+                  {dlqError && !dlqLoading && (
+                    <div className={classes.error} style={{ marginTop: 10 }}>
+                      {dlqError}
+                    </div>
+                  )}
+                  {dlqLoading && (
+                    <Text size="sm" className={classes.muted} mt={8}>
+                      Загружаем DLQ...
+                    </Text>
+                  )}
+                  {!dlqLoading && !dlqError && dlqEvents.length === 0 && (
+                    <Text size="sm" className={classes.muted} mt={8}>
+                      Пусто: сообщений в выбранном фильтре нет.
+                    </Text>
+                  )}
+                  {!dlqLoading && !dlqError && dlqEvents.length > 0 && (
+                    <div className={classes.dlqList}>
+                      {dlqEvents.map((item) => (
+                        <div key={`dlq-event-${item.id}`} className={classes.dlqItem}>
+                          <div className={classes.dlqItemHeader}>
+                            <Text fw={600} size="sm">
+                              {item.event_type}
+                            </Text>
+                            <Text size="xs" className={classes.muted}>
+                              {item.consumer}
+                            </Text>
+                          </div>
+                          <Text size="xs" className={classes.muted}>
+                            outbox #{item.outbox_event_id} · inbox #{item.inbox_event_id || 0} · attempts {item.attempts}
+                          </Text>
+                          <Text size="xs" className={classes.muted}>
+                            aggregate {item.aggregate_id}
+                          </Text>
+                          <Text size="xs" className={classes.dlqErrorText}>
+                            {item.last_error || "Без текста ошибки"}
+                          </Text>
+                          <Group className={classes.dlqItemActions}>
+                            <Text size="xs" className={classes.muted}>
+                              failed: {item.failed_at || "—"}
+                            </Text>
+                            <Text size="xs" className={classes.muted}>
+                              resolved: {item.resolved_at || "—"}
+                            </Text>
+                            <Button
+                              size="xs"
+                              variant="light"
+                              className={classes.actionButton}
+                              onClick={() => {
+                                void handleReplayDLQ(item.id);
+                              }}
+                              loading={dlqReplayingID === item.id}
+                            >
+                              Replay
+                            </Button>
+                          </Group>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

@@ -207,6 +207,7 @@ func main() {
 	reviewsHandler := reviews.NewDefaultHandler(pool, mediaService, cfg.Media)
 
 	go reviewsHandler.Service().StartEventWorker(context.Background(), 2*time.Second)
+	go reviewsHandler.Service().StartInboxWorker(context.Background(), 2*time.Second)
 	go reviewsHandler.Service().StartPhotoCleanupWorker(context.Background(), 15*time.Minute)
 	go reviewsHandler.Service().StartRatingRebuildWorker(context.Background(), 15*time.Minute)
 
@@ -250,6 +251,8 @@ func main() {
 	adminReviewsGroup := api.Group("/admin/reviews")
 	adminReviewsGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
 	adminReviewsGroup.GET("/versioning", reviewsHandler.GetVersioningStatus)
+	adminReviewsGroup.GET("/dlq", reviewsHandler.ListDLQ)
+	adminReviewsGroup.POST("/dlq/:id/replay", reviewsHandler.ReplayDLQEvent)
 
 	api.GET("/cafes/:id/photos", photosHandler.List)
 	api.POST("/cafes/:id/photos/presign", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Presign)

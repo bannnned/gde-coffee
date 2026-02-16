@@ -113,6 +113,8 @@ func newIntegrationRouter(pool *pgxpool.Pool) *gin.Engine {
 	adminReviews := router.Group("/api/admin/reviews")
 	adminReviews.Use(testRequireRoles("admin", "moderator"))
 	adminReviews.GET("/versioning", handler.GetVersioningStatus)
+	adminReviews.GET("/dlq", handler.ListDLQ)
+	adminReviews.POST("/dlq/:id/replay", handler.ReplayDLQEvent)
 
 	return router
 }
@@ -1378,5 +1380,473 @@ func TestAdminReviewsVersioningAccessAndPayload(t *testing.T) {
 	qualityVersion := strings.TrimSpace(fmt.Sprintf("%v", formulaVersions["quality"]))
 	if qualityVersion == "" {
 		t.Fatalf("expected non-empty formula_versions.quality")
+	}
+}
+
+func TestOutboxDispatchEnqueuesInboxConsumers(t *testing.T) {
+	pool := integrationTestPool(t)
+	repository := NewRepository(pool)
+	service := NewService(repository)
+
+	cafeID := mustCreateTestCafe(t, pool)
+	dedupeKey := fmt.Sprintf("it-outbox-dispatch-%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		mustExec(t, pool, `delete from domain_events where dedupe_key = $1`, dedupeKey)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var outboxID int64
+	err := pool.QueryRow(
+		ctx,
+		`insert into domain_events (event_type, aggregate_type, aggregate_id, dedupe_key, payload)
+		 values ($1, 'cafe', $2::uuid, $3, $4::jsonb)
+		 returning id`,
+		EventHelpfulAdded,
+		cafeID,
+		dedupeKey,
+		`{"vote_id":"test-vote-id"}`,
+	).Scan(&outboxID)
+	if err != nil {
+		t.Fatalf("insert outbox event: %v", err)
+	}
+
+	evt, err := repository.ClaimNextEvent(ctx)
+	if err != nil {
+		t.Fatalf("claim outbox event: %v", err)
+	}
+	if evt == nil {
+		t.Fatalf("expected claimed outbox event")
+	}
+
+	if err := service.dispatchOutboxEvent(ctx, *evt); err != nil {
+		t.Fatalf("dispatch outbox event: %v", err)
+	}
+	if err := repository.MarkEventProcessed(ctx, evt.ID); err != nil {
+		t.Fatalf("mark outbox processed: %v", err)
+	}
+
+	rows, err := pool.Query(
+		ctx,
+		`select consumer
+		   from domain_event_inbox
+		  where outbox_event_id = $1
+		  order by consumer asc`,
+		outboxID,
+	)
+	if err != nil {
+		t.Fatalf("query inbox rows: %v", err)
+	}
+	defer rows.Close()
+
+	consumers := make([]string, 0, 2)
+	for rows.Next() {
+		var consumer string
+		if err := rows.Scan(&consumer); err != nil {
+			t.Fatalf("scan inbox consumer: %v", err)
+		}
+		consumers = append(consumers, consumer)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read inbox consumers: %v", err)
+	}
+
+	if len(consumers) != 2 {
+		t.Fatalf("expected 2 inbox consumers, got %d (%v)", len(consumers), consumers)
+	}
+	if consumers[0] != inboxConsumerCafeRating || consumers[1] != inboxConsumerReputation {
+		t.Fatalf("unexpected inbox consumers order/content: %v", consumers)
+	}
+}
+
+func TestInboxTerminalFailureMovesToDLQ(t *testing.T) {
+	pool := integrationTestPool(t)
+	repository := NewRepository(pool)
+	service := NewService(repository)
+
+	dedupeKey := fmt.Sprintf("it-inbox-dlq-%d", time.Now().UnixNano())
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var unknownCafeID string
+	if err := pool.QueryRow(ctx, `select uuid_generate_v4()::text`).Scan(&unknownCafeID); err != nil {
+		t.Fatalf("generate unknown cafe uuid: %v", err)
+	}
+
+	var outboxID int64
+	if err := pool.QueryRow(
+		ctx,
+		`insert into domain_events (event_type, aggregate_type, aggregate_id, dedupe_key, payload)
+		 values ($1, 'cafe', $2::uuid, $3, '{}'::jsonb)
+		 returning id`,
+		EventReviewCreated,
+		unknownCafeID,
+		dedupeKey,
+	).Scan(&outboxID); err != nil {
+		t.Fatalf("insert outbox event: %v", err)
+	}
+
+	var inboxID int64
+	if err := pool.QueryRow(
+		ctx,
+		`insert into domain_event_inbox (
+			outbox_event_id,
+			consumer,
+			event_type,
+			aggregate_id,
+			payload,
+			status,
+			attempts,
+			available_at
+		)
+		 values ($1, $2, $3, $4::uuid, '{}'::jsonb, 'pending', 19, now())
+		 returning id`,
+		outboxID,
+		inboxConsumerCafeRating,
+		EventReviewCreated,
+		unknownCafeID,
+	).Scan(&inboxID); err != nil {
+		t.Fatalf("insert inbox event: %v", err)
+	}
+
+	t.Cleanup(func() {
+		mustExec(t, pool, `delete from domain_events where id = $1`, outboxID)
+	})
+
+	inboxEvt, err := repository.ClaimNextInboxEvent(ctx)
+	if err != nil {
+		t.Fatalf("claim inbox event: %v", err)
+	}
+	if inboxEvt == nil {
+		t.Fatalf("expected claimed inbox event")
+	}
+	if inboxEvt.ID != inboxID {
+		t.Fatalf("unexpected claimed inbox id: got=%d expected=%d", inboxEvt.ID, inboxID)
+	}
+	if inboxEvt.Attempts < 20 {
+		t.Fatalf("expected attempts >= 20 for terminal test, got %d", inboxEvt.Attempts)
+	}
+
+	handleErr := service.handleInboxEvent(ctx, *inboxEvt)
+	if handleErr == nil {
+		t.Fatalf("expected inbox processing error for unknown cafe")
+	}
+
+	deadLettered, err := repository.MarkInboxEventFailed(ctx, *inboxEvt, handleErr.Error())
+	if err != nil {
+		t.Fatalf("mark inbox event failed: %v", err)
+	}
+	if !deadLettered {
+		t.Fatalf("expected terminal failure to be dead-lettered")
+	}
+
+	var (
+		inboxStatus string
+		dlqCount    int
+	)
+	if err := pool.QueryRow(
+		ctx,
+		`select status from domain_event_inbox where id = $1`,
+		inboxID,
+	).Scan(&inboxStatus); err != nil {
+		t.Fatalf("load inbox status: %v", err)
+	}
+	if inboxStatus != "failed" {
+		t.Fatalf("expected inbox status=failed, got %q", inboxStatus)
+	}
+
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*)::int
+		   from domain_event_dlq
+		  where outbox_event_id = $1
+		    and consumer = $2`,
+		outboxID,
+		inboxConsumerCafeRating,
+	).Scan(&dlqCount); err != nil {
+		t.Fatalf("count dlq rows: %v", err)
+	}
+	if dlqCount != 1 {
+		t.Fatalf("expected one DLQ row, got %d", dlqCount)
+	}
+}
+
+func TestAdminDLQListAccessAndPayload(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	adminID := mustCreateTestUser(t, pool, "admin")
+	userID := mustCreateTestUser(t, pool, "user")
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, adminID)
+		mustDeleteTestUser(t, pool, userID)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var aggregateID string
+	if err := pool.QueryRow(ctx, `select uuid_generate_v4()::text`).Scan(&aggregateID); err != nil {
+		t.Fatalf("generate aggregate uuid: %v", err)
+	}
+
+	dedupeKey := fmt.Sprintf("it-admin-dlq-list-%d", time.Now().UnixNano())
+	var outboxID int64
+	if err := pool.QueryRow(
+		ctx,
+		`insert into domain_events (event_type, aggregate_type, aggregate_id, dedupe_key, payload, status)
+		 values ($1, 'cafe', $2::uuid, $3, '{}'::jsonb, 'processed')
+		 returning id`,
+		EventReviewUpdated,
+		aggregateID,
+		dedupeKey,
+	).Scan(&outboxID); err != nil {
+		t.Fatalf("insert outbox event: %v", err)
+	}
+
+	var dlqID int64
+	if err := pool.QueryRow(
+		ctx,
+		`insert into domain_event_dlq (
+			outbox_event_id,
+			consumer,
+			event_type,
+			aggregate_id,
+			payload,
+			attempts,
+			last_error
+		)
+		 values ($1, $2, $3, $4::uuid, $5::jsonb, $6, $7)
+		 returning id`,
+		outboxID,
+		inboxConsumerCafeRating,
+		EventReviewUpdated,
+		aggregateID,
+		`{"from":"integration-test"}`,
+		20,
+		"forced test error",
+	).Scan(&dlqID); err != nil {
+		t.Fatalf("insert dlq event: %v", err)
+	}
+
+	t.Cleanup(func() {
+		mustExec(t, pool, `delete from domain_events where id = $1`, outboxID)
+	})
+
+	forbiddenRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/admin/reviews/dlq?status=open",
+		map[string]string{
+			"X-Test-User-ID": userID,
+			"X-Test-Role":    "user",
+		},
+		nil,
+	)
+	if forbiddenRec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin dlq list expected 403, got %d, body=%s", forbiddenRec.Code, forbiddenRec.Body.String())
+	}
+
+	adminRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/admin/reviews/dlq?status=open&limit=20&offset=0",
+		map[string]string{
+			"X-Test-User-ID": adminID,
+			"X-Test-Role":    "admin",
+		},
+		nil,
+	)
+	if adminRec.Code != http.StatusOK {
+		t.Fatalf("admin dlq list expected 200, got %d, body=%s", adminRec.Code, adminRec.Body.String())
+	}
+
+	var body struct {
+		Events []struct {
+			ID            int64  `json:"id"`
+			OutboxEventID int64  `json:"outbox_event_id"`
+			Consumer      string `json:"consumer"`
+			EventType     string `json:"event_type"`
+			ResolvedAt    string `json:"resolved_at"`
+		} `json:"events"`
+	}
+	if err := json.Unmarshal(adminRec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode dlq list response: %v", err)
+	}
+	if len(body.Events) == 0 {
+		t.Fatalf("expected at least one DLQ event in response")
+	}
+
+	found := false
+	for _, item := range body.Events {
+		if item.ID != dlqID {
+			continue
+		}
+		found = true
+		if item.OutboxEventID != outboxID {
+			t.Fatalf("unexpected outbox_event_id: got=%d want=%d", item.OutboxEventID, outboxID)
+		}
+		if item.Consumer != inboxConsumerCafeRating {
+			t.Fatalf("unexpected consumer for DLQ row: %q", item.Consumer)
+		}
+		if item.EventType != EventReviewUpdated {
+			t.Fatalf("unexpected event_type for DLQ row: %q", item.EventType)
+		}
+		if strings.TrimSpace(item.ResolvedAt) != "" {
+			t.Fatalf("expected unresolved DLQ row, got resolved_at=%q", item.ResolvedAt)
+		}
+	}
+	if !found {
+		t.Fatalf("expected DLQ row id=%d in response", dlqID)
+	}
+}
+
+func TestAdminDLQReplayEndpoint(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	adminID := mustCreateTestUser(t, pool, "admin")
+	userID := mustCreateTestUser(t, pool, "user")
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, adminID)
+		mustDeleteTestUser(t, pool, userID)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var aggregateID string
+	if err := pool.QueryRow(ctx, `select uuid_generate_v4()::text`).Scan(&aggregateID); err != nil {
+		t.Fatalf("generate aggregate uuid: %v", err)
+	}
+
+	dedupeKey := fmt.Sprintf("it-admin-dlq-replay-%d", time.Now().UnixNano())
+	var outboxID int64
+	if err := pool.QueryRow(
+		ctx,
+		`insert into domain_events (event_type, aggregate_type, aggregate_id, dedupe_key, payload, status)
+		 values ($1, 'cafe', $2::uuid, $3, $4::jsonb, 'processed')
+		 returning id`,
+		EventReviewUpdated,
+		aggregateID,
+		dedupeKey,
+		`{"source":"admin-replay-test"}`,
+	).Scan(&outboxID); err != nil {
+		t.Fatalf("insert outbox event: %v", err)
+	}
+
+	var dlqID int64
+	if err := pool.QueryRow(
+		ctx,
+		`insert into domain_event_dlq (
+			outbox_event_id,
+			consumer,
+			event_type,
+			aggregate_id,
+			payload,
+			attempts,
+			last_error
+		)
+		 values ($1, $2, $3, $4::uuid, $5::jsonb, $6, $7)
+		 returning id`,
+		outboxID,
+		inboxConsumerCafeRating,
+		EventReviewUpdated,
+		aggregateID,
+		`{"source":"admin-replay-test"}`,
+		20,
+		"forced replay error",
+	).Scan(&dlqID); err != nil {
+		t.Fatalf("insert dlq event: %v", err)
+	}
+
+	t.Cleanup(func() {
+		mustExec(t, pool, `delete from domain_events where id = $1`, outboxID)
+	})
+
+	forbiddenRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		fmt.Sprintf("/api/admin/reviews/dlq/%d/replay", dlqID),
+		map[string]string{
+			"X-Test-User-ID": userID,
+			"X-Test-Role":    "user",
+		},
+		nil,
+	)
+	if forbiddenRec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin replay expected 403, got %d, body=%s", forbiddenRec.Code, forbiddenRec.Body.String())
+	}
+
+	adminRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		fmt.Sprintf("/api/admin/reviews/dlq/%d/replay", dlqID),
+		map[string]string{
+			"X-Test-User-ID": adminID,
+			"X-Test-Role":    "admin",
+		},
+		nil,
+	)
+	if adminRec.Code != http.StatusOK {
+		t.Fatalf("admin replay expected 200, got %d, body=%s", adminRec.Code, adminRec.Body.String())
+	}
+
+	var replayBody struct {
+		DLQEventID    int64 `json:"dlq_event_id"`
+		InboxEventID  int64 `json:"inbox_event_id"`
+		OutboxEventID int64 `json:"outbox_event_id"`
+	}
+	if err := json.Unmarshal(adminRec.Body.Bytes(), &replayBody); err != nil {
+		t.Fatalf("decode replay response: %v", err)
+	}
+	if replayBody.DLQEventID != dlqID {
+		t.Fatalf("unexpected dlq_event_id: got=%d want=%d", replayBody.DLQEventID, dlqID)
+	}
+	if replayBody.OutboxEventID != outboxID {
+		t.Fatalf("unexpected outbox_event_id: got=%d want=%d", replayBody.OutboxEventID, outboxID)
+	}
+	if replayBody.InboxEventID <= 0 {
+		t.Fatalf("expected positive inbox_event_id after replay, got %d", replayBody.InboxEventID)
+	}
+
+	var (
+		dlqResolvedAt *time.Time
+		inboxStatus   string
+		inboxAttempts int
+	)
+	if err := pool.QueryRow(
+		ctx,
+		`select resolved_at
+		   from domain_event_dlq
+		  where id = $1`,
+		dlqID,
+	).Scan(&dlqResolvedAt); err != nil {
+		t.Fatalf("load dlq resolved_at: %v", err)
+	}
+	if dlqResolvedAt == nil {
+		t.Fatalf("expected resolved_at to be set after replay")
+	}
+
+	if err := pool.QueryRow(
+		ctx,
+		`select status, attempts
+		   from domain_event_inbox
+		  where id = $1`,
+		replayBody.InboxEventID,
+	).Scan(&inboxStatus, &inboxAttempts); err != nil {
+		t.Fatalf("load inbox row after replay: %v", err)
+	}
+	if inboxStatus != "pending" {
+		t.Fatalf("expected inbox status=pending after replay, got %q", inboxStatus)
+	}
+	if inboxAttempts != 0 {
+		t.Fatalf("expected inbox attempts reset to 0, got %d", inboxAttempts)
 	}
 }
