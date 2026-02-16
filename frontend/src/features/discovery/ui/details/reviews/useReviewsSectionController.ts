@@ -450,20 +450,28 @@ export function useReviewsSectionController({
       photos: values.photos.map((item) => item.url),
     };
 
+    let savedMessage = "";
     try {
       if (ownReview) {
         await updateReview(ownReview.id, payload);
-        setSubmitHint("Отзыв обновлен.");
+        savedMessage = "Отзыв обновлен.";
       } else {
         await createReview({
           cafe_id: cafeId,
           ...payload,
         });
-        setSubmitHint("Отзыв опубликован.");
+        savedMessage = "Отзыв опубликован.";
       }
-      await loadFirstPage();
+      setSubmitHint(savedMessage);
     } catch (error: any) {
       setSubmitError(extractErrorMessage(error, "Не удалось сохранить отзыв."));
+      return;
+    }
+
+    try {
+      await loadFirstPage();
+    } catch (error: any) {
+      setLoadError(extractErrorMessage(error, "Отзыв сохранен, но не удалось обновить список."));
     }
   });
 

@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, SegmentedControl, Select, Stack, Text } from "@mantine/core";
+import { Badge, Button, Group, Paper, Rating, Select, Skeleton, Stack, Text, Transition } from "@mantine/core";
 
 import type { CafeReview, ReviewSort } from "../../../../../api/reviews";
 import { formatReviewDate } from "./reviewForm";
@@ -48,44 +48,60 @@ export function ReviewFeed({
     })),
   ];
 
+  const sortSelectData = [
+    { value: "new", label: "Новые" },
+    { value: "helpful", label: "Полезные" },
+    { value: "verified", label: "С визитом" },
+  ];
+
   return (
     <>
-      <Group justify="space-between" align="flex-end" wrap="wrap">
-        <Text fw={600} size="sm">
-          Отзывы
-        </Text>
-        <Group gap={8} wrap="wrap" justify="flex-end">
-          <SegmentedControl
-            value={sort}
-            onChange={(value) => onSortChange(value as ReviewSort)}
-            size="xs"
-            data={[
-              { label: "Новые", value: "new" },
-              { label: "Полезные", value: "helpful" },
-              { label: "С визитом", value: "verified" },
-            ]}
-          />
-          <Select
-            size="xs"
-            value={positionFilter}
-            data={positionFilterData}
-            onChange={(value) => onPositionFilterChange(value || "all")}
-            w={220}
-          />
-        </Group>
+      <Text fw={600} size="sm">
+        Отзывы
+      </Text>
+      <Group grow align="flex-end" gap={8} wrap="nowrap">
+        <Select
+          size="xs"
+          label="Сортировка"
+          value={sort}
+          data={sortSelectData}
+          onChange={(value) => onSortChange((value as ReviewSort) || "new")}
+          style={{ flex: 1 }}
+        />
+        <Select
+          size="xs"
+          label="Позиция"
+          value={positionFilter}
+          data={positionFilterData}
+          onChange={(value) => onPositionFilterChange(value || "all")}
+          style={{ flex: 1 }}
+        />
       </Group>
 
       {isLoading && (
-        <Paper
-          withBorder
-          radius="md"
-          p="md"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-        >
-          <Text size="sm" c="dimmed">
-            Загружаем отзывы...
-          </Text>
-        </Paper>
+        <>
+          {reviews.length === 0 ? (
+            <>
+              <ReviewCardSkeleton />
+              <ReviewCardSkeleton />
+              <ReviewCardSkeleton />
+            </>
+          ) : (
+            <Paper
+              withBorder
+              radius="md"
+              p="sm"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+            >
+              <Group justify="space-between" align="center">
+                <Text size="xs" c="dimmed">
+                  Обновляем отзывы...
+                </Text>
+                <Skeleton h={8} w={120} radius="xl" />
+              </Group>
+            </Paper>
+          )}
+        </>
       )}
 
       {loadError && (
@@ -114,18 +130,22 @@ export function ReviewFeed({
         </Paper>
       )}
 
-      {!isLoading &&
-        !loadError &&
-        reviews.map((review) => (
-          <ReviewCard
-            key={review.id}
-            review={review}
-            isOwn={review.user_id === currentUserId}
-            helpfulLoading={helpfulPendingReviewID === review.id}
-            onMarkHelpful={onMarkHelpful}
-            canDeleteReviews={canDeleteReviews}
-            onDeleteReview={onDeleteReview}
-          />
+      {!loadError &&
+        reviews.map((review, index) => (
+          <Transition key={review.id} mounted transition="fade" duration={220} timingFunction="ease">
+            {(styles) => (
+              <div style={{ ...styles, transitionDelay: `${Math.min(index, 6) * 24}ms` }}>
+                <ReviewCard
+                  review={review}
+                  isOwn={review.user_id === currentUserId}
+                  helpfulLoading={helpfulPendingReviewID === review.id}
+                  onMarkHelpful={onMarkHelpful}
+                  canDeleteReviews={canDeleteReviews}
+                  onDeleteReview={onDeleteReview}
+                />
+              </div>
+            )}
+          </Transition>
         ))}
 
       {!isLoading && !loadError && hasMore && (
@@ -134,6 +154,38 @@ export function ReviewFeed({
         </Button>
       )}
     </>
+  );
+}
+
+function ReviewCardSkeleton() {
+  return (
+    <Paper
+      withBorder
+      radius="md"
+      p="md"
+      style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+    >
+      <Stack gap={10}>
+        <Group justify="space-between" align="center">
+          <Group gap={8} wrap="nowrap">
+            <Skeleton h={14} w={90} radius="sm" />
+            <Skeleton h={18} w={42} radius="xl" />
+          </Group>
+          <Skeleton h={14} w={90} radius="sm" />
+        </Group>
+        <Skeleton h={10} radius="sm" />
+        <Skeleton h={10} w="92%" radius="sm" />
+        <Skeleton h={10} w="76%" radius="sm" />
+        <Group gap={6}>
+          <Skeleton h={20} w={90} radius="xl" />
+          <Skeleton h={20} w={80} radius="xl" />
+          <Skeleton h={20} w={110} radius="xl" />
+        </Group>
+        <Group justify="space-between" align="center">
+          <Skeleton h={28} w={86} radius="sm" />
+        </Group>
+      </Stack>
+    </Paper>
   );
 }
 
@@ -184,12 +236,13 @@ function ReviewCard({
               {formatReviewDate(review.updated_at)}
             </Text>
           </Stack>
-          <Badge color="yellow" variant="light">
-            {review.rating}/5
-          </Badge>
+          <Rating value={review.rating} readOnly size="sm" />
         </Group>
 
-        <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+        <Text
+          size="sm"
+          style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "anywhere" }}
+        >
           {review.summary}
         </Text>
 
@@ -250,14 +303,6 @@ function ReviewCard({
           </Button>
         </Group>
 
-        {canDeleteReviews && (
-          <Group justify="flex-end">
-            <Button size="xs" variant="subtle" color="red" onClick={() => onDeleteReview(review)}>
-              Удалить отзыв
-            </Button>
-          </Group>
-        )}
-
         {review.taste_tags.length > 0 && (
           <Group gap={6} wrap="wrap">
             {review.taste_tags.map((tag) => (
@@ -265,6 +310,14 @@ function ReviewCard({
                 {tag}
               </Badge>
             ))}
+          </Group>
+        )}
+
+        {canDeleteReviews && (
+          <Group justify="flex-end">
+            <Button size="xs" variant="subtle" color="red" onClick={() => onDeleteReview(review)}>
+              Удалить отзыв
+            </Button>
           </Group>
         )}
       </Stack>

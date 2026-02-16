@@ -5,7 +5,7 @@ import {
   Button,
   Group,
   Paper,
-  SegmentedControl,
+  Rating,
   Stack,
   TagsInput,
   Text,
@@ -85,17 +85,11 @@ export function ReviewComposerCard({
             control={control}
             name="ratingValue"
             render={({ field }) => (
-              <SegmentedControl
-                fullWidth
-                value={field.value}
-                onChange={field.onChange}
-                data={[
-                  { label: "1", value: "1" },
-                  { label: "2", value: "2" },
-                  { label: "3", value: "3" },
-                  { label: "4", value: "4" },
-                  { label: "5", value: "5" },
-                ]}
+              <Rating
+                value={Number(field.value)}
+                onChange={(value) => field.onChange(String(value))}
+                count={5}
+                allowDeselect={false}
               />
             )}
           />
