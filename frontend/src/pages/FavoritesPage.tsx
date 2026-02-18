@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Box,
@@ -14,10 +14,11 @@ import { IconArrowLeft, IconHeartFilled } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 import { listFavoriteCafes, removeCafeFromFavorites } from "../api/favorites";
-import CafeDetailsScreen from "../features/discovery/ui/details/CafeDetailsScreen";
 import type { Cafe } from "../types";
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
+
+const CafeDetailsScreen = lazy(() => import("../features/discovery/ui/details/CafeDetailsScreen"));
 
 export default function FavoritesPage() {
   useAllowBodyScroll();
@@ -210,13 +211,17 @@ export default function FavoritesPage() {
             );
           })}
 
-          <CafeDetailsScreen
-            opened={detailsOpen}
-            cafe={selectedCafe}
-            onClose={() => setDetailsOpen(false)}
-            showDistance={false}
-            showRoutes={false}
-          />
+          {detailsOpen && (
+            <Suspense fallback={null}>
+              <CafeDetailsScreen
+                opened={detailsOpen}
+                cafe={selectedCafe}
+                onClose={() => setDetailsOpen(false)}
+                showDistance={false}
+                showRoutes={false}
+              />
+            </Suspense>
+          )}
         </Stack>
       </Container>
     </Box>

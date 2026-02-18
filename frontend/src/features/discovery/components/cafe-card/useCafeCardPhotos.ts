@@ -34,7 +34,7 @@ export function useCafeCardPhotos(cafe: Cafe) {
   }, [cafe.id, fallbackPhotoURLs]);
 
   useEffect(() => {
-    if (!cafe.id) return;
+    if (!cafe.id || fallbackPhotoURLs.length > 0) return;
     let cancelled = false;
 
     getCafePhotos(cafe.id, "cafe")
@@ -57,7 +57,7 @@ export function useCafeCardPhotos(cafe: Cafe) {
     return () => {
       cancelled = true;
     };
-  }, [cafe.id, cafe.cover_photo_url]);
+  }, [cafe.id, cafe.cover_photo_url, fallbackPhotoURLs.length]);
 
   useEffect(() => {
     setActivePhotoIndex((prev) =>

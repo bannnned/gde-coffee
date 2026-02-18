@@ -26,6 +26,7 @@ import MenuSection from "./sections/MenuSection";
 import RatingPanel from "./sections/RatingPanel";
 
 import type { Cafe, CafePhotoKind } from "../../../../entities/cafe/model/types";
+import { buildCafePhotoSrcSet } from "../../../../utils/cafePhotoVariants";
 
 type CafeDetailsScreenProps = {
   opened: boolean;
@@ -558,6 +559,8 @@ export default function CafeDetailsScreen({
             >
               <img
                 src={viewerPhoto.url}
+                srcSet={buildCafePhotoSrcSet(viewerPhoto.url, [640, 1024, 1536])}
+                sizes="(max-width: 768px) 100vw, 1200px"
                 alt={viewerKind === "menu" ? `Меню: ${cafe.name}` : `Фото: ${cafe.name}`}
                 onLoad={(event) => {
                   const src = event.currentTarget.currentSrc || event.currentTarget.src;
@@ -634,6 +637,8 @@ export default function CafeDetailsScreen({
                   >
                     <img
                       src={photo.url}
+                      srcSet={buildCafePhotoSrcSet(photo.url, [320, 640])}
+                      sizes="88px"
                       alt={`Миниатюра ${index + 1}`}
                       loading="lazy"
                       style={{

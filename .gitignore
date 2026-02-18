@@ -1,5 +1,11 @@
 # Env / secrets
 .env
+backend/.env
+.env.local
+.env.*.local
+*.key
+*.p12
+*.pfx
 
 # Go build / cache
 /bin/
@@ -31,4 +37,3 @@ backend/.env
 *.pfx
 =======
 Thumbs.db
->>>>>>> 7ff19c2 (уберет classname и поправит подписи)

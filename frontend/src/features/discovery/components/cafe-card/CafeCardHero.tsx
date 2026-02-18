@@ -2,6 +2,7 @@ import { Badge, Box, Button, Group, Stack } from "@mantine/core";
 import type { ReactNode } from "react";
 
 import type { Cafe } from "../../../../entities/cafe/model/types";
+import { buildCafePhotoSrcSet } from "../../../../utils/cafePhotoVariants";
 import { formatDistance } from "../../utils";
 
 type CafeCardHeroProps = {
@@ -39,6 +40,9 @@ export default function CafeCardHero({
   badgeStyles,
   children,
 }: CafeCardHeroProps) {
+  const photoSrcSet = buildCafePhotoSrcSet(activePhotoURL, [640, 1024, 1536]);
+  const photoSizes = "(max-width: 768px) 100vw, 560px";
+
   return (
     <Box
       onTouchStart={onTouchStart}
@@ -55,6 +59,8 @@ export default function CafeCardHero({
         <>
           <img
             src={activePhotoURL}
+            srcSet={photoSrcSet}
+            sizes={photoSizes}
             alt={`Фото: ${cafe.name}`}
             loading="lazy"
             onLoad={(event) => onPhotoLoad(event.currentTarget.currentSrc || event.currentTarget.src)}
@@ -74,33 +80,8 @@ export default function CafeCardHero({
           />
           <img
             src={activePhotoURL}
-            alt=""
-            loading="lazy"
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-              zIndex: 1,
-              opacity: photoReady ? 0.92 : 0,
-              filter: "blur(14px) saturate(124%)",
-              transform: "scale(1.08)",
-              transformOrigin: "center",
-              WebkitMaskImage:
-                "linear-gradient(180deg, transparent 0%, transparent 19%, rgba(0,0,0,0.14) 33%, rgba(0,0,0,0.42) 49%, rgba(0,0,0,0.78) 71%, rgba(0,0,0,1) 100%)",
-              maskImage:
-                "linear-gradient(180deg, transparent 0%, transparent 19%, rgba(0,0,0,0.14) 33%, rgba(0,0,0,0.42) 49%, rgba(0,0,0,0.78) 71%, rgba(0,0,0,1) 100%)",
-              WebkitMaskRepeat: "no-repeat",
-              maskRepeat: "no-repeat",
-              pointerEvents: "none",
-              transition: "opacity 240ms ease",
-            }}
-          />
-          <img
-            src={activePhotoURL}
+            srcSet={photoSrcSet}
+            sizes={photoSizes}
             alt=""
             loading="lazy"
             aria-hidden="true"

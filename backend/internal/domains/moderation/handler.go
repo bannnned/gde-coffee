@@ -3,6 +3,7 @@ package moderation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -546,7 +547,7 @@ func (h *Handler) decide(c *gin.Context, decision string) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
 
 	tx, err := h.pool.BeginTx(ctx, pgx.TxOptions{})
@@ -860,11 +861,16 @@ func (h *Handler) insertCafePhotos(
 	}
 
 	position := count
+	seenSourceKeys := make(map[string]struct{}, len(objectKeys))
 	for index, rawKey := range objectKeys {
 		key := strings.TrimSpace(strings.TrimPrefix(rawKey, "/"))
 		if key == "" {
 			continue
 		}
+		if _, exists := seenSourceKeys[key]; exists {
+			continue
+		}
+		seenSourceKeys[key] = struct{}{}
 		var (
 			sizeBytes int64 = 0
 			mimeType  string
@@ -878,6 +884,28 @@ func (h *Handler) insertCafePhotos(
 			if _, ok := photos.AllowedPhotoContentTypes[photos.NormalizeContentType(mimeType)]; !ok {
 				return fmt.Errorf("Файл %s имеет неподдерживаемый формат", key)
 			}
+
+			optimizedPhoto, optimizeErr := photos.OptimizeAndPersistCafePhoto(
+				ctx,
+				h.s3,
+				h.cfg,
+				cafeID,
+				photoKind,
+				key,
+				mimeType,
+				sizeBytes,
+			)
+			if optimizeErr != nil {
+				switch {
+				case errors.Is(optimizeErr, photos.ErrCafePhotoInvalid), errors.Is(optimizeErr, photos.ErrCafePhotoTooLarge):
+					return fmt.Errorf("Файл %s не удалось обработать", key)
+				default:
+					return fmt.Errorf("Не удалось сохранить фото в хранилище")
+				}
+			}
+			key = optimizedPhoto.ObjectKey
+			sizeBytes = optimizedPhoto.SizeBytes
+			mimeType = optimizedPhoto.MimeType
 		} else {
 			mimeType = "image/jpeg"
 		}

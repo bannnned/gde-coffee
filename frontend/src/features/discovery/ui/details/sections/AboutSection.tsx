@@ -3,6 +3,7 @@ import { IconCamera, IconPlus } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 
 import type { Cafe, CafePhoto } from "../../../../../entities/cafe/model/types";
+import { buildCafePhotoSrcSet } from "../../../../../utils/cafePhotoVariants";
 import { AMENITY_LABELS } from "../../../constants";
 import { formatDistance } from "../../../utils";
 
@@ -69,6 +70,9 @@ export default function AboutSection({
   canSaveDescription,
   badgeStyles,
 }: AboutSectionProps) {
+  const aboutMainSrcSet = buildCafePhotoSrcSet(aboutMainPhoto?.url, [640, 1024, 1536]);
+  const aboutThumbSizes = "108px";
+
   return (
     <Stack gap={0}>
       {aboutMainPhoto && (
@@ -83,6 +87,8 @@ export default function AboutSection({
         >
           <img
             src={aboutMainPhoto.url}
+            srcSet={aboutMainSrcSet}
+            sizes="(max-width: 768px) 100vw, 960px"
             alt={`Фото: ${cafe.name}`}
             onLoad={(event) => onAboutMainPhotoLoad(event.currentTarget.currentSrc || event.currentTarget.src)}
             onError={onAboutMainPhotoError}
@@ -130,6 +136,8 @@ export default function AboutSection({
             >
               <img
                 src={photo.url}
+                srcSet={buildCafePhotoSrcSet(photo.url, [320, 640])}
+                sizes={aboutThumbSizes}
                 alt={`Фото: ${cafe.name}`}
                 loading="lazy"
                 style={{

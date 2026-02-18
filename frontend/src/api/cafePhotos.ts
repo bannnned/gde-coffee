@@ -48,7 +48,7 @@ type PhotoCacheEntry = {
   cachedAt: number;
 };
 
-const PHOTO_LIST_CACHE_DEFAULT_MAX_AGE_MS = 60_000;
+const PHOTO_LIST_CACHE_DEFAULT_MAX_AGE_MS = 10 * 60_000;
 // Session-level cache to avoid refetching unchanged photo lists on tab/screen switches.
 const photoListCache = new Map<string, PhotoCacheEntry>();
 const inFlightPhotoRequests = new Map<string, Promise<CafePhoto[]>>();

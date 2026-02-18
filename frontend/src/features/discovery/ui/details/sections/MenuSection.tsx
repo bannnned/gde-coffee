@@ -2,6 +2,7 @@ import { ActionIcon, Box, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconCamera, IconPlus } from "@tabler/icons-react";
 
 import type { Cafe, CafePhoto } from "../../../../../entities/cafe/model/types";
+import { buildCafePhotoSrcSet } from "../../../../../utils/cafePhotoVariants";
 
 type MenuSectionProps = {
   cafe: Cafe;
@@ -28,6 +29,9 @@ export default function MenuSection({
   onSelectMenuPhoto,
   onManagePhotos,
 }: MenuSectionProps) {
+  const menuMainSrcSet = buildCafePhotoSrcSet(menuMainPhoto?.url, [640, 1024, 1536]);
+  const menuThumbSizes = "108px";
+
   return (
     <Stack gap={0}>
       {menuMainPhoto && (
@@ -42,6 +46,8 @@ export default function MenuSection({
         >
           <img
             src={menuMainPhoto.url}
+            srcSet={menuMainSrcSet}
+            sizes="(max-width: 768px) 100vw, 960px"
             alt={`Меню: ${cafe.name}`}
             loading="lazy"
             onLoad={(event) => onMenuMainPhotoLoad(event.currentTarget.currentSrc || event.currentTarget.src)}
@@ -90,6 +96,8 @@ export default function MenuSection({
             >
               <img
                 src={photo.url}
+                srcSet={buildCafePhotoSrcSet(photo.url, [320, 640])}
+                sizes={menuThumbSizes}
                 alt={`Меню: ${cafe.name}`}
                 loading="lazy"
                 style={{

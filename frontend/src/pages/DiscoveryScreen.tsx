@@ -1,4 +1,5 @@
 import { Box } from "@mantine/core";
+import { lazy, Suspense } from "react";
 
 import Map from "../components/Map";
 import { DISCOVERY_UI_TEXT } from "../features/discovery/constants";
@@ -8,15 +9,18 @@ import CafeList from "../features/discovery/components/CafeList";
 import EmptyStateCard from "../features/discovery/components/EmptyStateCard";
 import FiltersBar from "../features/discovery/components/FiltersBar";
 import FloatingControls from "../features/discovery/components/FloatingControls";
-import CafePhotoAdminModal from "../features/discovery/components/CafePhotoAdminModal";
-import CafePhotoSubmissionModal from "../features/discovery/components/CafePhotoSubmissionModal";
 import useDiscoveryPageController from "../features/discovery/hooks/useDiscoveryPageController";
-import CafeDetailsScreen from "../features/discovery/ui/details/CafeDetailsScreen";
 import ManualPickOverlay from "../features/discovery/ui/map/ManualPickOverlay";
-import CafeProposalModal from "../features/discovery/ui/modals/CafeProposalModal";
 import SettingsDrawer from "../features/discovery/ui/settings/SettingsDrawer";
 import DiscoveryLocationChoiceHeader from "../features/discovery/ui/sheet/DiscoveryLocationChoiceHeader";
 import DiscoveryManualPickHeader from "../features/discovery/ui/sheet/DiscoveryManualPickHeader";
+
+const CafeDetailsScreen = lazy(() => import("../features/discovery/ui/details/CafeDetailsScreen"));
+const CafePhotoAdminModal = lazy(() => import("../features/discovery/components/CafePhotoAdminModal"));
+const CafePhotoSubmissionModal = lazy(
+  () => import("../features/discovery/components/CafePhotoSubmissionModal"),
+);
+const CafeProposalModal = lazy(() => import("../features/discovery/ui/modals/CafeProposalModal"));
 
 export default function DiscoveryScreen() {
   const {
@@ -208,50 +212,66 @@ export default function DiscoveryScreen() {
         onSuggestCafe={handleOpenCafeProposal}
       />
 
-      <CafeDetailsScreen
-        opened={detailsOpen}
-        cafe={selectedCafe ?? null}
-        onClose={() => setDetailsOpen(false)}
-        showDistance={!isCityOnlyMode}
-        showRoutes={!isCityOnlyMode}
-        onOpen2gis={selectedCafe ? () => open2gisRoute(selectedCafe) : undefined}
-        onOpenYandex={selectedCafe ? () => openYandexRoute(selectedCafe) : undefined}
-        onStartDescriptionEdit={handleStartCafeDescriptionEdit}
-        onSaveDescription={handleSaveCafeDescription}
-        isFavorite={Boolean(selectedCafe?.is_favorite)}
-        onToggleFavorite={handleToggleFavorite}
-        favoriteLoading={Boolean(selectedCafe?.id) && selectedCafe?.id === favoriteBusyCafeId}
-        onManagePhotos={handleOpenPhotoAdmin}
-        canManageDirectly={isPhotoAdmin}
-        canViewAdminDiagnostics={isPrivilegedUser}
-      />
+      {detailsOpen && (
+        <Suspense fallback={null}>
+          <CafeDetailsScreen
+            opened={detailsOpen}
+            cafe={selectedCafe ?? null}
+            onClose={() => setDetailsOpen(false)}
+            showDistance={!isCityOnlyMode}
+            showRoutes={!isCityOnlyMode}
+            onOpen2gis={selectedCafe ? () => open2gisRoute(selectedCafe) : undefined}
+            onOpenYandex={selectedCafe ? () => openYandexRoute(selectedCafe) : undefined}
+            onStartDescriptionEdit={handleStartCafeDescriptionEdit}
+            onSaveDescription={handleSaveCafeDescription}
+            isFavorite={Boolean(selectedCafe?.is_favorite)}
+            onToggleFavorite={handleToggleFavorite}
+            favoriteLoading={Boolean(selectedCafe?.id) && selectedCafe?.id === favoriteBusyCafeId}
+            onManagePhotos={handleOpenPhotoAdmin}
+            canManageDirectly={isPhotoAdmin}
+            canViewAdminDiagnostics={isPrivilegedUser}
+          />
+        </Suspense>
+      )}
 
-      <CafePhotoAdminModal
-        opened={photoAdminOpen}
-        cafeId={selectedCafe?.id ?? null}
-        cafeName={selectedCafe?.name ?? ""}
-        kind={photoAdminKind}
-        initialPhotos={
-          (selectedCafe?.photos ?? []).filter((photo) => photo.kind === photoAdminKind)
-        }
-        onClose={() => setPhotoAdminOpen(false)}
-        onPhotosChanged={handlePhotosChanged}
-      />
+      {photoAdminOpen && (
+        <Suspense fallback={null}>
+          <CafePhotoAdminModal
+            opened={photoAdminOpen}
+            cafeId={selectedCafe?.id ?? null}
+            cafeName={selectedCafe?.name ?? ""}
+            kind={photoAdminKind}
+            initialPhotos={
+              (selectedCafe?.photos ?? []).filter((photo) => photo.kind === photoAdminKind)
+            }
+            onClose={() => setPhotoAdminOpen(false)}
+            onPhotosChanged={handlePhotosChanged}
+          />
+        </Suspense>
+      )}
 
-      <CafePhotoSubmissionModal
-        opened={photoSubmitOpen}
-        cafeId={selectedCafe?.id ?? null}
-        cafeName={selectedCafe?.name ?? ""}
-        kind={photoSubmitKind}
-        onClose={() => setPhotoSubmitOpen(false)}
-      />
+      {photoSubmitOpen && (
+        <Suspense fallback={null}>
+          <CafePhotoSubmissionModal
+            opened={photoSubmitOpen}
+            cafeId={selectedCafe?.id ?? null}
+            cafeName={selectedCafe?.name ?? ""}
+            kind={photoSubmitKind}
+            onClose={() => setPhotoSubmitOpen(false)}
+          />
+        </Suspense>
+      )}
 
-      <CafeProposalModal
-        opened={cafeProposalOpen}
-        mapCenter={userCenter}
-        city={proposalCity || undefined}
-        onClose={() => setCafeProposalOpen(false)}
-      />
+      {cafeProposalOpen && (
+        <Suspense fallback={null}>
+          <CafeProposalModal
+            opened={cafeProposalOpen}
+            mapCenter={userCenter}
+            city={proposalCity || undefined}
+            onClose={() => setCafeProposalOpen(false)}
+          />
+        </Suspense>
+      )}
     </Box>
   );
 }

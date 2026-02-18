@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionIcon,
   Badge,
@@ -19,7 +19,6 @@ import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
-import CafeDetailsScreen from "../features/discovery/ui/details/CafeDetailsScreen";
 import type { Cafe } from "../types";
 import {
   buildPreviewCafe,
@@ -38,6 +37,8 @@ import {
   type ModerationSubmission,
   type SubmissionStatus,
 } from "../api/submissions";
+
+const CafeDetailsScreen = lazy(() => import("../features/discovery/ui/details/CafeDetailsScreen"));
 
 export default function AdminModerationPage() {
   useAllowBodyScroll();
@@ -530,13 +531,17 @@ export default function AdminModerationPage() {
           })}
         </Stack>
 
-        <CafeDetailsScreen
-          opened={previewOpen}
-          cafe={previewCafe}
-          onClose={() => setPreviewOpen(false)}
-          showDistance={false}
-          showRoutes={false}
-        />
+        {previewOpen && (
+          <Suspense fallback={null}>
+            <CafeDetailsScreen
+              opened={previewOpen}
+              cafe={previewCafe}
+              onClose={() => setPreviewOpen(false)}
+              showDistance={false}
+              showRoutes={false}
+            />
+          </Suspense>
+        )}
       </Container>
     </Box>
   );

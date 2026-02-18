@@ -223,7 +223,7 @@ func (h *Handler) Confirm(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 25*time.Second)
 	defer cancel()
 
 	if err := EnsureCafeExists(ctx, h.pool, cafeID); err != nil {
@@ -249,6 +249,27 @@ func (h *Handler) Confirm(c *gin.Context) {
 	}
 	if _, ok := AllowedPhotoContentTypes[NormalizeContentType(mimeType)]; !ok {
 		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Неподдерживаемый формат изображения.", nil)
+		return
+	}
+
+	optimizedPhoto, err := OptimizeAndPersistCafePhoto(
+		ctx,
+		h.s3,
+		h.cfg,
+		cafeID,
+		photoKind,
+		objectKey,
+		mimeType,
+		sizeBytes,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrCafePhotoInvalid), errors.Is(err, ErrCafePhotoTooLarge):
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Не удалось обработать изображение.", nil)
+		default:
+			log.Printf("photo confirm optimize failed: cafe_id=%s kind=%s object_key=%s err=%v", cafeID, photoKind, objectKey, err)
+			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		}
 		return
 	}
 
@@ -305,9 +326,9 @@ func (h *Handler) Confirm(c *gin.Context) {
 		 values ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid)
 		 returning id::text, position, is_cover`,
 		cafeID,
-		objectKey,
-		NormalizeContentType(mimeType),
-		sizeBytes,
+		optimizedPhoto.ObjectKey,
+		NormalizeContentType(optimizedPhoto.MimeType),
+		optimizedPhoto.SizeBytes,
 		photoKind,
 		position,
 		isCover,
@@ -330,7 +351,7 @@ func (h *Handler) Confirm(c *gin.Context) {
 	c.JSON(http.StatusOK, cafePhotoConfirmResponse{
 		Photo: model.CafePhotoResponse{
 			ID:       photoID,
-			URL:      h.s3.PublicURL(objectKey),
+			URL:      h.s3.PublicURL(optimizedPhoto.ObjectKey),
 			Kind:     photoKind,
 			IsCover:  savedIsCover,
 			Position: savedPosition,
