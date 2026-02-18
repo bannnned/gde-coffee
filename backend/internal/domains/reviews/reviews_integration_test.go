@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"backend/internal/config"
+	"backend/internal/media"
 	dbmigrations "backend/migrations"
 
 	"github.com/gin-gonic/gin"
@@ -76,10 +77,14 @@ func integrationTestPool(t *testing.T) *pgxpool.Pool {
 }
 
 func newIntegrationRouter(pool *pgxpool.Pool) *gin.Engine {
+	return newIntegrationRouterWithMedia(pool, nil, config.MediaConfig{})
+}
+
+func newIntegrationRouterWithMedia(pool *pgxpool.Pool, s3 *media.Service, mediaCfg config.MediaConfig) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	repository := NewRepository(pool)
 	service := NewService(repository)
-	handler := NewHandler(service, nil, config.MediaConfig{})
+	handler := NewHandler(service, s3, mediaCfg)
 
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -95,12 +100,20 @@ func newIntegrationRouter(pool *pgxpool.Pool) *gin.Engine {
 	router.POST("/api/reviews", handler.Create)
 	router.PATCH("/api/reviews/:id", handler.Update)
 	router.POST("/api/reviews/:id/helpful", handler.AddHelpful)
+	router.POST("/api/reviews/:id/abuse", handler.ReportAbuse)
+	router.POST("/api/reviews/photos/presign", handler.PresignPhoto)
+	router.POST("/api/reviews/photos/confirm", handler.ConfirmPhoto)
+	router.GET("/api/reviews/photos/:id/status", handler.GetPhotoStatus)
 	router.POST("/api/cafes/:id/check-in/start", handler.StartCheckIn)
 	router.POST("/api/reviews/:id/visit/verify", handler.VerifyVisit)
 	router.GET("/api/cafes/:id/reviews", handler.ListCafeReviews)
+	router.GET("/api/cafes/:id/rating", handler.GetCafeRating)
 	moderationReviews := router.Group("/api/reviews")
 	moderationReviews.Use(testRequireRoles("admin", "moderator"))
 	moderationReviews.DELETE("/:id", handler.DeleteReview)
+	moderationAbuse := router.Group("/api/abuse-reports")
+	moderationAbuse.Use(testRequireRoles("admin", "moderator"))
+	moderationAbuse.POST("/:id/confirm", handler.ConfirmAbuse)
 
 	admin := router.Group("/api/admin/drinks")
 	admin.Use(testRequireRoles("admin", "moderator"))
@@ -240,6 +253,170 @@ func mustDeleteTestCafe(t *testing.T, pool *pgxpool.Pool, cafeID string) {
 		return
 	}
 	mustExec(t, pool, `delete from cafes where id = $1::uuid`, cafeID)
+}
+
+func valueInt(value interface{}) int {
+	switch cast := value.(type) {
+	case int:
+		return cast
+	case int32:
+		return int(cast)
+	case int64:
+		return int(cast)
+	case float32:
+		return int(cast)
+	case float64:
+		return int(cast)
+	default:
+		return 0
+	}
+}
+
+func drainDomainQueuesForCafe(
+	t *testing.T,
+	pool *pgxpool.Pool,
+	service *Service,
+	cafeID string,
+	maxPasses int,
+) {
+	t.Helper()
+	drainDomainQueuesForAggregate(t, pool, service, cafeID, maxPasses)
+}
+
+func drainDomainQueuesForAggregate(
+	t *testing.T,
+	pool *pgxpool.Pool,
+	service *Service,
+	aggregateID string,
+	maxPasses int,
+) {
+	t.Helper()
+
+	if maxPasses <= 0 {
+		maxPasses = 20
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	for pass := 0; pass < maxPasses; pass++ {
+		processedAny := false
+
+		outboxRows, err := pool.Query(
+			ctx,
+			`select id, event_type, aggregate_id::text, payload
+			   from domain_events
+			  where aggregate_id = $1::uuid
+			    and status in ('pending', 'processing')
+			  order by id asc`,
+			aggregateID,
+		)
+		if err != nil {
+			t.Fatalf("query outbox events: %v", err)
+		}
+		outboxEvents := make([]domainEvent, 0, 16)
+		for outboxRows.Next() {
+			var (
+				evt domainEvent
+				raw []byte
+			)
+			if err := outboxRows.Scan(&evt.ID, &evt.EventType, &evt.AggregateID, &raw); err != nil {
+				outboxRows.Close()
+				t.Fatalf("scan outbox event: %v", err)
+			}
+			evt.Payload = map[string]interface{}{}
+			if len(raw) > 0 {
+				if err := json.Unmarshal(raw, &evt.Payload); err != nil {
+					outboxRows.Close()
+					t.Fatalf("decode outbox payload: %v", err)
+				}
+			}
+			outboxEvents = append(outboxEvents, evt)
+		}
+		if err := outboxRows.Err(); err != nil {
+			outboxRows.Close()
+			t.Fatalf("iterate outbox rows: %v", err)
+		}
+		outboxRows.Close()
+
+		for _, evt := range outboxEvents {
+			if err := service.dispatchOutboxEvent(ctx, evt); err != nil {
+				t.Fatalf("dispatch outbox event id=%d: %v", evt.ID, err)
+			}
+			if err := service.repository.MarkEventProcessed(ctx, evt.ID); err != nil {
+				t.Fatalf("mark outbox processed id=%d: %v", evt.ID, err)
+			}
+			processedAny = true
+		}
+
+		inboxRows, err := pool.Query(
+			ctx,
+			`select id, outbox_event_id, consumer, event_type, aggregate_id::text, payload, attempts
+			   from domain_event_inbox
+			  where aggregate_id = $1::uuid
+			    and status in ('pending', 'processing')
+			  order by id asc`,
+			aggregateID,
+		)
+		if err != nil {
+			t.Fatalf("query inbox events: %v", err)
+		}
+		inboxEvents := make([]domainInboxEvent, 0, 32)
+		for inboxRows.Next() {
+			var (
+				evt domainInboxEvent
+				raw []byte
+			)
+			if err := inboxRows.Scan(
+				&evt.ID,
+				&evt.OutboxEventID,
+				&evt.Consumer,
+				&evt.EventType,
+				&evt.AggregateID,
+				&raw,
+				&evt.Attempts,
+			); err != nil {
+				inboxRows.Close()
+				t.Fatalf("scan inbox event: %v", err)
+			}
+			evt.Payload = map[string]interface{}{}
+			if len(raw) > 0 {
+				if err := json.Unmarshal(raw, &evt.Payload); err != nil {
+					inboxRows.Close()
+					t.Fatalf("decode inbox payload: %v", err)
+				}
+			}
+			inboxEvents = append(inboxEvents, evt)
+		}
+		if err := inboxRows.Err(); err != nil {
+			inboxRows.Close()
+			t.Fatalf("iterate inbox rows: %v", err)
+		}
+		inboxRows.Close()
+
+		for _, evt := range inboxEvents {
+			if err := service.handleInboxEvent(ctx, evt); err != nil {
+				deadLettered, markErr := service.repository.MarkInboxEventFailed(ctx, evt, err.Error())
+				if markErr != nil {
+					t.Fatalf("mark inbox failed id=%d: %v", evt.ID, markErr)
+				}
+				if deadLettered {
+					t.Fatalf("inbox event moved to DLQ during e2e flow id=%d consumer=%s", evt.ID, evt.Consumer)
+				}
+				continue
+			}
+			if err := service.repository.MarkInboxEventProcessed(ctx, evt.ID); err != nil {
+				t.Fatalf("mark inbox processed id=%d: %v", evt.ID, err)
+			}
+			processedAny = true
+		}
+
+		if !processedAny {
+			return
+		}
+	}
+
+	t.Fatalf("drain domain queues exceeded max passes=%d for aggregate=%s", maxPasses, aggregateID)
 }
 
 func TestReviewsCreateWithUnknownDrink(t *testing.T) {
@@ -554,6 +731,307 @@ func TestReviewsCreateWithMultiplePositionsAndFilter(t *testing.T) {
 	}
 	if len(listFilteredBody.Reviews) != 1 {
 		t.Fatalf("expected filtered list to have 1 review, got %d", len(listFilteredBody.Reviews))
+	}
+}
+
+func TestListCafeReviewsPaginationCursorAndContract(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userA := mustCreateTestUser(t, pool, "user")
+	userB := mustCreateTestUser(t, pool, "user")
+	userC := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, userC)
+		mustDeleteTestUser(t, pool, userB)
+		mustDeleteTestUser(t, pool, userA)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createReview := func(userID string, idx int) {
+		rec := performJSONRequest(
+			t,
+			router,
+			http.MethodPost,
+			"/api/reviews",
+			map[string]string{
+				"X-Test-User-ID":  userID,
+				"X-Test-Role":     "user",
+				"Idempotency-Key": fmt.Sprintf("it-list-cursor-create-%d-%d", idx, time.Now().UnixNano()),
+			},
+			map[string]interface{}{
+				"cafe_id":    cafeID,
+				"rating":     5 - (idx % 2),
+				"drink_id":   "espresso",
+				"taste_tags": []string{"sweet"},
+				"summary":    fmt.Sprintf("Пагинация и курсор: отзыв #%d с валидной длиной текста, чтобы тестировать последовательное чтение страниц без пропусков и дублей.", idx),
+				"photos":     []string{},
+			},
+		)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("create review #%d expected 201, got %d, body=%s", idx, rec.Code, rec.Body.String())
+		}
+	}
+
+	createReview(userA, 1)
+	createReview(userB, 2)
+	createReview(userC, 3)
+
+	firstPageRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/cafes/"+cafeID+"/reviews?sort=new&limit=2",
+		nil,
+		nil,
+	)
+	if firstPageRec.Code != http.StatusOK {
+		t.Fatalf("first page expected 200, got %d, body=%s", firstPageRec.Code, firstPageRec.Body.String())
+	}
+
+	var firstPage struct {
+		Reviews []struct {
+			ID string `json:"id"`
+		} `json:"reviews"`
+		HasMore            bool                   `json:"has_more"`
+		NextCursor         string                 `json:"next_cursor"`
+		APIContractVersion string                 `json:"api_contract_version"`
+		FormulaVersions    map[string]interface{} `json:"formula_versions"`
+	}
+	if err := json.Unmarshal(firstPageRec.Body.Bytes(), &firstPage); err != nil {
+		t.Fatalf("decode first page: %v", err)
+	}
+	if len(firstPage.Reviews) != 2 {
+		t.Fatalf("expected first page to contain 2 reviews, got %d", len(firstPage.Reviews))
+	}
+	if !firstPage.HasMore {
+		t.Fatalf("expected has_more=true on first page")
+	}
+	if strings.TrimSpace(firstPage.NextCursor) == "" {
+		t.Fatalf("expected non-empty next_cursor on first page")
+	}
+	if strings.TrimSpace(firstPage.APIContractVersion) == "" {
+		t.Fatalf("expected api_contract_version in first page response")
+	}
+	if strings.TrimSpace(fmt.Sprintf("%v", firstPage.FormulaVersions["rating"])) == "" {
+		t.Fatalf("expected formula_versions.rating in first page response")
+	}
+	if strings.TrimSpace(fmt.Sprintf("%v", firstPage.FormulaVersions["quality"])) == "" {
+		t.Fatalf("expected formula_versions.quality in first page response")
+	}
+
+	secondPageRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/cafes/"+cafeID+"/reviews?sort=new&limit=2&cursor="+firstPage.NextCursor,
+		nil,
+		nil,
+	)
+	if secondPageRec.Code != http.StatusOK {
+		t.Fatalf("second page expected 200, got %d, body=%s", secondPageRec.Code, secondPageRec.Body.String())
+	}
+
+	var secondPage struct {
+		Reviews []struct {
+			ID string `json:"id"`
+		} `json:"reviews"`
+		HasMore    bool   `json:"has_more"`
+		NextCursor string `json:"next_cursor"`
+	}
+	if err := json.Unmarshal(secondPageRec.Body.Bytes(), &secondPage); err != nil {
+		t.Fatalf("decode second page: %v", err)
+	}
+	if len(secondPage.Reviews) != 1 {
+		t.Fatalf("expected second page to contain 1 review, got %d", len(secondPage.Reviews))
+	}
+	if secondPage.HasMore {
+		t.Fatalf("expected has_more=false on second page")
+	}
+	if strings.TrimSpace(secondPage.NextCursor) != "" {
+		t.Fatalf("expected empty next_cursor on last page, got %q", secondPage.NextCursor)
+	}
+
+	firstPageIDs := map[string]struct{}{
+		firstPage.Reviews[0].ID: {},
+		firstPage.Reviews[1].ID: {},
+	}
+	if _, overlap := firstPageIDs[secondPage.Reviews[0].ID]; overlap {
+		t.Fatalf("expected cursor pagination pages without overlaps, got duplicate id=%s", secondPage.Reviews[0].ID)
+	}
+}
+
+func TestListCafeReviewsCursorSortMismatchRejected(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	cursor := encodeReviewCursor(10, "new")
+	rec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/cafes/"+cafeID+"/reviews?sort=helpful&cursor="+cursor,
+		nil,
+		nil,
+	)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("cursor sort mismatch expected 400, got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var errBody struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
+		t.Fatalf("decode cursor mismatch error body: %v", err)
+	}
+	if errBody.Code != "invalid_argument" {
+		t.Fatalf("expected invalid_argument code for cursor mismatch, got %q", errBody.Code)
+	}
+}
+
+func TestGetCafeRatingContractIncludesVersionMetadata(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userID := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-rating-contract-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     5,
+			"drink_id":   "v60",
+			"taste_tags": []string{"berry", "sweet"},
+			"summary":    "Проверка API-контракта рейтинга: отзыв с валидной длиной и структурированными тегами для заполнения snapshot.",
+			"photos":     []string{},
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create review expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+
+	ratingRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/cafes/"+cafeID+"/rating",
+		nil,
+		nil,
+	)
+	if ratingRec.Code != http.StatusOK {
+		t.Fatalf("get cafe rating expected 200, got %d, body=%s", ratingRec.Code, ratingRec.Body.String())
+	}
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(ratingRec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode rating response: %v", err)
+	}
+	if strings.TrimSpace(fmt.Sprintf("%v", body["api_contract_version"])) == "" {
+		t.Fatalf("expected api_contract_version in rating response")
+	}
+	formulaVersions, ok := body["formula_versions"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected formula_versions map in rating response, got %T", body["formula_versions"])
+	}
+	if strings.TrimSpace(fmt.Sprintf("%v", formulaVersions["rating"])) == "" {
+		t.Fatalf("expected formula_versions.rating in rating response")
+	}
+	if strings.TrimSpace(fmt.Sprintf("%v", formulaVersions["quality"])) == "" {
+		t.Fatalf("expected formula_versions.quality in rating response")
+	}
+	if _, ok := body["formula_requests"].(map[string]interface{}); !ok {
+		t.Fatalf("expected formula_requests map in rating response")
+	}
+	if _, ok := body["formula_fallbacks"].(map[string]interface{}); !ok {
+		t.Fatalf("expected formula_fallbacks map in rating response")
+	}
+	if _, ok := body["feature_flags"].(map[string]interface{}); !ok {
+		t.Fatalf("expected feature_flags map in rating response")
+	}
+}
+
+func TestReviewPhotoEndpointsReturnServiceUnavailableWithoutMediaService(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+	userID := mustCreateTestUser(t, pool, "user")
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, userID)
+	})
+
+	cases := []struct {
+		name   string
+		method string
+		path   string
+		body   interface{}
+	}{
+		{
+			name:   "presign",
+			method: http.MethodPost,
+			path:   "/api/reviews/photos/presign",
+			body: map[string]interface{}{
+				"content_type": "image/jpeg",
+				"size_bytes":   1024,
+			},
+		},
+		{
+			name:   "confirm",
+			method: http.MethodPost,
+			path:   "/api/reviews/photos/confirm",
+			body: map[string]interface{}{
+				"object_key": "reviews/tmp/users/test/1.jpg",
+			},
+		},
+		{
+			name:   "status",
+			method: http.MethodGet,
+			path:   "/api/reviews/photos/00000000-0000-0000-0000-000000000001/status",
+			body:   nil,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := performJSONRequest(
+				t,
+				router,
+				tc.method,
+				tc.path,
+				map[string]string{
+					"X-Test-User-ID": userID,
+					"X-Test-Role":    "user",
+				},
+				tc.body,
+			)
+			if rec.Code != http.StatusServiceUnavailable {
+				t.Fatalf("expected 503 service_unavailable, got %d, body=%s", rec.Code, rec.Body.String())
+			}
+			var errBody struct {
+				Code string `json:"code"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
+				t.Fatalf("decode service unavailable error body: %v", err)
+			}
+			if errBody.Code != "service_unavailable" {
+				t.Fatalf("expected service_unavailable code, got %q", errBody.Code)
+			}
+		})
 	}
 }
 
@@ -977,6 +1455,517 @@ func TestAddHelpfulVoteEndpoint(t *testing.T) {
 	}
 }
 
+func TestReviewsCreateIdempotencyReplayAndConflict(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userID := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	idempotencyKey := fmt.Sprintf("it-idem-review-create-%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	payload := map[string]interface{}{
+		"cafe_id":    cafeID,
+		"rating":     5,
+		"drink_id":   "espresso",
+		"taste_tags": []string{"sweet", "chocolate"},
+		"summary":    "Плотный эспрессо с яркой сладостью и чистой кислотностью. Баланс ровный, послевкусие длинное и без горечи.",
+		"photos":     []string{},
+	}
+
+	firstRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": idempotencyKey,
+		},
+		payload,
+	)
+	if firstRec.Code != http.StatusCreated {
+		t.Fatalf("first create expected 201, got %d, body=%s", firstRec.Code, firstRec.Body.String())
+	}
+	if firstRec.Header().Get("X-Idempotent-Replay") != "false" {
+		t.Fatalf("expected first replay header=false, got %q", firstRec.Header().Get("X-Idempotent-Replay"))
+	}
+
+	var firstBody struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(firstRec.Body.Bytes(), &firstBody); err != nil {
+		t.Fatalf("decode first create response: %v", err)
+	}
+	if strings.TrimSpace(firstBody.ReviewID) == "" {
+		t.Fatalf("expected non-empty review_id, body=%s", firstRec.Body.String())
+	}
+
+	secondRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": idempotencyKey,
+		},
+		payload,
+	)
+	if secondRec.Code != http.StatusCreated {
+		t.Fatalf("second create expected 201 replay, got %d, body=%s", secondRec.Code, secondRec.Body.String())
+	}
+	if secondRec.Header().Get("X-Idempotent-Replay") != "true" {
+		t.Fatalf("expected second replay header=true, got %q", secondRec.Header().Get("X-Idempotent-Replay"))
+	}
+
+	var secondBody struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(secondRec.Body.Bytes(), &secondBody); err != nil {
+		t.Fatalf("decode second create response: %v", err)
+	}
+	if secondBody.ReviewID != firstBody.ReviewID {
+		t.Fatalf("expected replayed review_id=%q, got %q", firstBody.ReviewID, secondBody.ReviewID)
+	}
+
+	conflictPayload := map[string]interface{}{
+		"cafe_id":    cafeID,
+		"rating":     4,
+		"drink_id":   "espresso",
+		"taste_tags": []string{"sweet"},
+		"summary":    "Другая версия отзыва с измененным рейтингом для проверки idempotency conflict по тому же ключу.",
+		"photos":     []string{},
+	}
+	conflictRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  userID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": idempotencyKey,
+		},
+		conflictPayload,
+	)
+	if conflictRec.Code != http.StatusConflict {
+		t.Fatalf("idempotency conflict expected 409, got %d, body=%s", conflictRec.Code, conflictRec.Body.String())
+	}
+	var conflictBody struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(conflictRec.Body.Bytes(), &conflictBody); err != nil {
+		t.Fatalf("decode idempotency conflict response: %v", err)
+	}
+	if conflictBody.Code != "idempotency_conflict" {
+		t.Fatalf("expected code=idempotency_conflict, got %q", conflictBody.Code)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var reviewsCount int
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*)::int
+		   from reviews
+		  where user_id = $1::uuid
+		    and cafe_id = $2::uuid`,
+		userID,
+		cafeID,
+	).Scan(&reviewsCount); err != nil {
+		t.Fatalf("count reviews by user+cafe: %v", err)
+	}
+	if reviewsCount != 1 {
+		t.Fatalf("expected one review for idempotent create, got %d", reviewsCount)
+	}
+
+	scope := IdempotencyScopeReviewCreate + ":" + userID
+	dedupeKey := fmt.Sprintf("%s:%s:%s", scope, idempotencyKey, EventReviewCreated)
+	var eventsCount int
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*)::int
+		   from domain_events
+		  where dedupe_key = $1`,
+		dedupeKey,
+	).Scan(&eventsCount); err != nil {
+		t.Fatalf("count domain events for dedupe key: %v", err)
+	}
+	if eventsCount != 1 {
+		t.Fatalf("expected one domain event for idempotent create, got %d", eventsCount)
+	}
+}
+
+func TestReviewsCreateConcurrentRequestsKeepSingleActiveReview(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	userID := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, userID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	payload := map[string]interface{}{
+		"cafe_id":    cafeID,
+		"rating":     5,
+		"drink_id":   "v60",
+		"taste_tags": []string{"berry"},
+		"summary":    "Конкурентный тест: один из параллельных запросов должен создать отзыв, второй обязан получить контролируемый конфликт без дубля.",
+		"photos":     []string{},
+	}
+
+	type result struct {
+		status int
+		code   string
+		body   string
+	}
+	results := make([]result, 2)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(2)
+	for i := range 2 {
+		i := i
+		go func() {
+			defer wg.Done()
+			<-start
+			key := fmt.Sprintf("it-race-create-%d-%d", time.Now().UnixNano(), i)
+			rec := performJSONRequest(
+				t,
+				router,
+				http.MethodPost,
+				"/api/reviews",
+				map[string]string{
+					"X-Test-User-ID":  userID,
+					"X-Test-Role":     "user",
+					"Idempotency-Key": key,
+				},
+				payload,
+			)
+			results[i] = result{status: rec.Code, body: rec.Body.String()}
+			var errBody struct {
+				Code string `json:"code"`
+			}
+			_ = json.Unmarshal(rec.Body.Bytes(), &errBody)
+			results[i].code = errBody.Code
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	createdCount := 0
+	conflictCount := 0
+	for _, item := range results {
+		if item.status == http.StatusCreated {
+			createdCount++
+			continue
+		}
+		if item.status == http.StatusConflict &&
+			(item.code == "already_exists" || item.code == "conflict") {
+			conflictCount++
+			continue
+		}
+		t.Fatalf("unexpected concurrent create response status=%d code=%q body=%s", item.status, item.code, item.body)
+	}
+	if createdCount != 1 || conflictCount != 1 {
+		t.Fatalf("expected one create and one conflict, got created=%d conflict=%d results=%+v", createdCount, conflictCount, results)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var reviewsCount int
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*)::int
+		   from reviews
+		  where user_id = $1::uuid
+		    and cafe_id = $2::uuid`,
+		userID,
+		cafeID,
+	).Scan(&reviewsCount); err != nil {
+		t.Fatalf("count reviews after race: %v", err)
+	}
+	if reviewsCount != 1 {
+		t.Fatalf("expected single review after race, got %d", reviewsCount)
+	}
+}
+
+func TestHelpfulVoteIdempotencyReplayAndConflict(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	authorAID := mustCreateTestUser(t, pool, "user")
+	authorBID := mustCreateTestUser(t, pool, "user")
+	voterID := mustCreateTestUser(t, pool, "user")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, voterID)
+		mustDeleteTestUser(t, pool, authorBID)
+		mustDeleteTestUser(t, pool, authorAID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createReview := func(authorID string, key string, summary string) string {
+		rec := performJSONRequest(
+			t,
+			router,
+			http.MethodPost,
+			"/api/reviews",
+			map[string]string{
+				"X-Test-User-ID":  authorID,
+				"X-Test-Role":     "user",
+				"Idempotency-Key": key,
+			},
+			map[string]interface{}{
+				"cafe_id":    cafeID,
+				"rating":     5,
+				"drink_id":   "espresso",
+				"taste_tags": []string{"sweet"},
+				"summary":    summary,
+				"photos":     []string{},
+			},
+		)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("create review expected 201, got %d, body=%s", rec.Code, rec.Body.String())
+		}
+		var body struct {
+			ReviewID string `json:"review_id"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode create review response: %v", err)
+		}
+		return body.ReviewID
+	}
+
+	reviewA := createReview(
+		authorAID,
+		fmt.Sprintf("it-idem-helpful-create-a-%d", time.Now().UnixNano()),
+		"Первая чашка для теста идемпотентного helpful: сладость, какао, чистая структура.",
+	)
+	reviewB := createReview(
+		authorBID,
+		fmt.Sprintf("it-idem-helpful-create-b-%d", time.Now().UnixNano()),
+		"Вторая чашка для проверки конфликта ключа helpful на другом review id.",
+	)
+
+	voteKey := fmt.Sprintf("it-idem-helpful-%d", time.Now().UnixNano())
+	firstRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+reviewA+"/helpful",
+		map[string]string{
+			"X-Test-User-ID":  voterID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": voteKey,
+		},
+		nil,
+	)
+	if firstRec.Code != http.StatusOK {
+		t.Fatalf("first helpful expected 200, got %d, body=%s", firstRec.Code, firstRec.Body.String())
+	}
+	if firstRec.Header().Get("X-Idempotent-Replay") != "false" {
+		t.Fatalf("expected first helpful replay=false, got %q", firstRec.Header().Get("X-Idempotent-Replay"))
+	}
+	var firstBody struct {
+		VoteID string `json:"vote_id"`
+	}
+	if err := json.Unmarshal(firstRec.Body.Bytes(), &firstBody); err != nil {
+		t.Fatalf("decode first helpful response: %v", err)
+	}
+
+	secondRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+reviewA+"/helpful",
+		map[string]string{
+			"X-Test-User-ID":  voterID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": voteKey,
+		},
+		nil,
+	)
+	if secondRec.Code != http.StatusOK {
+		t.Fatalf("second helpful replay expected 200, got %d, body=%s", secondRec.Code, secondRec.Body.String())
+	}
+	if secondRec.Header().Get("X-Idempotent-Replay") != "true" {
+		t.Fatalf("expected second helpful replay=true, got %q", secondRec.Header().Get("X-Idempotent-Replay"))
+	}
+	var secondBody struct {
+		VoteID string `json:"vote_id"`
+	}
+	if err := json.Unmarshal(secondRec.Body.Bytes(), &secondBody); err != nil {
+		t.Fatalf("decode second helpful response: %v", err)
+	}
+	if secondBody.VoteID != firstBody.VoteID {
+		t.Fatalf("expected replay vote_id=%q, got %q", firstBody.VoteID, secondBody.VoteID)
+	}
+
+	conflictRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+reviewB+"/helpful",
+		map[string]string{
+			"X-Test-User-ID":  voterID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": voteKey,
+		},
+		nil,
+	)
+	if conflictRec.Code != http.StatusConflict {
+		t.Fatalf("helpful idempotency conflict expected 409, got %d, body=%s", conflictRec.Code, conflictRec.Body.String())
+	}
+	var conflictBody struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(conflictRec.Body.Bytes(), &conflictBody); err != nil {
+		t.Fatalf("decode helpful conflict response: %v", err)
+	}
+	if conflictBody.Code != "idempotency_conflict" {
+		t.Fatalf("expected code=idempotency_conflict, got %q", conflictBody.Code)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var (
+		votesA int
+		votesB int
+	)
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*)::int from helpful_votes where review_id = $1::uuid`,
+		reviewA,
+	).Scan(&votesA); err != nil {
+		t.Fatalf("count helpful votes for reviewA: %v", err)
+	}
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*)::int from helpful_votes where review_id = $1::uuid`,
+		reviewB,
+	).Scan(&votesB); err != nil {
+		t.Fatalf("count helpful votes for reviewB: %v", err)
+	}
+	if votesA != 1 || votesB != 0 {
+		t.Fatalf("expected votes reviewA=1 reviewB=0, got %d and %d", votesA, votesB)
+	}
+}
+
+func TestAbuseConfirmRBACMatrix(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	authorID := mustCreateTestUser(t, pool, "user")
+	reporterID := mustCreateTestUser(t, pool, "user")
+	regularID := mustCreateTestUser(t, pool, "user")
+	baristaID := mustCreateTestUser(t, pool, "barista")
+	moderatorID := mustCreateTestUser(t, pool, "moderator")
+	adminID := mustCreateTestUser(t, pool, "admin")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, adminID)
+		mustDeleteTestUser(t, pool, moderatorID)
+		mustDeleteTestUser(t, pool, baristaID)
+		mustDeleteTestUser(t, pool, regularID)
+		mustDeleteTestUser(t, pool, reporterID)
+		mustDeleteTestUser(t, pool, authorID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  authorID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-rbac-abuse-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     5,
+			"drink_id":   "espresso",
+			"taste_tags": []string{"sweet"},
+			"summary":    "Отзыв для матрицы RBAC подтверждения abuse. Достаточно длинный и валидный.",
+			"photos":     []string{},
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create review expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+	var createBody struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &createBody); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	reportRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+createBody.ReviewID+"/abuse",
+		map[string]string{
+			"X-Test-User-ID": reporterID,
+			"X-Test-Role":    "user",
+		},
+		map[string]interface{}{
+			"reason":  "spam",
+			"details": "rbac test",
+		},
+	)
+	if reportRec.Code != http.StatusOK {
+		t.Fatalf("report abuse expected 200, got %d, body=%s", reportRec.Code, reportRec.Body.String())
+	}
+	var reportBody struct {
+		ReportID string `json:"report_id"`
+	}
+	if err := json.Unmarshal(reportRec.Body.Bytes(), &reportBody); err != nil {
+		t.Fatalf("decode report response: %v", err)
+	}
+
+	cases := []struct {
+		name       string
+		userID     string
+		role       string
+		statusCode int
+	}{
+		{name: "regular user forbidden", userID: regularID, role: "user", statusCode: http.StatusForbidden},
+		{name: "barista forbidden", userID: baristaID, role: "barista", statusCode: http.StatusForbidden},
+		{name: "moderator allowed", userID: moderatorID, role: "moderator", statusCode: http.StatusOK},
+		{name: "admin allowed", userID: adminID, role: "admin", statusCode: http.StatusOK},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := performJSONRequest(
+				t,
+				router,
+				http.MethodPost,
+				"/api/abuse-reports/"+reportBody.ReportID+"/confirm",
+				map[string]string{
+					"X-Test-User-ID": tc.userID,
+					"X-Test-Role":    tc.role,
+				},
+				nil,
+			)
+			if rec.Code != tc.statusCode {
+				t.Fatalf("expected status=%d, got %d, body=%s", tc.statusCode, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
 func TestCheckInStartAndVerifyVisitFlow(t *testing.T) {
 	pool := integrationTestPool(t)
 	router := newIntegrationRouter(pool)
@@ -1239,6 +2228,251 @@ func TestCheckInAdminBypassRestrictions(t *testing.T) {
 	}
 }
 
+func TestE2EReviewHelpfulCheckInModerationAndSnapshotRecalculation(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+	repository := NewRepository(pool)
+	service := NewService(repository)
+
+	authorID := mustCreateTestUser(t, pool, "user")
+	voterID := mustCreateTestUser(t, pool, "user")
+	reporterID := mustCreateTestUser(t, pool, "user")
+	moderatorID := mustCreateTestUser(t, pool, "moderator")
+	cafeID := mustCreateTestCafe(t, pool)
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, moderatorID)
+		mustDeleteTestUser(t, pool, reporterID)
+		mustDeleteTestUser(t, pool, voterID)
+		mustDeleteTestUser(t, pool, authorID)
+		mustDeleteTestCafe(t, pool, cafeID)
+	})
+
+	createRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews",
+		map[string]string{
+			"X-Test-User-ID":  authorID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-e2e-create-%d", time.Now().UnixNano()),
+		},
+		map[string]interface{}{
+			"cafe_id":    cafeID,
+			"rating":     5,
+			"drink_id":   "v60",
+			"taste_tags": []string{"berry", "sweet"},
+			"summary":    "Очень чистая и сладкая чашка с яркой ягодной кислотностью, прозрачным телом и долгим послевкусием. Бариста точно попал в профиль обжарки.",
+			"photos":     []string{},
+		},
+	)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create expected 201, got %d, body=%s", createRec.Code, createRec.Body.String())
+	}
+	var createBody struct {
+		ReviewID string `json:"review_id"`
+	}
+	if err := json.Unmarshal(createRec.Body.Bytes(), &createBody); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+	if strings.TrimSpace(createBody.ReviewID) == "" {
+		t.Fatalf("expected non-empty review_id, body=%s", createRec.Body.String())
+	}
+
+	ratingBeforeRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/cafes/"+cafeID+"/rating",
+		nil,
+		nil,
+	)
+	if ratingBeforeRec.Code != http.StatusOK {
+		t.Fatalf("initial rating expected 200, got %d, body=%s", ratingBeforeRec.Code, ratingBeforeRec.Body.String())
+	}
+	var ratingBefore map[string]interface{}
+	if err := json.Unmarshal(ratingBeforeRec.Body.Bytes(), &ratingBefore); err != nil {
+		t.Fatalf("decode initial rating: %v", err)
+	}
+	if valueInt(ratingBefore["reviews_count"]) != 1 {
+		t.Fatalf("expected reviews_count=1 before events, got %v", ratingBefore["reviews_count"])
+	}
+	if valueInt(ratingBefore["verified_reviews_count"]) != 0 {
+		t.Fatalf("expected verified_reviews_count=0 before verify, got %v", ratingBefore["verified_reviews_count"])
+	}
+
+	helpfulRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+createBody.ReviewID+"/helpful",
+		map[string]string{
+			"X-Test-User-ID":  voterID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-e2e-helpful-%d", time.Now().UnixNano()),
+		},
+		nil,
+	)
+	if helpfulRec.Code != http.StatusOK {
+		t.Fatalf("helpful expected 200, got %d, body=%s", helpfulRec.Code, helpfulRec.Body.String())
+	}
+
+	startCheckInRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/cafes/"+cafeID+"/check-in/start",
+		map[string]string{
+			"X-Test-User-ID":  authorID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-e2e-checkin-start-%d", time.Now().UnixNano()),
+			"User-Agent":      "it-e2e-agent",
+		},
+		map[string]interface{}{
+			"lat":    55.751244,
+			"lng":    37.618423,
+			"source": "integration-e2e",
+		},
+	)
+	if startCheckInRec.Code != http.StatusOK {
+		t.Fatalf("check-in start expected 200, got %d, body=%s", startCheckInRec.Code, startCheckInRec.Body.String())
+	}
+	var startCheckInBody struct {
+		CheckInID string `json:"checkin_id"`
+	}
+	if err := json.Unmarshal(startCheckInRec.Body.Bytes(), &startCheckInBody); err != nil {
+		t.Fatalf("decode check-in start response: %v", err)
+	}
+	if strings.TrimSpace(startCheckInBody.CheckInID) == "" {
+		t.Fatalf("expected non-empty checkin_id in response")
+	}
+
+	mustExec(
+		t,
+		pool,
+		`update review_checkins
+		    set started_at = now() - interval '7 minutes',
+		        updated_at = now() - interval '7 minutes'
+		  where id = $1::uuid`,
+		startCheckInBody.CheckInID,
+	)
+
+	verifyRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+createBody.ReviewID+"/visit/verify",
+		map[string]string{
+			"X-Test-User-ID":  authorID,
+			"X-Test-Role":     "user",
+			"Idempotency-Key": fmt.Sprintf("it-e2e-checkin-verify-%d", time.Now().UnixNano()),
+			"User-Agent":      "it-e2e-agent",
+		},
+		map[string]interface{}{
+			"checkin_id": startCheckInBody.CheckInID,
+			"lat":        55.751250,
+			"lng":        37.618420,
+		},
+	)
+	if verifyRec.Code != http.StatusOK {
+		t.Fatalf("verify visit expected 200, got %d, body=%s", verifyRec.Code, verifyRec.Body.String())
+	}
+	var verifyBody struct {
+		Confidence string `json:"confidence"`
+	}
+	if err := json.Unmarshal(verifyRec.Body.Bytes(), &verifyBody); err != nil {
+		t.Fatalf("decode verify response: %v", err)
+	}
+	if strings.TrimSpace(verifyBody.Confidence) == "" || verifyBody.Confidence == "none" {
+		t.Fatalf("expected confidence to be low/medium/high, got %q", verifyBody.Confidence)
+	}
+
+	reportRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/reviews/"+createBody.ReviewID+"/abuse",
+		map[string]string{
+			"X-Test-User-ID": reporterID,
+			"X-Test-Role":    "user",
+		},
+		map[string]interface{}{
+			"reason":  "misleading",
+			"details": "integration moderation test",
+		},
+	)
+	if reportRec.Code != http.StatusOK {
+		t.Fatalf("report abuse expected 200, got %d, body=%s", reportRec.Code, reportRec.Body.String())
+	}
+	var reportBody struct {
+		ReportID string `json:"report_id"`
+	}
+	if err := json.Unmarshal(reportRec.Body.Bytes(), &reportBody); err != nil {
+		t.Fatalf("decode report response: %v", err)
+	}
+	if strings.TrimSpace(reportBody.ReportID) == "" {
+		t.Fatalf("expected non-empty report_id, body=%s", reportRec.Body.String())
+	}
+
+	confirmRec := performJSONRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/abuse-reports/"+reportBody.ReportID+"/confirm",
+		map[string]string{
+			"X-Test-User-ID": moderatorID,
+			"X-Test-Role":    "moderator",
+		},
+		nil,
+	)
+	if confirmRec.Code != http.StatusOK {
+		t.Fatalf("confirm abuse expected 200, got %d, body=%s", confirmRec.Code, confirmRec.Body.String())
+	}
+
+	// Snapshot is cached; force async pipeline processing to make subsequent GET reflect latest events.
+	drainDomainQueuesForCafe(t, pool, service, cafeID, 24)
+
+	ratingAfterRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/cafes/"+cafeID+"/rating",
+		nil,
+		nil,
+	)
+	if ratingAfterRec.Code != http.StatusOK {
+		t.Fatalf("final rating expected 200, got %d, body=%s", ratingAfterRec.Code, ratingAfterRec.Body.String())
+	}
+	var ratingAfter map[string]interface{}
+	if err := json.Unmarshal(ratingAfterRec.Body.Bytes(), &ratingAfter); err != nil {
+		t.Fatalf("decode final rating: %v", err)
+	}
+
+	if valueInt(ratingAfter["reviews_count"]) != 1 {
+		t.Fatalf("expected reviews_count=1, got %v", ratingAfter["reviews_count"])
+	}
+	if valueInt(ratingAfter["verified_reviews_count"]) != 1 {
+		t.Fatalf("expected verified_reviews_count=1 after verify, got %v", ratingAfter["verified_reviews_count"])
+	}
+	if valueFloat(ratingAfter["verified_share"]) <= 0.9 {
+		t.Fatalf("expected verified_share > 0.9, got %v", ratingAfter["verified_share"])
+	}
+	if valueFloat(ratingAfter["fraud_risk"]) <= 0 {
+		t.Fatalf("expected fraud_risk > 0 after confirmed abuse, got %v", ratingAfter["fraud_risk"])
+	}
+
+	components, ok := ratingAfter["components"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected components object, got %T", ratingAfter["components"])
+	}
+	if valueInt(components["confirmed_reports"]) < 1 {
+		t.Fatalf("expected confirmed_reports >= 1 in components, got %v", components["confirmed_reports"])
+	}
+	if _, ok := ratingAfter["best_review"].(map[string]interface{}); !ok {
+		t.Fatalf("expected best_review object in rating snapshot, got %T", ratingAfter["best_review"])
+	}
+}
+
 func TestAdminCafeRatingDiagnosticsAccessAndPayload(t *testing.T) {
 	pool := integrationTestPool(t)
 	router := newIntegrationRouter(pool)
@@ -1428,6 +2662,12 @@ func TestOutboxDispatchEnqueuesInboxConsumers(t *testing.T) {
 	}
 	if err := repository.MarkEventProcessed(ctx, evt.ID); err != nil {
 		t.Fatalf("mark outbox processed: %v", err)
+	}
+
+	// Re-dispatch the same outbox event to ensure outbox->inbox fan-out is idempotent.
+	// UNIQUE(outbox_event_id, consumer) must prevent duplicate inbox rows.
+	if err := service.dispatchOutboxEvent(ctx, *evt); err != nil {
+		t.Fatalf("repeat dispatch outbox event: %v", err)
 	}
 
 	rows, err := pool.Query(
