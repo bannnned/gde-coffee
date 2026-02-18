@@ -21,4 +21,9 @@ vendor/
 
 # OS
 .DS_Store
-Thumbs.db
+Thumbs.dbbackend/.env
+.env.local
+.env.*.local
+*.key
+*.p12
+*.pfx
