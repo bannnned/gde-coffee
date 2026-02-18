@@ -30,6 +30,7 @@ const queryClient = new QueryClient({
   },
 })
 
+<<<<<<< HEAD
 const emerald: MantineColorsTuple = [
   'var(--color-brand-accent-soft)',
   'var(--color-brand-accent-soft)',
@@ -72,13 +73,35 @@ function PaletteSync() {
   }, [computed])
 
   return null
+=======
+const theme = {
+  colors: {
+    emerald: [
+      '#f2f8f6',
+      '#d7e9e4',
+      '#b8d8d1',
+      '#93c1b7',
+      '#6ea99e',
+      '#4f8c81',
+      '#457E73',
+      '#3a6c62',
+      '#2f5a52',
+      '#244844',
+    ],
+  },
+  primaryColor: 'emerald',
+  primaryShade: { light: 6, dark: 5 },
+>>>>>>> 7ff19c2 (уберет classname и поправит подписи)
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <MantineProvider defaultColorScheme="auto" theme={theme}>
+<<<<<<< HEAD
         <PaletteSync />
+=======
+>>>>>>> 7ff19c2 (уберет classname и поправит подписи)
         <Notifications />
         <App />
         <ReactQueryDevtools initialIsOpen={false} />
@@ -86,6 +109,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 )
+<<<<<<< HEAD
 
 const hideSplash = () => {
   document.body.classList.add('app-loaded')
@@ -113,3 +137,5 @@ if ('serviceWorker' in navigator) {
     { once: true },
   )
 }
+=======
+>>>>>>> 7ff19c2 (уберет classname и поправит подписи)

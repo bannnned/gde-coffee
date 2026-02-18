@@ -20,6 +20,44 @@ import (
 	"backend/internal/model"
 )
 
+func connectDB(dbURL string) (*pgxpool.Pool, error) {
+	cfgPool, err := pgxpool.ParseConfig(dbURL)
+	if err != nil {
+		return nil, err
+	}
+
+	cfgPool.MinConns = 2
+	cfgPool.MaxConns = 10
+	cfgPool.ConnConfig.ConnectTimeout = 15 * time.Second
+
+	ctxNew, cancelNew := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancelNew()
+
+	pool, err := pgxpool.NewWithConfig(ctxNew, cfgPool)
+	if err != nil {
+		return nil, err
+	}
+
+	ctxPing, cancelPing := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelPing()
+
+	if err := pool.Ping(ctxPing); err != nil {
+		pool.Close()
+		return nil, err
+	}
+
+	ctxWarm, cancelWarm := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelWarm()
+
+	var one int
+	if err := pool.QueryRow(ctxWarm, "select 1").Scan(&one); err != nil {
+		pool.Close()
+		return nil, err
+	}
+
+	return pool, nil
+}
+
 func queryCafes(
 	ctx context.Context,
 	pool *pgxpool.Pool,
@@ -376,45 +414,32 @@ func main() {
 	}
 	log.Println("db migrations applied")
 
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Fatal("DATABASE_URL is required")
+	dbURL1 := os.Getenv("DATABASE_URL")
+	dbURL2 := os.Getenv("DATABASE_URL_2")
+
+	if dbURL1 == "" && dbURL2 == "" {
+		log.Fatal("DATABASE_URL or DATABASE_URL_2 is required")
 	}
 
-	cfgPool, err := pgxpool.ParseConfig(dbURL)
-	if err != nil {
-		log.Fatal(err)
+	var pool *pgxpool.Pool
+	if dbURL1 != "" {
+		pool, err = connectDB(dbURL1)
+		if err != nil {
+			log.Printf("primary db connect failed: %v", err)
+		}
 	}
 
-	cfgPool.MinConns = 2
-	cfgPool.MaxConns = 10
+	if pool == nil && dbURL2 != "" {
+		pool, err = connectDB(dbURL2)
+		if err != nil {
+			log.Printf("secondary db connect failed: %v", err)
+		}
+	}
 
-	// Важно: явный connect timeout на уровне драйвера
-	cfgPool.ConnConfig.ConnectTimeout = 15 * time.Second
-
-	ctxNew, cancelNew := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancelNew()
-
-	pool, err := pgxpool.NewWithConfig(ctxNew, cfgPool)
-	if err != nil {
-		log.Fatal(err)
+	if pool == nil {
+		log.Fatal("db connect failed for both DATABASE_URL and DATABASE_URL_2")
 	}
 	defer pool.Close()
-
-	ctxPing, cancelPing := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelPing()
-
-	if err := pool.Ping(ctxPing); err != nil {
-		log.Fatal(err)
-	}
-
-	ctxWarm, cancelWarm := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelWarm()
-
-	var one int
-	if err := pool.QueryRow(ctxWarm, "select 1").Scan(&one); err != nil {
-		log.Fatal(err)
-	}
 
 	log.Println("db warmup OK")
 

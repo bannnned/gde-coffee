@@ -13,7 +13,7 @@ import cupUrl from "../assets/cup.png";
 const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const USER_ICON_ID = "user-pin";
 const CAFE_ICON_ID = "cafe-cup";
-const MARKER_FALLBACK = { user: "#38bdf8", cafe: "#f59e0b" };
+const MARKER_FALLBACK = { user: "#FFFFF0", cafe: "#457E73" };
 
 type Props = {
   center: [number, number];
@@ -106,7 +106,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
           "circle-radius": 6,
           "circle-color": MARKER_FALLBACK.cafe,
           "circle-opacity": 0.95,
-          "circle-stroke-color": "rgba(0,0,0,0.2)",
+          "circle-stroke-color": "rgba(26,26,26,0.25)",
           "circle-stroke-width": 1,
         },
       });
@@ -130,8 +130,8 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         "text-padding": 4,
       },
       paint: {
-        "text-color": "#111827",
-        "text-halo-color": "rgba(255, 255, 255, 0.85)",
+        "text-color": "#1A1A1A",
+        "text-halo-color": "rgba(255, 255, 240, 0.9)",
         "text-halo-width": 1.2,
         "text-halo-blur": 0.3,
       },
@@ -163,7 +163,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
           "circle-radius": 9,
           "circle-color": MARKER_FALLBACK.cafe,
           "circle-opacity": 1,
-          "circle-stroke-color": "rgba(255,255,255,0.85)",
+          "circle-stroke-color": "rgba(255,255,240,0.9)",
           "circle-stroke-width": 2,
         },
       });
@@ -193,7 +193,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
           "circle-radius": 7,
           "circle-color": MARKER_FALLBACK.user,
           "circle-opacity": 0.95,
-          "circle-stroke-color": "rgba(0,0,0,0.25)",
+          "circle-stroke-color": "rgba(26,26,26,0.4)",
           "circle-stroke-width": 2,
         },
       });
