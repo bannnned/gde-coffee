@@ -259,16 +259,31 @@ export default function Map({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const onCafeSelectRef = useRef(onCafeSelect);
+  const onMapClickRef = useRef(onMapClick);
+  const onCenterChangeRef = useRef(onCenterChange);
+  const centerProbeOffsetYRef = useRef(centerProbeOffsetY);
   const focusRef = useRef<[number, number] | null>(focusLngLat ?? null);
   const selectedCafeRef = useRef<string | null>(selectedCafeId ?? null);
   const geojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const paddingRef = useRef({ top: 0, bottom: 0 });
   const [isMapReady, setIsMapReady] = useState(false);
-  const { sheetHeight, filtersBarHeight } = useLayoutMetrics();
+  const { filtersBarHeight } = useLayoutMetrics();
 
   useEffect(() => {
     onCafeSelectRef.current = onCafeSelect;
   }, [onCafeSelect]);
+
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  }, [onMapClick]);
+
+  useEffect(() => {
+    onCenterChangeRef.current = onCenterChange;
+  }, [onCenterChange]);
+
+  useEffect(() => {
+    centerProbeOffsetYRef.current = centerProbeOffsetY;
+  }, [centerProbeOffsetY]);
 
   useEffect(() => {
     focusRef.current = focusLngLat ?? null;
@@ -311,7 +326,6 @@ export default function Map({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    let controlsObserver: MutationObserver | null = null;
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: MAP_STYLE_URL,
@@ -354,7 +368,7 @@ export default function Map({
       map.getCanvas().style.cursor = "";
     };
 
-    const handleLoad = async () => {
+    const runLoad = async () => {
       addSources(
         map,
         geojsonRef.current ?? (geojson as unknown as GeoJSON.FeatureCollection),
@@ -380,14 +394,19 @@ export default function Map({
       }
     };
 
+    const handleLoad = () => {
+      void runLoad();
+    };
+
     map.on("load", handleLoad);
+    map.on("click", handleMapClick);
+    map.on("moveend", handleMoveEnd);
     mapRef.current = map;
 
     return () => {
       map.off("load", handleLoad);
       map.off("click", handleMapClick);
       map.off("moveend", handleMoveEnd);
-      controlsObserver?.disconnect();
       if (!disableCafeClick) {
         map.off("click", "cafes-layer", handleClick);
         map.off("mouseenter", "cafes-layer", handleMouseEnter);
@@ -406,7 +425,7 @@ export default function Map({
     if (!map) return;
 
     const top =
-      filtersBarHeight > 0 ? Math.max(0, filtersBarHeight + 12) : 0;
+      paddingEnabled && filtersBarHeight > 0 ? Math.max(0, filtersBarHeight + 12) : 0;
     const bottom = 0;
     const prev = paddingRef.current;
     if (
@@ -422,7 +441,7 @@ export default function Map({
       left: 0,
       right: 0,
     });
-  }, [filtersBarHeight, isMapReady]);
+  }, [filtersBarHeight, isMapReady, paddingEnabled]);
 
   const selectedCafeLngLat = useMemo(() => {
     if (!selectedCafeId) return null;

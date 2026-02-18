@@ -56,7 +56,6 @@ export default function useGeolocation(
   useEffect(() => {
     if (options.autoLocate === false) return;
     locateMe(false, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.autoLocate]);
 
   return {

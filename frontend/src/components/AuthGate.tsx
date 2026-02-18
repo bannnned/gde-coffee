@@ -107,7 +107,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    loadMe();
+    void loadMe();
   }, [loadMe]);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -275,7 +275,12 @@ export default function AuthGate({ children }: PropsWithChildren) {
           },
         }}
       >
-        <Box component="form" onSubmit={onSubmit}>
+        <Box
+          component="form"
+          onSubmit={(event) => {
+            void onSubmit(event);
+          }}
+        >
           <Stack gap="md">
             <Controller
               name="email"

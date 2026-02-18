@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Box,
-  Button,
   Container,
   Group,
   Paper,
@@ -40,7 +39,7 @@ export default function FavoritesPage() {
     if (status === "loading") return;
     if (!user) {
       openAuthModal("login");
-      navigate("/profile", { replace: true });
+      void navigate("/profile", { replace: true });
       return;
     }
 
@@ -97,7 +96,9 @@ export default function FavoritesPage() {
                 size={42}
                 variant="transparent"
                 className="glass-action glass-action--square"
-                onClick={() => navigate("/profile")}
+                onClick={() => {
+                  void navigate("/profile");
+                }}
                 aria-label="Назад"
               >
                 <IconArrowLeft size={18} />

@@ -8,17 +8,6 @@ type OauthRedirectOptions = {
   providerFallback?: string;
 };
 
-type OauthErrorCode =
-  | "cancelled"
-  | "invalid_state"
-  | "already_linked"
-  | "bad_payload"
-  | "invalid_signature"
-  | "expired"
-  | "exchange_failed"
-  | "profile_failed"
-  | "internal";
-
 const formatProvider = (providerRaw?: string, fallback = "GitHub") => {
   if (!providerRaw) return fallback;
   const normalized = providerRaw.toString().trim().toLowerCase();
@@ -104,7 +93,7 @@ export default function useOauthRedirect({
       next.delete("error");
       next.delete("error_description");
       next.delete("github_linked");
-      navigate(
+      void navigate(
         { search: next.toString() ? `?${next.toString()}` : "" },
         { replace: true },
       );
@@ -116,7 +105,7 @@ export default function useOauthRedirect({
     };
 
     if (errorParam) {
-      const key = errorParam.toLowerCase() as OauthErrorCode | string;
+      const key = errorParam.toLowerCase();
       showError(getErrorMessage(key, providerLabel, errorDescription));
       return;
     }
