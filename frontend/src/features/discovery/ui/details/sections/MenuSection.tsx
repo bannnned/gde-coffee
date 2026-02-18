@@ -2,7 +2,10 @@ import { ActionIcon, Box, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconCamera, IconPlus } from "@tabler/icons-react";
 
 import type { Cafe, CafePhoto } from "../../../../../entities/cafe/model/types";
-import { buildCafePhotoSrcSet } from "../../../../../utils/cafePhotoVariants";
+import {
+  buildCafePhotoPictureSources,
+  buildCafePhotoSrcSet,
+} from "../../../../../utils/cafePhotoVariants";
 
 type MenuSectionProps = {
   cafe: Cafe;
@@ -29,7 +32,7 @@ export default function MenuSection({
   onSelectMenuPhoto,
   onManagePhotos,
 }: MenuSectionProps) {
-  const menuMainSrcSet = buildCafePhotoSrcSet(menuMainPhoto?.url, [640, 1024, 1536]);
+  const menuMainSources = buildCafePhotoPictureSources(menuMainPhoto?.url, [640, 1024, 1536]);
   const menuThumbSizes = "108px";
 
   return (
@@ -44,24 +47,40 @@ export default function MenuSection({
             borderBottom: "1px solid var(--border)",
           }}
         >
-          <img
-            src={menuMainPhoto.url}
-            srcSet={menuMainSrcSet}
-            sizes="(max-width: 768px) 100vw, 960px"
-            alt={`Меню: ${cafe.name}`}
-            loading="lazy"
-            onLoad={(event) => onMenuMainPhotoLoad(event.currentTarget.currentSrc || event.currentTarget.src)}
-            onError={onMenuMainPhotoError}
-            style={{
-              width: "100%",
-              height: 260,
-              objectFit: "cover",
-              display: "block",
-              opacity: menuImageReady ? 1 : 0.38,
-              filter: menuImageReady ? "blur(0px)" : "blur(2px)",
-              transition: "opacity 220ms ease, filter 240ms ease",
-            }}
-          />
+          <picture style={{ display: "block" }}>
+            {menuMainSources.avifSrcSet && (
+              <source
+                type="image/avif"
+                srcSet={menuMainSources.avifSrcSet}
+                sizes="(max-width: 768px) 100vw, 960px"
+              />
+            )}
+            {menuMainSources.webpSrcSet && (
+              <source
+                type="image/webp"
+                srcSet={menuMainSources.webpSrcSet}
+                sizes="(max-width: 768px) 100vw, 960px"
+              />
+            )}
+            <img
+              src={menuMainPhoto.url}
+              srcSet={menuMainSources.fallbackSrcSet}
+              sizes="(max-width: 768px) 100vw, 960px"
+              alt={`Меню: ${cafe.name}`}
+              loading="lazy"
+              onLoad={(event) => onMenuMainPhotoLoad(event.currentTarget.currentSrc || event.currentTarget.src)}
+              onError={onMenuMainPhotoError}
+              style={{
+                width: "100%",
+                height: 260,
+                objectFit: "cover",
+                display: "block",
+                opacity: menuImageReady ? 1 : 0.38,
+                filter: menuImageReady ? "blur(0px)" : "blur(2px)",
+                transition: "opacity 220ms ease, filter 240ms ease",
+              }}
+            />
+          </picture>
         </Box>
       )}
 

@@ -3,7 +3,10 @@ import { IconCamera, IconPlus } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 
 import type { Cafe, CafePhoto } from "../../../../../entities/cafe/model/types";
-import { buildCafePhotoSrcSet } from "../../../../../utils/cafePhotoVariants";
+import {
+  buildCafePhotoPictureSources,
+  buildCafePhotoSrcSet,
+} from "../../../../../utils/cafePhotoVariants";
 import { AMENITY_LABELS } from "../../../constants";
 import { formatDistance } from "../../../utils";
 
@@ -70,7 +73,7 @@ export default function AboutSection({
   canSaveDescription,
   badgeStyles,
 }: AboutSectionProps) {
-  const aboutMainSrcSet = buildCafePhotoSrcSet(aboutMainPhoto?.url, [640, 1024, 1536]);
+  const aboutMainSources = buildCafePhotoPictureSources(aboutMainPhoto?.url, [640, 1024, 1536]);
   const aboutThumbSizes = "108px";
 
   return (
@@ -85,23 +88,39 @@ export default function AboutSection({
             borderBottom: "1px solid var(--border)",
           }}
         >
-          <img
-            src={aboutMainPhoto.url}
-            srcSet={aboutMainSrcSet}
-            sizes="(max-width: 768px) 100vw, 960px"
-            alt={`Фото: ${cafe.name}`}
-            onLoad={(event) => onAboutMainPhotoLoad(event.currentTarget.currentSrc || event.currentTarget.src)}
-            onError={onAboutMainPhotoError}
-            style={{
-              width: "100%",
-              height: 260,
-              objectFit: "cover",
-              display: "block",
-              opacity: aboutImageReady ? 1 : 0.38,
-              filter: aboutImageReady ? "blur(0px)" : "blur(2px)",
-              transition: "opacity 220ms ease, filter 240ms ease",
-            }}
-          />
+          <picture style={{ display: "block" }}>
+            {aboutMainSources.avifSrcSet && (
+              <source
+                type="image/avif"
+                srcSet={aboutMainSources.avifSrcSet}
+                sizes="(max-width: 768px) 100vw, 960px"
+              />
+            )}
+            {aboutMainSources.webpSrcSet && (
+              <source
+                type="image/webp"
+                srcSet={aboutMainSources.webpSrcSet}
+                sizes="(max-width: 768px) 100vw, 960px"
+              />
+            )}
+            <img
+              src={aboutMainPhoto.url}
+              srcSet={aboutMainSources.fallbackSrcSet}
+              sizes="(max-width: 768px) 100vw, 960px"
+              alt={`Фото: ${cafe.name}`}
+              onLoad={(event) => onAboutMainPhotoLoad(event.currentTarget.currentSrc || event.currentTarget.src)}
+              onError={onAboutMainPhotoError}
+              style={{
+                width: "100%",
+                height: 260,
+                objectFit: "cover",
+                display: "block",
+                opacity: aboutImageReady ? 1 : 0.38,
+                filter: aboutImageReady ? "blur(0px)" : "blur(2px)",
+                transition: "opacity 220ms ease, filter 240ms ease",
+              }}
+            />
+          </picture>
         </Box>
       )}
 

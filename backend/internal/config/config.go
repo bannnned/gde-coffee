@@ -74,6 +74,13 @@ type MediaConfig struct {
 	S3UsePathStyle    bool
 	S3PresignTTL      time.Duration
 	S3MaxUploadBytes  int64
+
+	PhotoFormatEncoderEnabled  bool
+	PhotoFormatEncoderProvider string
+	PhotoFormatEncoderBaseURL  string
+	PhotoFormatEncoderTimeout  time.Duration
+	PhotoFormatEncoderQuality  int
+	PhotoFormatEncoderFormats  []string
 }
 
 type GeocodingConfig struct {
@@ -172,6 +179,19 @@ func Load() (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
+	photoFormatEncoderEnabledDefault := strings.TrimSpace(os.Getenv("PHOTO_FORMAT_ENCODER_BASE_URL")) != ""
+	photoFormatEncoderEnabled, err := getEnvBool("PHOTO_FORMAT_ENCODER_ENABLED", photoFormatEncoderEnabledDefault)
+	if err != nil {
+		return cfg, err
+	}
+	photoFormatEncoderTimeout, err := getEnvDuration("PHOTO_FORMAT_ENCODER_TIMEOUT", 8*time.Second)
+	if err != nil {
+		return cfg, err
+	}
+	photoFormatEncoderQuality, err := getEnvInt("PHOTO_FORMAT_ENCODER_QUALITY", 78)
+	if err != nil {
+		return cfg, err
+	}
 	geocodingTimeout, err := getEnvDuration("GEOCODING_TIMEOUT", 5*time.Second)
 	if err != nil {
 		return cfg, err
@@ -237,6 +257,13 @@ func Load() (Config, error) {
 		S3UsePathStyle:    s3UsePathStyle,
 		S3PresignTTL:      s3PresignTTL,
 		S3MaxUploadBytes:  int64(s3MaxUploadBytes),
+
+		PhotoFormatEncoderEnabled:  photoFormatEncoderEnabled,
+		PhotoFormatEncoderProvider: strings.ToLower(getEnvTrim("PHOTO_FORMAT_ENCODER_PROVIDER", "imgproxy")),
+		PhotoFormatEncoderBaseURL:  getEnvTrim("PHOTO_FORMAT_ENCODER_BASE_URL", ""),
+		PhotoFormatEncoderTimeout:  photoFormatEncoderTimeout,
+		PhotoFormatEncoderQuality:  photoFormatEncoderQuality,
+		PhotoFormatEncoderFormats:  normalizePhotoFormatList(splitEnvList("PHOTO_FORMAT_ENCODER_FORMATS", []string{"webp", "avif"})),
 	}
 	cfg.Geocoding = GeocodingConfig{
 		YandexAPIKey:     getEnvTrim("YANDEX_GEOCODER_API_KEY", ""),
@@ -308,6 +335,25 @@ func Load() (Config, error) {
 			return cfg, fmt.Errorf("S3_MAX_UPLOAD_BYTES must be > 0")
 		}
 	}
+	if cfg.Media.PhotoFormatEncoderEnabled {
+		if strings.TrimSpace(cfg.Media.PhotoFormatEncoderBaseURL) == "" {
+			return cfg, fmt.Errorf("PHOTO_FORMAT_ENCODER_BASE_URL must not be empty when PHOTO_FORMAT_ENCODER_ENABLED=true")
+		}
+		switch cfg.Media.PhotoFormatEncoderProvider {
+		case "imgproxy", "libvips":
+		default:
+			return cfg, fmt.Errorf("PHOTO_FORMAT_ENCODER_PROVIDER must be one of: imgproxy, libvips")
+		}
+		if cfg.Media.PhotoFormatEncoderTimeout <= 0 {
+			return cfg, fmt.Errorf("PHOTO_FORMAT_ENCODER_TIMEOUT must be > 0")
+		}
+		if cfg.Media.PhotoFormatEncoderQuality < 1 || cfg.Media.PhotoFormatEncoderQuality > 100 {
+			return cfg, fmt.Errorf("PHOTO_FORMAT_ENCODER_QUALITY must be in range 1..100")
+		}
+		if len(cfg.Media.PhotoFormatEncoderFormats) == 0 {
+			return cfg, fmt.Errorf("PHOTO_FORMAT_ENCODER_FORMATS must contain at least one format")
+		}
+	}
 	if cfg.Geocoding.Timeout <= 0 {
 		return cfg, fmt.Errorf("GEOCODING_TIMEOUT must be > 0")
 	}
@@ -367,6 +413,29 @@ func splitEnvList(key string, def []string) []string {
 			continue
 		}
 		out = append(out, item)
+	}
+	return out
+}
+
+func normalizePhotoFormatList(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, raw := range values {
+		v := strings.ToLower(strings.TrimSpace(raw))
+		if v == "" {
+			continue
+		}
+		switch v {
+		case "webp", "avif":
+			if _, ok := seen[v]; ok {
+				continue
+			}
+			seen[v] = struct{}{}
+			out = append(out, v)
+		}
 	}
 	return out
 }

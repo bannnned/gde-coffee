@@ -78,6 +78,22 @@ func TestBuildCafePhotoVariantObjectKey(t *testing.T) {
 	}
 }
 
+func TestBuildCafePhotoFormatVariantObjectKey(t *testing.T) {
+	base := "cafes/cafe-1/cafe/optimized/1700000000000_abcd1234.jpg"
+	got := buildCafePhotoFormatVariantObjectKey(base, 1024, "avif")
+	want := "cafes/cafe-1/cafe/optimized/1700000000000_abcd1234_w1024.avif"
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+}
+
+func TestEstimateCafePhotoFormatVariantCount(t *testing.T) {
+	count := estimateCafePhotoFormatVariantCount(1800, []string{"webp", "avif"})
+	if count != 6 {
+		t.Fatalf("expected 6 variants, got %d", count)
+	}
+}
+
 func fillCafeTestImage(dst image.Image, c color.Color) {
 	bounds := dst.Bounds()
 	switch canvas := dst.(type) {

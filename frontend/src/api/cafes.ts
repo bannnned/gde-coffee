@@ -25,3 +25,18 @@ export async function getCafes(params: GetCafesParams): Promise<Cafe[]> {
 
   return res.data;
 }
+
+type UpdateCafeDescriptionResponse = {
+  description: string;
+};
+
+export async function updateCafeDescription(
+  cafeId: string,
+  description: string,
+): Promise<string> {
+  const res = await http.patch<UpdateCafeDescriptionResponse>(
+    `/api/cafes/${encodeURIComponent(cafeId)}/description`,
+    { description },
+  );
+  return String(res.data?.description ?? "").trim();
+}

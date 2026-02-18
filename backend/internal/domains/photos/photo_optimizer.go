@@ -43,12 +43,13 @@ type optimizedCafePhotoResult struct {
 }
 
 type OptimizedCafePhotoMeta struct {
-	ObjectKey          string
-	MimeType           string
-	SizeBytes          int64
-	Rewritten          bool
-	GeneratedVariants  int
-	VariantSourceWidth int
+	ObjectKey               string
+	MimeType                string
+	SizeBytes               int64
+	Rewritten               bool
+	GeneratedVariants       int
+	GeneratedFormatVariants int
+	VariantSourceWidth      int
 }
 
 func OptimizeAndPersistCafePhoto(
@@ -202,34 +203,44 @@ func optimizeAndPersistCafePhoto(
 	if rewritten {
 		variantSource = optimized.Content
 	}
+	var variantSourceWidth int
+	if cfg, _, err := image.DecodeConfig(bytes.NewReader(variantSource)); err == nil {
+		variantSourceWidth = cfg.Width
+	}
 
-	var variantsGenerated int
+	var rasterVariantsGenerated int
+	var formatVariantsGenerated int
 	if persist {
 		// Responsive variants are best-effort: base image remains canonical source.
 		// If variant generation fails we still return success to avoid blocking uploads.
-		variantsGenerated, _ = ensureCafePhotoVariants(
+		rasterVariantsGenerated, _ = ensureCafePhotoVariants(
 			ctx,
 			s3,
 			finalObjectKey,
 			normalizedOutputType,
 			variantSource,
 		)
+		formatVariantsGenerated, _ = ensureCafePhotoFormatVariants(
+			ctx,
+			s3,
+			cfg,
+			finalObjectKey,
+			variantSourceWidth,
+		)
+	} else {
+		rasterVariantsGenerated = estimateCafePhotoVariantCount(variantSourceWidth)
+		formatVariantsGenerated = estimateCafePhotoFormatVariantCount(variantSourceWidth, cfg.PhotoFormatEncoderFormats)
 	}
-	var variantSourceWidth int
-	if cfg, _, err := image.DecodeConfig(bytes.NewReader(variantSource)); err == nil {
-		variantSourceWidth = cfg.Width
-		if !persist {
-			variantsGenerated = estimateCafePhotoVariantCount(variantSourceWidth)
-		}
-	}
+	totalVariantsGenerated := rasterVariantsGenerated + formatVariantsGenerated
 
 	return OptimizedCafePhotoMeta{
-		ObjectKey:          finalObjectKey,
-		MimeType:           normalizedOutputType,
-		SizeBytes:          finalSizeBytes,
-		Rewritten:          rewritten,
-		GeneratedVariants:  variantsGenerated,
-		VariantSourceWidth: variantSourceWidth,
+		ObjectKey:               finalObjectKey,
+		MimeType:                normalizedOutputType,
+		SizeBytes:               finalSizeBytes,
+		Rewritten:               rewritten,
+		GeneratedVariants:       totalVariantsGenerated,
+		GeneratedFormatVariants: formatVariantsGenerated,
+		VariantSourceWidth:      variantSourceWidth,
 	}, nil
 }
 
@@ -352,14 +363,8 @@ func ensureCafePhotoVariants(
 		return 0, nil
 	}
 
-	needAnyVariant := false
-	for _, width := range cafePhotoVariantWidths {
-		if width < cfg.Width {
-			needAnyVariant = true
-			break
-		}
-	}
-	if !needAnyVariant {
+	widths := cafePhotoVariantWidthsForSource(cfg.Width)
+	if len(widths) == 0 {
 		return 0, nil
 	}
 
@@ -369,10 +374,7 @@ func ensureCafePhotoVariants(
 	}
 
 	generated := 0
-	for _, width := range cafePhotoVariantWidths {
-		if width >= cfg.Width {
-			continue
-		}
+	for _, width := range widths {
 		height := int(float64(cfg.Height) * (float64(width) / float64(cfg.Width)))
 		if height < 1 {
 			height = 1
@@ -393,6 +395,74 @@ func ensureCafePhotoVariants(
 	return generated, nil
 }
 
+func ensureCafePhotoFormatVariants(
+	ctx context.Context,
+	s3 *media.Service,
+	cfg config.MediaConfig,
+	baseObjectKey string,
+	sourceWidth int,
+) (int, error) {
+	baseKey := strings.TrimSpace(strings.TrimPrefix(baseObjectKey, "/"))
+	if baseKey == "" {
+		return 0, nil
+	}
+	if !strings.Contains(baseKey, "/optimized/") {
+		return 0, nil
+	}
+	widths := cafePhotoVariantWidthsForSource(sourceWidth)
+	if len(widths) == 0 {
+		return 0, nil
+	}
+
+	encoder := newPhotoFormatEncoderClient(cfg)
+	if encoder == nil {
+		return 0, nil
+	}
+	sourceURL := strings.TrimSpace(s3.PublicURL(baseKey))
+	if sourceURL == "" {
+		return 0, nil
+	}
+
+	formats := cfg.PhotoFormatEncoderFormats
+	if len(formats) == 0 {
+		formats = []string{"webp", "avif"}
+	}
+
+	generated := 0
+	var firstErr error
+	for _, format := range formats {
+		normalizedFormat := normalizePhotoVariantFormat(format)
+		if normalizedFormat == "" {
+			continue
+		}
+		for _, width := range widths {
+			payload, contentType, err := encoder.Encode(ctx, sourceURL, width, normalizedFormat)
+			if err != nil {
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			if len(payload) == 0 {
+				continue
+			}
+			key := buildCafePhotoFormatVariantObjectKey(baseKey, width, normalizedFormat)
+			finalContentType := strings.TrimSpace(contentType)
+			if finalContentType == "" {
+				finalContentType = contentTypeByPhotoVariantFormat(normalizedFormat)
+			}
+			if err := s3.PutObject(ctx, key, finalContentType, payload); err != nil {
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			generated++
+		}
+	}
+	return generated, firstErr
+}
+
 func buildCafePhotoVariantObjectKey(baseObjectKey string, width int) string {
 	key := strings.TrimSpace(strings.TrimPrefix(baseObjectKey, "/"))
 	ext := path.Ext(key)
@@ -401,6 +471,16 @@ func buildCafePhotoVariantObjectKey(baseObjectKey string, width int) string {
 	}
 	base := strings.TrimSuffix(key, ext)
 	return fmt.Sprintf("%s_w%d%s", base, width, ext)
+}
+
+func buildCafePhotoFormatVariantObjectKey(baseObjectKey string, width int, format string) string {
+	key := strings.TrimSpace(strings.TrimPrefix(baseObjectKey, "/"))
+	base := strings.TrimSuffix(key, path.Ext(key))
+	normalizedFormat := normalizePhotoVariantFormat(format)
+	if normalizedFormat == "" {
+		normalizedFormat = "webp"
+	}
+	return fmt.Sprintf("%s_w%d.%s", base, width, normalizedFormat)
 }
 
 func encodeCafePhotoByContentType(contentType string, img image.Image) ([]byte, error) {
@@ -420,16 +500,34 @@ func encodeCafePhotoByContentType(contentType string, img image.Image) ([]byte, 
 }
 
 func estimateCafePhotoVariantCount(sourceWidth int) int {
-	if sourceWidth <= 0 {
+	return len(cafePhotoVariantWidthsForSource(sourceWidth))
+}
+
+func estimateCafePhotoFormatVariantCount(sourceWidth int, formats []string) int {
+	widthCount := len(cafePhotoVariantWidthsForSource(sourceWidth))
+	if widthCount == 0 {
 		return 0
 	}
-	count := 0
-	for _, width := range cafePhotoVariantWidths {
-		if width < sourceWidth {
-			count++
+	formatCount := 0
+	for _, f := range formats {
+		if normalizePhotoVariantFormat(f) != "" {
+			formatCount++
 		}
 	}
-	return count
+	return widthCount * formatCount
+}
+
+func cafePhotoVariantWidthsForSource(sourceWidth int) []int {
+	if sourceWidth <= 0 {
+		return nil
+	}
+	out := make([]int, 0, len(cafePhotoVariantWidths))
+	for _, width := range cafePhotoVariantWidths {
+		if width < sourceWidth {
+			out = append(out, width)
+		}
+	}
+	return out
 }
 
 func cafePhotoContentTypeExtension(contentType string) string {

@@ -26,7 +26,10 @@ import MenuSection from "./sections/MenuSection";
 import RatingPanel from "./sections/RatingPanel";
 
 import type { Cafe, CafePhotoKind } from "../../../../entities/cafe/model/types";
-import { buildCafePhotoSrcSet } from "../../../../utils/cafePhotoVariants";
+import {
+  buildCafePhotoPictureSources,
+  buildCafePhotoSrcSet,
+} from "../../../../utils/cafePhotoVariants";
 
 type CafeDetailsScreenProps = {
   opened: boolean;
@@ -138,6 +141,7 @@ export default function CafeDetailsScreen({
     ratingSnapshot,
     ratingDiagnostics,
   });
+  const viewerMainSources = buildCafePhotoPictureSources(viewerPhoto?.url, [640, 1024, 1536]);
 
   useEffect(() => {
     if (!opened) return;
@@ -557,29 +561,45 @@ export default function CafeDetailsScreen({
                 background: "var(--surface)",
               }}
             >
-              <img
-                src={viewerPhoto.url}
-                srcSet={buildCafePhotoSrcSet(viewerPhoto.url, [640, 1024, 1536])}
-                sizes="(max-width: 768px) 100vw, 1200px"
-                alt={viewerKind === "menu" ? `Меню: ${cafe.name}` : `Фото: ${cafe.name}`}
-                onLoad={(event) => {
-                  const src = event.currentTarget.currentSrc || event.currentTarget.src;
-                  if (src) {
-                    loadedViewerUrlsRef.current.add(src);
-                  }
-                  setViewerImageReady(true);
-                }}
-                onError={() => setViewerImageReady(true)}
-                style={{
-                  width: "100%",
-                  maxHeight: "72vh",
-                  objectFit: "contain",
-                  display: "block",
-                  opacity: viewerImageReady ? 1 : 0.28,
-                  filter: viewerImageReady ? "blur(0px)" : "blur(3px)",
-                  transition: "opacity 240ms ease, filter 260ms ease",
-                }}
-              />
+              <picture style={{ display: "block" }}>
+                {viewerMainSources.avifSrcSet && (
+                  <source
+                    type="image/avif"
+                    srcSet={viewerMainSources.avifSrcSet}
+                    sizes="(max-width: 768px) 100vw, 1200px"
+                  />
+                )}
+                {viewerMainSources.webpSrcSet && (
+                  <source
+                    type="image/webp"
+                    srcSet={viewerMainSources.webpSrcSet}
+                    sizes="(max-width: 768px) 100vw, 1200px"
+                  />
+                )}
+                <img
+                  src={viewerPhoto.url}
+                  srcSet={viewerMainSources.fallbackSrcSet}
+                  sizes="(max-width: 768px) 100vw, 1200px"
+                  alt={viewerKind === "menu" ? `Меню: ${cafe.name}` : `Фото: ${cafe.name}`}
+                  onLoad={(event) => {
+                    const src = event.currentTarget.currentSrc || event.currentTarget.src;
+                    if (src) {
+                      loadedViewerUrlsRef.current.add(src);
+                    }
+                    setViewerImageReady(true);
+                  }}
+                  onError={() => setViewerImageReady(true)}
+                  style={{
+                    width: "100%",
+                    maxHeight: "72vh",
+                    objectFit: "contain",
+                    display: "block",
+                    opacity: viewerImageReady ? 1 : 0.28,
+                    filter: viewerImageReady ? "blur(0px)" : "blur(3px)",
+                    transition: "opacity 240ms ease, filter 260ms ease",
+                  }}
+                />
+              </picture>
             </Paper>
             <Group justify="space-between" align="center">
               <ActionIcon

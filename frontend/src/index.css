@@ -6,19 +6,13 @@
   --font-display: 'Unbounded', 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-<<<<<<< HEAD
   color: var(--color-text-primary);
   background-color: var(--color-bg-base);
-=======
-  color: #1A1A1A;
-  background-color: #EADCC8;
->>>>>>> 7ff19c2 (уберет classname и поправит подписи)
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-<<<<<<< HEAD
   /* Palette categories (light fallback, can be overridden at runtime). */
   --color-brand-accent: #FF6A3D;
   --color-brand-accent-soft: rgba(255, 106, 61, 0.24);
@@ -102,35 +96,10 @@
   --cafe-hero-subtitle-color: var(--color-cafe-hero-subtitle);
   --cafe-hero-indicator-active: var(--color-cafe-hero-indicator-active);
   --cafe-hero-indicator-idle: var(--color-cafe-hero-indicator-idle);
-=======
-  --coffee: #EADCC8;
-  --emerald: #457E73;
-  --ink: #1A1A1A;
-  --cream: #FFFFF0;
-
-  --bg: var(--coffee);
-  --card: var(--cream);
-  --surface: rgba(255, 255, 240, 0.72);
-  --border: rgba(26, 26, 26, 0.12);
-  --text: var(--ink);
-  --muted: rgba(26, 26, 26, 0.65);
-  --accent: var(--emerald);
-  --shadow: 0 18px 40px rgba(26, 26, 26, 0.16);
-  --glass-bg: rgba(255, 255, 240, 0.65);
-  --glass-border: rgba(255, 255, 240, 0.75);
-  --glass-shadow: 0 12px 30px rgba(26, 26, 26, 0.14);
-  --glass-grad-1: rgba(255, 255, 240, 0.95);
-  --glass-grad-2: rgba(255, 255, 240, 0.65);
-  --glass-grad-hover-1: rgba(255, 255, 240, 0.98);
-  --glass-grad-hover-2: rgba(255, 255, 240, 0.75);
-  --bg-accent-1: rgba(69, 126, 115, 0.18);
-  --bg-accent-2: rgba(255, 255, 240, 0.35);
->>>>>>> 7ff19c2 (уберет classname и поправит подписи)
   --sheet-height: 240px;
 }
 
 :root[data-mantine-color-scheme='dark'] {
-<<<<<<< HEAD
   --color-brand-accent: #FF7D57;
   --color-brand-accent-soft: rgba(255, 125, 87, 0.3);
   --color-brand-accent-strong: #FF9A78;
@@ -214,27 +183,6 @@
   --cafe-hero-indicator-idle: var(--color-cafe-hero-indicator-idle);
   --mantine-color-text: var(--color-text-primary);
   --mantine-color-dimmed: var(--color-text-muted);
-=======
-  --bg: var(--ink);
-  --card: rgba(255, 255, 240, 0.07);
-  --surface: rgba(255, 255, 240, 0.05);
-  --border: rgba(255, 255, 240, 0.16);
-  --text: var(--cream);
-  --muted: rgba(255, 255, 240, 0.7);
-  --accent: var(--emerald);
-  --shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
-  --glass-bg: rgba(255, 255, 240, 0.08);
-  --glass-border: rgba(255, 255, 240, 0.2);
-  --glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
-  --glass-grad-1: rgba(255, 255, 240, 0.18);
-  --glass-grad-2: rgba(255, 255, 240, 0.06);
-  --glass-grad-hover-1: rgba(255, 255, 240, 0.25);
-  --glass-grad-hover-2: rgba(255, 255, 240, 0.1);
-  --bg-accent-1: rgba(69, 126, 115, 0.22);
-  --bg-accent-2: rgba(234, 220, 200, 0.14);
-  --mantine-color-text: var(--cream);
-  --mantine-color-dimmed: rgba(255, 255, 240, 0.7);
->>>>>>> 7ff19c2 (уберет classname и поправит подписи)
 }
 
 .map-shell .maplibregl-ctrl-top-right {
@@ -256,7 +204,6 @@
 }
 
 :root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group {
-<<<<<<< HEAD
   /* Keep built-in dark SVG icons readable inside MapLibre controls. */
   background: rgba(255, 248, 242, 0.9);
   border-color: rgba(255, 248, 242, 0.74);
@@ -270,11 +217,6 @@
 :root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button:not(:disabled):hover,
 :root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button:not(:disabled):active {
   background-color: rgba(29, 23, 21, 0.1);
-=======
-  background: var(--glass-bg);
-  border-color: var(--glass-border);
-  box-shadow: var(--glass-shadow);
->>>>>>> 7ff19c2 (уберет classname и поправит подписи)
 }
 
 .glass-action {
@@ -282,11 +224,7 @@
   overflow: hidden;
   border: 1px solid var(--glass-border);
   border-radius: 12px;
-<<<<<<< HEAD
   box-shadow: var(--glass-shadow);
-=======
-  box-shadow: 0 8px 20px rgba(26, 26, 26, 0.16);
->>>>>>> 7ff19c2 (уберет classname и поправит подписи)
   background: transparent;
   display: inline-flex;
   align-items: center;
@@ -347,13 +285,8 @@
 :root[data-mantine-color-scheme='dark'] .glass-action {
   border-color: var(--glass-border);
   box-shadow:
-<<<<<<< HEAD
     var(--glass-shadow),
     inset 0 0 0 1px var(--color-surface-overlay-soft);
-=======
-    0 8px 20px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(255, 255, 240, 0.04);
->>>>>>> 7ff19c2 (уберет classname и поправит подписи)
   color: var(--cream);
 }
 
@@ -396,11 +329,7 @@
   align-items: center;
   justify-content: center;
   color: inherit;
-<<<<<<< HEAD
   box-shadow: var(--glass-shadow);
-=======
-  box-shadow: 0 8px 20px rgba(26, 26, 26, 0.16);
->>>>>>> 7ff19c2 (уберет classname и поправит подписи)
   overflow: hidden;
   position: relative;
 }
@@ -430,13 +359,8 @@
 :root[data-mantine-color-scheme='dark'] .map-zoom-button {
   border-color: var(--glass-border);
   box-shadow:
-<<<<<<< HEAD
     var(--glass-shadow),
     inset 0 0 0 1px var(--color-surface-overlay-soft);
-=======
-    0 8px 20px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(255, 255, 240, 0.04);
->>>>>>> 7ff19c2 (уберет classname и поправит подписи)
   color: var(--cream);
 }
 

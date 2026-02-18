@@ -2,7 +2,7 @@ import { Badge, Box, Button, Group, Stack } from "@mantine/core";
 import type { ReactNode } from "react";
 
 import type { Cafe } from "../../../../entities/cafe/model/types";
-import { buildCafePhotoSrcSet } from "../../../../utils/cafePhotoVariants";
+import { buildCafePhotoPictureSources } from "../../../../utils/cafePhotoVariants";
 import { formatDistance } from "../../utils";
 
 type CafeCardHeroProps = {
@@ -40,7 +40,7 @@ export default function CafeCardHero({
   badgeStyles,
   children,
 }: CafeCardHeroProps) {
-  const photoSrcSet = buildCafePhotoSrcSet(activePhotoURL, [640, 1024, 1536]);
+  const photoSources = buildCafePhotoPictureSources(activePhotoURL, [640, 1024, 1536]);
   const photoSizes = "(max-width: 768px) 100vw, 560px";
 
   return (
@@ -57,56 +57,84 @@ export default function CafeCardHero({
     >
       {activePhotoURL ? (
         <>
-          <img
-            src={activePhotoURL}
-            srcSet={photoSrcSet}
-            sizes={photoSizes}
-            alt={`Фото: ${cafe.name}`}
-            loading="lazy"
-            onLoad={(event) => onPhotoLoad(event.currentTarget.currentSrc || event.currentTarget.src)}
-            onError={onPhotoError}
+          <picture
             style={{
               position: "absolute",
               inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
               display: "block",
               zIndex: 0,
-              opacity: photoReady ? 1 : 0.36,
-              filter: photoReady ? "blur(0px)" : "blur(2px)",
-              transition: "opacity 200ms ease, filter 220ms ease",
             }}
-          />
-          <img
-            src={activePhotoURL}
-            srcSet={photoSrcSet}
-            sizes={photoSizes}
-            alt=""
-            loading="lazy"
-            aria-hidden="true"
+          >
+            {photoSources.avifSrcSet && (
+              <source type="image/avif" srcSet={photoSources.avifSrcSet} sizes={photoSizes} />
+            )}
+            {photoSources.webpSrcSet && (
+              <source type="image/webp" srcSet={photoSources.webpSrcSet} sizes={photoSizes} />
+            )}
+            <img
+              src={activePhotoURL}
+              srcSet={photoSources.fallbackSrcSet}
+              sizes={photoSizes}
+              alt={`Фото: ${cafe.name}`}
+              loading="lazy"
+              onLoad={(event) => onPhotoLoad(event.currentTarget.currentSrc || event.currentTarget.src)}
+              onError={onPhotoError}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+                opacity: photoReady ? 1 : 0.36,
+                filter: photoReady ? "blur(0px)" : "blur(2px)",
+                transition: "opacity 200ms ease, filter 220ms ease",
+              }}
+            />
+          </picture>
+          <picture
             style={{
               position: "absolute",
               inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
               display: "block",
               zIndex: 1,
-              opacity: photoReady ? 0.92 : 0,
-              filter: "blur(32px) saturate(138%) brightness(0.94)",
-              transform: "scale(1.16)",
-              transformOrigin: "center",
-              WebkitMaskImage:
-                "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(0,0,0,0.16) 49%, rgba(0,0,0,0.52) 61%, rgba(0,0,0,0.92) 81%, rgba(0,0,0,1) 100%)",
-              maskImage:
-                "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(0,0,0,0.16) 49%, rgba(0,0,0,0.52) 61%, rgba(0,0,0,0.92) 81%, rgba(0,0,0,1) 100%)",
-              WebkitMaskRepeat: "no-repeat",
-              maskRepeat: "no-repeat",
-              pointerEvents: "none",
-              transition: "opacity 240ms ease",
             }}
-          />
+          >
+            {photoSources.avifSrcSet && (
+              <source type="image/avif" srcSet={photoSources.avifSrcSet} sizes={photoSizes} />
+            )}
+            {photoSources.webpSrcSet && (
+              <source type="image/webp" srcSet={photoSources.webpSrcSet} sizes={photoSizes} />
+            )}
+            <img
+              src={activePhotoURL}
+              srcSet={photoSources.fallbackSrcSet}
+              sizes={photoSizes}
+              alt=""
+              loading="lazy"
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+                opacity: photoReady ? 0.92 : 0,
+                filter: "blur(32px) saturate(138%) brightness(0.94)",
+                transform: "scale(1.16)",
+                transformOrigin: "center",
+                WebkitMaskImage:
+                  "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(0,0,0,0.16) 49%, rgba(0,0,0,0.52) 61%, rgba(0,0,0,0.92) 81%, rgba(0,0,0,1) 100%)",
+                maskImage:
+                  "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(0,0,0,0.16) 49%, rgba(0,0,0,0.52) 61%, rgba(0,0,0,0.92) 81%, rgba(0,0,0,1) 100%)",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                pointerEvents: "none",
+                transition: "opacity 240ms ease",
+              }}
+            />
+          </picture>
         </>
       ) : null}
 
