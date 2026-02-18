@@ -12,7 +12,7 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconPhotoPlus, IconTrash, IconUpload } from "@tabler/icons-react";
+import { IconArrowLeft, IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { uploadCafePhotoByPresignedUrl } from "../../../api/cafePhotos";
 import {
@@ -211,7 +211,7 @@ export default function CafePhotoSubmissionModal({
           onClick={onClose}
           radius="xl"
           styles={glassButtonStyles}
-          style={{ alignSelf: "flex-start" }}
+          style={{ alignSelf: "flex-start", marginTop: 8, marginBottom: 8 }}
         >
           К карточке
         </Button>
@@ -230,6 +230,12 @@ export default function CafePhotoSubmissionModal({
               border: "none",
               boxShadow: "none",
               padding: 0,
+            },
+            control: {
+              border: "none",
+              "&::before": {
+                display: "none",
+              },
             },
             indicator: {
               border: "1px solid var(--glass-border)",
@@ -265,25 +271,78 @@ export default function CafePhotoSubmissionModal({
               Выберите или перетащите изображения. После отправки они попадут в очередь
               модерации.
             </Text>
-            <Group grow>
-              <Button
-                leftSection={<IconPhotoPlus size={16} />}
+            <Box
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))",
+                gap: 8,
+              }}
+            >
+              {files.map((file, index) => (
+                <Box
+                  key={`${file.name}-${index}-${file.size}`}
+                  style={{
+                    position: "relative",
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                  }}
+                >
+                  <img
+                    src={previewUrls[index]}
+                    alt={file.name}
+                    loading="lazy"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                  <ActionIcon
+                    size={22}
+                    variant="filled"
+                    color="dark"
+                    aria-label="Удалить фото"
+                    onClick={() =>
+                      setFiles((prev) => prev.filter((_, fileIdx) => fileIdx !== index))
+                    }
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      right: 6,
+                      background: "rgba(20,20,20,0.72)",
+                    }}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                </Box>
+              ))}
+              <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
-                radius="xl"
-                styles={glassButtonStyles}
+                disabled={isUploading}
+                aria-label="Добавить фото"
+                style={{
+                  width: "100%",
+                  aspectRatio: "1 / 1",
+                  borderRadius: 12,
+                  border: "1.5px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
+                  background: "color-mix(in srgb, var(--surface) 86%, transparent)",
+                  color: "var(--muted)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: isUploading ? "not-allowed" : "pointer",
+                  opacity: isUploading ? 0.6 : 1,
+                }}
               >
-                Выбрать фото
-              </Button>
-              <Button
-                variant="default"
-                leftSection={<IconUpload size={16} />}
-                onClick={() => fileInputRef.current?.click()}
-                radius="xl"
-                styles={glassButtonStyles}
-              >
-                Перетащить фото
-              </Button>
-            </Group>
+                <IconPlus size={24} />
+              </button>
+            </Box>
             <input
               ref={fileInputRef}
               type="file"
@@ -302,61 +361,6 @@ export default function CafePhotoSubmissionModal({
             </Text>
           </Paper>
         )}
-
-        <Stack gap="xs">
-          {files.map((file, index) => (
-            <Paper
-              key={`${file.name}-${index}-${file.size}`}
-              withBorder
-              radius="md"
-              p="xs"
-              style={{ background: "var(--surface)" }}
-            >
-              <Group align="center" wrap="nowrap" gap="xs">
-                <Box
-                  style={{
-                    width: 88,
-                    height: 66,
-                    borderRadius: 10,
-                    overflow: "hidden",
-                    border: "1px solid var(--border)",
-                    flexShrink: 0,
-                  }}
-                >
-                  <img
-                    src={previewUrls[index]}
-                    alt={file.name}
-                    loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-                </Box>
-                <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
-                  <Text size="sm" lineClamp={1}>
-                    {file.name}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                  </Text>
-                </Stack>
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  aria-label="Удалить"
-                  onClick={() =>
-                    setFiles((prev) => prev.filter((_, fileIdx) => fileIdx !== index))
-                  }
-                >
-                  <IconTrash size={16} />
-                </ActionIcon>
-              </Group>
-            </Paper>
-          ))}
-        </Stack>
 
         <Box
           style={{

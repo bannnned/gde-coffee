@@ -16,10 +16,9 @@ import {
   IconArrowsSort,
   IconChevronDown,
   IconChevronUp,
-  IconPhotoPlus,
+  IconPlus,
   IconStar,
   IconTrash,
-  IconUpload,
 } from "@tabler/icons-react";
 
 import {
@@ -145,6 +144,7 @@ export default function CafePhotoAdminModal({
     if (photos.length === 0) return "Фото пока нет";
     return photos.length === 1 ? "1 фото" : `${photos.length} фото`;
   }, [photos.length]);
+  const uploadPreviewPhotos = useMemo(() => photos.slice(0, 11), [photos]);
 
   const handlePickFiles = () => {
     fileInputRef.current?.click();
@@ -352,7 +352,7 @@ export default function CafePhotoAdminModal({
           onClick={onClose}
           radius="xl"
           styles={glassButtonStyles}
-          style={{ alignSelf: "flex-start" }}
+          style={{ alignSelf: "flex-start", marginTop: 8, marginBottom: 8 }}
         >
           К карточке
         </Button>
@@ -373,30 +373,64 @@ export default function CafePhotoAdminModal({
               <Text fw={600}>Загрузка фото</Text>
               <Badge variant="light">{photosCountLabel}</Badge>
             </Group>
-              <Text size="sm" c="dimmed">
-              Нажмите кнопку ниже или перетащите файлы в эту область.
-              </Text>
-            <Group grow>
-              <Button
-                leftSection={<IconPhotoPlus size={16} />}
+            <Text size="sm" c="dimmed">
+              Нажмите на слот с плюсом или перетащите файлы в эту область.
+            </Text>
+            <Box
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))",
+                gap: 8,
+              }}
+            >
+              {uploadPreviewPhotos.map((photo, index) => (
+                <Box
+                  key={`upload-preview-${photo.id}`}
+                  style={{
+                    position: "relative",
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                  }}
+                >
+                  <img
+                    src={photo.url}
+                    alt={`Фото ${index + 1}`}
+                    loading="lazy"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </Box>
+              ))}
+              <button
+                type="button"
                 onClick={handlePickFiles}
-                loading={isUploading}
-                radius="xl"
-                styles={glassButtonStyles}
+                disabled={isUploading || !cafeId}
+                aria-label="Добавить фото"
+                style={{
+                  width: "100%",
+                  aspectRatio: "1 / 1",
+                  borderRadius: 12,
+                  border: "1.5px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
+                  background: "color-mix(in srgb, var(--surface) 86%, transparent)",
+                  color: "var(--muted)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: isUploading || !cafeId ? "not-allowed" : "pointer",
+                  opacity: isUploading ? 0.6 : 1,
+                }}
               >
-                Выбрать фото
-              </Button>
-              <Button
-                variant="default"
-                leftSection={<IconUpload size={16} />}
-                onClick={handlePickFiles}
-                loading={isUploading}
-                radius="xl"
-                styles={glassButtonStyles}
-              >
-                Перетащить фото
-              </Button>
-            </Group>
+                <IconPlus size={24} />
+              </button>
+            </Box>
             <input
               ref={fileInputRef}
               type="file"

@@ -1,4 +1,5 @@
-import { Box, Button, Group, Paper, Stack, Text } from "@mantine/core";
+import { ActionIcon, Box, Group, Paper, Stack, Text } from "@mantine/core";
+import { IconCamera, IconPlus } from "@tabler/icons-react";
 
 import type { Cafe, CafePhoto } from "../../../../../entities/cafe/model/types";
 
@@ -110,24 +111,29 @@ export default function MenuSection({
           </Text>
         )}
         {onManagePhotos && (
-          <Button
-            mt={menuPhotoItems.length === 0 ? "xs" : 0}
-            radius="xl"
-            variant="default"
-            onClick={() => onManagePhotos("menu")}
-            styles={{
-              root: {
-                border: "1px solid var(--glass-border)",
-                background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-                boxShadow: "var(--glass-shadow)",
-                backdropFilter: "blur(12px) saturate(140%)",
-                WebkitBackdropFilter: "blur(12px) saturate(140%)",
-                paddingInline: 16,
-              },
-            }}
-          >
-            Фото меню
-          </Button>
+          <Group justify="center" mt={menuPhotoItems.length === 0 ? "xs" : 0}>
+            <ActionIcon
+              size="xl"
+              radius="xl"
+              variant="default"
+              aria-label="Фото меню"
+              onClick={() => onManagePhotos("menu")}
+              styles={{
+                root: {
+                  border: "1px solid var(--glass-border)",
+                  background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+                  boxShadow: "var(--glass-shadow)",
+                  backdropFilter: "blur(12px) saturate(140%)",
+                  WebkitBackdropFilter: "blur(12px) saturate(140%)",
+                },
+              }}
+            >
+              <Group gap={2} wrap="nowrap">
+                <IconCamera size={16} />
+                <IconPlus size={14} />
+              </Group>
+            </ActionIcon>
+          </Group>
         )}
       </Box>
     </Stack>

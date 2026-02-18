@@ -161,50 +161,71 @@ export default function ProfileScreen() {
                   </div>
                   <div className={classes.heroText}>
                     <div className={classes.heroNameRow}>
-                      <Title order={2}>{profile.name}</Title>
-                      <ActionIcon
-                        size={34}
-                        variant="transparent"
-                        className={`${classes.iconButton} glass-action glass-action--square`}
-                        aria-label="Редактировать имя"
-                        onClick={handleNameEditStart}
-                      >
-                        <IconPencil size={16} />
-                      </ActionIcon>
-                    </div>
-                    {isNameEditing && (
-                      <div className={classes.nameEditBox}>
-                        <TextInput
-                          value={nameDraft}
-                          placeholder="Введите имя"
-                          onChange={(event) => {
-                            setNameDraft(event.currentTarget.value);
-                            setNameError(null);
-                            setNameSuccess(null);
-                          }}
-                          disabled={isNameSaving}
-                        />
-                        <div className={classes.nameEditActions}>
-                          <Button
-                            size="xs"
-                            variant="light"
-                            onClick={handleNameSave}
-                            loading={isNameSaving}
-                          >
-                            Сохранить
-                          </Button>
+                      {isNameEditing ? (
+                        <>
+                          <TextInput
+                            value={nameDraft}
+                            placeholder="Введите имя"
+                            autoFocus
+                            className={classes.nameInlineInput}
+                            onChange={(event) => {
+                              setNameDraft(event.currentTarget.value);
+                              setNameError(null);
+                              setNameSuccess(null);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                void handleNameSave();
+                              }
+                              if (event.key === "Escape") {
+                                event.preventDefault();
+                                handleNameEditCancel();
+                              }
+                            }}
+                            disabled={isNameSaving}
+                          />
                           <ActionIcon
-                            variant="light"
-                            color="gray"
+                            size={28}
+                            radius="xl"
+                            variant="subtle"
+                            aria-label="Сохранить имя"
+                            onClick={() => {
+                              void handleNameSave();
+                            }}
+                            loading={isNameSaving}
+                            className={classes.nameInlineAction}
+                          >
+                            <IconCheck size={15} />
+                          </ActionIcon>
+                          <ActionIcon
+                            size={28}
+                            radius="xl"
+                            variant="subtle"
                             aria-label="Отмена"
                             onClick={handleNameEditCancel}
                             disabled={isNameSaving}
+                            className={classes.nameInlineAction}
                           >
-                            <IconX size={16} />
+                            <IconX size={15} />
                           </ActionIcon>
-                        </div>
-                      </div>
-                    )}
+                        </>
+                      ) : (
+                        <>
+                          <Title order={2} className={classes.heroNameTitle}>
+                            {profile.name}
+                          </Title>
+                          <button
+                            type="button"
+                            className={classes.inlineEditIcon}
+                            aria-label="Редактировать имя"
+                            onClick={handleNameEditStart}
+                          >
+                            <IconPencil size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
                     {nameError && <Text className={classes.errorText}>{nameError}</Text>}
                     {nameSuccess && <Text className={classes.successText}>{nameSuccess}</Text>}
                     {avatarError && <Text className={classes.errorText}>{avatarError}</Text>}

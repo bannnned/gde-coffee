@@ -106,19 +106,43 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 40px;
 }
 
-.nameEditBox {
-  display: grid;
-  gap: 8px;
-  margin-top: 2px;
+.heroNameTitle {
+  margin: 0;
 }
 
-.nameEditActions {
-  display: flex;
+.nameInlineInput {
+  width: min(280px, 74vw);
+}
+
+.nameInlineAction {
+  color: var(--text);
+}
+
+.inlineEditIcon {
+  width: 22px;
+  height: 22px;
+  border: none;
+  outline: none;
+  border-radius: 999px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.inlineEditIcon:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.inlineEditIcon:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .heroCaption {

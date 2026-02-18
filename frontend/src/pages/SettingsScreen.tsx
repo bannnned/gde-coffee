@@ -14,6 +14,8 @@
 } from "@mantine/core";
 import {
   IconArrowLeft,
+  IconChevronDown,
+  IconChevronRight,
   IconCircleCheck,
   IconCircleX,
   IconMail,
@@ -76,6 +78,8 @@ export default function SettingsScreen() {
   const [dlqBulkMessage, setDlqBulkMessage] = useState<string | null>(null);
   const [dlqBulkLoading, setDlqBulkLoading] = useState<"replay" | "resolve" | null>(null);
   const [dlqReplayingID, setDlqReplayingID] = useState<number | null>(null);
+  const [versioningExpanded, setVersioningExpanded] = useState(false);
+  const [dlqExpanded, setDlqExpanded] = useState(false);
 
   const verifiedParam = searchParams.get("verified") === "1";
   const emailChangedParam = searchParams.get("email_changed") === "1";
@@ -411,213 +415,238 @@ export default function SettingsScreen() {
                   </Button>
                 </Group>
                 <div className={classes.versioningPanel}>
-                  <Text fw={600} size="sm">
-                    Версионирование отзывов
-                  </Text>
-                  {reviewsVersioningLoading && (
-                    <Text size="sm" className={classes.muted} mt={6}>
-                      Загружаем конфигурацию...
+                  <button
+                    type="button"
+                    className={classes.panelToggle}
+                    onClick={() => setVersioningExpanded((value) => !value)}
+                    aria-expanded={versioningExpanded}
+                  >
+                    <Text fw={600} size="sm">
+                      Версионирование отзывов
                     </Text>
-                  )}
-                  {!reviewsVersioningLoading && reviewsVersioningError && (
-                    <div className={classes.error} style={{ marginTop: 10 }}>
-                      {reviewsVersioningError}
-                    </div>
-                  )}
-                  {!reviewsVersioningLoading && reviewsVersioning && (
-                    <div className={classes.versioningGrid}>
-                      <div className={classes.versioningRow}>
-                        <span className={classes.versioningKey}>API contract</span>
-                        <span className={classes.versioningValue}>
-                          {reviewsVersioning.api_contract_version}
-                        </span>
-                      </div>
-                      <div className={classes.versioningRow}>
-                        <span className={classes.versioningKey}>Rating formula</span>
-                        <span className={classes.versioningValue}>
-                          {reviewsVersioning.formula_versions.rating}
-                        </span>
-                      </div>
-                      <div className={classes.versioningRow}>
-                        <span className={classes.versioningKey}>Quality formula</span>
-                        <span className={classes.versioningValue}>
-                          {reviewsVersioning.formula_versions.quality}
-                        </span>
-                      </div>
-                      <div className={classes.versioningRow}>
-                        <span className={classes.versioningKey}>Requested rating</span>
-                        <span className={classes.versioningValue}>
-                          {reviewsVersioning.formula_requests.rating}
-                        </span>
-                      </div>
-                      <div className={classes.versioningRow}>
-                        <span className={classes.versioningKey}>Requested quality</span>
-                        <span className={classes.versioningValue}>
-                          {reviewsVersioning.formula_requests.quality}
-                        </span>
-                      </div>
-                      <div className={classes.versioningRow}>
-                        <span className={classes.versioningKey}>Fallback rating</span>
-                        <span
-                          className={classes.versioningBoolean}
-                          data-active={reviewsVersioning.formula_fallbacks.rating ? "true" : "false"}
-                        >
-                          {reviewsVersioning.formula_fallbacks.rating ? "yes" : "no"}
-                        </span>
-                      </div>
-                      <div className={classes.versioningRow}>
-                        <span className={classes.versioningKey}>Fallback quality</span>
-                        <span
-                          className={classes.versioningBoolean}
-                          data-active={reviewsVersioning.formula_fallbacks.quality ? "true" : "false"}
-                        >
-                          {reviewsVersioning.formula_fallbacks.quality ? "yes" : "no"}
-                        </span>
-                      </div>
-                      <div className={classes.versioningRow}>
-                        <span className={classes.versioningKey}>FF rating_v3</span>
-                        <span
-                          className={classes.versioningBoolean}
-                          data-active={reviewsVersioning.feature_flags.rating_v3_enabled ? "true" : "false"}
-                        >
-                          {reviewsVersioning.feature_flags.rating_v3_enabled ? "on" : "off"}
-                        </span>
-                      </div>
-                      <div className={classes.versioningRow}>
-                        <span className={classes.versioningKey}>FF quality_v2</span>
-                        <span
-                          className={classes.versioningBoolean}
-                          data-active={reviewsVersioning.feature_flags.quality_v2_enabled ? "true" : "false"}
-                        >
-                          {reviewsVersioning.feature_flags.quality_v2_enabled ? "on" : "off"}
-                        </span>
-                      </div>
-                    </div>
+                    {versioningExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+                  </button>
+                  {versioningExpanded && (
+                    <>
+                      {reviewsVersioningLoading && (
+                        <Text size="sm" className={classes.muted} mt={6}>
+                          Загружаем конфигурацию...
+                        </Text>
+                      )}
+                      {!reviewsVersioningLoading && reviewsVersioningError && (
+                        <div className={classes.error} style={{ marginTop: 10 }}>
+                          {reviewsVersioningError}
+                        </div>
+                      )}
+                      {!reviewsVersioningLoading && reviewsVersioning && (
+                        <div className={classes.versioningGrid}>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>API contract</span>
+                            <span className={classes.versioningValue}>
+                              {reviewsVersioning.api_contract_version}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Rating formula</span>
+                            <span className={classes.versioningValue}>
+                              {reviewsVersioning.formula_versions.rating}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Quality formula</span>
+                            <span className={classes.versioningValue}>
+                              {reviewsVersioning.formula_versions.quality}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Requested rating</span>
+                            <span className={classes.versioningValue}>
+                              {reviewsVersioning.formula_requests.rating}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Requested quality</span>
+                            <span className={classes.versioningValue}>
+                              {reviewsVersioning.formula_requests.quality}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Fallback rating</span>
+                            <span
+                              className={classes.versioningBoolean}
+                              data-active={reviewsVersioning.formula_fallbacks.rating ? "true" : "false"}
+                            >
+                              {reviewsVersioning.formula_fallbacks.rating ? "yes" : "no"}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Fallback quality</span>
+                            <span
+                              className={classes.versioningBoolean}
+                              data-active={reviewsVersioning.formula_fallbacks.quality ? "true" : "false"}
+                            >
+                              {reviewsVersioning.formula_fallbacks.quality ? "yes" : "no"}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>FF rating_v3</span>
+                            <span
+                              className={classes.versioningBoolean}
+                              data-active={reviewsVersioning.feature_flags.rating_v3_enabled ? "true" : "false"}
+                            >
+                              {reviewsVersioning.feature_flags.rating_v3_enabled ? "on" : "off"}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>FF quality_v2</span>
+                            <span
+                              className={classes.versioningBoolean}
+                              data-active={reviewsVersioning.feature_flags.quality_v2_enabled ? "true" : "false"}
+                            >
+                              {reviewsVersioning.feature_flags.quality_v2_enabled ? "on" : "off"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
                 <div className={classes.dlqPanel}>
-                  <div className={classes.dlqHeader}>
+                  <button
+                    type="button"
+                    className={classes.panelToggle}
+                    onClick={() => setDlqExpanded((value) => !value)}
+                    aria-expanded={dlqExpanded}
+                  >
                     <Text fw={600} size="sm">
                       DLQ пересчетов
                     </Text>
-                    <Button
-                      size="xs"
-                      variant="light"
-                      className={classes.actionButton}
-                      onClick={() => {
-                        void loadDLQ();
-                      }}
-                      loading={dlqLoading}
-                    >
-                      Обновить
-                    </Button>
-                  </div>
-                  <Group className={classes.dlqStatusRow}>
-                    {(["open", "resolved", "all"] as const).map((value) => (
-                      <Button
-                        key={`dlq-status-${value}`}
-                        size="xs"
-                        variant={dlqStatus === value ? "filled" : "light"}
-                        className={classes.actionButton}
-                        onClick={() => setDlqStatus(value)}
-                      >
-                        {value === "open" ? "Открытые" : value === "resolved" ? "Решенные" : "Все"}
-                      </Button>
-                    ))}
-                  </Group>
-                  <Group className={classes.dlqBulkActions}>
-                    <Button
-                      size="xs"
-                      variant="filled"
-                      className={classes.actionButton}
-                      onClick={() => {
-                        void handleReplayAllOpenDLQ();
-                      }}
-                      loading={dlqBulkLoading === "replay"}
-                    >
-                      Replay all open
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="light"
-                      className={classes.actionButton}
-                      onClick={() => {
-                        void handleResolveOpenDLQ();
-                      }}
-                      loading={dlqBulkLoading === "resolve"}
-                    >
-                      Resolve without replay
-                    </Button>
-                  </Group>
+                    {dlqExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+                  </button>
+                  {dlqExpanded && (
+                    <>
+                      <div className={classes.dlqHeader}>
+                        <span />
+                        <Button
+                          size="xs"
+                          variant="light"
+                          className={classes.actionButton}
+                          onClick={() => {
+                            void loadDLQ();
+                          }}
+                          loading={dlqLoading}
+                        >
+                          Обновить
+                        </Button>
+                      </div>
+                      <Group className={classes.dlqStatusRow}>
+                        {(["open", "resolved", "all"] as const).map((value) => (
+                          <Button
+                            key={`dlq-status-${value}`}
+                            size="xs"
+                            variant={dlqStatus === value ? "filled" : "light"}
+                            className={classes.actionButton}
+                            onClick={() => setDlqStatus(value)}
+                          >
+                            {value === "open" ? "Открытые" : value === "resolved" ? "Решенные" : "Все"}
+                          </Button>
+                        ))}
+                      </Group>
+                      <Group className={classes.dlqBulkActions}>
+                        <Button
+                          size="xs"
+                          variant="filled"
+                          className={classes.actionButton}
+                          onClick={() => {
+                            void handleReplayAllOpenDLQ();
+                          }}
+                          loading={dlqBulkLoading === "replay"}
+                        >
+                          Replay all open
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="light"
+                          className={classes.actionButton}
+                          onClick={() => {
+                            void handleResolveOpenDLQ();
+                          }}
+                          loading={dlqBulkLoading === "resolve"}
+                        >
+                          Resolve without replay
+                        </Button>
+                      </Group>
 
-                  {dlqReplayError && (
-                    <div className={classes.error} style={{ marginTop: 10 }}>
-                      {dlqReplayError}
-                    </div>
-                  )}
-                  {dlqBulkMessage && (
-                    <div className={classes.banner} style={{ marginTop: 10 }}>
-                      {dlqBulkMessage}
-                    </div>
-                  )}
-                  {dlqError && !dlqLoading && (
-                    <div className={classes.error} style={{ marginTop: 10 }}>
-                      {dlqError}
-                    </div>
-                  )}
-                  {dlqLoading && (
-                    <Text size="sm" className={classes.muted} mt={8}>
-                      Загружаем DLQ...
-                    </Text>
-                  )}
-                  {!dlqLoading && !dlqError && dlqEvents.length === 0 && (
-                    <Text size="sm" className={classes.muted} mt={8}>
-                      Пусто: сообщений в выбранном фильтре нет.
-                    </Text>
-                  )}
-                  {!dlqLoading && !dlqError && dlqEvents.length > 0 && (
-                    <div className={classes.dlqList}>
-                      {dlqEvents.map((item) => (
-                        <div key={`dlq-event-${item.id}`} className={classes.dlqItem}>
-                          <div className={classes.dlqItemHeader}>
-                            <Text fw={600} size="sm">
-                              {item.event_type}
-                            </Text>
-                            <Text size="xs" className={classes.muted}>
-                              {item.consumer}
-                            </Text>
-                          </div>
-                          <Text size="xs" className={classes.muted}>
-                            outbox #{item.outbox_event_id} · inbox #{item.inbox_event_id || 0} · attempts {item.attempts}
-                          </Text>
-                          <Text size="xs" className={classes.muted}>
-                            aggregate {item.aggregate_id}
-                          </Text>
-                          <Text size="xs" className={classes.dlqErrorText}>
-                            {item.last_error || "Без текста ошибки"}
-                          </Text>
-                          <Group className={classes.dlqItemActions}>
-                            <Text size="xs" className={classes.muted}>
-                              failed: {item.failed_at || "—"}
-                            </Text>
-                            <Text size="xs" className={classes.muted}>
-                              resolved: {item.resolved_at || "—"}
-                            </Text>
-                            <Button
-                              size="xs"
-                              variant="light"
-                              className={classes.actionButton}
-                              onClick={() => {
-                                void handleReplayDLQ(item.id);
-                              }}
-                              loading={dlqReplayingID === item.id}
-                            >
-                              Replay
-                            </Button>
-                          </Group>
+                      {dlqReplayError && (
+                        <div className={classes.error} style={{ marginTop: 10 }}>
+                          {dlqReplayError}
                         </div>
-                      ))}
-                    </div>
+                      )}
+                      {dlqBulkMessage && (
+                        <div className={classes.banner} style={{ marginTop: 10 }}>
+                          {dlqBulkMessage}
+                        </div>
+                      )}
+                      {dlqError && !dlqLoading && (
+                        <div className={classes.error} style={{ marginTop: 10 }}>
+                          {dlqError}
+                        </div>
+                      )}
+                      {dlqLoading && (
+                        <Text size="sm" className={classes.muted} mt={8}>
+                          Загружаем DLQ...
+                        </Text>
+                      )}
+                      {!dlqLoading && !dlqError && dlqEvents.length === 0 && (
+                        <Text size="sm" className={classes.muted} mt={8}>
+                          Пусто: сообщений в выбранном фильтре нет.
+                        </Text>
+                      )}
+                      {!dlqLoading && !dlqError && dlqEvents.length > 0 && (
+                        <div className={classes.dlqList}>
+                          {dlqEvents.map((item) => (
+                            <div key={`dlq-event-${item.id}`} className={classes.dlqItem}>
+                              <div className={classes.dlqItemHeader}>
+                                <Text fw={600} size="sm">
+                                  {item.event_type}
+                                </Text>
+                                <Text size="xs" className={classes.muted}>
+                                  {item.consumer}
+                                </Text>
+                              </div>
+                              <Text size="xs" className={classes.muted}>
+                                outbox #{item.outbox_event_id} · inbox #{item.inbox_event_id || 0} · attempts {item.attempts}
+                              </Text>
+                              <Text size="xs" className={classes.muted}>
+                                aggregate {item.aggregate_id}
+                              </Text>
+                              <Text size="xs" className={classes.dlqErrorText}>
+                                {item.last_error || "Без текста ошибки"}
+                              </Text>
+                              <Group className={classes.dlqItemActions}>
+                                <Text size="xs" className={classes.muted}>
+                                  failed: {item.failed_at || "—"}
+                                </Text>
+                                <Text size="xs" className={classes.muted}>
+                                  resolved: {item.resolved_at || "—"}
+                                </Text>
+                                <Button
+                                  size="xs"
+                                  variant="light"
+                                  className={classes.actionButton}
+                                  onClick={() => {
+                                    void handleReplayDLQ(item.id);
+                                  }}
+                                  loading={dlqReplayingID === item.id}
+                                >
+                                  Replay
+                                </Button>
+                              </Group>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

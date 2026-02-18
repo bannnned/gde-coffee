@@ -48,6 +48,11 @@ type CafeDetailsScreenProps = {
 };
 
 type DetailsSection = "about" | "menu" | "reviews";
+const DETAILS_SECTION_CONTROL_DATA = [
+  { label: "О месте", value: "about" },
+  { label: "Меню", value: "menu" },
+  { label: "Отзывы", value: "reviews" },
+] as const;
 
 export default function CafeDetailsScreen({
   opened,
@@ -264,12 +269,6 @@ export default function CafeDetailsScreen({
     },
   } as const;
 
-  const sectionControlData = [
-    { label: "О месте", value: "about" },
-    { label: "Меню", value: "menu" },
-    { label: "Отзывы", value: "reviews" },
-  ];
-
   const handleStartDescription = () => {
     if (!canManageDirectly) return;
     if (onStartDescriptionEdit && !onStartDescriptionEdit()) {
@@ -417,7 +416,8 @@ export default function CafeDetailsScreen({
           <Box p="md" pb="xs">
             <SegmentedControl
               fullWidth
-              data={sectionControlData}
+              transitionDuration={0}
+              data={DETAILS_SECTION_CONTROL_DATA}
               value={section}
               onChange={(value) => setSection(value as DetailsSection)}
               styles={{
@@ -427,6 +427,12 @@ export default function CafeDetailsScreen({
                   boxShadow: "none",
                   padding: 0,
                   overflow: "visible",
+                },
+                control: {
+                  border: "none",
+                  "&::before": {
+                    display: "none",
+                  },
                 },
                 indicator: {
                   background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
@@ -441,7 +447,7 @@ export default function CafeDetailsScreen({
                   fontWeight: 600,
                   borderRadius: 14,
                   padding: "10px 8px",
-                  transition: "color 180ms ease, transform 160ms ease",
+                  transition: "color 120ms ease",
                 },
               }}
             />

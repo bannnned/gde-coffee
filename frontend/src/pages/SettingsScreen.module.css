@@ -158,6 +158,19 @@
   box-shadow: inset 0 0 0 1px var(--color-surface-overlay-soft);
 }
 
+.panelToggle {
+  width: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .versioningGrid {
   margin-top: 10px;
   display: grid;
