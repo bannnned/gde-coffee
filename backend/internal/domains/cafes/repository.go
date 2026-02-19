@@ -165,3 +165,94 @@ func (r *Repository) EnsureCafeExists(ctx context.Context, cafeID string) error 
 	}
 	return nil
 }
+
+func (r *Repository) FindCafeByNameAddress(ctx context.Context, name, address string) (string, bool, error) {
+	var cafeID string
+	err := r.pool.QueryRow(
+		ctx,
+		`select id::text
+		   from cafes
+		  where lower(trim(name)) = lower(trim($1::text))
+		    and lower(trim(coalesce(address, ''))) = lower(trim($2::text))
+		  order by created_at asc
+		  limit 1`,
+		name,
+		address,
+	).Scan(&cafeID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	return strings.TrimSpace(cafeID), true, nil
+}
+
+func (r *Repository) InsertCafe(ctx context.Context, item normalizedCafeImportItem) (string, error) {
+	amenities := item.Amenities
+	if amenities == nil {
+		amenities = []string{}
+	}
+
+	var cafeID string
+	err := r.pool.QueryRow(
+		ctx,
+		`insert into cafes (name, address, description, lat, lng, amenities, geog)
+		 values (
+		   $1::text,
+		   $2::text,
+		   nullif($3::text, ''),
+		   $4::double precision,
+		   $5::double precision,
+		   $6::text[],
+		   ST_SetSRID(ST_MakePoint($5::double precision, $4::double precision), 4326)::geography
+		 )
+		 returning id::text`,
+		item.Name,
+		item.Address,
+		item.Description,
+		item.Latitude,
+		item.Longitude,
+		amenities,
+	).Scan(&cafeID)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(cafeID), nil
+}
+
+func (r *Repository) UpdateCafeByID(ctx context.Context, cafeID string, item normalizedCafeImportItem) error {
+	amenities := item.Amenities
+	if amenities == nil {
+		amenities = []string{}
+	}
+
+	result, err := r.pool.Exec(
+		ctx,
+		`update cafes
+		    set name = $2::text,
+		        address = $3::text,
+		        lat = $4::double precision,
+		        lng = $5::double precision,
+		        geog = ST_SetSRID(ST_MakePoint($5::double precision, $4::double precision), 4326)::geography,
+		        description = case when $6::boolean then nullif($7::text, '') else description end,
+		        amenities = case when $8::boolean then $9::text[] else amenities end
+		  where id = $1::uuid`,
+		cafeID,
+		item.Name,
+		item.Address,
+		item.Latitude,
+		item.Longitude,
+		item.HasDescription,
+		item.Description,
+		item.HasAmenitiesRaw,
+		amenities,
+	)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}

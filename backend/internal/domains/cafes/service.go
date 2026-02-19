@@ -223,3 +223,157 @@ func (s *Service) IsNotFound(err error) bool {
 func (s *Service) TimeoutContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(parent, timeout)
 }
+
+func (s *Service) ImportJSON(ctx context.Context, req adminCafeImportRequest) (adminCafeImportResponse, error) {
+	resp := adminCafeImportResponse{
+		Mode:   req.Mode,
+		DryRun: req.DryRun,
+		Summary: adminCafeImportSummary{
+			Total: len(req.Cafes),
+		},
+		Results: make([]adminCafeImportResultItem, 0, len(req.Cafes)),
+		Issues:  make([]adminCafeImportIssue, 0, min(len(req.Cafes), 32)),
+	}
+
+	appendIssue := func(issue adminCafeImportIssue) {
+		if len(resp.Issues) >= AdminCafeImportMaxIssues {
+			return
+		}
+		resp.Issues = append(resp.Issues, issue)
+	}
+
+	for index, rawItem := range req.Cafes {
+		nextIndex := index + 1
+		normalized, validationIssues := normalizeCafeImportItem(rawItem)
+		if len(validationIssues) > 0 {
+			resp.Summary.Invalid++
+			result := adminCafeImportResultItem{
+				Index:   nextIndex,
+				Status:  "invalid",
+				Name:    strings.TrimSpace(rawItem.Name),
+				Address: strings.TrimSpace(rawItem.Address),
+				Message: validationIssues[0].Message,
+			}
+			resp.Results = append(resp.Results, result)
+			for _, issue := range validationIssues {
+				issue.Index = nextIndex
+				appendIssue(issue)
+			}
+			continue
+		}
+
+		existingID, found, err := s.repository.FindCafeByNameAddress(ctx, normalized.Name, normalized.Address)
+		if err != nil {
+			resp.Summary.Failed++
+			resp.Results = append(resp.Results, adminCafeImportResultItem{
+				Index:   nextIndex,
+				Status:  "failed",
+				Name:    normalized.Name,
+				Address: normalized.Address,
+				Message: "Не удалось проверить существующую кофейню.",
+			})
+			appendIssue(adminCafeImportIssue{
+				Index:   nextIndex,
+				Message: "Ошибка проверки дубликатов в БД.",
+			})
+			continue
+		}
+
+		if found {
+			if req.Mode == AdminCafeImportModeSkipExisting {
+				resp.Summary.Skipped++
+				resp.Results = append(resp.Results, adminCafeImportResultItem{
+					Index:   nextIndex,
+					Status:  "skipped",
+					Name:    normalized.Name,
+					Address: normalized.Address,
+					CafeID:  &existingID,
+					Message: "Кофейня уже существует.",
+				})
+				continue
+			}
+
+			if req.DryRun {
+				resp.Summary.Updated++
+				resp.Results = append(resp.Results, adminCafeImportResultItem{
+					Index:   nextIndex,
+					Status:  "would_update",
+					Name:    normalized.Name,
+					Address: normalized.Address,
+					CafeID:  &existingID,
+				})
+				continue
+			}
+
+			if err := s.repository.UpdateCafeByID(ctx, existingID, normalized); err != nil {
+				resp.Summary.Failed++
+				resp.Results = append(resp.Results, adminCafeImportResultItem{
+					Index:   nextIndex,
+					Status:  "failed",
+					Name:    normalized.Name,
+					Address: normalized.Address,
+					CafeID:  &existingID,
+					Message: "Не удалось обновить кофейню.",
+				})
+				appendIssue(adminCafeImportIssue{
+					Index:   nextIndex,
+					Message: "Ошибка обновления кофейни в БД.",
+				})
+				continue
+			}
+
+			resp.Summary.Updated++
+			resp.Results = append(resp.Results, adminCafeImportResultItem{
+				Index:   nextIndex,
+				Status:  "updated",
+				Name:    normalized.Name,
+				Address: normalized.Address,
+				CafeID:  &existingID,
+			})
+			continue
+		}
+
+		if req.DryRun {
+			resp.Summary.Created++
+			resp.Results = append(resp.Results, adminCafeImportResultItem{
+				Index:   nextIndex,
+				Status:  "would_create",
+				Name:    normalized.Name,
+				Address: normalized.Address,
+			})
+			continue
+		}
+
+		createdID, err := s.repository.InsertCafe(ctx, normalized)
+		if err != nil {
+			resp.Summary.Failed++
+			resp.Results = append(resp.Results, adminCafeImportResultItem{
+				Index:   nextIndex,
+				Status:  "failed",
+				Name:    normalized.Name,
+				Address: normalized.Address,
+				Message: "Не удалось создать кофейню.",
+			})
+			appendIssue(adminCafeImportIssue{
+				Index:   nextIndex,
+				Message: "Ошибка создания кофейни в БД.",
+			})
+			continue
+		}
+
+		resp.Summary.Created++
+		resp.Results = append(resp.Results, adminCafeImportResultItem{
+			Index:   nextIndex,
+			Status:  "created",
+			Name:    normalized.Name,
+			Address: normalized.Address,
+			CafeID:  &createdID,
+		})
+	}
+
+	if len(resp.Issues) == 0 {
+		resp.Issues = nil
+	}
+
+	return resp, nil
+}

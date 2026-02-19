@@ -115,7 +115,7 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
               ...
             </Text>
           ) : hasReviewStats ? (
-            <Group gap={8} wrap="nowrap">
+              <Group style={{ display: 'grid', justifyItems: 'end' }} gap={8} wrap="nowrap">
               <Group gap={4} wrap="nowrap">
                 <IconStarFilled size={14} color="var(--cafe-hero-title-color)" />
                 <Text fw={600} size="sm" style={{ color: "var(--cafe-hero-title-color)" }}>

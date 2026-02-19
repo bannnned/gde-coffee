@@ -12,6 +12,7 @@ const FavoritesPage = lazy(() => import("./pages/FavoritesPage"));
 const SettingsScreen = lazy(() => import("./pages/SettingsScreen"));
 const AdminModerationPage = lazy(() => import("./pages/AdminModerationPage"));
 const AdminDrinksPage = lazy(() => import("./pages/AdminDrinksPage"));
+const AdminCafesImportPage = lazy(() => import("./pages/AdminCafesImportPage"));
 const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage"));
 const ConfirmEmailChangePage = lazy(() => import("./pages/ConfirmEmailChangePage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/settings" element={<SettingsScreen />} />
             <Route path="/admin/moderation" element={<AdminModerationPage />} />
             <Route path="/admin/drinks" element={<AdminDrinksPage />} />
+            <Route path="/admin/cafes/import" element={<AdminCafesImportPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route
               path="/confirm-email-change"

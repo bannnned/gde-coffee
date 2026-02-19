@@ -247,6 +247,7 @@ func main() {
 	adminCafesGroup := api.Group("/admin/cafes")
 	adminCafesGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
 	adminCafesGroup.GET("/:id/rating-diagnostics", reviewsHandler.GetCafeRatingDiagnostics)
+	api.POST("/admin/cafes/import-json", auth.RequireRole(pool, "admin"), cafesHandler.ImportJSON)
 
 	adminReviewsGroup := api.Group("/admin/reviews")
 	adminReviewsGroup.Use(auth.RequireRole(pool, "admin", "moderator"))

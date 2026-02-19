@@ -416,6 +416,17 @@ export default function SettingsScreen() {
                   >
                     Справочник напитков
                   </Button>
+                  {userRole === "admin" && (
+                    <Button
+                      variant="light"
+                      className={classes.actionButton}
+                      onClick={() => {
+                        void navigate("/admin/cafes/import");
+                      }}
+                    >
+                      Импорт кофеен JSON
+                    </Button>
+                  )}
                 </Group>
                 <div className={classes.versioningPanel}>
                   <button

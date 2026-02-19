@@ -2,6 +2,7 @@ package cafes
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -185,5 +186,51 @@ func (h *Handler) GeocodeLookup(c *gin.Context) {
 		httpx.RespondError(c, http.StatusBadGateway, "upstream_error", "Не удалось определить координаты по адресу.", nil)
 		return
 	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) ImportJSON(c *gin.Context) {
+	raw, err := c.GetRawData()
+	if err != nil {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Не удалось прочитать тело запроса.", nil)
+		return
+	}
+
+	req, err := decodeAdminCafeImportRequest(raw)
+	if err != nil {
+		if _, syntaxErr := err.(*json.SyntaxError); syntaxErr {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+			return
+		}
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		return
+	}
+
+	req.Mode, err = normalizeAdminCafeImportMode(req.Mode)
+	if err != nil {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+		return
+	}
+
+	if len(req.Cafes) == 0 {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Список cafes не должен быть пустым.", nil)
+		return
+	}
+	if len(req.Cafes) > AdminCafeImportMaxItems {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Слишком много элементов для импорта.", gin.H{
+			"max_items": AdminCafeImportMaxItems,
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+	defer cancel()
+
+	result, err := h.service.ImportJSON(ctx, req)
+	if err != nil {
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
 	c.JSON(http.StatusOK, result)
 }
