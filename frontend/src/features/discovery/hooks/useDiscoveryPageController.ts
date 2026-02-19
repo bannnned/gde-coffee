@@ -20,7 +20,7 @@ export default function useDiscoveryPageController() {
   );
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [favoriteBusyCafeId, setFavoriteBusyCafeId] = useState<string | null>(null);
-  const { sheetHeight, sheetState } = useLayoutMetrics();
+  const { sheetHeight, sheetState, filtersBarHeight } = useLayoutMetrics();
 
   const userRole = (user?.role ?? "").toLowerCase();
   const isPrivilegedUser = userRole === "admin" || userRole === "moderator";
@@ -169,6 +169,7 @@ export default function useDiscoveryPageController() {
     sheetRef,
     sheetHeight,
     sheetState,
+    filtersBarHeight,
     cafesQuery,
     visibleCafes,
     userCenter: location.userCenter,

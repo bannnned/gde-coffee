@@ -26,7 +26,7 @@ export default function WorkScreen() {
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>(
     DEFAULT_AMENITIES,
   );
-  const { sheetHeight, sheetState } = useLayoutMetrics();
+  const { sheetHeight, sheetState, filtersBarHeight } = useLayoutMetrics();
 
   const sheetRef = useRef<HTMLDivElement | null>(null);
 
@@ -88,6 +88,7 @@ export default function WorkScreen() {
           center={userCenter}
           zoom={13}
           cafes={cafes}
+          filtersBarHeight={filtersBarHeight}
           userLocation={userCenter}
           selectedCafeId={selectedCafeId}
           focusLngLat={focusLngLat}

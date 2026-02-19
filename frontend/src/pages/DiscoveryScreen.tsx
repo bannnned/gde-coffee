@@ -27,6 +27,7 @@ export default function DiscoveryScreen() {
     sheetRef,
     sheetHeight,
     sheetState,
+    filtersBarHeight,
     cafesQuery,
     visibleCafes,
     userCenter,
@@ -108,6 +109,7 @@ export default function DiscoveryScreen() {
           center={userCenter}
           zoom={13}
           cafes={visibleCafes}
+          filtersBarHeight={filtersBarHeight}
           userLocation={isCityOnlyMode || manualPickMode ? null : userCenter}
           selectedCafeId={selectedCafeId}
           focusLngLat={manualPickMode ? null : focusLngLat}

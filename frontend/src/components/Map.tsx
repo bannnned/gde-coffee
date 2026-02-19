@@ -6,7 +6,6 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Cafe } from "../types";
-import { useLayoutMetrics } from "../features/work/layout/LayoutMetricsContext";
 import pinUrl from "../assets/pin.png";
 import cupUrl from "../assets/cup.png";
 
@@ -28,6 +27,7 @@ type Props = {
   centerProbeOffsetY?: number;
   userLocation?: [number, number] | null;
   focusLngLat?: [number, number] | null;
+  filtersBarHeight?: number;
 };
 
 const FOCUS_EPS = 1e-6;
@@ -265,6 +265,7 @@ export default function Map({
   userLocation,
   focusLngLat,
   centerProbeOffsetY = 0,
+  filtersBarHeight = 0,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
@@ -277,7 +278,6 @@ export default function Map({
   const geojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const paddingRef = useRef({ top: 0, bottom: 0 });
   const [isMapReady, setIsMapReady] = useState(false);
-  const { filtersBarHeight } = useLayoutMetrics();
 
   useEffect(() => {
     onCafeSelectRef.current = onCafeSelect;
