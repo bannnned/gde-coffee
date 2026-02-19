@@ -128,9 +128,12 @@ export default function AboutSection({
         <Group
           wrap="nowrap"
           gap={8}
-          px="md"
           py="sm"
-          style={{ overflowX: "auto", borderBottom: "1px solid var(--border)" }}
+          style={{
+            overflowX: "auto",
+            borderBottom: "1px solid var(--border)",
+            paddingInline: "var(--page-edge-padding)",
+          }}
         >
           {aboutPhotoItems.map((photo, index) => (
             <Paper
@@ -171,7 +174,7 @@ export default function AboutSection({
         </Group>
       )}
 
-      <Stack gap="xs" px="md" py="md">
+      <Stack gap="xs" py="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
         {ratingPanel}
 
         <Text c="dimmed" size="sm">

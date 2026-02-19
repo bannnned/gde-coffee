@@ -27,8 +27,10 @@ import {
   MAX_REVIEW_POSITIONS,
   MAX_UPLOAD_CONCURRENCY,
   REVIEWS_PAGE_SIZE,
+  buildReviewSummaryFromSections,
   makePhotoId,
   normalizeDrinkInput,
+  parseReviewSummarySections,
   parseReviewPositions,
   parseTags,
   reviewFormSchema,
@@ -184,6 +186,7 @@ export function useReviewsSectionController({
   const { user, status, openAuthModal } = useAuth();
   const currentUserId = (user?.id ?? "").trim();
   const userRole = (user?.role ?? "").toLowerCase();
+  const isAdmin = userRole === "admin";
   const canDeleteReviews = userRole === "admin" || userRole === "moderator";
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -227,11 +230,10 @@ export function useReviewsSectionController({
 
   const positionsInput = watch("positionsInput");
   const tagsInputValue = watch("tagsInput");
+  const likedValue = watch("liked");
+  const dislikedValue = watch("disliked");
   const summaryValue = watch("summary");
   const photos = watch("photos");
-
-  const summaryLength = summaryValue.length;
-  const summaryTrimmedLength = summaryValue.trim().length;
 
   const positionInputData = useMemo(() => {
     const unique = new Set<string>();
@@ -252,10 +254,14 @@ export function useReviewsSectionController({
   const ownReviewQualityInsight = useMemo(() => buildQualityInsight(ownReview), [ownReview]);
   const draftQualitySuggestions = useMemo(() => {
     const suggestions: string[] = [];
+    const reviewTextCombined = [likedValue, dislikedValue, summaryValue]
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .join(" ");
     if (photos.length === 0) {
       suggestions.push("добавьте фото");
     }
-    if (summaryValue.trim().length < 100) {
+    if (reviewTextCombined.length < 100) {
       suggestions.push("добавьте детали о вкусе");
     }
     if (parseTags(tagsInputValue).length === 0) {
@@ -265,7 +271,7 @@ export function useReviewsSectionController({
       suggestions.push("добавьте еще позицию");
     }
     return suggestions;
-  }, [photos.length, positionsInput, summaryValue, tagsInputValue]);
+  }, [dislikedValue, likedValue, photos.length, positionsInput, summaryValue, tagsInputValue]);
 
   const activePositionFilter = useMemo(
     () => (positionFilter === "all" ? undefined : positionFilter),
@@ -367,12 +373,15 @@ export function useReviewsSectionController({
           .map((item) => normalizeDrinkInput(item.drink_name || item.drink_id))
           .filter(Boolean)
       : [normalizeDrinkInput(ownReview.drink_name || ownReview.drink_id)];
+    const summarySections = parseReviewSummarySections(ownReview.summary ?? "");
 
     reset({
       ratingValue: String(ownReview.rating) as ReviewFormValues["ratingValue"],
       positionsInput: ownReviewPositions.slice(0, MAX_REVIEW_POSITIONS),
       tagsInput: (ownReview.taste_tags ?? []).join(", "),
-      summary: ownReview.summary ?? "",
+      liked: summarySections.liked,
+      disliked: summarySections.disliked,
+      summary: summarySections.summary,
       photos: (ownReview.photos ?? []).map((url) => ({
         id: makePhotoId(),
         url,
@@ -472,7 +481,11 @@ export function useReviewsSectionController({
     setSubmitHint(null);
 
     const rating = Number(values.ratingValue);
-    const nextSummary = values.summary.trim();
+    const nextSummary = buildReviewSummaryFromSections({
+      liked: values.liked,
+      disliked: values.disliked,
+      summary: values.summary,
+    });
     const normalizedPositions = parseReviewPositions(values.positionsInput);
     const knownDrinkIDByName = new Map<string, string>();
 
@@ -709,6 +722,7 @@ export function useReviewsSectionController({
 
   return {
     currentUserId,
+    isAdmin,
     canDeleteReviews,
     sort,
     setSort,
@@ -730,8 +744,6 @@ export function useReviewsSectionController({
     positionsInput,
     drinksLoading,
     setDrinkSearchQuery,
-    summaryLength,
-    summaryTrimmedLength,
     photos,
     uploadingPhotos,
     activeCheckIn,

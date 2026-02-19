@@ -99,6 +99,7 @@
   --cafe-hero-indicator-active: var(--color-cafe-hero-indicator-active);
   --cafe-hero-indicator-idle: var(--color-cafe-hero-indicator-idle);
   --sheet-height: 240px;
+  --page-edge-padding: clamp(12px, 3.2vw, 20px);
 }
 
 :root[data-mantine-color-scheme='dark'] {

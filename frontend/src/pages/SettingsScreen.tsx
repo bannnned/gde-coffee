@@ -2,7 +2,6 @@
   ActionIcon,
   Box,
   Button,
-  Container,
   Group,
   PasswordInput,
   Stack,
@@ -362,7 +361,7 @@ export default function SettingsScreen() {
 
   return (
     <Box className={classes.screen} data-ui="settings-screen">
-      <Container className={classes.container}>
+      <div className={classes.container}>
         <header className={classes.header}>
           <ActionIcon
             size={42}
@@ -911,7 +910,7 @@ export default function SettingsScreen() {
 
           </Stack>
         </Box>
-      </Container>
+      </div>
     </Box>
   );
 }

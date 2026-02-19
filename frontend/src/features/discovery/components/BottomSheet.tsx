@@ -278,14 +278,13 @@ export default function BottomSheet({
       bottom={0}
       left={0}
       right={0}
-      px="sm"
       pb="sm"
       className={classes.wrapper}
     >
       <MotionPaper
         withBorder
         radius={22}
-        p="xs"
+        p={0}
         className={classes.sheet}
         data-state={effectiveSheetState}
         style={{

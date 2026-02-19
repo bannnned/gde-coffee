@@ -1,12 +1,11 @@
 .screen {
-  --screen-pad: clamp(16px, 4vw, 56px);
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   justify-content: center;
-  padding: var(--screen-pad);
-  padding-top: calc(var(--screen-pad) + env(safe-area-inset-top));
-  padding-bottom: calc(var(--screen-pad) + env(safe-area-inset-bottom));
+  padding-inline: var(--page-edge-padding);
+  padding-top: calc(var(--page-edge-padding) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--page-edge-padding) + env(safe-area-inset-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
@@ -286,11 +285,6 @@
 }
 
 @media (max-width: 720px) {
-  .screen {
-    padding: 12px;
-  }
-
-
   .actionsRow :global(.mantine-Button-root) {
     width: 100%;
     height: 48px;

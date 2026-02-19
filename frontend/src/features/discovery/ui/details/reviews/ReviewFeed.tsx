@@ -1,7 +1,21 @@
-import { Badge, Button, Group, Paper, Rating, Select, Skeleton, Stack, Text, Transition } from "@mantine/core";
+import { Badge, Box, Button, Group, Paper, Rating, Select, Skeleton, Stack, Text, Transition } from "@mantine/core";
+import { IconThumbUp } from "@tabler/icons-react";
+import { motion } from "framer-motion";
 
 import type { CafeReview, ReviewSort } from "../../../../../api/reviews";
-import { formatReviewDate } from "./reviewForm";
+import { formatReviewDate, parseReviewSummarySections } from "./reviewForm";
+
+function resolveVisitDate(review: CafeReview): string {
+  const withVisitDate = review as CafeReview & {
+    visit_date?: string;
+    visit_verified_at?: string;
+  };
+  const sourceDate =
+    withVisitDate.visit_date ||
+    withVisitDate.visit_verified_at ||
+    (review.visit_verified ? review.updated_at : review.created_at);
+  return formatReviewDate(sourceDate);
+}
 
 type ReviewFeedProps = {
   sort: ReviewSort;
@@ -17,6 +31,7 @@ type ReviewFeedProps = {
   helpfulPendingReviewID: string;
   onMarkHelpful: (review: CafeReview) => void;
   canDeleteReviews: boolean;
+  isAdmin: boolean;
   onDeleteReview: (review: CafeReview) => void;
   hasMore: boolean;
   onLoadMore: () => void;
@@ -36,18 +51,12 @@ export function ReviewFeed({
   helpfulPendingReviewID,
   onMarkHelpful,
   canDeleteReviews,
+  isAdmin,
   onDeleteReview,
   hasMore,
   onLoadMore,
 }: ReviewFeedProps) {
   const filterSelectStyles = {
-    label: {
-      fontSize: 11,
-      letterSpacing: "0.04em",
-      textTransform: "uppercase",
-      color: "var(--muted)",
-      marginBottom: 4,
-    },
     input: {
       borderRadius: 14,
       border: "1px solid var(--glass-border)",
@@ -93,7 +102,8 @@ export function ReviewFeed({
       <Group grow align="flex-end" gap={8} wrap="nowrap">
         <Select
           size="xs"
-          label="Сортировка"
+          aria-label="Сортировка отзывов"
+          placeholder="Сортировка"
           value={sort}
           data={sortSelectData}
           onChange={(value) => onSortChange((value as ReviewSort) || "new")}
@@ -102,7 +112,8 @@ export function ReviewFeed({
         />
         <Select
           size="xs"
-          label="Позиция"
+          aria-label="Фильтр по позиции"
+          placeholder="Позиция"
           value={positionFilter}
           data={positionFilterData}
           onChange={(value) => onPositionFilterChange(value || "all")}
@@ -174,6 +185,7 @@ export function ReviewFeed({
                   helpfulLoading={helpfulPendingReviewID === review.id}
                   onMarkHelpful={onMarkHelpful}
                   canDeleteReviews={canDeleteReviews}
+                  isAdmin={isAdmin}
                   onDeleteReview={onDeleteReview}
                 />
               </div>
@@ -228,6 +240,7 @@ type ReviewCardProps = {
   helpfulLoading: boolean;
   onMarkHelpful: (review: CafeReview) => void;
   canDeleteReviews: boolean;
+  isAdmin: boolean;
   onDeleteReview: (review: CafeReview) => void;
 };
 
@@ -237,8 +250,17 @@ function ReviewCard({
   helpfulLoading,
   onMarkHelpful,
   canDeleteReviews,
+  isAdmin,
   onDeleteReview,
 }: ReviewCardProps) {
+  const MotionBox = motion(Box);
+  const reviewBody = parseReviewSummarySections(review.summary);
+  const visitDateLabel = resolveVisitDate(review);
+  const reviewSections = [
+    { key: "liked", label: "Понравилось", value: reviewBody.liked.trim() },
+    { key: "disliked", label: "Не понравилось", value: reviewBody.disliked.trim() },
+    { key: "summary", label: "Короткий вывод", value: reviewBody.summary.trim() },
+  ].filter((section) => section.value.length > 0);
   const positionLabels =
     review.positions.length > 0
       ? review.positions.map((item) => item.drink_name || item.drink_id).filter(Boolean)
@@ -276,18 +298,34 @@ function ReviewCard({
               )}
             </Group>
             <Text size="xs" c="dimmed">
-              {formatReviewDate(review.updated_at)}
+              Отзыв: {formatReviewDate(review.updated_at)}
+            </Text>
+            <Text size="xs" c="dimmed">
+              Дата визита: {visitDateLabel}
             </Text>
           </Stack>
           <Rating value={review.rating} readOnly size="sm" />
         </Group>
 
-        <Text
-          size="sm"
-          style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", overflowWrap: "anywhere" }}
-        >
-          {review.summary}
-        </Text>
+        {reviewSections.length > 0 && (
+          <Stack gap={6}>
+            {reviewSections.map((section) => (
+              <Box key={`${review.id}:${section.key}`}>
+                <Text
+                  size="xs"
+                  fw={700}
+                  style={{ letterSpacing: "0.04em", textTransform: "uppercase" }}
+                  c="dimmed"
+                >
+                  {section.label}
+                </Text>
+                <Text size="sm" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
+                  {section.value}
+                </Text>
+              </Box>
+            ))}
+          </Stack>
+        )}
 
         {review.photos.length > 0 && (
           <Group wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
@@ -323,38 +361,90 @@ function ReviewCard({
 
         <Group gap={6} wrap="wrap">
           {positionLabels.map((name, index) => (
-            <Badge key={`${review.id}:position:${index}`} variant="outline">
+            <Badge
+              key={`${review.id}:position:${index}`}
+              size="xs"
+              variant="outline"
+              radius="sm"
+              styles={{
+                root: {
+                  paddingInline: 6,
+                  minHeight: 18,
+                  fontSize: 10,
+                  lineHeight: "14px",
+                },
+              }}
+            >
               {name}
             </Badge>
           ))}
-          <Badge variant="outline">Полезно: {review.helpful_votes}</Badge>
-          <Badge variant="outline">Качество: {review.quality_score}/100</Badge>
         </Group>
-        <Text size="xs" c="dimmed">
-          Качество учитывает напиток, теги, детали текста, фото, визит и жалобы.
-        </Text>
+        {isAdmin && (
+          <>
+            <Group gap={6} wrap="wrap">
+              <Badge variant="outline">Качество: {review.quality_score}/100</Badge>
+            </Group>
+            <Text size="xs" c="dimmed">
+              Качество учитывает напиток, теги, детали текста, фото, визит и жалобы.
+            </Text>
+          </>
+        )}
 
-        <Group justify="space-between" align="center">
+        <MotionBox
+          whileTap={{ scale: isOwn ? 1 : 0.96 }}
+          transition={{ duration: 0.12, ease: "easeOut" }}
+          style={{ alignSelf: "flex-start" }}
+        >
           <Button
             size="xs"
             variant="light"
             onClick={() => onMarkHelpful(review)}
             loading={helpfulLoading}
             disabled={isOwn}
+            styles={{
+              root: {
+                borderRadius: 999,
+                border: "1px solid color-mix(in srgb, var(--color-brand-accent) 48%, var(--border))",
+                background:
+                  "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
+                boxShadow:
+                  "0 8px 18px color-mix(in srgb, var(--color-brand-accent-soft) 52%, transparent)",
+                color: "var(--text)",
+                paddingInline: 12,
+              },
+              label: {
+                paddingBlock: 1,
+              },
+            }}
           >
-            Полезно
+            <Group gap={6} wrap="nowrap">
+              <Text component="span" size="xs" fw={600}>
+                Полезно
+              </Text>
+              <IconThumbUp size={14} stroke={2} />
+              <Box
+                component="span"
+                style={{
+                  minWidth: 20,
+                  height: 20,
+                  paddingInline: 6,
+                  borderRadius: 999,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  background:
+                    "color-mix(in srgb, var(--color-brand-accent) 18%, var(--color-surface-card))",
+                  border: "1px solid color-mix(in srgb, var(--color-brand-accent) 34%, var(--border))",
+                }}
+              >
+                {review.helpful_votes}
+              </Box>
+            </Group>
           </Button>
-        </Group>
-
-        {review.taste_tags.length > 0 && (
-          <Group gap={6} wrap="wrap">
-            {review.taste_tags.map((tag) => (
-              <Badge key={`${review.id}:${tag}`} size="xs" variant="light">
-                {tag}
-              </Badge>
-            ))}
-          </Group>
-        )}
+        </MotionBox>
 
         {canDeleteReviews && (
           <Group justify="flex-end">

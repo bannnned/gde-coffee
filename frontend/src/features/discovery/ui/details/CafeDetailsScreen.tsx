@@ -8,7 +8,6 @@ import {
   SegmentedControl,
   Stack,
   Text,
-  useMantineTheme,
 } from "@mantine/core";
 import {
   IconArrowsLeftRight,
@@ -76,8 +75,6 @@ export default function CafeDetailsScreen({
   canManageDirectly = false,
   canViewAdminDiagnostics = false,
 }: CafeDetailsScreenProps) {
-  const theme = useMantineTheme();
-
   const [section, setSection] = useState<DetailsSection>("about");
   const [description, setDescription] = useState((cafe?.description ?? "").trim());
   const [descriptionDraft, setDescriptionDraft] = useState((cafe?.description ?? "").trim());
@@ -247,8 +244,8 @@ export default function CafeDetailsScreen({
       paddingRight: 8,
     },
     body: {
-      padding: theme.spacing.lg,
-      paddingBottom: theme.spacing.xl,
+      padding: "var(--page-edge-padding)",
+      paddingBottom: "calc(var(--page-edge-padding) + env(safe-area-inset-bottom))",
     },
     overlay: {
       backdropFilter: "blur(4px)",
@@ -415,7 +412,11 @@ export default function CafeDetailsScreen({
     >
       <Paper withBorder radius="lg" p={0} style={cardStyles}>
         <Stack gap={0}>
-          <Box p="md" pb="xs">
+          <Box
+            pt="md"
+            pb="xs"
+            style={{ paddingInline: "var(--page-edge-padding)" }}
+          >
             <SegmentedControl
               fullWidth
               transitionDuration={0}
@@ -517,7 +518,7 @@ export default function CafeDetailsScreen({
           )}
 
           {section === "reviews" && (
-            <Box px="md" pb="md">
+            <Box pb="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
               <ReviewsSection cafeId={cafe.id} opened={opened} />
             </Box>
           )}

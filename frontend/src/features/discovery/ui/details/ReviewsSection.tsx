@@ -1,4 +1,4 @@
-import { ActionIcon, Collapse, Group, Stack, Text } from "@mantine/core";
+import { ActionIcon, Box, Collapse, Stack } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
 
@@ -16,22 +16,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
   const [composerOpen, setComposerOpen] = useState(false);
 
   return (
-    <Stack gap="sm">
-      <Group justify="space-between" align="center">
-        <Text fw={600} size="sm">
-          Отзывы
-        </Text>
-        <ActionIcon
-          variant={composerOpen ? "filled" : "light"}
-          radius="xl"
-          size="lg"
-          aria-label={composerOpen ? "Скрыть форму отзыва" : "Добавить отзыв"}
-          onClick={() => setComposerOpen((prev) => !prev)}
-        >
-          <IconPlus size={18} />
-        </ActionIcon>
-      </Group>
-
+    <Stack gap="sm" pos="relative">
       <Collapse in={composerOpen}>
         <ReviewComposerCard
           ownReview={controller.ownReview}
@@ -44,8 +29,6 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
           positionInputData={controller.positionInputData}
           drinksLoading={controller.drinksLoading}
           onPositionsInputSearchChange={controller.setDrinkSearchQuery}
-          summaryLength={controller.summaryLength}
-          summaryTrimmedLength={controller.summaryTrimmedLength}
           photos={controller.photos}
           uploadingPhotos={controller.uploadingPhotos}
           activeCheckIn={controller.activeCheckIn}
@@ -76,10 +59,42 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
         helpfulPendingReviewID={controller.helpfulPendingReviewID}
         onMarkHelpful={controller.onMarkHelpful}
         canDeleteReviews={controller.canDeleteReviews}
+        isAdmin={controller.isAdmin}
         onDeleteReview={controller.onDeleteReview}
         hasMore={controller.hasMore}
         onLoadMore={controller.onLoadMore}
       />
+
+      <Box
+        style={{
+          position: "sticky",
+          right: 0,
+          bottom: 14,
+          width: "100%",
+          marginTop: -6,
+          display: "flex",
+          justifyContent: "flex-end",
+          pointerEvents: "none",
+          zIndex: 5,
+        }}
+      >
+        <ActionIcon
+          variant={composerOpen ? "filled" : "light"}
+          radius="xl"
+          size={48}
+          aria-label={composerOpen ? "Скрыть форму отзыва" : "Добавить отзыв"}
+          onClick={() => setComposerOpen((prev) => !prev)}
+          style={{
+            pointerEvents: "auto",
+            boxShadow: "0 10px 24px color-mix(in srgb, var(--color-brand-accent-soft) 55%, transparent)",
+            border: "1px solid var(--glass-border)",
+            backdropFilter: "blur(10px) saturate(140%)",
+            WebkitBackdropFilter: "blur(10px) saturate(140%)",
+          }}
+        >
+          <IconPlus size={20} />
+        </ActionIcon>
+      </Box>
     </Stack>
   );
 }

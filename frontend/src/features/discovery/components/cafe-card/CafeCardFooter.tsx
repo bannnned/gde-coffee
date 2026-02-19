@@ -78,7 +78,7 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
         left: 0,
         right: 0,
         bottom: 0,
-        padding: "0 14px",
+        padding: "0 var(--page-edge-padding)",
         zIndex: 3,
       }}
     >

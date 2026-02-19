@@ -4,9 +4,7 @@ import {
   Badge,
   Box,
   Button,
-  Container,
   Group,
-  Paper,
   Stack,
   Text,
   TextInput,
@@ -128,7 +126,7 @@ export default function ProfileScreen() {
 
   return (
     <Box className={classes.screen} data-ui="profile-screen">
-      <Container className={classes.container}>
+      <div className={classes.container}>
         <header className={classes.header}>
           <ActionIcon
             size={42}
@@ -168,7 +166,7 @@ export default function ProfileScreen() {
         </header>
 
         <Stack gap="lg">
-          <Paper className={classes.profileCard} radius={22}>
+          <section className={classes.profileCard}>
             {status === "loading" ? (
               <Text>Загружаем профиль...</Text>
             ) : !user ? (
@@ -341,7 +339,7 @@ export default function ProfileScreen() {
                 </div>
               </Stack>
             )}
-          </Paper>
+          </section>
 
           {user && (
             <section className={classes.sectionCard}>
@@ -567,7 +565,7 @@ export default function ProfileScreen() {
             </Button>
           )}
         </Stack>
-      </Container>
+      </div>
     </Box>
   );
 }

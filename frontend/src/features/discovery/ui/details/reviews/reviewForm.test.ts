@@ -2,25 +2,24 @@ import { describe, expect, it } from "vitest";
 
 import {
   MAX_REVIEW_PHOTOS,
-  MIN_SUMMARY_LENGTH,
+  buildReviewSummaryFromSections,
   formatReviewDate,
   normalizeDrinkInput,
+  parseReviewSummarySections,
   parseTags,
   reviewFormSchema,
   runWithConcurrency,
 } from "./reviewForm";
 
-function makeSummary(length: number): string {
-  return "x".repeat(length);
-}
-
 describe("reviewFormSchema", () => {
-  it("accepts form when at least one position is provided", () => {
+  it("accepts form when at least one review block is filled", () => {
     const result = reviewFormSchema.safeParse({
       ratingValue: "5",
       positionsInput: ["espresso"],
       tagsInput: "berry, chocolate",
-      summary: makeSummary(MIN_SUMMARY_LENGTH),
+      liked: "Сбалансированная чашка без горечи.",
+      disliked: "",
+      summary: "",
       photos: [],
     });
 
@@ -32,7 +31,9 @@ describe("reviewFormSchema", () => {
       ratingValue: "4",
       positionsInput: ["  filter v60  ", "espresso tonic"],
       tagsInput: "",
-      summary: makeSummary(MIN_SUMMARY_LENGTH),
+      liked: "",
+      disliked: "Долго ждали заказ.",
+      summary: "",
       photos: [],
     });
 
@@ -44,7 +45,9 @@ describe("reviewFormSchema", () => {
       ratingValue: "4",
       positionsInput: [],
       tagsInput: "",
-      summary: makeSummary(MIN_SUMMARY_LENGTH),
+      liked: "",
+      disliked: "",
+      summary: "Вернусь еще раз.",
       photos: [],
     });
 
@@ -54,12 +57,14 @@ describe("reviewFormSchema", () => {
     }
   });
 
-  it("rejects too short summary", () => {
+  it("rejects when all three review blocks are empty", () => {
     const result = reviewFormSchema.safeParse({
       ratingValue: "3",
       positionsInput: ["americano"],
       tagsInput: "",
-      summary: makeSummary(MIN_SUMMARY_LENGTH - 1),
+      liked: "",
+      disliked: "",
+      summary: "",
       photos: [],
     });
 
@@ -79,7 +84,9 @@ describe("reviewFormSchema", () => {
       ratingValue: "5",
       positionsInput: ["flat-white"],
       tagsInput: "",
-      summary: makeSummary(MIN_SUMMARY_LENGTH),
+      liked: "Плотная текстура и сладкое послевкусие.",
+      disliked: "",
+      summary: "",
       photos,
     });
 
@@ -116,6 +123,21 @@ describe("reviewForm utils", () => {
 
   it("formatReviewDate returns original value for invalid date", () => {
     expect(formatReviewDate("not-a-date")).toBe("not-a-date");
+  });
+
+  it("parseReviewSummarySections and buildReviewSummaryFromSections work together", () => {
+    const text = buildReviewSummaryFromSections({
+      liked: "Быстрый сервис.",
+      disliked: "",
+      summary: "Лучше для короткой остановки.",
+    });
+    const parsed = parseReviewSummarySections(text);
+
+    expect(parsed).toEqual({
+      liked: "Быстрый сервис.",
+      disliked: "",
+      summary: "Лучше для короткой остановки.",
+    });
   });
 
   it("runWithConcurrency processes each item exactly once", async () => {

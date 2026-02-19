@@ -26,7 +26,6 @@ import { Controller, type Control, type FieldErrors } from "react-hook-form";
 
 import type { CafeReview } from "../../../../../api/reviews";
 import {
-  MIN_SUMMARY_LENGTH,
   type FormPhoto,
   type ReviewFormValues,
 } from "./reviewForm";
@@ -43,8 +42,6 @@ type ReviewComposerCardProps = {
   positionInputData: string[];
   drinksLoading: boolean;
   onPositionsInputSearchChange: (value: string) => void;
-  summaryLength: number;
-  summaryTrimmedLength: number;
   photos: FormPhoto[];
   uploadingPhotos: boolean;
   activeCheckIn: {
@@ -77,8 +74,6 @@ export function ReviewComposerCard({
   positionInputData,
   drinksLoading,
   onPositionsInputSearchChange,
-  summaryLength,
-  summaryTrimmedLength,
   photos,
   uploadingPhotos,
   activeCheckIn,
@@ -222,32 +217,73 @@ export function ReviewComposerCard({
 
           <Controller
             control={control}
-            name="summary"
+            name="liked"
             render={({ field }) => (
               <Textarea
-                label="Короткий вывод"
-                minRows={4}
-                maxRows={8}
+                label="Понравилось"
+                minRows={2}
+                maxRows={6}
                 value={field.value}
                 onChange={(event) => field.onChange(event.currentTarget.value)}
-                placeholder="Что именно пили, какие вкусовые ноты, стоит ли брать повторно"
-                required
+                placeholder="Что получилось особенно хорошо"
                 styles={{
                   ...roundedInputStyles,
                   input: {
                     ...roundedInputStyles.input,
                     whiteSpace: "pre-wrap",
-                    minHeight: 124,
+                    minHeight: 78,
+                  },
+                }}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="disliked"
+            render={({ field }) => (
+              <Textarea
+                label="Не понравилось"
+                minRows={2}
+                maxRows={6}
+                value={field.value}
+                onChange={(event) => field.onChange(event.currentTarget.value)}
+                placeholder="Что бы вы улучшили"
+                styles={{
+                  ...roundedInputStyles,
+                  input: {
+                    ...roundedInputStyles.input,
+                    whiteSpace: "pre-wrap",
+                    minHeight: 78,
+                  },
+                }}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="summary"
+            render={({ field }) => (
+              <Textarea
+                label="Короткий вывод"
+                minRows={3}
+                maxRows={7}
+                value={field.value}
+                onChange={(event) => field.onChange(event.currentTarget.value)}
+                placeholder="Для кого место и стоит ли вернуться"
+                styles={{
+                  ...roundedInputStyles,
+                  input: {
+                    ...roundedInputStyles.input,
+                    whiteSpace: "pre-wrap",
+                    minHeight: 98,
                   },
                 }}
                 error={errors.summary?.message}
               />
             )}
           />
-
-          <Text size="xs" c={summaryTrimmedLength >= MIN_SUMMARY_LENGTH ? "teal" : "dimmed"}>
-            Символы: {summaryLength}. Минимум: {MIN_SUMMARY_LENGTH}.
-          </Text>
 
           <Stack gap={6}>
             <Group justify="space-between" align="center">

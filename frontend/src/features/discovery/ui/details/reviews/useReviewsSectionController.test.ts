@@ -295,7 +295,7 @@ describe("useReviewsSectionController", () => {
         positions: [{ drink_id: "espresso" }],
         drink_id: "espresso",
         taste_tags: ["шоколад", "орех"],
-        summary: ownReview.summary,
+        summary: `Понравилось: ${ownReview.summary}`,
         photos: [],
       });
     });

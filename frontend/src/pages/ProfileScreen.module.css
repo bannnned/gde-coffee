@@ -1,12 +1,11 @@
 .screen {
-  --screen-pad: clamp(16px, 4vw, 56px);
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   justify-content: center;
-  padding: var(--screen-pad);
-  padding-top: calc(var(--screen-pad) + env(safe-area-inset-top));
-  padding-bottom: calc(var(--screen-pad) + env(safe-area-inset-bottom));
+  padding-inline: var(--page-edge-padding);
+  padding-top: calc(var(--page-edge-padding) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--page-edge-padding) + env(safe-area-inset-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
@@ -17,7 +16,7 @@
 }
 
 .container {
-  width: min(560px, 100%);
+  width: min(640px, 100%);
 }
 
 .header {
@@ -39,11 +38,12 @@
 }
 
 .profileCard {
-  border-radius: 22px;
-  padding: clamp(16px, 3.5vw, 28px);
-  background: linear-gradient(150deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2));
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .hero {
@@ -156,9 +156,8 @@
 
 .listCard {
   margin-top: 4px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border: none;
+  background: transparent;
   overflow: hidden;
 }
 
@@ -167,7 +166,7 @@
   align-items: center;
   gap: 12px;
   min-height: 48px;
-  padding: 10px 14px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -219,12 +218,16 @@
 }
 
 .sectionCard {
-  border-radius: 22px;
-  padding: clamp(12px, 2.5vw, 18px);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  padding: 0;
+  background: transparent;
+  border: none;
   display: grid;
   gap: 12px;
+}
+
+.sectionCard + .sectionCard {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
 }
 
 .sectionHeader {
@@ -369,18 +372,10 @@
 }
 
 @media (max-width: 720px) {
-  .screen {
-    padding: 12px;
-  }
-
   .avatarLarge {
     width: 96px;
     height: 96px;
     font-size: 1.8rem;
-  }
-
-  .profileCard {
-    padding: 18px;
   }
 
   .socialConnectList {

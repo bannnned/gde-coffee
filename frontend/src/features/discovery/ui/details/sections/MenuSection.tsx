@@ -20,6 +20,24 @@ type MenuSectionProps = {
   onManagePhotos?: (kind: "cafe" | "menu") => void;
 };
 
+function formatPhotoAddedDate(photo: CafePhoto | null): string | null {
+  if (!photo) return null;
+  const source = photo as CafePhoto & {
+    created_at?: string;
+    uploaded_at?: string;
+    added_at?: string;
+  };
+  const rawDate = source.created_at || source.uploaded_at || source.added_at;
+  if (!rawDate) return null;
+  const parsed = new Date(rawDate);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function MenuSection({
   cafe,
   menuMainPhoto,
@@ -34,6 +52,7 @@ export default function MenuSection({
 }: MenuSectionProps) {
   const menuMainSources = buildCafePhotoPictureSources(menuMainPhoto?.url, [640, 1024, 1536]);
   const menuThumbSizes = "108px";
+  const menuPhotoAddedDate = formatPhotoAddedDate(menuMainPhoto);
 
   return (
     <Stack gap={0}>
@@ -84,13 +103,30 @@ export default function MenuSection({
         </Box>
       )}
 
+      {menuPhotoAddedDate && (
+        <Box
+          py={8}
+          style={{
+            borderBottom: "1px solid var(--border)",
+            paddingInline: "var(--page-edge-padding)",
+          }}
+        >
+          <Text size="xs" c="dimmed">
+            Фото меню добавлено: {menuPhotoAddedDate}
+          </Text>
+        </Box>
+      )}
+
       {menuPhotoItems.length > 1 && (
         <Group
           wrap="nowrap"
           gap={8}
-          px="md"
           py="sm"
-          style={{ overflowX: "auto", borderBottom: "1px solid var(--border)" }}
+          style={{
+            overflowX: "auto",
+            borderBottom: "1px solid var(--border)",
+            paddingInline: "var(--page-edge-padding)",
+          }}
         >
           {menuPhotoItems.map((photo, index) => (
             <Paper
@@ -131,7 +167,7 @@ export default function MenuSection({
         </Group>
       )}
 
-      <Box px="md" py="md">
+      <Box py="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
         {menuPhotoItems.length === 0 && (
           <Text size="sm" c="dimmed">
             Фото меню и позиций

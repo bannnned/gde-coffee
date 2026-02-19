@@ -163,8 +163,8 @@ export default function CafeCardHero({
           styles={badgeStyles}
           style={{
             position: "absolute",
-            left: 12,
-            top: 12,
+            left: "var(--page-edge-padding)",
+            top: "var(--page-edge-padding)",
             zIndex: 2,
           }}
         >
@@ -177,8 +177,8 @@ export default function CafeCardHero({
           gap={6}
           style={{
             position: "absolute",
-            right: 12,
-            top: 12,
+            right: "var(--page-edge-padding)",
+            top: "var(--page-edge-padding)",
             zIndex: 2,
             alignItems: "stretch",
           }}
