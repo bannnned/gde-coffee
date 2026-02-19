@@ -2,7 +2,6 @@ import { Box, Paper, Text } from "@mantine/core";
 import {
   animate,
   motion,
-  useDragControls,
   useMotionValue,
   useMotionValueEvent,
 } from "framer-motion";
@@ -57,7 +56,6 @@ export default function BottomSheet({
   const [headerHeight, setHeaderHeight] = useState(PEEK_HEIGHT_PX);
   const sheetHeightRafRef = useRef<number | null>(null);
   const pendingSheetHeightRef = useRef<number | null>(null);
-  const dragControls = useDragControls();
 
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -160,38 +158,6 @@ export default function BottomSheet({
     );
   };
 
-  const handleDrag = (
-    _: MouseEvent | TouchEvent | PointerEvent,
-    info: { delta: { y: number } },
-  ) => {
-    if (lockedState) return;
-    const next = height.get() - info.delta.y;
-    const clamped = Math.max(heights.peek, Math.min(heights.expanded, next));
-    height.set(clamped);
-  };
-
-  const handleDragEnd = (
-    _: MouseEvent | TouchEvent | PointerEvent,
-    info: { offset: { y: number }; velocity: { y: number } },
-  ) => {
-    if (lockedState) return;
-    const current = height.get();
-    const projected =
-      Math.abs(info.velocity.y) > SWIPE_VELOCITY
-        ? current - info.velocity.y * 0.2
-        : current - info.offset.y * 0.2;
-    const snap = pickClosest(projected);
-    if (snap === heights.peek) {
-      setSheetState("peek");
-      return;
-    }
-    if (disableMidState || snap === heights.expanded) {
-      setSheetState("expanded");
-      return;
-    }
-    setSheetState("mid");
-  };
-
   const handleHeaderPointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
   ) => {
@@ -201,30 +167,60 @@ export default function BottomSheet({
     if (target.closest('input, textarea, select, [data-no-drag="true"]')) {
       return;
     }
-    const isInteractive = Boolean(target.closest("button, a"));
-    if (!isInteractive) {
-      event.preventDefault();
-      dragControls.start(event);
-      return;
-    }
-
     const startX = event.clientX;
     const startY = event.clientY;
+    const startHeight = height.get();
     const pointerId = event.pointerId;
-    const threshold = 6;
+    const isInteractive = Boolean(target.closest("button, a"));
+    const threshold = isInteractive ? 8 : 6;
+    let mode: "pending" | "drag" | "ignore" = "pending";
+    let lastClientY = startY;
+    let lastTs = performance.now();
 
     const handleMove = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
-      const dx = Math.abs(moveEvent.clientX - startX);
-      const dy = Math.abs(moveEvent.clientY - startY);
-      if (dx < threshold && dy < threshold) return;
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
+      if (mode === "pending") {
+        if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          // Horizontal gesture: let nested UI (e.g. photo swipe) handle it.
+          mode = "ignore";
+          cleanup();
+          return;
+        }
+        mode = "drag";
+      }
+      if (mode !== "drag") return;
       moveEvent.preventDefault();
-      cleanup();
-      dragControls.start(moveEvent);
+      const next = startHeight - dy;
+      const clamped = Math.max(heights.peek, Math.min(heights.expanded, next));
+      height.set(clamped);
+      lastClientY = moveEvent.clientY;
+      lastTs = performance.now();
     };
 
     const handleUp = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
+      if (mode === "drag") {
+        const current = height.get();
+        const offsetY = upEvent.clientY - startY;
+        const nowTs = performance.now();
+        const dt = Math.max(1, nowTs - lastTs);
+        const velocityY = ((upEvent.clientY - lastClientY) / dt) * 1000;
+        const projected =
+          Math.abs(velocityY) > SWIPE_VELOCITY
+            ? current - velocityY * 0.2
+            : current - offsetY * 0.2;
+        const snap = pickClosest(projected);
+        if (snap === heights.peek) {
+          setSheetState("peek");
+        } else if (disableMidState || snap === heights.expanded) {
+          setSheetState("expanded");
+        } else {
+          setSheetState("mid");
+        }
+      }
       cleanup();
     };
 
@@ -256,14 +252,6 @@ export default function BottomSheet({
         p="xs"
         className={classes.sheet}
         data-state={effectiveSheetState}
-        drag={lockedState ? false : "y"}
-        dragControls={dragControls}
-        dragListener={false}
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0}
-        dragMomentum={false}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
         style={{
           y: 0,
           height,
