@@ -59,6 +59,7 @@
   gap: 6px;
   width: 100%;
   flex-shrink: 0;
+  touch-action: none;
 }
 
 .list {

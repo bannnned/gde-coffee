@@ -65,6 +65,7 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
   }, [cafe.id, cachedSnapshot]);
 
   const hasReviewStats = (ratingSnapshot?.reviews_count ?? 0) > 0;
+  const showNewBadge = !ratingLoading && !hasReviewStats;
   const ratingLabel = useMemo(() => {
     if (!ratingSnapshot) return "";
     return ratingSnapshot.rating.toFixed(1);
@@ -107,7 +108,7 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
             display: "flex",
             justifyContent: "flex-end",
             alignItems: "center",
-            paddingTop: 2,
+            paddingTop: showNewBadge ? 20 : 2,
           }}
         >
           {ratingLoading ? (

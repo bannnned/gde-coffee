@@ -153,7 +153,7 @@ export default function DiscoveryScreen() {
         errorText={DISCOVERY_UI_TEXT.errorLoad}
         isListEmpty={manualPickMode || showFirstChoice || visibleCafes.length === 0}
         lockedState={manualPickMode ? "peek" : null}
-        disableMidState={singleSelectedCafeMode}
+        disableMidState={false}
         hideHeaderContentInPeek={singleSelectedCafeMode}
         header={
           showFirstChoice ? (

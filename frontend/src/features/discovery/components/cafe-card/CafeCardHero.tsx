@@ -41,6 +41,7 @@ export default function CafeCardHero({
   badgeStyles,
   children,
 }: CafeCardHeroProps) {
+  const HERO_HEIGHT_PX = 172;
   const photoSources = buildCafePhotoPictureSources(activePhotoURL, [640, 1024, 1536]);
   const photoSizes = "(max-width: 768px) 100vw, 560px";
 
@@ -50,8 +51,8 @@ export default function CafeCardHero({
       onTouchEnd={onTouchEnd}
       style={{
         position: "relative",
-        minHeight: 216,
-        height: 216,
+        minHeight: HERO_HEIGHT_PX,
+        height: HERO_HEIGHT_PX,
         background:
           "radial-gradient(circle at 20% 20%, var(--bg-accent-1), transparent 45%), var(--surface)",
       }}
@@ -177,7 +178,7 @@ export default function CafeCardHero({
                 color: "var(--cafe-hero-title-color)",
                 backdropFilter: "blur(10px)",
                 WebkitBackdropFilter: "blur(10px)",
-                width: 80,
+                width: 90,
                 justifyContent: "flex-start",
                 paddingInline: 8,
               },
@@ -209,7 +210,7 @@ export default function CafeCardHero({
                 color: "var(--cafe-hero-title-color)",
                 backdropFilter: "blur(10px)",
                 WebkitBackdropFilter: "blur(10px)",
-                width: 80,
+                width: 90,
                 justifyContent: "flex-start",
                 paddingInline: 8,
               },

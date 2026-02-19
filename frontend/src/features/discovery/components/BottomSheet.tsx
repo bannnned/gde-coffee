@@ -31,6 +31,7 @@ type SheetState = "peek" | "mid" | "expanded";
 const SWIPE_VELOCITY = 900;
 const PEEK_HEIGHT_PX = 64;
 const SHEET_PADDING_PX = 8;
+const MID_SINGLE_CAFE_EXTRA_PX = 26;
 
 const MotionPaper = motion(Paper);
 
@@ -90,12 +91,12 @@ export default function BottomSheet({
       Math.round(peekHeaderHeight + SHEET_PADDING_PX * 2),
     );
     const expanded = Math.max(peek, Math.round(available));
+    const midTarget = hideHeaderContentInPeek
+      ? peek + MID_SINGLE_CAFE_EXTRA_PX
+      : Math.max(peek + 120, Math.round(available * 0.33));
     const mid = disableMidState
       ? expanded
-      : Math.min(
-          expanded,
-          Math.max(peek + 120, Math.round(available * 0.33)),
-        );
+      : Math.min(expanded, midTarget);
     return { mid, expanded, peek };
   }, [disableMidState, filtersBarHeight, headerHeight, hideHeaderContentInPeek, safeViewportHeight]);
 
@@ -171,8 +172,16 @@ export default function BottomSheet({
     const startY = event.clientY;
     const startHeight = height.get();
     const pointerId = event.pointerId;
+    const pointerHost = event.currentTarget;
+    if (pointerHost.setPointerCapture) {
+      try {
+        pointerHost.setPointerCapture(pointerId);
+      } catch {
+        // no-op
+      }
+    }
     const isInteractive = Boolean(target.closest("button, a"));
-    const threshold = isInteractive ? 8 : 6;
+    const threshold = isInteractive ? 10 : 7;
     let mode: "pending" | "drag" | "ignore" = "pending";
     let lastClientY = startY;
     let lastTs = performance.now();
@@ -181,9 +190,16 @@ export default function BottomSheet({
       if (moveEvent.pointerId !== pointerId) return;
       const dx = moveEvent.clientX - startX;
       const dy = moveEvent.clientY - startY;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
       if (mode === "pending") {
-        if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
-        if (Math.abs(dx) > Math.abs(dy)) {
+        if (absDx < threshold && absDy < threshold) return;
+        const verticalDominant = absDy > absDx + 3;
+        const horizontalDominant = absDx > absDy + 8;
+        if (!verticalDominant && !horizontalDominant) {
+          return;
+        }
+        if (horizontalDominant) {
           // Horizontal gesture: let nested UI (e.g. photo swipe) handle it.
           mode = "ignore";
           cleanup();
@@ -212,13 +228,26 @@ export default function BottomSheet({
           Math.abs(velocityY) > SWIPE_VELOCITY
             ? current - velocityY * 0.2
             : current - offsetY * 0.2;
-        const snap = pickClosest(projected);
-        if (snap === heights.peek) {
-          setSheetState("peek");
-        } else if (disableMidState || snap === heights.expanded) {
-          setSheetState("expanded");
+        if (disableMidState) {
+          // In single-cafe mode don't collapse too eagerly: require a deep pull.
+          const peekSnapThreshold = heights.peek + Math.max(
+            34,
+            Math.min(72, Math.round((heights.expanded - heights.peek) * 0.16)),
+          );
+          if (projected <= peekSnapThreshold) {
+            setSheetState("peek");
+          } else {
+            setSheetState("expanded");
+          }
         } else {
-          setSheetState("mid");
+          const snap = pickClosest(projected);
+          if (snap === heights.peek) {
+            setSheetState("peek");
+          } else if (snap === heights.expanded) {
+            setSheetState("expanded");
+          } else {
+            setSheetState("mid");
+          }
         }
       }
       cleanup();
@@ -228,6 +257,13 @@ export default function BottomSheet({
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleUp);
+      if (pointerHost.releasePointerCapture) {
+        try {
+          pointerHost.releasePointerCapture(pointerId);
+        } catch {
+          // no-op
+        }
+      }
     };
 
     window.addEventListener("pointermove", handleMove, { passive: false });
