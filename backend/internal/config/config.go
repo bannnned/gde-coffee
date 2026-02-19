@@ -16,6 +16,7 @@ type Config struct {
 	Limits    LimitsConfig
 	Auth      AuthConfig
 	Mailer    MailerConfig
+	Feedback  FeedbackConfig
 	Media     MediaConfig
 	Geocoding GeocodingConfig
 }
@@ -61,6 +62,10 @@ type MailerConfig struct {
 	From    string
 	ReplyTo string
 	Timeout time.Duration
+}
+
+type FeedbackConfig struct {
+	RecipientEmail string
 }
 
 type MediaConfig struct {
@@ -245,6 +250,9 @@ func Load() (Config, error) {
 		From:    getEnvTrim("MAIL_FROM", ""),
 		ReplyTo: getEnvTrim("MAIL_REPLY_TO", ""),
 		Timeout: mailerTimeout,
+	}
+	cfg.Feedback = FeedbackConfig{
+		RecipientEmail: getEnvTrim("FEEDBACK_TO_EMAIL", ""),
 	}
 	cfg.Media = MediaConfig{
 		S3Enabled:         s3Enabled,

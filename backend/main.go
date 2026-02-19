@@ -18,6 +18,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/domains/cafes"
 	"backend/internal/domains/favorites"
+	"backend/internal/domains/feedback"
 	"backend/internal/domains/moderation"
 	"backend/internal/domains/photos"
 	"backend/internal/domains/reviews"
@@ -293,6 +294,17 @@ func main() {
 		ReplyTo: cfg.Mailer.ReplyTo,
 		Timeout: cfg.Mailer.Timeout,
 	})
+	feedbackRecipient := strings.TrimSpace(cfg.Feedback.RecipientEmail)
+	if feedbackRecipient == "" {
+		feedbackRecipient = strings.TrimSpace(cfg.Mailer.ReplyTo)
+	}
+	if feedbackRecipient == "" {
+		feedbackRecipient = strings.TrimSpace(cfg.Mailer.From)
+	}
+	feedbackHandler := feedback.NewDefaultHandler(pool, mailerClient, feedbackRecipient)
+	if feedbackRecipient == "" {
+		log.Printf("feedback recipient is not configured: FEEDBACK_TO_EMAIL, MAIL_REPLY_TO and MAIL_FROM are empty")
+	}
 
 	oauthProviders := map[auth.Provider]auth.OAuthProvider{}
 	if cfg.Auth.GitHubClientID != "" && cfg.Auth.GitHubClientSecret != "" {
@@ -362,6 +374,7 @@ func main() {
 	accountGroup.POST("/profile/avatar/presign", auth.RequireAuth(pool), authHandler.ProfileAvatarPresign)
 	accountGroup.POST("/profile/avatar/confirm", auth.RequireAuth(pool), authHandler.ProfileAvatarConfirm)
 	accountGroup.GET("/favorites", auth.RequireAuth(pool), favoritesHandler.List)
+	accountGroup.POST("/feedback", auth.RequireAuth(pool), feedbackHandler.Create)
 	accountGroup.GET("/email/change/confirm", authHandler.EmailChangeConfirm)
 
 	r.NoRoute(func(c *gin.Context) {

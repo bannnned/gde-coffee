@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ActionIcon,
   Badge,
@@ -9,6 +10,7 @@ import {
   Stack,
   Text,
   TextInput,
+  Textarea,
   Title,
 } from "@mantine/core";
 import {
@@ -22,6 +24,7 @@ import {
   IconLinkOff,
   IconLogout,
   IconMail,
+  IconMessageCircle,
   IconPlus,
   IconPencil,
   IconSettings,
@@ -30,10 +33,12 @@ import {
 } from "@tabler/icons-react";
 import { useLocation, useNavigate, type Location as RouterLocation } from "react-router-dom";
 
+import { submitAppFeedback } from "../api/feedback";
 import { useAuth } from "../components/AuthGate";
 import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import useProfileAccount from "../features/profile/model/useProfileAccount";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
+import { extractApiErrorMessage } from "../utils/apiError";
 import classes from "./ProfileScreen.module.css";
 
 export default function ProfileScreen() {
@@ -80,6 +85,46 @@ export default function ProfileScreen() {
     refreshAuth,
     logout,
   });
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackContact, setFeedbackContact] = useState("");
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
+  const [isFeedbackSending, setIsFeedbackSending] = useState(false);
+
+  const handleFeedbackSubmit = async () => {
+    const message = feedbackMessage.trim();
+    const contact = feedbackContact.trim();
+
+    if (!message) {
+      setFeedbackError("Напишите текст отзыва.");
+      setFeedbackSuccess(null);
+      return;
+    }
+    if (message.length > 4000) {
+      setFeedbackError("Отзыв слишком длинный (максимум 4000 символов).");
+      setFeedbackSuccess(null);
+      return;
+    }
+    if (contact.length > 255) {
+      setFeedbackError("Контакт слишком длинный (максимум 255 символов).");
+      setFeedbackSuccess(null);
+      return;
+    }
+
+    setIsFeedbackSending(true);
+    setFeedbackError(null);
+    setFeedbackSuccess(null);
+    try {
+      await submitAppFeedback({ message, contact });
+      setFeedbackMessage("");
+      setFeedbackContact("");
+      setFeedbackSuccess("Спасибо, отзыв отправлен.");
+    } catch (error: unknown) {
+      setFeedbackError(extractApiErrorMessage(error, "Не удалось отправить отзыв."));
+    } finally {
+      setIsFeedbackSending(false);
+    }
+  };
 
   return (
     <Box className={classes.screen} data-ui="profile-screen">
@@ -91,7 +136,7 @@ export default function ProfileScreen() {
             className={`${classes.iconButton} glass-action glass-action--square`}
             onClick={() => {
               if (backgroundLocation) {
-                navigate(-1);
+                void navigate(-1);
                 return;
               }
               void navigate("/");
@@ -392,6 +437,54 @@ export default function ProfileScreen() {
               </div>
 
               {identityError && <Text className={classes.errorText}>{identityError}</Text>}
+            </section>
+          )}
+
+          {user && (
+            <section className={classes.sectionCard}>
+              <div className={classes.sectionHeader}>
+                <Group gap="xs">
+                  <IconMessageCircle size={18} />
+                  <Text fw={600}>Отзыв о приложении</Text>
+                </Group>
+              </div>
+              <Text size="sm" className={classes.feedbackHint}>
+                Напишите, что улучшить. Отзыв получит команда продукта.
+              </Text>
+              <Textarea
+                minRows={4}
+                autosize
+                maxRows={8}
+                placeholder="Например: на iPhone иногда дергается карта при открытии карточки кофейни..."
+                value={feedbackMessage}
+                onChange={(event) => {
+                  setFeedbackMessage(event.currentTarget.value);
+                  setFeedbackError(null);
+                  setFeedbackSuccess(null);
+                }}
+                disabled={isFeedbackSending}
+              />
+              <TextInput
+                placeholder="Контакт для ответа (опционально): email, Telegram"
+                value={feedbackContact}
+                onChange={(event) => {
+                  setFeedbackContact(event.currentTarget.value);
+                  setFeedbackError(null);
+                  setFeedbackSuccess(null);
+                }}
+                disabled={isFeedbackSending}
+              />
+              {feedbackError && <Text className={classes.errorText}>{feedbackError}</Text>}
+              {feedbackSuccess && <Text className={classes.successText}>{feedbackSuccess}</Text>}
+              <Button
+                variant="light"
+                onClick={() => {
+                  void handleFeedbackSubmit();
+                }}
+                loading={isFeedbackSending}
+              >
+                Отправить отзыв
+              </Button>
             </section>
           )}
 

@@ -307,6 +307,10 @@
   display: inline-flex;
 }
 
+.feedbackHint {
+  color: var(--muted);
+}
+
 .errorText {
   color: var(--color-status-error);
   font-size: 0.9rem;
