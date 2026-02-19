@@ -62,6 +62,7 @@ type PaletteTokens = {
   mapCafeMarker: string;
   mapLabelText: string;
   mapLabelHalo: string;
+  cafeHeroEmphasis: string;
 };
 
 type PaletteSet = {
@@ -74,13 +75,13 @@ export const APP_PALETTES = {
   coffee: {
     label: "Coffee House",
     light: {
-      brandAccent: "#FF6A3D",
-      brandAccentSoft: "rgba(255, 106, 61, 0.24)",
-      brandAccentStrong: "#E5572E",
+      brandAccent: "#FF4E1F",
+      brandAccentSoft: "rgba(255, 78, 31, 0.28)",
+      brandAccentStrong: "#E83B0C",
       onAccent: "#FFF8F2",
 
       bgBase: "#FFF8F2",
-      bgAccent1: "rgba(255, 106, 61, 0.16)",
+      bgAccent1: "rgba(255, 78, 31, 0.2)",
       bgAccent2: "rgba(255, 200, 87, 0.2)",
 
       cardBg: "#FFFFFF",
@@ -104,8 +105,8 @@ export const APP_PALETTES = {
       glassGradHover2: "rgba(255, 248, 242, 0.82)",
 
       shadowLg: "0 18px 40px rgba(31, 26, 23, 0.16)",
-      attentionRing: "rgba(255, 106, 61, 0.42)",
-      attentionGlow: "rgba(255, 106, 61, 0.28)",
+      attentionRing: "rgba(255, 78, 31, 0.46)",
+      attentionGlow: "rgba(255, 78, 31, 0.32)",
 
       statusSuccess: "#22C7A6",
       statusWarning: "#FFC857",
@@ -113,18 +114,19 @@ export const APP_PALETTES = {
       statusInfo: "#0E7C86",
 
       mapUserMarker: "#FFFFFF",
-      mapCafeMarker: "#FF6A3D",
+      mapCafeMarker: "#FF4E1F",
       mapLabelText: "#1F1A17",
       mapLabelHalo: "rgba(255, 248, 242, 0.9)",
+      cafeHeroEmphasis: "#7A5A1F",
     },
     dark: {
-      brandAccent: "#FF7D57",
-      brandAccentSoft: "rgba(255, 125, 87, 0.3)",
-      brandAccentStrong: "#FF9A78",
+      brandAccent: "#FF6B3A",
+      brandAccentSoft: "rgba(255, 107, 58, 0.34)",
+      brandAccentStrong: "#FF8A5F",
       onAccent: "#2B1712",
 
       bgBase: "#1D1715",
-      bgAccent1: "rgba(255, 106, 61, 0.24)",
+      bgAccent1: "rgba(255, 107, 58, 0.28)",
       bgAccent2: "rgba(14, 124, 134, 0.18)",
 
       cardBg: "rgba(255, 248, 242, 0.08)",
@@ -148,8 +150,8 @@ export const APP_PALETTES = {
       glassGradHover2: "rgba(29, 23, 21, 0.66)",
 
       shadowLg: "0 18px 40px rgba(0, 0, 0, 0.62)",
-      attentionRing: "rgba(255, 125, 87, 0.5)",
-      attentionGlow: "rgba(255, 125, 87, 0.34)",
+      attentionRing: "rgba(255, 107, 58, 0.54)",
+      attentionGlow: "rgba(255, 107, 58, 0.38)",
 
       statusSuccess: "#2ED9B5",
       statusWarning: "#FFD36E",
@@ -157,9 +159,10 @@ export const APP_PALETTES = {
       statusInfo: "#45B8C1",
 
       mapUserMarker: "#FFF8F2",
-      mapCafeMarker: "#FF7D57",
+      mapCafeMarker: "#FF6B3A",
       mapLabelText: "#FFF8F2",
       mapLabelHalo: "rgba(24, 18, 16, 0.92)",
+      cafeHeroEmphasis: "#D5AF6A",
     },
   },
   matcha: {
@@ -199,6 +202,7 @@ export const APP_PALETTES = {
       mapCafeMarker: "#3f7a4a",
       mapLabelText: "#1d2b1f",
       mapLabelHalo: "rgba(246, 255, 243, 0.9)",
+      cafeHeroEmphasis: "#745A21",
     },
     dark: {
       brandAccent: "#68b477",
@@ -235,6 +239,7 @@ export const APP_PALETTES = {
       mapCafeMarker: "#68b477",
       mapLabelText: "#f6fff3",
       mapLabelHalo: "rgba(20, 26, 20, 0.92)",
+      cafeHeroEmphasis: "#D1AA63",
     },
   },
   terracotta: {
@@ -274,6 +279,7 @@ export const APP_PALETTES = {
       mapCafeMarker: "#b85c38",
       mapLabelText: "#251814",
       mapLabelHalo: "rgba(255, 247, 241, 0.9)",
+      cafeHeroEmphasis: "#7E5521",
     },
     dark: {
       brandAccent: "#d08260",
@@ -310,6 +316,7 @@ export const APP_PALETTES = {
       mapCafeMarker: "#d08260",
       mapLabelText: "#fff7f1",
       mapLabelHalo: "rgba(28, 21, 19, 0.92)",
+      cafeHeroEmphasis: "#D5A46B",
     },
   },
 } as const satisfies Record<string, PaletteSet>;
@@ -364,6 +371,7 @@ function toCssVariables(tokens: PaletteTokens) {
     "--color-map-cafe-marker": tokens.mapCafeMarker,
     "--color-map-label-text": tokens.mapLabelText,
     "--color-map-label-halo": tokens.mapLabelHalo,
+    "--color-cafe-hero-emphasis": tokens.cafeHeroEmphasis,
 
     // Backward-compatible app variables currently used in CSS.
     "--coffee": tokens.bgBase,
@@ -390,6 +398,7 @@ function toCssVariables(tokens: PaletteTokens) {
     "--bg-accent-2": tokens.bgAccent2,
     "--mantine-color-text": tokens.textPrimary,
     "--mantine-color-dimmed": tokens.textMuted,
+    "--cafe-hero-emphasis-color": tokens.cafeHeroEmphasis,
 
     "--attention-ring": tokens.attentionRing,
     "--attention-glow": tokens.attentionGlow,

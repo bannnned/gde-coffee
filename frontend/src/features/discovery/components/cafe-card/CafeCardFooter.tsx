@@ -89,7 +89,7 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
             size="md"
             lineClamp={1}
             title={cafe.name}
-            style={{ color: "var(--cafe-hero-title-color)" }}
+            style={{ color: "var(--cafe-hero-emphasis-color)" }}
           >
             {cafe.name}
           </Text>
@@ -118,8 +118,8 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
           ) : hasReviewStats ? (
               <Group style={{ display: 'grid', justifyItems: 'end' }} gap={8} wrap="nowrap">
               <Group gap={4} wrap="nowrap">
-                <IconStarFilled size={14} color="var(--cafe-hero-title-color)" />
-                <Text fw={600} size="sm" style={{ color: "var(--cafe-hero-title-color)" }}>
+                <IconStarFilled size={14} color="var(--cafe-hero-emphasis-color)" />
+                <Text fw={600} size="sm" style={{ color: "var(--cafe-hero-emphasis-color)" }}>
                   {ratingLabel}
                 </Text>
               </Group>
