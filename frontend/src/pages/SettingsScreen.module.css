@@ -1,8 +1,12 @@
 .screen {
+  --screen-pad: clamp(16px, 4vw, 56px);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
-  padding: clamp(16px, 4vw, 56px);
+  padding: var(--screen-pad);
+  padding-top: calc(var(--screen-pad) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--screen-pad) + env(safe-area-inset-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;

@@ -25,7 +25,7 @@ import {
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState, type FocusEvent } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams, type Location as RouterLocation } from "react-router-dom";
 
 import * as authApi from "../api/auth";
 import {
@@ -75,6 +75,7 @@ function extractSettingsErrorMessage(error: unknown, fallback: string): string {
 export default function SettingsScreen() {
   useAllowBodyScroll();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user, status, refreshAuth } = useAuth();
   const { setColorScheme } = useMantineColorScheme();
@@ -143,6 +144,9 @@ export default function SettingsScreen() {
   const statusTone = isVerified ? "ok" : "warn";
   const userRole = (user?.role ?? "").toLowerCase();
   const canModerate = userRole === "admin" || userRole === "moderator";
+  const backgroundLocation = (
+    location.state as { backgroundLocation?: RouterLocation } | null
+  )?.backgroundLocation;
 
   useOauthRedirect({
     onResultOk: refreshAuth,
@@ -365,6 +369,10 @@ export default function SettingsScreen() {
             variant="transparent"
             className={`${classes.iconButton} glass-action glass-action--square`}
             onClick={() => {
+              if (backgroundLocation) {
+                navigate(-1);
+                return;
+              }
               void navigate("/profile");
             }}
             aria-label="Назад"

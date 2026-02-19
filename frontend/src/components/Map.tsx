@@ -453,6 +453,60 @@ export default function Map({
     });
   }, [filtersBarHeight, isMapReady, paddingEnabled]);
 
+  useEffect(() => {
+    if (!isMapReady) return;
+    const map = mapRef.current;
+    const container = containerRef.current;
+    if (!map || !container) return;
+
+    let raf: number | null = null;
+    const scheduleResize = () => {
+      if (raf != null) {
+        cancelAnimationFrame(raf);
+      }
+      raf = window.requestAnimationFrame(() => {
+        raf = null;
+        const nextMap = mapRef.current;
+        if (!nextMap) return;
+        nextMap.resize();
+      });
+    };
+
+    const observer = new ResizeObserver(() => {
+      scheduleResize();
+    });
+    observer.observe(container);
+
+    window.addEventListener("resize", scheduleResize);
+    window.addEventListener("orientationchange", scheduleResize);
+    window.addEventListener("focus", scheduleResize);
+    window.addEventListener("pageshow", scheduleResize);
+    window.visualViewport?.addEventListener("resize", scheduleResize);
+    window.visualViewport?.addEventListener("scroll", scheduleResize);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        scheduleResize();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    scheduleResize();
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", scheduleResize);
+      window.removeEventListener("orientationchange", scheduleResize);
+      window.removeEventListener("focus", scheduleResize);
+      window.removeEventListener("pageshow", scheduleResize);
+      window.visualViewport?.removeEventListener("resize", scheduleResize);
+      window.visualViewport?.removeEventListener("scroll", scheduleResize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (raf != null) {
+        cancelAnimationFrame(raf);
+      }
+    };
+  }, [isMapReady]);
+
   const selectedCafeLngLat = useMemo(() => {
     if (!selectedCafeId) return null;
     const cafe = cafes.find((c) => c.id === selectedCafeId);

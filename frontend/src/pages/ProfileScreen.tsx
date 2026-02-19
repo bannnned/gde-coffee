@@ -28,7 +28,7 @@ import {
   IconTrophy,
   IconX,
 } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, type Location as RouterLocation } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
 import TelegramLoginWidget from "../components/TelegramLoginWidget";
@@ -39,6 +39,10 @@ import classes from "./ProfileScreen.module.css";
 export default function ProfileScreen() {
   const { user, logout, openAuthModal, status, refreshAuth } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backgroundLocation = (
+    location.state as { backgroundLocation?: RouterLocation } | null
+  )?.backgroundLocation;
 
   useAllowBodyScroll();
   const {
@@ -85,7 +89,13 @@ export default function ProfileScreen() {
             size={42}
             variant="transparent"
             className={`${classes.iconButton} glass-action glass-action--square`}
-            onClick={() => void navigate("/")}
+            onClick={() => {
+              if (backgroundLocation) {
+                navigate(-1);
+                return;
+              }
+              void navigate("/");
+            }}
             aria-label="Назад"
           >
             <IconArrowLeft size={18} />
@@ -97,7 +107,15 @@ export default function ProfileScreen() {
             size={42}
             variant="transparent"
             className={`${classes.iconButton} glass-action glass-action--square`}
-            onClick={() => void navigate("/settings")}
+            onClick={() => {
+              if (backgroundLocation) {
+                void navigate("/settings", {
+                  state: { backgroundLocation },
+                });
+                return;
+              }
+              void navigate("/settings");
+            }}
             aria-label="Настройки"
           >
             <IconSettings size={18} />

@@ -161,9 +161,13 @@ export default function FiltersBar({
     const observer = new ResizeObserver(update);
     observer.observe(node);
     window.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
       setFiltersBarHeight(0);
     };
   }, [setFiltersBarHeight]);
@@ -174,7 +178,9 @@ export default function FiltersBar({
       top={0}
       left={0}
       right={0}
-      p="sm"
+      px="sm"
+      pb="sm"
+      pt="calc(env(safe-area-inset-top) + var(--mantine-spacing-sm))"
       className={classes.root}
       data-ui="filters-bar"
     >

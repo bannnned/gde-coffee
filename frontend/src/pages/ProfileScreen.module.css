@@ -1,8 +1,12 @@
 .screen {
+  --screen-pad: clamp(16px, 4vw, 56px);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
-  padding: clamp(16px, 4vw, 56px);
+  padding: var(--screen-pad);
+  padding-top: calc(var(--screen-pad) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--screen-pad) + env(safe-area-inset-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
@@ -79,8 +83,8 @@
 
 .avatarPlusButton {
   position: absolute;
-  right: -32px;
-  top: -94px;
+  right: 0;
+  top: 0;
   z-index: 2;
   border: 1px solid var(--glass-border);
   background: linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2));

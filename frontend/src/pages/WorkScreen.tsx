@@ -77,7 +77,7 @@ export default function WorkScreen() {
   return (
     <Box
       pos="relative"
-      h="100vh"
+      h="100dvh"
       w="100%"
       data-sheet-state={sheetState}
       style={{ ["--sheet-height" as string]: `${sheetHeight}px` }}

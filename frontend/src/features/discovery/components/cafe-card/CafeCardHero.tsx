@@ -1,4 +1,5 @@
 import { Badge, Box, Button, Group, Stack } from "@mantine/core";
+import { IconRoute2 } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 
 import type { Cafe } from "../../../../entities/cafe/model/types";
@@ -160,12 +161,14 @@ export default function CafeCardHero({
             right: 12,
             top: 12,
             zIndex: 2,
+            alignItems: "stretch",
           }}
           data-no-drag="true"
         >
           <Button
             size="compact-xs"
             variant="default"
+            leftSection={<IconRoute2 size={14} />}
             styles={{
               root: {
                 borderRadius: 999,
@@ -174,6 +177,17 @@ export default function CafeCardHero({
                 color: "var(--cafe-hero-title-color)",
                 backdropFilter: "blur(10px)",
                 WebkitBackdropFilter: "blur(10px)",
+                width: 156,
+                justifyContent: "flex-start",
+                paddingInline: 8,
+              },
+              inner: {
+                justifyContent: "flex-start",
+                width: "100%",
+              },
+              label: {
+                textAlign: "left",
+                paddingLeft: 2,
               },
             }}
             onClick={(event) => {
@@ -181,11 +195,12 @@ export default function CafeCardHero({
               onOpen2gis(cafe);
             }}
           >
-            2GIS
+            Маршрут 2ГИС
           </Button>
           <Button
             size="compact-xs"
             variant="default"
+            leftSection={<IconRoute2 size={14} />}
             styles={{
               root: {
                 borderRadius: 999,
@@ -194,6 +209,17 @@ export default function CafeCardHero({
                 color: "var(--cafe-hero-title-color)",
                 backdropFilter: "blur(10px)",
                 WebkitBackdropFilter: "blur(10px)",
+                width: 156,
+                justifyContent: "flex-start",
+                paddingInline: 8,
+              },
+              inner: {
+                justifyContent: "flex-start",
+                width: "100%",
+              },
+              label: {
+                textAlign: "left",
+                paddingLeft: 2,
               },
             }}
             onClick={(event) => {
@@ -201,7 +227,7 @@ export default function CafeCardHero({
               onOpenYandex(cafe);
             }}
           >
-            Yandex
+            Маршрут Яндекс
           </Button>
         </Stack>
       )}

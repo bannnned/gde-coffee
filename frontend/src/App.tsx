@@ -1,6 +1,13 @@
 import { Box, Loader } from "@mantine/core";
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  type Location as RouterLocation,
+} from "react-router-dom";
 
 import AuthGate from "./components/AuthGate";
 import { LayoutMetricsProvider } from "./features/discovery/layout/LayoutMetricsContext";
@@ -32,35 +39,58 @@ function RouteLoader() {
   );
 }
 
+type RouteState = {
+  backgroundLocation?: RouterLocation;
+};
+
+function AppRoutes() {
+  const location = useLocation();
+  const routeState = location.state as RouteState | null;
+  const backgroundLocation = routeState?.backgroundLocation;
+
+  return (
+    <>
+      <Routes location={backgroundLocation ?? location}>
+        <Route
+          path="/"
+          element={
+            <LayoutMetricsProvider>
+              <DiscoveryScreen />
+            </LayoutMetricsProvider>
+          }
+        />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/profile" element={<ProfileScreen />} />
+        <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/settings" element={<SettingsScreen />} />
+        <Route path="/admin/moderation" element={<AdminModerationPage />} />
+        <Route path="/admin/drinks" element={<AdminDrinksPage />} />
+        <Route path="/admin/cafes/import" element={<AdminCafesImportPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route
+          path="/confirm-email-change"
+          element={<ConfirmEmailChangePage />}
+        />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
+      {backgroundLocation && (
+        <Routes>
+          <Route path="/profile" element={<ProfileScreen />} />
+          <Route path="/settings" element={<SettingsScreen />} />
+        </Routes>
+      )}
+    </>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthGate>
         <Suspense fallback={<RouteLoader />}>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <LayoutMetricsProvider>
-                  <DiscoveryScreen />
-                </LayoutMetricsProvider>
-              }
-            />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/profile" element={<ProfileScreen />} />
-            <Route path="/favorites" element={<FavoritesPage />} />
-            <Route path="/settings" element={<SettingsScreen />} />
-            <Route path="/admin/moderation" element={<AdminModerationPage />} />
-            <Route path="/admin/drinks" element={<AdminDrinksPage />} />
-            <Route path="/admin/cafes/import" element={<AdminCafesImportPage />} />
-            <Route path="/verify-email" element={<VerifyEmailPage />} />
-            <Route
-              path="/confirm-email-change"
-              element={<ConfirmEmailChangePage />}
-            />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <AppRoutes />
         </Suspense>
       </AuthGate>
     </BrowserRouter>

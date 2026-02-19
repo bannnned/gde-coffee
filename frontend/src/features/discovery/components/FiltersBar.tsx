@@ -11,7 +11,7 @@ import {
 } from "@mantine/core";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { IconHeart, IconHeartFilled, IconLogin } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../../components/AuthGate";
 import type { Amenity } from "../../../entities/cafe/model/types";
@@ -63,6 +63,7 @@ export default function FiltersBar({
   const { setFiltersBarHeight } = useLayoutMetrics();
   const { user, status, openAuthModal } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const avatarUrl = useMemo(() => resolveAvatarUrl(user?.avatarUrl), [user]);
   const userLabel = useMemo(() => {
     const value =
@@ -138,9 +139,13 @@ export default function FiltersBar({
     const observer = new ResizeObserver(update);
     observer.observe(node);
     window.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("scroll", update);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("scroll", update);
       setFiltersBarHeight(0);
     };
   }, [setFiltersBarHeight]);
@@ -151,7 +156,9 @@ export default function FiltersBar({
       top={0}
       left={0}
       right={0}
-      p="sm"
+      px="sm"
+      pb="sm"
+      pt="calc(env(safe-area-inset-top) + var(--mantine-spacing-sm))"
       className={classes.root}
       data-ui="filters-bar"
     >
@@ -166,7 +173,11 @@ export default function FiltersBar({
             className={classes.userBadge}
             aria-label="Open profile"
             type="button"
-            onClick={() => void navigate("/profile")}
+            onClick={() =>
+              void navigate("/profile", {
+                state: { backgroundLocation: location },
+              })
+            }
             title={userLabel}
           >
             {avatarUrl ? (
