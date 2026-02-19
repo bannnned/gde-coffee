@@ -10,6 +10,10 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+  background:
+    radial-gradient(circle at top left, var(--bg-accent-1), transparent 45%),
+    radial-gradient(circle at 80% 20%, var(--bg-accent-2), transparent 40%),
+    var(--bg);
 }
 
 .container {

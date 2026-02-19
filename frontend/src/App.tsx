@@ -83,7 +83,10 @@ function AppRoutes() {
           inset={0}
           style={{
             zIndex: 2000,
-            overflow: "hidden",
+            overflowY: "auto",
+            overflowX: "hidden",
+            WebkitOverflowScrolling: "touch",
+            background: "var(--bg)",
           }}
         >
           <Routes>
