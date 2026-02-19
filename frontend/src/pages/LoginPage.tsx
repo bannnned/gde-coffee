@@ -67,7 +67,7 @@ export default function LoginPage() {
               <Button
                 variant="gradient"
                 gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
-                onClick={() => navigate("/")}
+                onClick={() => void navigate("/")}
               >
                 На главную
               </Button>
@@ -101,7 +101,7 @@ export default function LoginPage() {
             <div style={{ display: "flex", justifyContent: "center" }}>
               <TelegramLoginWidget flow="login" size="medium" />
             </div>
-            <Button variant="subtle" onClick={() => navigate("/")}>
+            <Button variant="subtle" onClick={() => void navigate("/")}>
               Вернуться назад
             </Button>
           </div>

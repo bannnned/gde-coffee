@@ -52,6 +52,26 @@ type PasswordResetRequestValues = {
   email: string;
 };
 
+type SettingsErrorLike = {
+  normalized?: {
+    message?: string;
+  };
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+};
+
+function extractSettingsErrorMessage(error: unknown, fallback: string): string {
+  if (!error || typeof error !== "object") {
+    return fallback;
+  }
+  const parsed = error as SettingsErrorLike;
+  return parsed.response?.data?.message ?? parsed.normalized?.message ?? parsed.message ?? fallback;
+}
+
 export default function SettingsScreen() {
   useAllowBodyScroll();
   const navigate = useNavigate();
@@ -86,7 +106,6 @@ export default function SettingsScreen() {
 
   const isVerified = Boolean(
     user?.emailVerifiedAt ||
-      (user as any)?.email_verified_at ||
       verifiedParam ||
       emailChangedParam,
   );
@@ -148,14 +167,12 @@ export default function SettingsScreen() {
         }
         setReviewsVersioning(result);
       })
-      .catch((err: any) => {
+      .catch((error: unknown) => {
         if (cancelled) {
           return;
         }
         setReviewsVersioningError(
-          err?.response?.data?.message ??
-            err?.normalized?.message ??
-            "Не удалось загрузить статус версий отзывов.",
+          extractSettingsErrorMessage(error, "Не удалось загрузить статус версий отзывов."),
         );
       })
       .finally(() => {
@@ -185,12 +202,8 @@ export default function SettingsScreen() {
         offset: 0,
       });
       setDlqEvents(response.events);
-    } catch (err: any) {
-      setDlqError(
-        err?.response?.data?.message ??
-          err?.normalized?.message ??
-          "Не удалось загрузить DLQ очереди.",
-      );
+    } catch (error: unknown) {
+      setDlqError(extractSettingsErrorMessage(error, "Не удалось загрузить DLQ очереди."));
     } finally {
       setDlqLoading(false);
     }
@@ -218,15 +231,11 @@ export default function SettingsScreen() {
         }
         setDlqEvents(response.events);
       })
-      .catch((err: any) => {
+      .catch((error: unknown) => {
         if (cancelled) {
           return;
         }
-        setDlqError(
-          err?.response?.data?.message ??
-            err?.normalized?.message ??
-            "Не удалось загрузить DLQ очереди.",
-        );
+        setDlqError(extractSettingsErrorMessage(error, "Не удалось загрузить DLQ очереди."));
       })
       .finally(() => {
         if (!cancelled) {
@@ -247,11 +256,9 @@ export default function SettingsScreen() {
       try {
         await replayReviewsDLQEvent(eventID);
         await loadDLQ();
-      } catch (err: any) {
+      } catch (error: unknown) {
         setDlqReplayError(
-          err?.response?.data?.message ??
-            err?.normalized?.message ??
-            "Не удалось запустить replay для сообщения.",
+          extractSettingsErrorMessage(error, "Не удалось запустить replay для сообщения."),
         );
       } finally {
         setDlqReplayingID(null);
@@ -272,11 +279,9 @@ export default function SettingsScreen() {
           : "";
       setDlqBulkMessage(`Replay open завершен: ${result.replayed}/${result.processed}${failedSuffix}.`);
       await loadDLQ();
-    } catch (err: any) {
+    } catch (error: unknown) {
       setDlqReplayError(
-        err?.response?.data?.message ??
-          err?.normalized?.message ??
-          "Не удалось выполнить replay всех open сообщений.",
+        extractSettingsErrorMessage(error, "Не удалось выполнить replay всех open сообщений."),
       );
     } finally {
       setDlqBulkLoading(null);
@@ -291,11 +296,9 @@ export default function SettingsScreen() {
       const result = await resolveOpenReviewsDLQWithoutReplay();
       setDlqBulkMessage(`Resolve without replay завершен: закрыто ${result.resolved} сообщений.`);
       await loadDLQ();
-    } catch (err: any) {
+    } catch (error: unknown) {
       setDlqReplayError(
-        err?.response?.data?.message ??
-          err?.normalized?.message ??
-          "Не удалось закрыть open сообщения без replay.",
+        extractSettingsErrorMessage(error, "Не удалось закрыть open сообщения без replay."),
       );
     } finally {
       setDlqBulkLoading(null);
@@ -308,11 +311,9 @@ export default function SettingsScreen() {
     try {
       await authApi.requestEmailVerification();
       setVerifySuccess("Письмо отправлено. Проверьте почту.");
-    } catch (err: any) {
+    } catch (error: unknown) {
       setVerifyError(
-        err?.response?.data?.message ??
-          err?.normalized?.message ??
-          "Не удалось отправить письмо. Попробуйте позже.",
+        extractSettingsErrorMessage(error, "Не удалось отправить письмо. Попробуйте позже."),
       );
     }
   };
@@ -329,11 +330,9 @@ export default function SettingsScreen() {
         "Письмо для подтверждения отправлено на новый email.",
       );
       resetEmailForm();
-    } catch (err: any) {
+    } catch (error: unknown) {
       setEmailChangeError(
-        err?.response?.data?.message ??
-          err?.normalized?.message ??
-          "Не удалось отправить запрос. Проверьте данные.",
+        extractSettingsErrorMessage(error, "Не удалось отправить запрос. Проверьте данные."),
       );
     }
   });
@@ -345,11 +344,9 @@ export default function SettingsScreen() {
       await authApi.requestPasswordReset(values.email.trim());
       setResetResult("Если email существует, мы отправили письмо со ссылкой.");
       resetResetForm({ email: values.email });
-    } catch (err: any) {
+    } catch (error: unknown) {
       setResetError(
-        err?.response?.data?.message ??
-          err?.normalized?.message ??
-          "Не удалось отправить письмо. Попробуйте позже.",
+        extractSettingsErrorMessage(error, "Не удалось отправить письмо. Попробуйте позже."),
       );
     }
   });
@@ -367,7 +364,9 @@ export default function SettingsScreen() {
             size={42}
             variant="transparent"
             className={`${classes.iconButton} glass-action glass-action--square`}
-            onClick={() => navigate("/profile")}
+            onClick={() => {
+              void navigate("/profile");
+            }}
             aria-label="Назад"
           >
             <IconArrowLeft size={18} />
@@ -402,14 +401,18 @@ export default function SettingsScreen() {
                   <Button
                     variant="light"
                     className={classes.actionButton}
-                    onClick={() => navigate("/admin/moderation")}
+                    onClick={() => {
+                      void navigate("/admin/moderation");
+                    }}
                   >
                     Перейти в модерацию
                   </Button>
                   <Button
                     variant="light"
                     className={classes.actionButton}
-                    onClick={() => navigate("/admin/drinks")}
+                    onClick={() => {
+                      void navigate("/admin/drinks");
+                    }}
                   >
                     Справочник напитков
                   </Button>
@@ -711,7 +714,9 @@ export default function SettingsScreen() {
                 <Button
                   variant="filled"
                   className={classes.actionButton}
-                  onClick={handleVerifyRequest}
+                  onClick={() => {
+                    void handleVerifyRequest();
+                  }}
                   leftSection={<IconShieldCheck size={16} />}
                   disabled={status !== "authed"}
                 >
@@ -737,7 +742,12 @@ export default function SettingsScreen() {
                   <Title order={4}>Сменить email</Title>
                 </Group>
               </div>
-              <Box component="form" onSubmit={onEmailChangeSubmit}>
+              <Box
+                component="form"
+                onSubmit={(event) => {
+                  void onEmailChangeSubmit(event);
+                }}
+              >
                 <div className={classes.formGrid}>
                   <Controller
                     name="newEmail"
@@ -815,7 +825,12 @@ export default function SettingsScreen() {
               <Text size="sm" className={classes.muted} mb="sm">
                 Мы отправим ссылку для смены пароля на вашу почту.
               </Text>
-              <Box component="form" onSubmit={onResetSubmit}>
+              <Box
+                component="form"
+                onSubmit={(event) => {
+                  void onResetSubmit(event);
+                }}
+              >
                 <div className={classes.formGrid}>
                   <Controller
                     name="email"

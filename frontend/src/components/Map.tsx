@@ -25,6 +25,7 @@ type Props = {
   onCenterChange?: (lngLat: [number, number]) => void;
   disableCafeClick?: boolean;
   paddingEnabled?: boolean;
+  centerProbeOffsetY?: number;
   userLocation?: [number, number] | null;
   focusLngLat?: [number, number] | null;
 };
@@ -60,6 +61,15 @@ function loadImage(map: MLMap, id: string, url: string) {
   });
 }
 
+function getGeoJsonSource(map: MLMap, id: string): GeoJSONSource | null {
+  const source = map.getSource(id);
+  if (!source) return null;
+  if ("setData" in source && typeof source.setData === "function") {
+    return source as GeoJSONSource;
+  }
+  return null;
+}
+
 function addSources(map: MLMap, geojson: GeoJSON.FeatureCollection) {
   if (!map.getSource("user")) {
     map.addSource("user", {
@@ -74,7 +84,7 @@ function addSources(map: MLMap, geojson: GeoJSON.FeatureCollection) {
   if (!map.getSource("cafes")) {
     map.addSource("cafes", {
       type: "geojson",
-      data: geojson as any,
+      data: geojson,
     });
   }
 }
@@ -211,11 +221,11 @@ function rebuildLayers(map: MLMap, selectedCafeId: string | null) {
 }
 
 function updateUserLocation(map: MLMap, userLocation?: [number, number] | null) {
-  const src = map.getSource("user") as GeoJSONSource | undefined;
+  const src = getGeoJsonSource(map, "user");
   if (!src) return;
 
   if (!userLocation) {
-    src.setData({ type: "FeatureCollection", features: [] } as any);
+    src.setData({ type: "FeatureCollection", features: [] });
     return;
   }
 
@@ -228,12 +238,12 @@ function updateUserLocation(map: MLMap, userLocation?: [number, number] | null) 
         geometry: { type: "Point", coordinates: userLocation },
       },
     ],
-  } as any);
+  });
 }
 
 function updateCafes(map: MLMap, geojson: GeoJSON.FeatureCollection) {
-  const src = map.getSource("cafes") as GeoJSONSource | undefined;
-  if (src) src.setData(geojson as any);
+  const src = getGeoJsonSource(map, "cafes");
+  if (src) src.setData(geojson);
 }
 
 function updateSelected(map: MLMap, selectedCafeId?: string | null) {
@@ -313,7 +323,7 @@ export default function Map({
   }, [cafes]);
 
   useEffect(() => {
-    geojsonRef.current = geojson as unknown as GeoJSON.FeatureCollection;
+    geojsonRef.current = geojson;
   }, [geojson]);
 
   useEffect(() => {
@@ -371,7 +381,7 @@ export default function Map({
     const runLoad = async () => {
       addSources(
         map,
-        geojsonRef.current ?? (geojson as unknown as GeoJSON.FeatureCollection),
+        geojsonRef.current ?? geojson,
       );
       addLayers(map, selectedCafeRef.current ?? null);
       updateUserLocation(map, userLocation);
@@ -468,7 +478,7 @@ export default function Map({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isMapReady) return;
-    updateCafes(map, geojson as unknown as GeoJSON.FeatureCollection);
+    updateCafes(map, geojson);
   }, [geojson, isMapReady]);
 
   useEffect(() => {

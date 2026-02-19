@@ -11,7 +11,7 @@ import type {
   ReactNode,
   RefObject,
 } from "react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import classes from "./BottomSheet.module.css";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
@@ -33,7 +33,7 @@ const SWIPE_VELOCITY = 900;
 const PEEK_HEIGHT_PX = 64;
 const SHEET_PADDING_PX = 8;
 
-const MotionPaper = motion(Paper as any);
+const MotionPaper = motion(Paper);
 
 export default function BottomSheet({
   sheetRef,
@@ -74,17 +74,9 @@ export default function BottomSheet({
     return () => observer.disconnect();
   }, []);
 
-  useLayoutEffect(() => {
-    if (!lockedState) return;
-    setSheetState(lockedState);
-  }, [lockedState]);
-
-  useLayoutEffect(() => {
-    if (!disableMidState) return;
-    setSheetState((prev) => (prev === "mid" ? "expanded" : prev));
-  }, [disableMidState]);
-
-  const effectiveSheetState = lockedState ?? sheetState;
+  const normalizedSheetState =
+    disableMidState && sheetState === "mid" ? "expanded" : sheetState;
+  const effectiveSheetState = lockedState ?? normalizedSheetState;
   const hideHeaderContent = hideHeaderContentInPeek && effectiveSheetState === "peek";
 
   const heights = useMemo(() => {
@@ -126,7 +118,7 @@ export default function BottomSheet({
     return () => controls.stop();
   }, [effectiveSheetState, height, heights]);
 
-  const scheduleSheetHeight = (value: number) => {
+  const scheduleSheetHeight = useCallback((value: number) => {
     pendingSheetHeightRef.current = value;
     if (sheetHeightRafRef.current != null) return;
     sheetHeightRafRef.current = window.requestAnimationFrame(() => {
@@ -136,7 +128,7 @@ export default function BottomSheet({
       pendingSheetHeightRef.current = null;
       setSheetHeight(pending);
     });
-  };
+  }, [setSheetHeight]);
 
   useMotionValueEvent(height, "change", (latest) => {
     const visibleHeight = Math.max(heights.peek, latest);
@@ -153,7 +145,7 @@ export default function BottomSheet({
       }
       pendingSheetHeightRef.current = null;
     };
-  }, [heights, height, setSheetHeight]);
+  }, [heights, height, scheduleSheetHeight]);
 
   useLayoutEffect(() => {
     setLayoutSheetState(effectiveSheetState);

@@ -1,44 +1,74 @@
-﻿import axios from 'axios'
-import { getApiBaseUrl } from './url'
+import axios from "axios";
 
-const baseURL = getApiBaseUrl()
+import { getApiBaseUrl } from "./url";
+
+const baseURL = getApiBaseUrl();
 
 type NormalizedApiError = {
-  status?: number
-  message: string
+  status?: number;
+  message: string;
+};
+
+type HttpErrorLike = Error & {
+  response?: {
+    status?: number;
+    data?: {
+      message?: string;
+    };
+  };
+  normalized?: NormalizedApiError;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeError(error: unknown): NormalizedApiError {
+  if (!isRecord(error)) {
+    return { message: "Unknown error" };
+  }
+
+  const response = isRecord(error.response) ? error.response : undefined;
+  const data = response && isRecord(response.data) ? response.data : undefined;
+  const status = typeof response?.status === "number" ? response.status : undefined;
+  const message =
+    typeof data?.message === "string"
+      ? data.message
+      : typeof error.message === "string"
+        ? error.message
+        : "Unknown error";
+
+  return { status, message };
+}
+
+function withNormalizedError(error: unknown): HttpErrorLike {
+  const baseError: HttpErrorLike =
+    error instanceof Error ? (error as HttpErrorLike) : new Error("Unknown error");
+  baseError.normalized = normalizeError(baseError);
+  return baseError;
 }
 
 export const http = axios.create({
   baseURL,
   timeout: 15000,
   withCredentials: true,
-})
-
-function normalizeError(error: any): NormalizedApiError {
-  const status = error?.response?.status
-  const message =
-    error?.response?.data?.message ??
-    error?.message ??
-    'Unknown error'
-
-  return { status, message }
-}
+});
 
 http.interceptors.request.use((config) => {
   if (import.meta.env.DEV) {
-    // lightweight debug logging for local troubleshooting
-    console.debug('[http]', config.method?.toUpperCase(), config.url)
+    // Lightweight debug logging for local troubleshooting.
+    console.debug("[http]", config.method?.toUpperCase(), config.url);
   }
-  return config
-})
+  return config;
+});
 
 http.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: unknown) => {
+    const normalizedError = withNormalizedError(error);
     if (import.meta.env.DEV) {
-      console.warn('[http:error]', normalizeError(error))
+      console.warn("[http:error]", normalizedError.normalized);
     }
-    error.normalized = normalizeError(error)
-    return Promise.reject(error)
+    return Promise.reject(normalizedError);
   },
-)
+);

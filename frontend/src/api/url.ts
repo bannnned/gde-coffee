@@ -1,4 +1,12 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+type ViteLikeMeta = {
+  env?: {
+    VITE_API_BASE_URL?: string;
+  };
+};
+
+const API_BASE_URL = String(
+  (import.meta as ViteLikeMeta).env?.VITE_API_BASE_URL ?? "",
+).replace(/\/$/, "");
 
 export function getApiBaseUrl(): string {
   return API_BASE_URL;

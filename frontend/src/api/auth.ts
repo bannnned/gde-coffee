@@ -82,24 +82,64 @@ export type TelegramCallbackPayload = {
   hash: string;
 };
 
-function normalizeUser(data: any): AuthUser {
-  const raw = data?.user ?? data ?? {};
-  const displayName = raw.display_name ?? raw.displayName ?? raw.name;
-  const name = raw.name ?? raw.display_name ?? raw.displayName;
+type AuthRawRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is AuthRawRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function asRecord(value: unknown): AuthRawRecord {
+  return isRecord(value) ? value : {};
+}
+
+function pickString(record: AuthRawRecord, ...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string") {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function normalizeUser(data: unknown): AuthUser {
+  const payload = asRecord(data);
+  const raw = asRecord(payload.user ?? payload);
+  const emailVerifiedRaw = raw.email_verified_at ?? raw.emailVerifiedAt ?? raw.email_verified;
+  const emailVerifiedAt =
+    typeof emailVerifiedRaw === "string"
+      ? emailVerifiedRaw
+      : emailVerifiedRaw === true
+        ? "true"
+        : null;
+
   return {
-    id: raw.id,
-    email: raw.email,
-    name,
-    displayName,
-    emailVerifiedAt:
-      raw.email_verified_at ?? raw.emailVerifiedAt ?? raw.email_verified ?? null,
-    avatarUrl: raw.avatar_url ?? raw.avatarUrl ?? raw.avatar ?? null,
+    id: pickString(raw, "id"),
+    email: pickString(raw, "email"),
+    name: pickString(raw, "name", "display_name", "displayName"),
+    displayName: pickString(raw, "display_name", "displayName", "name"),
+    emailVerifiedAt,
+    avatarUrl: pickString(raw, "avatar_url", "avatarUrl", "avatar") ?? null,
     role: typeof raw.role === "string" ? raw.role : undefined,
     reputationBadge:
       typeof raw.reputation_badge === "string" ? raw.reputation_badge : undefined,
     trustedParticipant:
       typeof raw.trusted_participant === "boolean" ? raw.trusted_participant : false,
   };
+}
+
+function normalizeIdentity(value: unknown): AuthIdentity | null {
+  if (!isRecord(value)) return null;
+  const out: AuthIdentity = {};
+  if (typeof value.id === "string") out.id = value.id;
+  if (typeof value.provider === "string") out.provider = value.provider;
+  if (typeof value.type === "string") out.type = value.type;
+  if (typeof value.name === "string") out.name = value.name;
+  for (const [key, fieldValue] of Object.entries(value)) {
+    if (key === "id" || key === "provider" || key === "type" || key === "name") continue;
+    out[key] = fieldValue;
+  }
+  return out;
 }
 
 export async function me(): Promise<AuthUser> {
@@ -197,11 +237,13 @@ export async function confirmProfileAvatarUpload(objectKey: string): Promise<Aut
 }
 
 export async function getIdentities(): Promise<AuthIdentity[]> {
-  const res = await http.get("/api/auth/identities");
+  const res = await http.get<unknown>("/api/auth/identities");
   const data = res.data;
-  if (Array.isArray(data)) return data as AuthIdentity[];
-  if (Array.isArray(data?.identities)) return data.identities as AuthIdentity[];
-  return [];
+  const root = asRecord(data);
+  const list = Array.isArray(data) ? data : Array.isArray(root.identities) ? root.identities : [];
+  return list
+    .map(normalizeIdentity)
+    .filter((identity): identity is AuthIdentity => Boolean(identity));
 }
 
 export async function telegramStart(

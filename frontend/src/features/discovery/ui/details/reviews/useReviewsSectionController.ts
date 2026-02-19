@@ -19,6 +19,7 @@ import {
   type ReviewSort,
 } from "../../../../../api/reviews";
 import { useAuth } from "../../../../../components/AuthGate";
+import { extractApiErrorMessage } from "../../../../../utils/apiError";
 import {
   DEFAULT_REVIEW_FORM_VALUES,
   DRINK_SUGGESTIONS_LIMIT,
@@ -50,8 +51,8 @@ export type ReviewQualityInsight = {
   suggestions: string[];
 };
 
-function extractErrorMessage(error: any, fallback: string): string {
-  return error?.normalized?.message ?? error?.response?.data?.message ?? error?.message ?? fallback;
+function extractErrorMessage(error: unknown, fallback: string): string {
+  return extractApiErrorMessage(error, fallback);
 }
 
 type GeoPoint = {
@@ -289,7 +290,7 @@ export function useReviewsSectionController({
           label: item.label || item.key,
         })),
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoadError(extractErrorMessage(error, "Не удалось загрузить отзывы."));
       setReviews([]);
       setHasMore(false);
@@ -313,7 +314,7 @@ export function useReviewsSectionController({
       setReviews((prev) => [...prev, ...page.reviews]);
       setHasMore(page.hasMore);
       setNextCursor(page.nextCursor);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoadError(extractErrorMessage(error, "Не удалось догрузить отзывы."));
     } finally {
       setIsLoadingMore(false);
@@ -438,7 +439,7 @@ export function useReviewsSectionController({
         if (imageFiles.length > files.length) {
           setSubmitHint("Часть файлов пропущена: достигнут лимит 8 фото.");
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         setSubmitError(extractErrorMessage(error, "Не удалось загрузить фото отзыва."));
       } finally {
         setUploadingPhotos(false);
@@ -524,7 +525,7 @@ export function useReviewsSectionController({
         savedReviewID = created.review_id;
         savedMessage = "Отзыв опубликован.";
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setSubmitError(extractErrorMessage(error, "Не удалось сохранить отзыв."));
       return;
     }
@@ -540,7 +541,7 @@ export function useReviewsSectionController({
         if (verify.confidence !== "none") {
           savedMessage = `${savedMessage} Визит подтвержден (${verify.confidence}).`;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         const verifyMessage = extractErrorMessage(
           error,
           "Отзыв сохранен, но визит пока не подтвержден.",
@@ -552,7 +553,7 @@ export function useReviewsSectionController({
 
     try {
       await loadFirstPage();
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoadError(extractErrorMessage(error, "Отзыв сохранен, но не удалось обновить список."));
     }
   });
@@ -595,7 +596,7 @@ export function useReviewsSectionController({
         });
         setSubmitHint("Отзыв удален.");
         await loadFirstPage();
-      } catch (error: any) {
+      } catch (error: unknown) {
         setSubmitError(extractErrorMessage(error, "Не удалось удалить отзыв."));
       }
     },
@@ -627,7 +628,7 @@ export function useReviewsSectionController({
           setSubmitHint("Спасибо, голос учтен.");
         }
         await loadFirstPage();
-      } catch (error: any) {
+      } catch (error: unknown) {
         setSubmitError(extractErrorMessage(error, "Не удалось учесть голос полезности."));
       } finally {
         setHelpfulPendingReviewID("");
@@ -670,7 +671,7 @@ export function useReviewsSectionController({
       } else {
         setSubmitHint(`Check-in зафиксирован (${next.distanceMeters}м). Можно подтверждать визит.`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setSubmitError(extractErrorMessage(error, "Не удалось начать check-in."));
     } finally {
       setCheckInStarting(false);
@@ -699,7 +700,7 @@ export function useReviewsSectionController({
       setActiveCheckIn(null);
       setSubmitHint(`Визит подтвержден (${verify.confidence}).`);
       await loadFirstPage();
-    } catch (error: any) {
+    } catch (error: unknown) {
       setSubmitError(extractErrorMessage(error, "Не удалось подтвердить визит."));
     } finally {
       setVerifyVisitPending(false);

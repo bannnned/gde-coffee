@@ -25,6 +25,7 @@ import {
 } from "../api/adminDrinks";
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
+import { extractApiErrorMessage } from "../utils/apiError";
 import {
   normalizeDrinkText,
   normalizeDrinkToken,
@@ -51,11 +52,11 @@ const emptyCreateState: DrinkEditorState = {
   isActive: true,
 };
 
-function notifyError(err: any, fallback: string) {
+function notifyError(err: unknown, fallback: string) {
   notifications.show({
     color: "red",
     title: "Ошибка",
-    message: err?.normalized?.message ?? err?.response?.data?.message ?? fallback,
+    message: extractApiErrorMessage(err, fallback),
   });
 }
 
@@ -97,7 +98,7 @@ export default function AdminDrinksPage() {
       } else if (selectedDrinkID && !list.some((item) => item.id === selectedDrinkID)) {
         setSelectedDrinkID(list[0]?.id ?? "");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       notifyError(err, "Не удалось загрузить справочник напитков.");
     } finally {
       setDrinksLoading(false);
@@ -114,7 +115,7 @@ export default function AdminDrinksPage() {
         offset: 0,
       });
       setUnknown(list);
-    } catch (err: any) {
+    } catch (err: unknown) {
       notifyError(err, "Не удалось загрузить неизвестные форматы.");
     } finally {
       setUnknownLoading(false);
@@ -178,7 +179,7 @@ export default function AdminDrinksPage() {
       setCreateState(emptyCreateState);
       await loadDrinks();
       setSelectedDrinkID(created.id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       notifyError(err, "Не удалось добавить напиток.");
     } finally {
       setCreateLoading(false);
@@ -210,7 +211,7 @@ export default function AdminDrinksPage() {
       });
       notifications.show({ color: "green", title: "Готово", message: "Напиток сохранен." });
       await loadDrinks();
-    } catch (err: any) {
+    } catch (err: unknown) {
       notifyError(err, "Не удалось сохранить изменения.");
     } finally {
       setSaveLoading(false);
@@ -221,7 +222,7 @@ export default function AdminDrinksPage() {
     try {
       await updateAdminDrink(drink.id, { is_active: nextActive });
       await loadDrinks();
-    } catch (err: any) {
+    } catch (err: unknown) {
       notifyError(err, "Не удалось изменить статус напитка.");
     }
   };
@@ -236,7 +237,7 @@ export default function AdminDrinksPage() {
       await mapUnknownDrinkFormat(item.id, { drink_id: drinkID, add_alias: true });
       notifications.show({ color: "green", title: "Готово", message: "Неизвестный формат привязан к напитку." });
       await Promise.all([loadUnknown(), loadDrinks()]);
-    } catch (err: any) {
+    } catch (err: unknown) {
       notifyError(err, "Не удалось привязать формат.");
     }
   };
@@ -246,7 +247,7 @@ export default function AdminDrinksPage() {
       await ignoreUnknownDrinkFormat(item.id);
       notifications.show({ color: "green", title: "Готово", message: "Формат помечен как ignored." });
       await loadUnknown();
-    } catch (err: any) {
+    } catch (err: unknown) {
       notifyError(err, "Не удалось обновить статус формата.");
     }
   };
@@ -265,7 +266,7 @@ export default function AdminDrinksPage() {
         <Stack gap="md">
           <Title order={3}>Доступ ограничен</Title>
           <Text c="dimmed">Эта страница доступна только модераторам и администраторам.</Text>
-          <Button onClick={() => navigate("/settings")}>Назад</Button>
+          <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
     );
@@ -281,7 +282,7 @@ export default function AdminDrinksPage() {
                 size={42}
                 variant="transparent"
                 className="glass-action glass-action--square"
-                onClick={() => navigate("/settings")}
+                onClick={() => void navigate("/settings")}
                 aria-label="Назад"
               >
                 <IconArrowLeft size={18} />

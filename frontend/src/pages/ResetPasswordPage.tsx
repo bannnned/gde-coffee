@@ -5,12 +5,13 @@
   Text,
   Title,
 } from "@mantine/core";
-import { useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { type FormEventHandler, useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import * as authApi from "../api/auth";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
+import { extractApiErrorMessage } from "../utils/apiError";
 import classes from "./ConfirmPage.module.css";
 
 type ResetPasswordFormValues = {
@@ -29,20 +30,16 @@ export default function ResetPasswordPage() {
   const {
     control,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordFormValues>({
     defaultValues: { password: "", confirmPassword: "" },
     mode: "onBlur",
   });
 
-  const passwordValue = watch("password");
-  const submitDisabled = useMemo(
-    () => !token || isSubmitting,
-    [token, isSubmitting],
-  );
+  const passwordValue = useWatch({ control, name: "password", defaultValue: "" });
+  const submitDisabled = !token || isSubmitting;
 
-  const onSubmit = handleSubmit(async (values) => {
+  const submitForm = handleSubmit(async (values) => {
     if (!token) {
       setSubmitError("Токен не найден. Проверьте ссылку из письма.");
       return;
@@ -54,14 +51,13 @@ export default function ResetPasswordPage() {
         newPassword: values.password,
       });
       setSuccess(true);
-    } catch (err: any) {
-      setSubmitError(
-        err?.response?.data?.message ??
-          err?.normalized?.message ??
-          "Не удалось сменить пароль. Ссылка могла устареть.",
-      );
+    } catch (err: unknown) {
+      setSubmitError(extractApiErrorMessage(err, "Не удалось сменить пароль. Ссылка могла устареть."));
     }
   });
+  const handleFormSubmit: FormEventHandler<HTMLFormElement> = (event) => {
+    void submitForm(event);
+  };
 
   return (
     <div className={classes.page}>
@@ -78,14 +74,14 @@ export default function ResetPasswordPage() {
               <Button
                 variant="gradient"
                 gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
-                onClick={() => navigate("/")}
+                onClick={() => void navigate("/")}
               >
                 На главную
               </Button>
             </div>
           </Stack>
         ) : (
-          <form onSubmit={onSubmit}>
+          <form onSubmit={handleFormSubmit}>
             <Stack gap="sm">
               <Title order={2} className={classes.title}>
                 Новый пароль
@@ -149,8 +145,7 @@ export default function ResetPasswordPage() {
                 >
                   Сменить пароль
                 </Button>
-                <Button variant="subtle" onClick={() => navigate("/")}
-                >
+                <Button variant="subtle" onClick={() => void navigate("/")}>
                   На главную
                 </Button>
               </div>

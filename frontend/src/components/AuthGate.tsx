@@ -50,6 +50,31 @@ type AuthFormValues = {
   name: string;
 };
 
+type AuthErrorLike = {
+  normalized?: {
+    status?: number;
+    message?: string;
+  };
+  response?: {
+    status?: number;
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+};
+
+function extractAuthError(error: unknown): { status?: number; message?: string } {
+  if (!error || typeof error !== "object") {
+    return {};
+  }
+  const err = error as AuthErrorLike;
+  return {
+    status: err.normalized?.status ?? err.response?.status,
+    message: err.normalized?.message ?? err.response?.data?.message ?? err.message,
+  };
+}
+
 const defaultFormValues: AuthFormValues = {
   email: "",
   password: "",
@@ -93,9 +118,9 @@ export default function AuthGate({ children }: PropsWithChildren) {
       if (requestId !== meRequestId.current) return;
       setUser(me);
       setStatus("authed");
-    } catch (err: any) {
+    } catch (error: unknown) {
       if (requestId !== meRequestId.current) return;
-      const statusCode = err?.response?.status ?? err?.normalized?.status;
+      const { status: statusCode } = extractAuthError(error);
       if (statusCode === 401) {
         setUser(null);
         setStatus("unauth");
@@ -139,15 +164,12 @@ export default function AuthGate({ children }: PropsWithChildren) {
       await loadMe();
       setAuthModalOpen(false);
       reset(defaultFormValues);
-    } catch (err: any) {
-      const normalized = err?.normalized ?? {
-        status: err?.response?.status,
-        message: err?.response?.data?.message ?? err?.message,
-      };
+    } catch (error: unknown) {
+      const { status, message: rawMessage } = extractAuthError(error);
       const message =
-        normalized?.message ??
+        rawMessage ??
         "Не удалось выполнить запрос. Проверьте данные и попробуйте еще раз.";
-      if (!normalized?.status) {
+      if (!status) {
         setSubmitError(`${message} Проверьте API адрес или dev-proxy.`);
       } else {
         setSubmitError(message);

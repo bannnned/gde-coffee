@@ -58,6 +58,20 @@ const mockPresignReviewPhotoUpload = vi.mocked(presignReviewPhotoUpload);
 const mockUploadReviewPhotoByPresignedUrl = vi.mocked(uploadReviewPhotoByPresignedUrl);
 const mockConfirmReviewPhotoUpload = vi.mocked(confirmReviewPhotoUpload);
 const mockUseAuth = vi.mocked(useAuth);
+type AuthContextMock = ReturnType<typeof useAuth>;
+
+function makeAuthContext(overrides: Partial<AuthContextMock> = {}): AuthContextMock {
+  return {
+    user: null,
+    status: "authed",
+    logout: vi.fn(async () => {}),
+    refreshAuth: vi.fn(async () => {}),
+    openAuthModal: vi.fn(),
+    closeAuthModal: vi.fn(),
+    isAuthModalOpen: false,
+    ...overrides,
+  };
+}
 
 function makeReview(overrides: Partial<CafeReview> = {}): CafeReview {
   return {
@@ -174,11 +188,13 @@ describe("useReviewsSectionController", () => {
       dwell_seconds: 360,
     });
 
-    mockUseAuth.mockReturnValue({
-      user: { id: "user-1", role: "moderator" } as any,
-      status: "authed",
-      openAuthModal: vi.fn(),
-    } as any);
+    mockUseAuth.mockReturnValue(
+      makeAuthContext({
+        user: { id: "user-1", role: "moderator" },
+        status: "authed",
+        openAuthModal: vi.fn(),
+      }),
+    );
 
     vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.spyOn(window, "prompt").mockImplementation((message: string | undefined) => {
@@ -292,11 +308,13 @@ describe("useReviewsSectionController", () => {
 
   it("opens auth modal when user is not authed on submit", async () => {
     const openAuthModal = vi.fn();
-    mockUseAuth.mockReturnValue({
-      user: { id: "user-1", role: "user" } as any,
-      status: "unauth",
-      openAuthModal,
-    } as any);
+    mockUseAuth.mockReturnValue(
+      makeAuthContext({
+        user: { id: "user-1", role: "user" },
+        status: "unauth",
+        openAuthModal,
+      }),
+    );
 
     const ownReview = makeReview({ id: "review-own", user_id: "user-1" });
     mockListCafeReviews.mockResolvedValue({ reviews: [ownReview], hasMore: false, nextCursor: "", position: "", positionOptions: [] });
@@ -399,11 +417,13 @@ describe("useReviewsSectionController", () => {
   });
 
   it("deletes review only when user has moderation rights", async () => {
-    mockUseAuth.mockReturnValue({
-      user: { id: "user-1", role: "user" } as any,
-      status: "authed",
-      openAuthModal: vi.fn(),
-    } as any);
+    mockUseAuth.mockReturnValue(
+      makeAuthContext({
+        user: { id: "user-1", role: "user" },
+        status: "authed",
+        openAuthModal: vi.fn(),
+      }),
+    );
 
     const { result } = renderHook(() =>
       useReviewsSectionController({
@@ -496,11 +516,13 @@ describe("useReviewsSectionController", () => {
 
   it("opens auth modal when non-authed user marks review as helpful", async () => {
     const openAuthModal = vi.fn();
-    mockUseAuth.mockReturnValue({
-      user: { id: "user-1", role: "user" } as any,
-      status: "unauth",
-      openAuthModal,
-    } as any);
+    mockUseAuth.mockReturnValue(
+      makeAuthContext({
+        user: { id: "user-1", role: "user" },
+        status: "unauth",
+        openAuthModal,
+      }),
+    );
     const otherReview = makeReview({ id: "review-helpful", user_id: "user-2" });
     mockListCafeReviews.mockResolvedValue({ reviews: [otherReview], hasMore: false, nextCursor: "", position: "", positionOptions: [] });
 

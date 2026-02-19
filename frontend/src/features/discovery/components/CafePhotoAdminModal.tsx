@@ -31,6 +31,7 @@ import {
   uploadCafePhotoByPresignedUrl,
 } from "../../../api/cafePhotos";
 import type { CafePhoto, CafePhotoKind } from "../../../entities/cafe/model/types";
+import { extractApiErrorMessage } from "../../../utils/apiError";
 
 type CafePhotoAdminModalProps = {
   opened: boolean;
@@ -97,7 +98,7 @@ export default function CafePhotoAdminModal({
     if (!opened) return;
     setPhotos(initialPhotos);
     setOrderDirty(false);
-  }, [opened, cafeId, kind]);
+  }, [opened, cafeId, kind, initialPhotos]);
 
   useEffect(() => {
     if (!opened || !cafeId) return;
@@ -110,10 +111,9 @@ export default function CafePhotoAdminModal({
         setPhotos(list);
         setOrderDirty(false);
       })
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         if (cancelled) return;
-        const message =
-          err?.normalized?.message ?? err?.response?.data?.message ?? "Не удалось загрузить фото.";
+        const message = extractApiErrorMessage(err, "Не удалось загрузить фото.");
         setLastError(message);
       })
       .finally(() => {
@@ -193,9 +193,8 @@ export default function CafePhotoAdminModal({
         title: "Фото загружены",
         message: `Добавлено: ${files.length}`,
       });
-    } catch (err: any) {
-      const message =
-        err?.normalized?.message ?? err?.response?.data?.message ?? "Не удалось загрузить фото.";
+    } catch (err: unknown) {
+      const message = extractApiErrorMessage(err, "Не удалось загрузить фото.");
       setLastError(message);
       notifications.show({
         color: "red",
@@ -229,9 +228,8 @@ export default function CafePhotoAdminModal({
       const next = await setCafePhotoCover(cafeId, photoId, kind);
       publishPhotos(next);
       setOrderDirty(false);
-    } catch (err: any) {
-      const message =
-        err?.normalized?.message ?? err?.response?.data?.message ?? "Не удалось установить обложку.";
+    } catch (err: unknown) {
+      const message = extractApiErrorMessage(err, "Не удалось установить обложку.");
       setLastError(message);
       notifications.show({
         color: "red",
@@ -247,9 +245,8 @@ export default function CafePhotoAdminModal({
       const next = await deleteCafePhoto(cafeId, photoId, kind);
       publishPhotos(next);
       setOrderDirty(false);
-    } catch (err: any) {
-      const message =
-        err?.normalized?.message ?? err?.response?.data?.message ?? "Не удалось удалить фото.";
+    } catch (err: unknown) {
+      const message = extractApiErrorMessage(err, "Не удалось удалить фото.");
       setLastError(message);
       notifications.show({
         color: "red",
@@ -285,9 +282,8 @@ export default function CafePhotoAdminModal({
         title: "Порядок сохранен",
         message: "Новый порядок фото применен.",
       });
-    } catch (err: any) {
-      const message =
-        err?.normalized?.message ?? err?.response?.data?.message ?? "Не удалось сохранить порядок.";
+    } catch (err: unknown) {
+      const message = extractApiErrorMessage(err, "Не удалось сохранить порядок.");
       setLastError(message);
       notifications.show({
         color: "red",

@@ -85,7 +85,7 @@ export default function ProfileScreen() {
             size={42}
             variant="transparent"
             className={`${classes.iconButton} glass-action glass-action--square`}
-            onClick={() => navigate("/")}
+            onClick={() => void navigate("/")}
             aria-label="Назад"
           >
             <IconArrowLeft size={18} />
@@ -97,7 +97,7 @@ export default function ProfileScreen() {
             size={42}
             variant="transparent"
             className={`${classes.iconButton} glass-action glass-action--square`}
-            onClick={() => navigate("/settings")}
+            onClick={() => void navigate("/settings")}
             aria-label="Настройки"
           >
             <IconSettings size={18} />
@@ -290,7 +290,7 @@ export default function ProfileScreen() {
               </div>
               <Button
                 variant="light"
-                onClick={() => navigate("/favorites")}
+                onClick={() => void navigate("/favorites")}
               >
                 Открыть избранное
               </Button>
@@ -441,7 +441,11 @@ export default function ProfileScreen() {
 
           {user && (
             <Button
-              onClick={() => void handleLogout(() => navigate("/", { replace: true }))}
+              onClick={() =>
+                void handleLogout(() => {
+                  void navigate("/", { replace: true });
+                })
+              }
               loading={isLoggingOut}
               leftSection={<IconLogout size={16} />}
               variant="gradient"

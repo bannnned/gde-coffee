@@ -1,26 +1,35 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { Cafe } from "../../../../entities/cafe/model/types";
 
 export default function useDiscoveryModals(selectedCafe: Cafe | null) {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [photoAdminOpen, setPhotoAdminOpen] = useState(false);
+  const [detailsOpenRaw, setDetailsOpenRaw] = useState(false);
+  const [photoAdminOpenRaw, setPhotoAdminOpenRaw] = useState(false);
   const [photoAdminKind, setPhotoAdminKind] = useState<"cafe" | "menu">("cafe");
-  const [photoSubmitOpen, setPhotoSubmitOpen] = useState(false);
+  const [photoSubmitOpenRaw, setPhotoSubmitOpenRaw] = useState(false);
   const [photoSubmitKind, setPhotoSubmitKind] = useState<"cafe" | "menu">("cafe");
   const [cafeProposalOpen, setCafeProposalOpen] = useState(false);
-
-  useEffect(() => {
-    if (selectedCafe) return;
-    setDetailsOpen(false);
-    setPhotoAdminOpen(false);
-    setPhotoSubmitOpen(false);
-  }, [selectedCafe]);
+  const hasSelectedCafe = Boolean(selectedCafe);
+  const detailsOpen = hasSelectedCafe && detailsOpenRaw;
+  const photoAdminOpen = hasSelectedCafe && photoAdminOpenRaw;
+  const photoSubmitOpen = hasSelectedCafe && photoSubmitOpenRaw;
 
   const closePanelsForManualPick = () => {
-    setDetailsOpen(false);
+    setDetailsOpenRaw(false);
     setSettingsOpen(false);
+  };
+
+  const setDetailsOpen = (next: boolean) => {
+    setDetailsOpenRaw(next);
+  };
+
+  const setPhotoAdminOpen = (next: boolean) => {
+    setPhotoAdminOpenRaw(next);
+  };
+
+  const setPhotoSubmitOpen = (next: boolean) => {
+    setPhotoSubmitOpenRaw(next);
   };
 
   return {

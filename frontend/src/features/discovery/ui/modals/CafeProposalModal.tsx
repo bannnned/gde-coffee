@@ -22,6 +22,7 @@ import {
   presignSubmissionPhotoUpload,
   submitCafeCreate,
 } from "../../../../api/submissions";
+import { extractApiErrorMessage, extractApiErrorStatus } from "../../../../utils/apiError";
 
 type CafeProposalModalProps = {
   opened: boolean;
@@ -154,11 +155,11 @@ export default function CafeProposalModal({
           setLongitude(Number(result.longitude).toFixed(COORD_PRECISION));
           setGeocodeHint("Координаты обновлены по адресу.");
         })
-        .catch((err: any) => {
+        .catch((err: unknown) => {
           if (controller.signal.aborted) return;
-          const status = err?.response?.status ?? err?.normalized?.status;
+          const status = extractApiErrorStatus(err);
           if (status === 400) {
-            setGeocodeHint(err?.response?.data?.message ?? "Проверьте адрес.");
+            setGeocodeHint(extractApiErrorMessage(err, "Проверьте адрес."));
             return;
           }
           setGeocodeHint("Не удалось определить координаты автоматически.");
@@ -209,7 +210,7 @@ export default function CafeProposalModal({
 
   const uploadFiles = async (files: File[]): Promise<string[]> => {
     if (files.length === 0) return [];
-    const objectKeys: string[] = new Array(files.length);
+    const objectKeys: Array<string | null> = Array.from({ length: files.length }, () => null);
     await runWithConcurrency(files, MAX_UPLOAD_CONCURRENCY, async (file, index) => {
       const presigned = await presignSubmissionPhotoUpload({
         contentType: file.type,
@@ -222,7 +223,9 @@ export default function CafeProposalModal({
       );
       objectKeys[index] = presigned.object_key;
     });
-    return objectKeys.filter(Boolean);
+    return objectKeys.filter(
+      (objectKey): objectKey is string => typeof objectKey === "string" && objectKey.length > 0,
+    );
   };
 
   const handleSubmit = async () => {
@@ -269,12 +272,8 @@ export default function CafeProposalModal({
         message: "Кофейня отправлена на модерацию.",
       });
       onClose();
-    } catch (err: any) {
-      const message =
-        err?.normalized?.message ??
-        err?.response?.data?.message ??
-        err?.message ??
-        "Не удалось отправить заявку.";
+    } catch (err: unknown) {
+      const message = extractApiErrorMessage(err, "Не удалось отправить заявку.");
       setError(message);
       notifications.show({
         color: "red",

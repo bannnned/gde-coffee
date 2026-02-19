@@ -4,40 +4,41 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 import * as authApi from "../api/auth";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
+import { extractApiErrorMessage } from "../utils/apiError";
 import classes from "./ConfirmPage.module.css";
 
 export default function VerifyEmailPage() {
   useAllowBodyScroll();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const token = params.get("token");
   const [status, setStatus] = useState<"loading" | "success" | "error">(
-    "loading",
+    token ? "loading" : "error",
   );
-  const [message, setMessage] = useState<string>("Подтверждаем email...");
+  const [message, setMessage] = useState<string>(
+    token ? "Подтверждаем email..." : "Токен не найден. Проверьте ссылку из письма.",
+  );
 
   useEffect(() => {
-    const token = params.get("token");
-    if (!token) {
-      setStatus("error");
-      setMessage("Токен не найден. Проверьте ссылку из письма.");
-      return;
-    }
+    if (!token) return;
+    let cancelled = false;
 
     authApi
       .confirmEmailVerification(token)
       .then(() => {
+        if (cancelled) return;
         setStatus("success");
         setMessage("Готово");
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
+        if (cancelled) return;
         setStatus("error");
-        setMessage(
-          err?.response?.data?.message ??
-            err?.normalized?.message ??
-            "Не удалось подтвердить email. Ссылка могла устареть.",
-        );
+        setMessage(extractApiErrorMessage(err, "Не удалось подтвердить email. Ссылка могла устареть."));
       });
-  }, [params]);
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   return (
     <div className={classes.page}>
@@ -48,16 +49,15 @@ export default function VerifyEmailPage() {
           </Title>
           <Text className={classes.muted}>{message}</Text>
           <div className={classes.actions}>
-            <Button
-              variant="gradient"
-              gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
-              onClick={() => navigate("/settings?verified=1")}
-              disabled={status === "loading"}
-            >
-              В настройки
-            </Button>
-            <Button variant="subtle" onClick={() => navigate("/")}
-            >
+              <Button
+                variant="gradient"
+                gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
+                onClick={() => void navigate("/settings?verified=1")}
+                disabled={status === "loading"}
+              >
+                В настройки
+              </Button>
+            <Button variant="subtle" onClick={() => void navigate("/")}>
               На главную
             </Button>
           </div>

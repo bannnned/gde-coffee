@@ -179,7 +179,9 @@ export default function DiscoveryScreen() {
               isError={cafesQuery.isError}
               isLocating={isLocating}
               onResetFilters={resetFilters}
-              onRetry={() => cafesQuery.refetch()}
+              onRetry={() => {
+                void cafesQuery.refetch();
+              }}
               onLocate={handleLocateMe}
             />
           ) : null
@@ -225,7 +227,9 @@ export default function DiscoveryScreen() {
             onStartDescriptionEdit={handleStartCafeDescriptionEdit}
             onSaveDescription={handleSaveCafeDescription}
             isFavorite={Boolean(selectedCafe?.is_favorite)}
-            onToggleFavorite={handleToggleFavorite}
+            onToggleFavorite={() => {
+              void handleToggleFavorite();
+            }}
             favoriteLoading={Boolean(selectedCafe?.id) && selectedCafe?.id === favoriteBusyCafeId}
             onManagePhotos={handleOpenPhotoAdmin}
             canManageDirectly={isPhotoAdmin}

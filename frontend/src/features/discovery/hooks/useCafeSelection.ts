@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import type { Cafe } from "../../../entities/cafe/model/types";
 
@@ -11,20 +11,16 @@ export default function useCafeSelection({
   cafes,
   onFocusLngLat,
 }: UseCafeSelectionParams) {
-  const [selectedCafeId, setSelectedCafeId] = useState<string | null>(null);
+  const [selectedCafeIdRaw, setSelectedCafeIdRaw] = useState<string | null>(null);
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  useEffect(() => {
-    if (!cafes.length) {
-      setSelectedCafeId(null);
-      return;
+  const selectedCafeId = useMemo(() => {
+    if (!cafes.length) return null;
+    if (selectedCafeIdRaw && cafes.some((c) => c.id === selectedCafeIdRaw)) {
+      return selectedCafeIdRaw;
     }
-
-    setSelectedCafeId((prev) => {
-      if (prev && cafes.some((c) => c.id === prev)) return prev;
-      return cafes[0].id;
-    });
-  }, [cafes]);
+    return cafes[0].id;
+  }, [cafes, selectedCafeIdRaw]);
 
   const selectedCafe = useMemo(
     () => cafes.find((c) => c.id === selectedCafeId) ?? null,
@@ -32,7 +28,7 @@ export default function useCafeSelection({
   );
 
   function selectCafe(id: string) {
-    setSelectedCafeId(id);
+    setSelectedCafeIdRaw(id);
     const c = cafes.find((x) => x.id === id);
     if (c && onFocusLngLat) onFocusLngLat([c.longitude, c.latitude]);
 

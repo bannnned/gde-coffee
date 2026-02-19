@@ -8,45 +8,61 @@ import { AMENITY_LABELS } from "../../constants";
 
 type CafeCardFooterProps = {
   cafe: Cafe;
-  badgeStyles: any;
+  badgeStyles: Record<string, unknown>;
 };
 
 const cafeRatingSnapshotCache = new Map<string, CafeRatingSnapshot>();
 
 export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProps) {
-  const [ratingSnapshot, setRatingSnapshot] = useState<CafeRatingSnapshot | null>(null);
-  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingState, setRatingState] = useState<{
+    cafeId: string;
+    snapshot: CafeRatingSnapshot | null;
+    loading: boolean;
+  }>(() => {
+    const cached = cafeRatingSnapshotCache.get(cafe.id) ?? null;
+    return {
+      cafeId: cafe.id,
+      snapshot: cached,
+      loading: !cached,
+    };
+  });
+  const cachedSnapshot = cafeRatingSnapshotCache.get(cafe.id) ?? null;
+  const ratingSnapshot =
+    ratingState.cafeId === cafe.id ? ratingState.snapshot : cachedSnapshot;
+  const ratingLoading =
+    ratingState.cafeId === cafe.id ? ratingState.loading : !cachedSnapshot;
 
   useEffect(() => {
-    const cachedSnapshot = cafeRatingSnapshotCache.get(cafe.id);
+    let cancelled = false;
     if (cachedSnapshot) {
-      setRatingSnapshot(cachedSnapshot);
-      setRatingLoading(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
-    setRatingLoading(true);
-    setRatingSnapshot(null);
     getCafeRatingSnapshot(cafe.id)
       .then((snapshot) => {
         if (cancelled) return;
         cafeRatingSnapshotCache.set(cafe.id, snapshot);
-        setRatingSnapshot(snapshot);
+        setRatingState({
+          cafeId: cafe.id,
+          snapshot,
+          loading: false,
+        });
       })
       .catch(() => {
         if (cancelled) return;
-        setRatingSnapshot(null);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setRatingLoading(false);
+        setRatingState({
+          cafeId: cafe.id,
+          snapshot: null,
+          loading: false,
+        });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [cafe.id]);
+  }, [cafe.id, cachedSnapshot]);
 
   const hasReviewStats = (ratingSnapshot?.reviews_count ?? 0) > 0;
   const ratingLabel = useMemo(() => {

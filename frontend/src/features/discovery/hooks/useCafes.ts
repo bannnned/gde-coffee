@@ -84,7 +84,6 @@ export default function useCafes({
         lng,
         radiusM,
         amenitiesKey,
-        favoritesOnly,
       }),
     [lat, lng, radiusM, amenitiesKey],
   );

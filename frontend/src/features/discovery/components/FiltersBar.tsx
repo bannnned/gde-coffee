@@ -166,7 +166,7 @@ export default function FiltersBar({
             className={classes.userBadge}
             aria-label="Open profile"
             type="button"
-            onClick={() => navigate("/profile")}
+            onClick={() => void navigate("/profile")}
             title={userLabel}
           >
             {avatarUrl ? (

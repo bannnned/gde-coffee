@@ -322,6 +322,101 @@ export type VerifyVisitResponse = {
   dwell_seconds?: number;
 };
 
+type RawRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is RawRecord {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function asRecord(value: unknown): RawRecord {
+  return isRecord(value) ? value : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function asString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function asBoolean(value: unknown, fallback = false): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function asStringArray(value: unknown): string[] {
+  return asArray(value).filter((item): item is string => typeof item === "string");
+}
+
+function parseFormulaVersions(raw: RawRecord): { rating: string; quality: string } {
+  const formulaVersions = asRecord(raw.formula_versions);
+  return {
+    rating: asString(formulaVersions.rating, "rating_v2"),
+    quality: asString(formulaVersions.quality, "quality_v1"),
+  };
+}
+
+function parseBestReview(rawValue: unknown): CafeRatingBestReview | null {
+  if (!isRecord(rawValue)) return null;
+  return {
+    id: asString(rawValue.id),
+    author_name: asString(rawValue.author_name, "Участник"),
+    rating: asNumber(rawValue.rating),
+    summary: asString(rawValue.summary),
+    helpful_score: asNumber(rawValue.helpful_score),
+    quality_score: asNumber(rawValue.quality_score),
+    visit_verified: Boolean(rawValue.visit_verified),
+    created_at: asString(rawValue.created_at),
+  };
+}
+
+function parseDiagnosticsReview(rawValue: unknown): CafeRatingDiagnosticsReview {
+  const raw = asRecord(rawValue);
+  return {
+    review_id: asString(raw.review_id),
+    author_user_id: asString(raw.author_user_id),
+    author_name: asString(raw.author_name, "Участник"),
+    rating: asNumber(raw.rating),
+    helpful_score: asNumber(raw.helpful_score),
+    quality_score: asNumber(raw.quality_score),
+    author_reputation: asNumber(raw.author_reputation),
+    author_rep_norm: asNumber(raw.author_rep_norm),
+    visit_verified: Boolean(raw.visit_verified),
+    visit_confidence: asString(raw.visit_confidence, "none"),
+    confirmed_reports: asNumber(raw.confirmed_reports),
+    fraud_suspicion: Boolean(raw.fraud_suspicion),
+    summary_length: asNumber(raw.summary_length),
+    summary_excerpt: asString(raw.summary_excerpt),
+    tags_count: asNumber(raw.tags_count),
+    photo_count: asNumber(raw.photo_count),
+    drink_selected: Boolean(raw.drink_selected),
+    created_at: asString(raw.created_at),
+  };
+}
+
+function parseDLQEvent(rawValue: unknown): ReviewsDLQEvent {
+  const raw = asRecord(rawValue);
+  const payloadRaw = asRecord(raw.payload);
+  return {
+    id: asNumber(raw.id),
+    inbox_event_id: asNumber(raw.inbox_event_id),
+    outbox_event_id: asNumber(raw.outbox_event_id),
+    consumer: asString(raw.consumer),
+    event_type: asString(raw.event_type),
+    aggregate_id: asString(raw.aggregate_id),
+    payload: payloadRaw,
+    attempts: asNumber(raw.attempts),
+    last_error: asString(raw.last_error),
+    failed_at: asString(raw.failed_at),
+    resolved_at: asString(raw.resolved_at),
+  };
+}
+
 function makeIdempotencyKey(): string {
   if (typeof globalThis.crypto?.randomUUID === "function") {
     return globalThis.crypto.randomUUID();
@@ -529,173 +624,75 @@ export async function getReviewPhotoStatus(
 export async function getCafeRatingSnapshot(
   cafeId: string,
 ): Promise<CafeRatingSnapshot> {
-  const res = await http.get(`/api/cafes/${encodeURIComponent(cafeId)}/rating`);
-  const raw = res.data ?? {};
-  const bestRaw = raw?.best_review ?? null;
-  const bestReview =
-    bestRaw && typeof bestRaw === "object"
-      ? {
-          id: typeof bestRaw.id === "string" ? bestRaw.id : "",
-          author_name: typeof bestRaw.author_name === "string" ? bestRaw.author_name : "Участник",
-          rating: Number(bestRaw.rating) || 0,
-          summary: typeof bestRaw.summary === "string" ? bestRaw.summary : "",
-          helpful_score: Number(bestRaw.helpful_score) || 0,
-          quality_score: Number(bestRaw.quality_score) || 0,
-          visit_verified: Boolean(bestRaw.visit_verified),
-          created_at: typeof bestRaw.created_at === "string" ? bestRaw.created_at : "",
-        }
-      : null;
-
+  const res = await http.get<unknown>(`/api/cafes/${encodeURIComponent(cafeId)}/rating`);
+  const raw = asRecord(res.data);
   return {
-    api_contract_version:
-      typeof raw?.api_contract_version === "string"
-        ? raw.api_contract_version
-        : "reviews_api_v1",
-    formula_versions: {
-      rating:
-        typeof raw?.formula_versions?.rating === "string"
-          ? raw.formula_versions.rating
-          : "rating_v2",
-      quality:
-        typeof raw?.formula_versions?.quality === "string"
-          ? raw.formula_versions.quality
-          : "quality_v1",
-    },
-    cafe_id: typeof raw?.cafe_id === "string" ? raw.cafe_id : cafeId,
-    formula_version:
-      typeof raw?.formula_version === "string" ? raw.formula_version : "rating_v2",
-    rating: Number(raw?.rating) || 0,
-    reviews_count: Number(raw?.reviews_count) || 0,
-    verified_reviews_count: Number(raw?.verified_reviews_count) || 0,
-    verified_share: Number(raw?.verified_share) || 0,
-    fraud_risk: Number(raw?.fraud_risk) || 0,
-    best_review: bestReview,
-    components:
-      raw?.components && typeof raw.components === "object" && !Array.isArray(raw.components)
-        ? raw.components
-        : {},
-    computed_at: typeof raw?.computed_at === "string" ? raw.computed_at : "",
+    api_contract_version: asString(raw.api_contract_version, "reviews_api_v1"),
+    formula_versions: parseFormulaVersions(raw),
+    cafe_id: asString(raw.cafe_id, cafeId),
+    formula_version: asString(raw.formula_version, "rating_v2"),
+    rating: asNumber(raw.rating),
+    reviews_count: asNumber(raw.reviews_count),
+    verified_reviews_count: asNumber(raw.verified_reviews_count),
+    verified_share: asNumber(raw.verified_share),
+    fraud_risk: asNumber(raw.fraud_risk),
+    best_review: parseBestReview(raw.best_review),
+    components: asRecord(raw.components),
+    computed_at: asString(raw.computed_at),
   };
 }
 
 export async function getCafeRatingDiagnostics(
   cafeId: string,
 ): Promise<CafeRatingDiagnostics> {
-  const res = await http.get(`/api/admin/cafes/${encodeURIComponent(cafeId)}/rating-diagnostics`);
-  const raw = res.data ?? {};
-  const bestRaw = raw?.best_review ?? null;
-  const bestReview =
-    bestRaw && typeof bestRaw === "object"
-      ? {
-          id: typeof bestRaw.id === "string" ? bestRaw.id : "",
-          author_name: typeof bestRaw.author_name === "string" ? bestRaw.author_name : "Участник",
-          rating: Number(bestRaw.rating) || 0,
-          summary: typeof bestRaw.summary === "string" ? bestRaw.summary : "",
-          helpful_score: Number(bestRaw.helpful_score) || 0,
-          quality_score: Number(bestRaw.quality_score) || 0,
-          visit_verified: Boolean(bestRaw.visit_verified),
-          created_at: typeof bestRaw.created_at === "string" ? bestRaw.created_at : "",
-        }
-      : null;
-
-  const reviews = Array.isArray(raw?.reviews)
-    ? raw.reviews.map((item: any) => ({
-        review_id: typeof item?.review_id === "string" ? item.review_id : "",
-        author_user_id: typeof item?.author_user_id === "string" ? item.author_user_id : "",
-        author_name: typeof item?.author_name === "string" ? item.author_name : "Участник",
-        rating: Number(item?.rating) || 0,
-        helpful_score: Number(item?.helpful_score) || 0,
-        quality_score: Number(item?.quality_score) || 0,
-        author_reputation: Number(item?.author_reputation) || 0,
-        author_rep_norm: Number(item?.author_rep_norm) || 0,
-        visit_verified: Boolean(item?.visit_verified),
-        visit_confidence: typeof item?.visit_confidence === "string" ? item.visit_confidence : "none",
-        confirmed_reports: Number(item?.confirmed_reports) || 0,
-        fraud_suspicion: Boolean(item?.fraud_suspicion),
-        summary_length: Number(item?.summary_length) || 0,
-        summary_excerpt: typeof item?.summary_excerpt === "string" ? item.summary_excerpt : "",
-        tags_count: Number(item?.tags_count) || 0,
-        photo_count: Number(item?.photo_count) || 0,
-        drink_selected: Boolean(item?.drink_selected),
-        created_at: typeof item?.created_at === "string" ? item.created_at : "",
-      }))
-    : [];
+  const res = await http.get<unknown>(
+    `/api/admin/cafes/${encodeURIComponent(cafeId)}/rating-diagnostics`,
+  );
+  const raw = asRecord(res.data);
+  const reviews = asArray(raw.reviews).map(parseDiagnosticsReview);
 
   return {
-    api_contract_version:
-      typeof raw?.api_contract_version === "string"
-        ? raw.api_contract_version
-        : "reviews_api_v1",
-    formula_versions: {
-      rating:
-        typeof raw?.formula_versions?.rating === "string"
-          ? raw.formula_versions.rating
-          : "rating_v2",
-      quality:
-        typeof raw?.formula_versions?.quality === "string"
-          ? raw.formula_versions.quality
-          : "quality_v1",
-    },
-    cafe_id: typeof raw?.cafe_id === "string" ? raw.cafe_id : cafeId,
-    formula_version:
-      typeof raw?.formula_version === "string" ? raw.formula_version : "rating_v2",
-    computed_at: typeof raw?.computed_at === "string" ? raw.computed_at : "",
-    snapshot_rating: Number(raw?.snapshot_rating) || 0,
-    derived_rating: Number(raw?.derived_rating) || 0,
-    rating_delta: Number(raw?.rating_delta) || 0,
-    is_consistent: Boolean(raw?.is_consistent),
-    reviews_count: Number(raw?.reviews_count) || 0,
-    verified_reviews_count: Number(raw?.verified_reviews_count) || 0,
-    verified_share: Number(raw?.verified_share) || 0,
-    fraud_risk: Number(raw?.fraud_risk) || 0,
-    components:
-      raw?.components && typeof raw.components === "object" && !Array.isArray(raw.components)
-        ? raw.components
-        : {},
-    best_review: bestReview,
-    warnings: Array.isArray(raw?.warnings)
-      ? raw.warnings.filter((item: unknown): item is string => typeof item === "string")
-      : [],
+    api_contract_version: asString(raw.api_contract_version, "reviews_api_v1"),
+    formula_versions: parseFormulaVersions(raw),
+    cafe_id: asString(raw.cafe_id, cafeId),
+    formula_version: asString(raw.formula_version, "rating_v2"),
+    computed_at: asString(raw.computed_at),
+    snapshot_rating: asNumber(raw.snapshot_rating),
+    derived_rating: asNumber(raw.derived_rating),
+    rating_delta: asNumber(raw.rating_delta),
+    is_consistent: Boolean(raw.is_consistent),
+    reviews_count: asNumber(raw.reviews_count),
+    verified_reviews_count: asNumber(raw.verified_reviews_count),
+    verified_share: asNumber(raw.verified_share),
+    fraud_risk: asNumber(raw.fraud_risk),
+    components: asRecord(raw.components),
+    best_review: parseBestReview(raw.best_review),
+    warnings: asStringArray(raw.warnings),
     reviews,
   };
 }
 
 export async function getReviewsVersioningStatus(): Promise<ReviewsVersioningStatus> {
-  const res = await http.get("/api/admin/reviews/versioning");
-  const raw = res.data ?? {};
+  const res = await http.get<unknown>("/api/admin/reviews/versioning");
+  const raw = asRecord(res.data);
+  const formulaRequests = asRecord(raw.formula_requests);
+  const formulaFallbacks = asRecord(raw.formula_fallbacks);
+  const featureFlags = asRecord(raw.feature_flags);
 
   return {
-    api_contract_version:
-      typeof raw?.api_contract_version === "string"
-        ? raw.api_contract_version
-        : "reviews_api_v1",
-    formula_versions: {
-      rating:
-        typeof raw?.formula_versions?.rating === "string"
-          ? raw.formula_versions.rating
-          : "rating_v2",
-      quality:
-        typeof raw?.formula_versions?.quality === "string"
-          ? raw.formula_versions.quality
-          : "quality_v1",
-    },
+    api_contract_version: asString(raw.api_contract_version, "reviews_api_v1"),
+    formula_versions: parseFormulaVersions(raw),
     formula_requests: {
-      rating:
-        typeof raw?.formula_requests?.rating === "string"
-          ? raw.formula_requests.rating
-          : "rating_v2",
-      quality:
-        typeof raw?.formula_requests?.quality === "string"
-          ? raw.formula_requests.quality
-          : "quality_v1",
+      rating: asString(formulaRequests.rating, "rating_v2"),
+      quality: asString(formulaRequests.quality, "quality_v1"),
     },
     formula_fallbacks: {
-      rating: Boolean(raw?.formula_fallbacks?.rating),
-      quality: Boolean(raw?.formula_fallbacks?.quality),
+      rating: asBoolean(formulaFallbacks.rating),
+      quality: asBoolean(formulaFallbacks.quality),
     },
     feature_flags: {
-      rating_v3_enabled: Boolean(raw?.feature_flags?.rating_v3_enabled),
-      quality_v2_enabled: Boolean(raw?.feature_flags?.quality_v2_enabled),
+      rating_v3_enabled: asBoolean(featureFlags.rating_v3_enabled),
+      quality_v2_enabled: asBoolean(featureFlags.quality_v2_enabled),
     },
   };
 }
@@ -705,39 +702,22 @@ export async function listReviewsDLQ(params: {
   limit?: number;
   offset?: number;
 } = {}): Promise<ListReviewsDLQResponse> {
-  const res = await http.get("/api/admin/reviews/dlq", {
+  const res = await http.get<unknown>("/api/admin/reviews/dlq", {
     params: {
       status: params.status ?? "open",
       limit: params.limit,
       offset: params.offset,
     },
   });
-  const raw = res.data ?? {};
-  const rawEvents = Array.isArray(raw?.events) ? raw.events : [];
-  const events = rawEvents.map((item: any): ReviewsDLQEvent => ({
-    id: Number(item?.id) || 0,
-    inbox_event_id: Number(item?.inbox_event_id) || 0,
-    outbox_event_id: Number(item?.outbox_event_id) || 0,
-    consumer: typeof item?.consumer === "string" ? item.consumer : "",
-    event_type: typeof item?.event_type === "string" ? item.event_type : "",
-    aggregate_id: typeof item?.aggregate_id === "string" ? item.aggregate_id : "",
-    payload:
-      item?.payload && typeof item.payload === "object" && !Array.isArray(item.payload)
-        ? item.payload
-        : {},
-    attempts: Number(item?.attempts) || 0,
-    last_error: typeof item?.last_error === "string" ? item.last_error : "",
-    failed_at: typeof item?.failed_at === "string" ? item.failed_at : "",
-    resolved_at: typeof item?.resolved_at === "string" ? item.resolved_at : "",
-  }));
-
-  const statusRaw = typeof raw?.status === "string" ? raw.status : "open";
+  const raw = asRecord(res.data);
+  const events = asArray(raw.events).map(parseDLQEvent);
+  const statusRaw = asString(raw.status, "open");
   const status: ReviewsDLQStatus =
     statusRaw === "resolved" || statusRaw === "all" ? statusRaw : "open";
   return {
     status,
-    limit: Number(raw?.limit) || params.limit || 30,
-    offset: Number(raw?.offset) || params.offset || 0,
+    limit: asNumber(raw.limit, params.limit ?? 30),
+    offset: asNumber(raw.offset, params.offset ?? 0),
     events,
   };
 }
@@ -745,50 +725,50 @@ export async function listReviewsDLQ(params: {
 export async function replayReviewsDLQEvent(
   dlqEventID: number,
 ): Promise<ReplayReviewsDLQResponse> {
-  const res = await http.post(`/api/admin/reviews/dlq/${encodeURIComponent(String(dlqEventID))}/replay`);
-  const raw = res.data ?? {};
+  const res = await http.post<unknown>(
+    `/api/admin/reviews/dlq/${encodeURIComponent(String(dlqEventID))}/replay`,
+  );
+  const raw = asRecord(res.data);
   return {
-    dlq_event_id: Number(raw?.dlq_event_id) || 0,
-    inbox_event_id: Number(raw?.inbox_event_id) || 0,
-    outbox_event_id: Number(raw?.outbox_event_id) || 0,
-    consumer: typeof raw?.consumer === "string" ? raw.consumer : "",
-    event_type: typeof raw?.event_type === "string" ? raw.event_type : "",
-    was_resolved: Boolean(raw?.was_resolved),
-    replayed_at: typeof raw?.replayed_at === "string" ? raw.replayed_at : "",
+    dlq_event_id: asNumber(raw.dlq_event_id),
+    inbox_event_id: asNumber(raw.inbox_event_id),
+    outbox_event_id: asNumber(raw.outbox_event_id),
+    consumer: asString(raw.consumer),
+    event_type: asString(raw.event_type),
+    was_resolved: asBoolean(raw.was_resolved),
+    replayed_at: asString(raw.replayed_at),
   };
 }
 
 export async function replayAllOpenReviewsDLQ(
   limit?: number,
 ): Promise<ReplayOpenReviewsDLQResponse> {
-  const res = await http.post("/api/admin/reviews/dlq/replay-open", null, {
+  const res = await http.post<unknown>("/api/admin/reviews/dlq/replay-open", null, {
     params: {
       limit,
     },
   });
-  const raw = res.data ?? {};
+  const raw = asRecord(res.data);
   return {
-    limit: Number(raw?.limit) || 0,
-    processed: Number(raw?.processed) || 0,
-    replayed: Number(raw?.replayed) || 0,
-    failed: Number(raw?.failed) || 0,
-    errors: Array.isArray(raw?.errors)
-      ? raw.errors.filter((item: unknown): item is string => typeof item === "string")
-      : [],
+    limit: asNumber(raw.limit),
+    processed: asNumber(raw.processed),
+    replayed: asNumber(raw.replayed),
+    failed: asNumber(raw.failed),
+    errors: asStringArray(raw.errors),
   };
 }
 
 export async function resolveOpenReviewsDLQWithoutReplay(
   limit?: number,
 ): Promise<ResolveOpenReviewsDLQResponse> {
-  const res = await http.post("/api/admin/reviews/dlq/resolve-open", null, {
+  const res = await http.post<unknown>("/api/admin/reviews/dlq/resolve-open", null, {
     params: {
       limit,
     },
   });
-  const raw = res.data ?? {};
+  const raw = asRecord(res.data);
   return {
-    limit: Number(raw?.limit) || 0,
-    resolved: Number(raw?.resolved) || 0,
+    limit: asNumber(raw.limit),
+    resolved: asNumber(raw.resolved),
   };
 }

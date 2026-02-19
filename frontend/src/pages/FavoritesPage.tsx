@@ -13,11 +13,30 @@ import { IconArrowLeft, IconHeartFilled } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 import { listFavoriteCafes, removeCafeFromFavorites } from "../api/favorites";
-import type { Cafe } from "../types";
+import type { Cafe } from "../entities/cafe/model/types";
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 
 const CafeDetailsScreen = lazy(() => import("../features/discovery/ui/details/CafeDetailsScreen"));
+
+type FavoritesErrorLike = {
+  normalized?: {
+    message?: string;
+  };
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+};
+
+function extractFavoritesErrorMessage(error: unknown, fallback: string): string {
+  if (!error || typeof error !== "object") {
+    return fallback;
+  }
+  const err = error as FavoritesErrorLike;
+  return err.normalized?.message ?? err.response?.data?.message ?? fallback;
+}
 
 export default function FavoritesPage() {
   useAllowBodyScroll();
@@ -51,12 +70,12 @@ export default function FavoritesPage() {
         if (cancelled) return;
         setCafes(items);
       })
-      .catch((err: any) => {
+      .catch((error: unknown) => {
         if (cancelled) return;
-        const message =
-          err?.normalized?.message ??
-          err?.response?.data?.message ??
-          "Не удалось загрузить избранные кофейни.";
+        const message = extractFavoritesErrorMessage(
+          error,
+          "Не удалось загрузить избранные кофейни.",
+        );
         setError(message);
       })
       .finally(() => {
@@ -75,11 +94,8 @@ export default function FavoritesPage() {
     try {
       await removeCafeFromFavorites(cafeId);
       setCafes((prev) => prev.filter((item) => item.id !== cafeId));
-    } catch (err: any) {
-      const message =
-        err?.normalized?.message ??
-        err?.response?.data?.message ??
-        "Не удалось обновить избранное.";
+    } catch (error: unknown) {
+      const message = extractFavoritesErrorMessage(error, "Не удалось обновить избранное.");
       setError(message);
     } finally {
       setBusyCafeId(null);

@@ -37,6 +37,7 @@ import {
   type ModerationSubmission,
   type SubmissionStatus,
 } from "../api/submissions";
+import { extractApiErrorMessage } from "../utils/apiError";
 
 const CafeDetailsScreen = lazy(() => import("../features/discovery/ui/details/CafeDetailsScreen"));
 
@@ -68,11 +69,8 @@ export default function AdminModerationPage() {
         entityType: "",
       });
       setItems(list);
-    } catch (err: any) {
-      const message =
-        err?.normalized?.message ??
-        err?.response?.data?.message ??
-        "Не удалось загрузить очередь модерации.";
+    } catch (err: unknown) {
+      const message = extractApiErrorMessage(err, "Не удалось загрузить очередь модерации.");
       notifications.show({
         color: "red",
         title: "Ошибка",
@@ -168,11 +166,8 @@ export default function AdminModerationPage() {
         message: "Заявка подтверждена.",
       });
       await refresh();
-    } catch (err: any) {
-      const message =
-        err?.normalized?.message ??
-        err?.response?.data?.message ??
-        "Не удалось одобрить заявку.";
+    } catch (err: unknown) {
+      const message = extractApiErrorMessage(err, "Не удалось одобрить заявку.");
       notifications.show({
         color: "red",
         title: "Ошибка",
@@ -195,11 +190,8 @@ export default function AdminModerationPage() {
         message: "Заявка отклонена.",
       });
       await refresh();
-    } catch (err: any) {
-      const message =
-        err?.normalized?.message ??
-        err?.response?.data?.message ??
-        "Не удалось отклонить заявку.";
+    } catch (err: unknown) {
+      const message = extractApiErrorMessage(err, "Не удалось отклонить заявку.");
       notifications.show({
         color: "red",
         title: "Ошибка",
@@ -226,7 +218,7 @@ export default function AdminModerationPage() {
           <Text c="dimmed">
             Эта страница доступна только модераторам и администраторам.
           </Text>
-          <Button onClick={() => navigate("/settings")}>Назад</Button>
+          <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
     );
@@ -242,7 +234,7 @@ export default function AdminModerationPage() {
                 size={42}
                 variant="transparent"
                 className="glass-action glass-action--square"
-                onClick={() => navigate("/settings")}
+                onClick={() => void navigate("/settings")}
                 aria-label="Назад"
               >
                 <IconArrowLeft size={18} />

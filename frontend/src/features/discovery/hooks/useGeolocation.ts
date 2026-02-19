@@ -55,7 +55,20 @@ export default function useGeolocation(
 
   useEffect(() => {
     if (options.autoLocate === false) return;
-    locateMe(false, false);
+    if (!("geolocation" in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const next: LngLat = [pos.coords.longitude, pos.coords.latitude];
+        setUserCenter(next);
+        setGeoStatus("ok");
+        setIsLocating(false);
+      },
+      () => {
+        setGeoStatus("error");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
   }, [options.autoLocate]);
 
   return {

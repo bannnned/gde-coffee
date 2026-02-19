@@ -249,11 +249,6 @@ export default function useDiscoveryLocation({
     });
   }, []);
 
-  useEffect(() => {
-    if (!manualPickMode) return;
-    setManualPickedCenter(userCenter);
-  }, [manualPickMode, userCenter]);
-
   return {
     locationChoice,
     userCenter,

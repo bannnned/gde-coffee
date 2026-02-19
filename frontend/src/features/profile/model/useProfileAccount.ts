@@ -9,6 +9,7 @@ import {
 import * as authApi from "../../../api/auth";
 import { buildOAuthLinkUrl } from "../../../api/url";
 import useOauthRedirect from "../../../hooks/useOauthRedirect";
+import { extractApiErrorMessage, extractApiErrorStatus } from "../../../utils/apiError";
 import { resolveAvatarUrl } from "../../../utils/resolveAvatarUrl";
 
 type AuthStatus = "loading" | "authed" | "unauth" | "error";
@@ -100,14 +101,10 @@ export default function useProfileAccount({
     try {
       const list = await authApi.getIdentities();
       setIdentities(list);
-    } catch (err: any) {
-      const statusCode = err?.response?.status ?? err?.normalized?.status;
+    } catch (err: unknown) {
+      const statusCode = extractApiErrorStatus(err);
       if (statusCode && statusCode !== 404) {
-        setIdentityError(
-          err?.response?.data?.message ??
-            err?.normalized?.message ??
-            "Не удалось обновить список подключений.",
-        );
+        setIdentityError(extractApiErrorMessage(err, "Не удалось обновить список подключений."));
       }
       setIdentities([]);
     } finally {
@@ -164,12 +161,8 @@ export default function useProfileAccount({
       await refreshAuth();
       setNameSuccess("Имя сохранено.");
       setIsNameEditing(false);
-    } catch (err: any) {
-      setNameError(
-        err?.response?.data?.message ??
-          err?.normalized?.message ??
-          "Не удалось сохранить имя.",
-      );
+    } catch (err: unknown) {
+      setNameError(extractApiErrorMessage(err, "Не удалось сохранить имя."));
     } finally {
       setIsNameSaving(false);
     }
@@ -203,13 +196,8 @@ export default function useProfileAccount({
       await authApi.confirmProfileAvatarUpload(presigned.object_key);
       await refreshAuth();
       setAvatarSuccess("Фото профиля обновлено.");
-    } catch (err: any) {
-      setAvatarError(
-        err?.response?.data?.message ??
-          err?.normalized?.message ??
-          err?.message ??
-          "Не удалось обновить фото профиля.",
-      );
+    } catch (err: unknown) {
+      setAvatarError(extractApiErrorMessage(err, "Не удалось обновить фото профиля."));
     } finally {
       setIsAvatarUploading(false);
       if (avatarInputRef.current) {

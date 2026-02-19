@@ -39,7 +39,7 @@ type AboutSectionProps = {
   onSaveDescription: () => void;
   onManagePhotos?: (kind: "cafe" | "menu") => void;
   canSaveDescription: boolean;
-  badgeStyles: any;
+  badgeStyles: Record<string, unknown>;
 };
 
 export default function AboutSection({

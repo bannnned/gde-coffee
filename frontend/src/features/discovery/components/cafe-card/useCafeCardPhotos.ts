@@ -7,7 +7,7 @@ const AUTO_SLIDE_MS = 4000;
 
 export function useCafeCardPhotos(cafe: Cafe) {
   const touchStartXRef = useRef<number | null>(null);
-  const loadedPhotoURLsRef = useRef<Set<string>>(new Set());
+  const [loadedPhotoURLs, setLoadedPhotoURLs] = useState<Record<string, true>>({});
 
   const fallbackPhotoURLs = useMemo(() => {
     const direct = (cafe.photos ?? [])
@@ -22,19 +22,38 @@ export function useCafeCardPhotos(cafe: Cafe) {
     return cover ? (direct.length > 0 ? direct : [cover]) : direct;
   }, [cafe.cover_photo_url, cafe.photos]);
 
-  const [photoURLs, setPhotoURLs] = useState<string[]>(fallbackPhotoURLs);
-  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
-  const [photoReady, setPhotoReady] = useState(true);
+  const [fetchedPhotoURLsByCafeId, setFetchedPhotoURLsByCafeId] = useState<
+    Record<string, string[]>
+  >({});
+  const [activePhotoState, setActivePhotoState] = useState<{
+    cafeId: string;
+    index: number;
+  }>({
+    cafeId: cafe.id,
+    index: 0,
+  });
+  const hasFetchedPhotosForCafe = Object.prototype.hasOwnProperty.call(
+    fetchedPhotoURLsByCafeId,
+    cafe.id,
+  );
+  const photoURLs = useMemo(() => {
+    const fetched = fetchedPhotoURLsByCafeId[cafe.id];
+    if (Array.isArray(fetched) && fetched.length > 0) {
+      return fetched;
+    }
+    return fallbackPhotoURLs;
+  }, [cafe.id, fallbackPhotoURLs, fetchedPhotoURLsByCafeId]);
+  const activePhotoIndex = useMemo(() => {
+    const baseIndex = activePhotoState.cafeId === cafe.id ? activePhotoState.index : 0;
+    if (photoURLs.length === 0) return 0;
+    return Math.min(baseIndex, photoURLs.length - 1);
+  }, [activePhotoState.cafeId, activePhotoState.index, cafe.id, photoURLs.length]);
 
   const activePhotoURL = photoURLs[activePhotoIndex] ?? null;
+  const photoReady = !activePhotoURL || Boolean(loadedPhotoURLs[activePhotoURL]);
 
   useEffect(() => {
-    setPhotoURLs(fallbackPhotoURLs);
-    setActivePhotoIndex(0);
-  }, [cafe.id, fallbackPhotoURLs]);
-
-  useEffect(() => {
-    if (!cafe.id || fallbackPhotoURLs.length > 0) return;
+    if (!cafe.id || fallbackPhotoURLs.length > 0 || hasFetchedPhotosForCafe) return;
     let cancelled = false;
 
     getCafePhotos(cafe.id, "cafe")
@@ -45,10 +64,22 @@ export function useCafeCardPhotos(cafe: Cafe) {
 
         const cover = cafe.cover_photo_url?.trim() || "";
         if (cover && !fetched.includes(cover)) {
-          setPhotoURLs([cover, ...fetched]);
+          setFetchedPhotoURLsByCafeId((prev) => {
+            if (Object.prototype.hasOwnProperty.call(prev, cafe.id)) return prev;
+            return {
+              ...prev,
+              [cafe.id]: [cover, ...fetched],
+            };
+          });
           return;
         }
-        setPhotoURLs(fetched);
+        setFetchedPhotoURLsByCafeId((prev) => {
+          if (Object.prototype.hasOwnProperty.call(prev, cafe.id)) return prev;
+          return {
+            ...prev,
+            [cafe.id]: fetched,
+          };
+        });
       })
       .catch(() => {
         // Keep fallback photos on error.
@@ -57,33 +88,31 @@ export function useCafeCardPhotos(cafe: Cafe) {
     return () => {
       cancelled = true;
     };
-  }, [cafe.id, cafe.cover_photo_url, fallbackPhotoURLs.length]);
-
-  useEffect(() => {
-    setActivePhotoIndex((prev) =>
-      photoURLs.length === 0 ? 0 : Math.min(prev, photoURLs.length - 1),
-    );
-  }, [photoURLs.length]);
-
-  useEffect(() => {
-    if (!activePhotoURL) {
-      setPhotoReady(true);
-      return;
-    }
-    setPhotoReady(loadedPhotoURLsRef.current.has(activePhotoURL));
-  }, [activePhotoURL]);
+  }, [cafe.id, cafe.cover_photo_url, fallbackPhotoURLs.length, hasFetchedPhotosForCafe]);
 
   useEffect(() => {
     if (photoURLs.length <= 1) return;
     const timer = window.setInterval(() => {
-      setActivePhotoIndex((prev) => (prev + 1) % photoURLs.length);
+      setActivePhotoState((prev) => {
+        const prevIndex = prev.cafeId === cafe.id ? prev.index : 0;
+        return {
+          cafeId: cafe.id,
+          index: (prevIndex + 1) % photoURLs.length,
+        };
+      });
     }, AUTO_SLIDE_MS);
     return () => window.clearInterval(timer);
-  }, [photoURLs.length]);
+  }, [cafe.id, photoURLs.length]);
 
   const stepPhoto = (direction: -1 | 1) => {
     if (photoURLs.length <= 1) return;
-    setActivePhotoIndex((prev) => (prev + direction + photoURLs.length) % photoURLs.length);
+    setActivePhotoState((prev) => {
+      const prevIndex = prev.cafeId === cafe.id ? prev.index : 0;
+      return {
+        cafeId: cafe.id,
+        index: (prevIndex + direction + photoURLs.length) % photoURLs.length,
+      };
+    });
   };
 
   const handlePhotoTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
@@ -102,14 +131,25 @@ export function useCafeCardPhotos(cafe: Cafe) {
   };
 
   const handlePhotoLoad = (src: string) => {
-    if (src) {
-      loadedPhotoURLsRef.current.add(src);
-    }
-    setPhotoReady(true);
+    if (!src) return;
+    setLoadedPhotoURLs((prev) => {
+      if (prev[src]) return prev;
+      return {
+        ...prev,
+        [src]: true,
+      };
+    });
   };
 
   const handlePhotoError = () => {
-    setPhotoReady(true);
+    if (!activePhotoURL) return;
+    setLoadedPhotoURLs((prev) => {
+      if (prev[activePhotoURL]) return prev;
+      return {
+        ...prev,
+        [activePhotoURL]: true,
+      };
+    });
   };
 
   return {

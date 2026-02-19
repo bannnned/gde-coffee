@@ -8,6 +8,7 @@ import {
   type CafeRatingSnapshot,
 } from "../../../../../api/reviews";
 import type { Cafe, CafePhoto, CafePhotoKind } from "../../../../../entities/cafe/model/types";
+import { extractApiErrorMessage } from "../../../../../utils/apiError";
 
 type UseCafeDetailsDataParams = {
   opened: boolean;
@@ -34,23 +35,23 @@ export function useCafeDetailsData({
   const [menuPhotos, setMenuPhotos] = useState<CafePhoto[]>(
     filterPhotosByKind(cafe?.photos, "menu"),
   );
-  const [ratingSnapshot, setRatingSnapshot] = useState<CafeRatingSnapshot | null>(null);
-  const [ratingLoading, setRatingLoading] = useState(false);
-  const [ratingError, setRatingError] = useState<string | null>(null);
-  const [ratingDiagnostics, setRatingDiagnostics] = useState<CafeRatingDiagnostics | null>(null);
-  const [ratingDiagnosticsLoading, setRatingDiagnosticsLoading] = useState(false);
-  const [ratingDiagnosticsError, setRatingDiagnosticsError] = useState<string | null>(null);
+  const [ratingSnapshotByCafeId, setRatingSnapshotByCafeId] = useState<
+    Record<string, CafeRatingSnapshot | null>
+  >({});
+  const [ratingErrorByCafeId, setRatingErrorByCafeId] = useState<Record<string, string | null>>(
+    {},
+  );
+  const [ratingDiagnosticsByCafeId, setRatingDiagnosticsByCafeId] = useState<
+    Record<string, CafeRatingDiagnostics | null>
+  >({});
+  const [ratingDiagnosticsErrorByCafeId, setRatingDiagnosticsErrorByCafeId] = useState<
+    Record<string, string | null>
+  >({});
 
   useEffect(() => {
-    if (!opened || !cafe?.id) {
-      setCafePhotos(filterPhotosByKind(cafe?.photos, "cafe"));
-      setMenuPhotos(filterPhotosByKind(cafe?.photos, "menu"));
-      return;
-    }
+    if (!opened || !cafe?.id) return;
 
     let cancelled = false;
-    setCafePhotos(filterPhotosByKind(cafe.photos, "cafe"));
-    setMenuPhotos(filterPhotosByKind(cafe.photos, "menu"));
     Promise.all([getCafePhotos(cafe.id, "cafe"), getCafePhotos(cafe.id, "menu")])
       .then(([nextCafePhotos, nextMenuPhotos]) => {
         if (cancelled) return;
@@ -69,34 +70,32 @@ export function useCafeDetailsData({
   }, [cafe?.id, cafe?.photos, opened]);
 
   useEffect(() => {
-    if (!opened || !cafe?.id) {
-      setRatingSnapshot(null);
-      setRatingLoading(false);
-      setRatingError(null);
-      return;
-    }
+    if (!opened || !cafe?.id) return;
 
     let cancelled = false;
-    setRatingLoading(true);
-    setRatingError(null);
     getCafeRatingSnapshot(cafe.id)
       .then((snapshot) => {
         if (cancelled) return;
-        setRatingSnapshot(snapshot);
+        setRatingSnapshotByCafeId((prev) => ({
+          ...prev,
+          [cafe.id]: snapshot,
+        }));
+        setRatingErrorByCafeId((prev) => ({
+          ...prev,
+          [cafe.id]: null,
+        }));
       })
-      .catch((error: any) => {
+      .catch((error: unknown) => {
         if (cancelled) return;
-        const message =
-          error?.normalized?.message ??
-          error?.response?.data?.message ??
-          error?.message ??
-          "Не удалось загрузить рейтинг.";
-        setRatingError(message);
-        setRatingSnapshot(null);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setRatingLoading(false);
+        const message = extractApiErrorMessage(error, "Не удалось загрузить рейтинг.");
+        setRatingErrorByCafeId((prev) => ({
+          ...prev,
+          [cafe.id]: message,
+        }));
+        setRatingSnapshotByCafeId((prev) => ({
+          ...prev,
+          [cafe.id]: null,
+        }));
       });
 
     return () => {
@@ -105,34 +104,32 @@ export function useCafeDetailsData({
   }, [cafe?.id, opened]);
 
   useEffect(() => {
-    if (!opened || !cafe?.id || !canViewAdminDiagnostics) {
-      setRatingDiagnostics(null);
-      setRatingDiagnosticsLoading(false);
-      setRatingDiagnosticsError(null);
-      return;
-    }
+    if (!opened || !cafe?.id || !canViewAdminDiagnostics) return;
 
     let cancelled = false;
-    setRatingDiagnosticsLoading(true);
-    setRatingDiagnosticsError(null);
     getCafeRatingDiagnostics(cafe.id)
       .then((diagnostics) => {
         if (cancelled) return;
-        setRatingDiagnostics(diagnostics);
+        setRatingDiagnosticsByCafeId((prev) => ({
+          ...prev,
+          [cafe.id]: diagnostics,
+        }));
+        setRatingDiagnosticsErrorByCafeId((prev) => ({
+          ...prev,
+          [cafe.id]: null,
+        }));
       })
-      .catch((error: any) => {
+      .catch((error: unknown) => {
         if (cancelled) return;
-        const message =
-          error?.normalized?.message ??
-          error?.response?.data?.message ??
-          error?.message ??
-          "Не удалось загрузить диагностику рейтинга.";
-        setRatingDiagnosticsError(message);
-        setRatingDiagnostics(null);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setRatingDiagnosticsLoading(false);
+        const message = extractApiErrorMessage(error, "Не удалось загрузить диагностику рейтинга.");
+        setRatingDiagnosticsErrorByCafeId((prev) => ({
+          ...prev,
+          [cafe.id]: message,
+        }));
+        setRatingDiagnosticsByCafeId((prev) => ({
+          ...prev,
+          [cafe.id]: null,
+        }));
       });
 
     return () => {
@@ -140,14 +137,45 @@ export function useCafeDetailsData({
     };
   }, [cafe?.id, canViewAdminDiagnostics, opened]);
 
+  const ratingSnapshot = cafe?.id ? (ratingSnapshotByCafeId[cafe.id] ?? null) : null;
+  const ratingError = cafe?.id ? (ratingErrorByCafeId[cafe.id] ?? null) : null;
+  const hasRatingSnapshot = cafe?.id
+    ? Object.prototype.hasOwnProperty.call(ratingSnapshotByCafeId, cafe.id)
+    : false;
+  const hasRatingError = cafe?.id
+    ? Object.prototype.hasOwnProperty.call(ratingErrorByCafeId, cafe.id)
+    : false;
+  const ratingLoading = Boolean(opened && cafe?.id && !hasRatingSnapshot && !hasRatingError);
+
+  const ratingDiagnostics = cafe?.id ? (ratingDiagnosticsByCafeId[cafe.id] ?? null) : null;
+  const ratingDiagnosticsError = cafe?.id
+    ? (ratingDiagnosticsErrorByCafeId[cafe.id] ?? null)
+    : null;
+  const hasRatingDiagnostics = cafe?.id
+    ? Object.prototype.hasOwnProperty.call(ratingDiagnosticsByCafeId, cafe.id)
+    : false;
+  const hasRatingDiagnosticsError = cafe?.id
+    ? Object.prototype.hasOwnProperty.call(ratingDiagnosticsErrorByCafeId, cafe.id)
+    : false;
+  const ratingDiagnosticsLoading = Boolean(
+    opened &&
+      cafe?.id &&
+      canViewAdminDiagnostics &&
+      !hasRatingDiagnostics &&
+      !hasRatingDiagnosticsError,
+  );
+
   return {
-    cafePhotos,
-    menuPhotos,
-    ratingSnapshot,
-    ratingLoading,
-    ratingError,
-    ratingDiagnostics,
-    ratingDiagnosticsLoading,
-    ratingDiagnosticsError,
+    cafePhotos: opened && cafe?.id ? cafePhotos : filterPhotosByKind(cafe?.photos, "cafe"),
+    menuPhotos: opened && cafe?.id ? menuPhotos : filterPhotosByKind(cafe?.photos, "menu"),
+    ratingSnapshot: opened && cafe?.id ? ratingSnapshot : null,
+    ratingLoading: opened && cafe?.id ? ratingLoading : false,
+    ratingError: opened && cafe?.id ? ratingError : null,
+    ratingDiagnostics:
+      opened && cafe?.id && canViewAdminDiagnostics ? ratingDiagnostics : null,
+    ratingDiagnosticsLoading:
+      opened && cafe?.id && canViewAdminDiagnostics ? ratingDiagnosticsLoading : false,
+    ratingDiagnosticsError:
+      opened && cafe?.id && canViewAdminDiagnostics ? ratingDiagnosticsError : null,
   };
 }

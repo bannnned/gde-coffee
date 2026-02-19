@@ -128,7 +128,9 @@ export default function WorkScreen() {
           onSelectCafe={selectCafe}
           itemRefs={itemRefs}
           onResetFilters={resetFilters}
-          onRetry={() => cafesQuery.refetch()}
+          onRetry={() => {
+            void cafesQuery.refetch();
+          }}
           onLocate={() => locateMe(true)}
         />
       </BottomSheet>

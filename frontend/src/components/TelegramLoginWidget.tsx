@@ -27,6 +27,31 @@ type TelegramLoginWidgetProps = {
 
 const TELEGRAM_WIDGET_SRC = "https://telegram.org/js/telegram-widget.js?22";
 
+type TelegramWidgetError = {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  normalized?: {
+    message?: string;
+  };
+  message?: string;
+};
+
+function extractTelegramWidgetErrorMessage(error: unknown): string {
+  if (!error || typeof error !== "object") {
+    return "Не удалось выполнить вход через Telegram.";
+  }
+  const parsed = error as TelegramWidgetError;
+  return (
+    parsed.response?.data?.message ??
+    parsed.normalized?.message ??
+    parsed.message ??
+    "Не удалось выполнить вход через Telegram."
+  );
+}
+
 function normalizeTelegramUser(
   raw: TelegramWidgetUser,
 ): Omit<TelegramCallbackPayload, "state"> | null {
@@ -146,19 +171,16 @@ export default function TelegramLoginWidget({
               ? "/settings?oauth=telegram&error=internal"
               : "/login?oauth=telegram&error=internal"),
         );
-      } catch (err: any) {
-        const message =
-          err?.response?.data?.message ??
-          err?.normalized?.message ??
-          err?.message ??
-          "Не удалось выполнить вход через Telegram.";
+      } catch (error: unknown) {
+        const message = extractTelegramWidgetErrorMessage(error);
         notifications.show({ color: "red", message });
         isSubmittingRef.current = false;
         setIsSubmitting(false);
       }
     };
 
-    (window as any)[callbackName] = onAuth;
+    const callbacks = window as Window & Record<string, unknown>;
+    callbacks[callbackName] = onAuth;
 
     const script = document.createElement("script");
     script.async = true;
@@ -201,7 +223,7 @@ export default function TelegramLoginWidget({
     return () => {
       observer.disconnect();
       window.clearTimeout(readinessTimeout);
-      delete (window as any)[callbackName];
+      delete callbacks[callbackName];
       container.innerHTML = "";
     };
   }, [botUsername, flow, isConfigLoading, size]);

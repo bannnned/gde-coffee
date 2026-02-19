@@ -20,6 +20,7 @@ import {
   submitCafePhotos,
   submitMenuPhotos,
 } from "../../../api/submissions";
+import { extractApiErrorMessage } from "../../../utils/apiError";
 
 type CafePhotoSubmissionModalProps = {
   opened: boolean;
@@ -134,7 +135,7 @@ export default function CafePhotoSubmissionModal({
     setError(null);
 
     try {
-      const objectKeys: string[] = new Array(files.length);
+      const objectKeys: Array<string | null> = Array.from({ length: files.length }, () => null);
       await runWithConcurrency(files, MAX_UPLOAD_CONCURRENCY, async (file, index) => {
         const presigned = await presignSubmissionPhotoUpload({
           contentType: file.type,
@@ -147,11 +148,14 @@ export default function CafePhotoSubmissionModal({
         );
         objectKeys[index] = presigned.object_key;
       });
+      const uploadedObjectKeys = objectKeys.filter(
+        (objectKey): objectKey is string => typeof objectKey === "string" && objectKey.length > 0,
+      );
 
       if (mode === "menu") {
-        await submitMenuPhotos(cafeId, objectKeys.filter(Boolean));
+        await submitMenuPhotos(cafeId, uploadedObjectKeys);
       } else {
-        await submitCafePhotos(cafeId, objectKeys.filter(Boolean));
+        await submitCafePhotos(cafeId, uploadedObjectKeys);
       }
 
       notifications.show({
@@ -161,12 +165,8 @@ export default function CafePhotoSubmissionModal({
       });
       setFiles([]);
       onClose();
-    } catch (err: any) {
-      const message =
-        err?.normalized?.message ??
-        err?.response?.data?.message ??
-        err?.message ??
-        "Не удалось отправить заявку.";
+    } catch (err: unknown) {
+      const message = extractApiErrorMessage(err, "Не удалось отправить заявку.");
       setError(message);
       notifications.show({
         color: "red",

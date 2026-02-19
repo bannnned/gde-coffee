@@ -19,7 +19,7 @@ type CafeCardHeroProps = {
   onPhotoError: () => void;
   onTouchStart: (event: React.TouchEvent<HTMLDivElement>) => void;
   onTouchEnd: (event: React.TouchEvent<HTMLDivElement>) => void;
-  badgeStyles: any;
+  badgeStyles: Record<string, unknown>;
   children?: ReactNode;
 };
 

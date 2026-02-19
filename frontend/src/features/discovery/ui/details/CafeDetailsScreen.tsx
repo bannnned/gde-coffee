@@ -26,6 +26,7 @@ import MenuSection from "./sections/MenuSection";
 import RatingPanel from "./sections/RatingPanel";
 
 import type { Cafe, CafePhotoKind } from "../../../../entities/cafe/model/types";
+import { extractApiErrorMessage } from "../../../../utils/apiError";
 import {
   buildCafePhotoPictureSources,
   buildCafePhotoSrcSet,
@@ -158,7 +159,7 @@ export default function CafeDetailsScreen({
     setMenuActiveIndex(0);
     setViewerOpen(false);
     setViewerIndex(0);
-  }, [cafe?.id, opened]);
+  }, [cafe?.description, cafe?.id, opened]);
 
   useEffect(() => {
     setAboutActiveIndex((prev) =>
@@ -318,12 +319,8 @@ export default function CafeDetailsScreen({
             ? "Описание сохранено."
             : "Заявка на изменение отправлена на модерацию."),
       );
-    } catch (error: any) {
-      const message =
-        error?.normalized?.message ??
-        error?.response?.data?.message ??
-        error?.message ??
-        "Не удалось сохранить описание.";
+    } catch (error: unknown) {
+      const message = extractApiErrorMessage(error, "Не удалось сохранить описание.");
       setDescriptionError(message);
     } finally {
       setDescriptionSaving(false);
@@ -490,7 +487,9 @@ export default function CafeDetailsScreen({
               onDescriptionDraftChange={setDescriptionDraft}
               onStartDescription={handleStartDescription}
               onCancelDescription={handleCancelDescription}
-              onSaveDescription={handleSaveDescription}
+              onSaveDescription={() => {
+                void handleSaveDescription();
+              }}
               onManagePhotos={onManagePhotos}
               canSaveDescription={Boolean(onSaveDescription)}
               badgeStyles={badgeStyles}
