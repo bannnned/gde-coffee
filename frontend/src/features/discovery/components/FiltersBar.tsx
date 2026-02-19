@@ -173,11 +173,18 @@ export default function FiltersBar({
             className={classes.userBadge}
             aria-label="Open profile"
             type="button"
-            onClick={() =>
+            onClick={() => {
+              const overlayBackgroundLocation = {
+                pathname: location.pathname,
+                search: location.search,
+                hash: location.hash,
+                state: null,
+                key: location.key,
+              };
               void navigate("/profile", {
-                state: { backgroundLocation: location },
-              })
-            }
+                state: { backgroundLocation: overlayBackgroundLocation },
+              });
+            }}
             title={userLabel}
           >
             {avatarUrl ? (

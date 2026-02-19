@@ -78,10 +78,19 @@ function AppRoutes() {
       </Routes>
 
       {backgroundLocation && (
-        <Routes>
-          <Route path="/profile" element={<ProfileScreen />} />
-          <Route path="/settings" element={<SettingsScreen />} />
-        </Routes>
+        <Box
+          pos="fixed"
+          inset={0}
+          style={{
+            zIndex: 2000,
+            overflow: "hidden",
+          }}
+        >
+          <Routes>
+            <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="/settings" element={<SettingsScreen />} />
+          </Routes>
+        </Box>
       )}
     </>
   );
