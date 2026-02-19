@@ -370,7 +370,7 @@ export default function SettingsScreen() {
             className={`${classes.iconButton} glass-action glass-action--square`}
             onClick={() => {
               if (backgroundLocation) {
-                navigate(-1);
+                void navigate(-1);
                 return;
               }
               void navigate("/profile");
@@ -433,6 +433,17 @@ export default function SettingsScreen() {
                       }}
                     >
                       Импорт кофеен JSON
+                    </Button>
+                  )}
+                  {userRole === "admin" && (
+                    <Button
+                      variant="light"
+                      className={classes.actionButton}
+                      onClick={() => {
+                        void navigate("/admin/feedback");
+                      }}
+                    >
+                      Отзывы о приложении
                     </Button>
                   )}
                 </Group>

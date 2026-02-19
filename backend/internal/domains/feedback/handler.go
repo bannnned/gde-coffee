@@ -3,6 +3,7 @@ package feedback
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -76,6 +77,50 @@ func (h *Handler) Create(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"status": "ok"})
+}
+
+func (h *Handler) ListAdmin(c *gin.Context) {
+	query := strings.TrimSpace(c.Query("q"))
+
+	limit := defaultAdminFeedbackLimit
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		value, err := strconv.Atoi(rawLimit)
+		if err != nil || value <= 0 {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "limit должен быть целым числом > 0.", nil)
+			return
+		}
+		if value > maxAdminFeedbackLimit {
+			value = maxAdminFeedbackLimit
+		}
+		limit = value
+	}
+
+	offset := 0
+	if rawOffset := strings.TrimSpace(c.Query("offset")); rawOffset != "" {
+		value, err := strconv.Atoi(rawOffset)
+		if err != nil || value < 0 {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "offset должен быть целым числом >= 0.", nil)
+			return
+		}
+		offset = value
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+	defer cancel()
+
+	result, err := h.service.ListAdmin(ctx, query, limit, offset)
+	if err != nil {
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить отзывы.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"q":      query,
+		"limit":  limit,
+		"offset": offset,
+		"total":  result.Total,
+		"items":  result.Items,
+	})
 }
 
 func trimRunes(value string, limit int) string {

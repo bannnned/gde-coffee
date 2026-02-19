@@ -375,6 +375,7 @@ func main() {
 	accountGroup.POST("/profile/avatar/confirm", auth.RequireAuth(pool), authHandler.ProfileAvatarConfirm)
 	accountGroup.GET("/favorites", auth.RequireAuth(pool), favoritesHandler.List)
 	accountGroup.POST("/feedback", auth.RequireAuth(pool), feedbackHandler.Create)
+	api.GET("/admin/feedback", auth.RequireRole(pool, "admin"), feedbackHandler.ListAdmin)
 	accountGroup.GET("/email/change/confirm", authHandler.EmailChangeConfirm)
 
 	r.NoRoute(func(c *gin.Context) {

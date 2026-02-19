@@ -14,6 +14,7 @@ type emailSender interface {
 
 type repository interface {
 	Create(ctx context.Context, input CreateFeedbackInput) error
+	ListAdmin(ctx context.Context, query string, limit, offset int) (AdminFeedbackList, error)
 }
 
 type Service struct {
@@ -37,6 +38,10 @@ func (s *Service) Submit(ctx context.Context, input CreateFeedbackInput) error {
 
 	s.sendEmailNotification(ctx, input)
 	return nil
+}
+
+func (s *Service) ListAdmin(ctx context.Context, query string, limit int, offset int) (AdminFeedbackList, error) {
+	return s.repository.ListAdmin(ctx, query, limit, offset)
 }
 
 func (s *Service) sendEmailNotification(ctx context.Context, input CreateFeedbackInput) {
