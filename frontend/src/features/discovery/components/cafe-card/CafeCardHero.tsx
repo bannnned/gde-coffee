@@ -195,7 +195,7 @@ export default function CafeCardHero({
               onOpen2gis(cafe);
             }}
           >
-            Маршрут 2ГИС
+            2ГИС
           </Button>
           <Button
             size="compact-xs"
@@ -227,7 +227,7 @@ export default function CafeCardHero({
               onOpenYandex(cafe);
             }}
           >
-            Маршрут Яндекс
+            Яндекс
           </Button>
         </Stack>
       )}

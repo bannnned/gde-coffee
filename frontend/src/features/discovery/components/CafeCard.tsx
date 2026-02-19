@@ -1,8 +1,7 @@
 import { Paper } from "@mantine/core";
 import {
-  useRef,
   type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 
 import type { Cafe } from "../../../entities/cafe/model/types";
@@ -27,8 +26,6 @@ export default function CafeCard({
   showDistance = true,
   showRoutes = true,
 }: CafeCardProps) {
-  const clickStartRef = useRef<{ x: number; y: number } | null>(null);
-
   const {
     photoURLs,
     activePhotoIndex,
@@ -60,30 +57,14 @@ export default function CafeCard({
     },
   } as const;
 
-  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const handleCardClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (!onOpenDetails) return;
     const target = event.target as HTMLElement | null;
     if (!target) return;
     if (target.closest('button, a, input, textarea, select, [data-no-drag="true"]')) {
       return;
     }
-    clickStartRef.current = { x: event.clientX, y: event.clientY };
-  };
-
-  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!onOpenDetails) return;
-    const start = clickStartRef.current;
-    clickStartRef.current = null;
-    if (!start) return;
-    const dx = Math.abs(event.clientX - start.x);
-    const dy = Math.abs(event.clientY - start.y);
-    if (dx <= 8 && dy <= 8) {
-      onOpenDetails();
-    }
-  };
-
-  const handlePointerCancel = () => {
-    clickStartRef.current = null;
+    onOpenDetails();
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -105,9 +86,7 @@ export default function CafeCard({
       }}
       role={onOpenDetails ? "button" : undefined}
       tabIndex={onOpenDetails ? 0 : -1}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
+      onClick={handleCardClick}
       onKeyDown={handleKeyDown}
     >
       <CafeCardHero
