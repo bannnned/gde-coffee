@@ -29,12 +29,14 @@ export default function CafeCard({
   const {
     photoURLs,
     activePhotoIndex,
+    activePhotoDirection,
     activePhotoURL,
     photoReady,
     handlePhotoTouchStart,
     handlePhotoTouchEnd,
     handlePhotoLoad,
     handlePhotoError,
+    shouldSuppressCardClick,
   } = useCafeCardPhotos(cafe);
 
   const cardStyles = {
@@ -59,6 +61,7 @@ export default function CafeCard({
 
   const handleCardClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (!onOpenDetails) return;
+    if (shouldSuppressCardClick()) return;
     const target = event.target as HTMLElement | null;
     if (!target) return;
     if (target.closest('button, a, input, textarea, select, [data-no-drag="true"]')) {
@@ -95,6 +98,7 @@ export default function CafeCard({
         photoReady={photoReady}
         photoURLs={photoURLs}
         activePhotoIndex={activePhotoIndex}
+        activePhotoDirection={activePhotoDirection}
         showDistance={showDistance}
         showRoutes={showRoutes}
         onOpen2gis={onOpen2gis}

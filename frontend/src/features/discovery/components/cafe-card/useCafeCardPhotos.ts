@@ -7,6 +7,8 @@ const AUTO_SLIDE_MS = 4000;
 
 export function useCafeCardPhotos(cafe: Cafe) {
   const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const suppressCardClickUntilRef = useRef(0);
   const [loadedPhotoURLs, setLoadedPhotoURLs] = useState<Record<string, true>>({});
 
   const fallbackPhotoURLs = useMemo(() => {
@@ -28,9 +30,11 @@ export function useCafeCardPhotos(cafe: Cafe) {
   const [activePhotoState, setActivePhotoState] = useState<{
     cafeId: string;
     index: number;
+    direction: -1 | 1;
   }>({
     cafeId: cafe.id,
     index: 0,
+    direction: 1,
   });
   const hasFetchedPhotosForCafe = Object.prototype.hasOwnProperty.call(
     fetchedPhotoURLsByCafeId,
@@ -48,6 +52,9 @@ export function useCafeCardPhotos(cafe: Cafe) {
     if (photoURLs.length === 0) return 0;
     return Math.min(baseIndex, photoURLs.length - 1);
   }, [activePhotoState.cafeId, activePhotoState.index, cafe.id, photoURLs.length]);
+  const activePhotoDirection = activePhotoState.cafeId === cafe.id
+    ? activePhotoState.direction
+    : 1;
 
   const activePhotoURL = photoURLs[activePhotoIndex] ?? null;
   const photoReady = !activePhotoURL || Boolean(loadedPhotoURLs[activePhotoURL]);
@@ -98,36 +105,49 @@ export function useCafeCardPhotos(cafe: Cafe) {
         return {
           cafeId: cafe.id,
           index: (prevIndex + 1) % photoURLs.length,
+          direction: 1,
         };
       });
     }, AUTO_SLIDE_MS);
     return () => window.clearInterval(timer);
   }, [cafe.id, photoURLs.length]);
 
-  const stepPhoto = (direction: -1 | 1) => {
+  const stepPhoto = (direction: -1 | 1, suppressCardClick = false) => {
     if (photoURLs.length <= 1) return;
+    if (suppressCardClick) {
+      suppressCardClickUntilRef.current = performance.now() + 420;
+    }
     setActivePhotoState((prev) => {
       const prevIndex = prev.cafeId === cafe.id ? prev.index : 0;
       return {
         cafeId: cafe.id,
         index: (prevIndex + direction + photoURLs.length) % photoURLs.length,
+        direction,
       };
     });
   };
 
   const handlePhotoTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
     touchStartXRef.current = event.touches[0]?.clientX ?? null;
+    touchStartYRef.current = event.touches[0]?.clientY ?? null;
   };
 
   const handlePhotoTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
     const startX = touchStartXRef.current;
+    const startY = touchStartYRef.current;
     const endX = event.changedTouches[0]?.clientX ?? null;
+    const endY = event.changedTouches[0]?.clientY ?? null;
     touchStartXRef.current = null;
-    if (startX == null || endX == null || photoURLs.length <= 1) return;
+    touchStartYRef.current = null;
+    if (startX == null || startY == null || endX == null || endY == null || photoURLs.length <= 1) {
+      return;
+    }
     const deltaX = endX - startX;
+    const deltaY = endY - startY;
+    if (Math.abs(deltaX) <= Math.abs(deltaY) + 8) return;
     if (Math.abs(deltaX) < 40) return;
-    if (deltaX < 0) stepPhoto(1);
-    if (deltaX > 0) stepPhoto(-1);
+    if (deltaX < 0) stepPhoto(1, true);
+    if (deltaX > 0) stepPhoto(-1, true);
   };
 
   const handlePhotoLoad = (src: string) => {
@@ -152,14 +172,18 @@ export function useCafeCardPhotos(cafe: Cafe) {
     });
   };
 
+  const shouldSuppressCardClick = () => performance.now() < suppressCardClickUntilRef.current;
+
   return {
     photoURLs,
     activePhotoIndex,
+    activePhotoDirection,
     activePhotoURL,
     photoReady,
     handlePhotoTouchStart,
     handlePhotoTouchEnd,
     handlePhotoLoad,
     handlePhotoError,
+    shouldSuppressCardClick,
   };
 }
