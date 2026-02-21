@@ -1,10 +1,11 @@
-import { MOSCOW_CENTER, SPB_CENTER } from "../../constants";
+import { MOSCOW_CENTER, PSKOV_CENTER, SPB_CENTER } from "../../constants";
 
 export const LOCATION_STORAGE_KEY = "coffeeQuest.location";
 
 export const LOCATION_OPTIONS = [
   { id: "spb", label: "Санкт-Петербург", center: SPB_CENTER },
   { id: "moscow", label: "Москва", center: MOSCOW_CENTER },
+  { id: "pskov", label: "Псков", center: PSKOV_CENTER },
 ] as const;
 
 export type LocationId = (typeof LOCATION_OPTIONS)[number]["id"];
@@ -17,6 +18,7 @@ export type LocationChoice =
 export const CITY_RADIUS_M_BY_ID: Record<LocationId, number> = {
   spb: 30000,
   moscow: 35000,
+  pskov: 22000,
 };
 
 export const MANUAL_PIN_NUDGE_PX = 0;
