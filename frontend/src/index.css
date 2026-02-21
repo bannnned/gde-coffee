@@ -272,6 +272,22 @@
   );
 }
 
+.glass-action--active {
+  color: var(--color-on-accent);
+  border-color: color-mix(in srgb, var(--color-brand-accent) 75%, var(--glass-border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-brand-accent) 52%, transparent),
+    0 12px 26px color-mix(in srgb, var(--attention-glow) 42%, transparent);
+}
+
+.glass-action--active::before {
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-accent),
+    var(--color-brand-accent-strong)
+  );
+}
+
 .glass-action > * {
   position: relative;
   z-index: 1;
@@ -313,6 +329,22 @@
     135deg,
     var(--glass-grad-1),
     var(--glass-grad-2)
+  );
+}
+
+:root[data-mantine-color-scheme='dark'] .glass-action--active {
+  color: var(--color-on-accent);
+  border-color: color-mix(in srgb, var(--color-brand-accent) 65%, var(--glass-border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-brand-accent) 48%, transparent),
+    0 14px 30px color-mix(in srgb, var(--color-brand-accent-soft) 52%, transparent);
+}
+
+:root[data-mantine-color-scheme='dark'] .glass-action--active::before {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-brand-accent) 92%, white 8%),
+    var(--color-brand-accent-strong)
   );
 }
 

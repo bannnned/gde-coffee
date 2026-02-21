@@ -134,7 +134,19 @@ export default function useProfileAccount({
       const profile = await reputationApi.getMyReputationProfile();
       setReputationProfile(profile);
     } catch (err: unknown) {
-      setReputationError(extractApiErrorMessage(err, "Не удалось обновить уровень."));
+      const statusCode = extractApiErrorStatus(err);
+      const message = extractApiErrorMessage(err, "Не удалось обновить уровень.");
+      // Backward-compatible fallback: some environments may not expose
+      // /api/reputation/me yet. Do not show a scary error in profile.
+      if (statusCode === 404 || /^not found$/i.test(message.trim())) {
+        if (import.meta.env.DEV) {
+          // Silent fallback in UI, but keep debug signal in local console.
+          console.info("[profile:reputation] /api/reputation/me is unavailable, using defaults");
+        }
+        setReputationError(null);
+      } else {
+        setReputationError(message);
+      }
       setReputationProfile(null);
     } finally {
       setIsReputationLoading(false);

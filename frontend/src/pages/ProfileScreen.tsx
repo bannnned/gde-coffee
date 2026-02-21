@@ -17,6 +17,7 @@ import {
   IconEye,
   IconEyeOff,
   IconHeart,
+  IconHeartFilled,
   IconLink,
   IconLinkOff,
   IconLogout,
@@ -93,6 +94,7 @@ export default function ProfileScreen() {
   const levelScore = Math.round(reputationProfile?.score ?? 0);
   const levelEventsCount = reputationProfile?.eventsCount ?? 0;
   const [showProfileData, setShowProfileData] = useState(false);
+  const isFavoritesContext = backgroundLocation?.pathname?.startsWith("/favorites") ?? false;
 
   return (
     <Box className={classes.screen} data-ui="profile-screen">
@@ -121,13 +123,15 @@ export default function ProfileScreen() {
               <ActionIcon
                 size={42}
                 variant="transparent"
-                className={`${classes.iconButton} glass-action glass-action--square`}
+                className={`${classes.iconButton} glass-action glass-action--square ${
+                  isFavoritesContext ? "glass-action--active" : ""
+                }`}
                 onClick={() => {
                   void navigate("/favorites");
                 }}
                 aria-label="Избранные кофейни"
               >
-                <IconHeart size={18} />
+                {isFavoritesContext ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
               </ActionIcon>
             )}
             <ActionIcon

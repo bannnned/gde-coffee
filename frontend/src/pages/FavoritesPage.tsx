@@ -121,9 +121,19 @@ export default function FavoritesPage() {
               </ActionIcon>
               <Title order={3}>Избранные</Title>
             </Group>
-            <Text c="dimmed" size="sm">
-              {title}
-            </Text>
+            <Group gap="xs" align="center">
+              <Text c="dimmed" size="sm">
+                {title}
+              </Text>
+              <ActionIcon
+                size={42}
+                variant="transparent"
+                className="glass-action glass-action--square glass-action--active"
+                aria-label="Страница избранных кофеен"
+              >
+                <IconHeartFilled size={18} />
+              </ActionIcon>
+            </Group>
           </Group>
 
           {isLoading && (
