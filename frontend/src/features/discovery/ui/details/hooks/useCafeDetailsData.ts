@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getCafePhotos } from "../../../../../api/cafePhotos";
 import {
@@ -14,6 +14,7 @@ type UseCafeDetailsDataParams = {
   opened: boolean;
   cafe: Cafe | null;
   canViewAdminDiagnostics: boolean;
+  photosRefreshToken: number;
 };
 
 export function filterPhotosByKind(
@@ -28,7 +29,9 @@ export function useCafeDetailsData({
   opened,
   cafe,
   canViewAdminDiagnostics,
+  photosRefreshToken,
 }: UseCafeDetailsDataParams) {
+  const lastPhotosRefreshTokenRef = useRef(0);
   const [cafePhotos, setCafePhotos] = useState<CafePhoto[]>(
     filterPhotosByKind(cafe?.photos, "cafe"),
   );
@@ -51,8 +54,16 @@ export function useCafeDetailsData({
   useEffect(() => {
     if (!opened || !cafe?.id) return;
 
+    const shouldForceRefresh = photosRefreshToken > lastPhotosRefreshTokenRef.current;
+    if (shouldForceRefresh) {
+      lastPhotosRefreshTokenRef.current = photosRefreshToken;
+    }
+
     let cancelled = false;
-    Promise.all([getCafePhotos(cafe.id, "cafe"), getCafePhotos(cafe.id, "menu")])
+    Promise.all([
+      getCafePhotos(cafe.id, "cafe", { force: shouldForceRefresh }),
+      getCafePhotos(cafe.id, "menu", { force: shouldForceRefresh }),
+    ])
       .then(([nextCafePhotos, nextMenuPhotos]) => {
         if (cancelled) return;
         setCafePhotos(nextCafePhotos);
@@ -67,7 +78,7 @@ export function useCafeDetailsData({
     return () => {
       cancelled = true;
     };
-  }, [cafe?.id, cafe?.photos, opened]);
+  }, [cafe?.id, opened, photosRefreshToken]);
 
   useEffect(() => {
     if (!opened || !cafe?.id) return;

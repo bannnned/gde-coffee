@@ -180,7 +180,7 @@ func Load() (Config, error) {
 	if err != nil {
 		return cfg, err
 	}
-	s3MaxUploadBytes, err := getEnvInt("S3_MAX_UPLOAD_BYTES", 8*1024*1024)
+	s3MaxUploadBytes, err := getEnvInt("S3_MAX_UPLOAD_BYTES", 16*1024*1024)
 	if err != nil {
 		return cfg, err
 	}

@@ -20,17 +20,29 @@
 }
 
 .header {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 22px;
+  min-height: 42px;
 }
 
 .headerTitle {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
   text-align: center;
   color: var(--muted);
   font-weight: 600;
+}
+
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .iconButton {
@@ -404,6 +416,46 @@
 
 .levelProgressText {
   color: var(--muted);
+}
+
+.profileDataToggle {
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--glass-border));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--glass-grad-1) 82%, white),
+      color-mix(in srgb, var(--glass-grad-2) 90%, var(--surface))
+    );
+  color: var(--text);
+  font-weight: 650;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 35%, transparent) inset,
+    0 10px 24px color-mix(in srgb, var(--attention-glow) 24%, transparent);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  transition: transform 160ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.profileDataToggle:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--glass-border));
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 42%, transparent) inset,
+    0 14px 28px color-mix(in srgb, var(--attention-glow) 32%, transparent);
+}
+
+.profileDataToggle:active {
+  transform: translateY(0);
+}
+
+.profileDataToggleOpen {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--glass-border));
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 42%, transparent) inset,
+    0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent),
+    0 14px 30px color-mix(in srgb, var(--attention-glow) 36%, transparent);
 }
 
 .disabledSection {

@@ -35,6 +35,7 @@ export default function DiscoveryScreen() {
     selectedCafeId,
     selectedCafe,
     selectedCafeJourneyID,
+    photosRefreshToken,
     itemRefs,
     showFetchingBadge,
     showFirstChoice,
@@ -181,11 +182,13 @@ export default function DiscoveryScreen() {
               emptyState={emptyState}
               isError={cafesQuery.isError}
               isLocating={isLocating}
+              locationOptions={locationOptions}
               onResetFilters={resetFilters}
               onRetry={() => {
                 void cafesQuery.refetch();
               }}
               onLocate={handleLocateMe}
+              onSelectLocation={handleSelectLocation}
             />
           ) : null
         }
@@ -223,6 +226,7 @@ export default function DiscoveryScreen() {
             opened={detailsOpen}
             cafe={selectedCafe ?? null}
             journeyID={selectedCafeJourneyID}
+            photosRefreshToken={photosRefreshToken}
             onClose={() => setDetailsOpen(false)}
             showDistance={!isCityOnlyMode}
             showRoutes={!isCityOnlyMode}

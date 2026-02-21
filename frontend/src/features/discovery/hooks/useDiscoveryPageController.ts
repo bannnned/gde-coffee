@@ -22,6 +22,7 @@ export default function useDiscoveryPageController() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [favoriteBusyCafeId, setFavoriteBusyCafeId] = useState<string | null>(null);
   const [selectedCafeJourneyID, setSelectedCafeJourneyID] = useState("");
+  const [photosRefreshToken, setPhotosRefreshToken] = useState(0);
   const { sheetHeight, sheetState, filtersBarHeight } = useLayoutMetrics();
 
   const userRole = (user?.role ?? "").toLowerCase();
@@ -186,6 +187,7 @@ export default function useDiscoveryPageController() {
   };
 
   const handlePhotosChanged = () => {
+    setPhotosRefreshToken((prev) => prev + 1);
     void cafesQuery.refetch();
   };
 
@@ -244,6 +246,7 @@ export default function useDiscoveryPageController() {
     selectedCafeId,
     selectedCafe,
     selectedCafeJourneyID,
+    photosRefreshToken,
     itemRefs,
     showFetchingBadge,
     showFirstChoice: location.showFirstChoice,

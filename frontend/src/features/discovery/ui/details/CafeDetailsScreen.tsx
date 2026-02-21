@@ -35,6 +35,7 @@ type CafeDetailsScreenProps = {
   opened: boolean;
   cafe: Cafe | null;
   journeyID?: string;
+  photosRefreshToken?: number;
   onClose: () => void;
   showDistance?: boolean;
   showRoutes?: boolean;
@@ -63,6 +64,7 @@ export default function CafeDetailsScreen({
   opened,
   cafe,
   journeyID = "",
+  photosRefreshToken = 0,
   onClose,
   showDistance = true,
   showRoutes = true,
@@ -114,6 +116,7 @@ export default function CafeDetailsScreen({
     opened,
     cafe,
     canViewAdminDiagnostics,
+    photosRefreshToken,
   });
 
   const {
@@ -637,7 +640,12 @@ export default function CafeDetailsScreen({
               </Group>
             )}
             {viewerPhotos.length > 1 && (
-              <Group wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
+              <Group
+                className="horizontal-scroll-modern"
+                wrap="nowrap"
+                gap={8}
+                style={{ overflowX: "auto", paddingBottom: 2 }}
+              >
                 {viewerPhotos.map((photo, index) => (
                   <Paper
                     key={photo.id}

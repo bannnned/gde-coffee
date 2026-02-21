@@ -1,6 +1,5 @@
 import {
   ActionIcon,
-  Badge,
   Box,
   Button,
   Group,
@@ -11,14 +10,16 @@ import {
 import {
   IconArrowLeft,
   IconCheck,
+  IconChevronDown,
+  IconChevronUp,
   IconChecklist,
   IconCrown,
+  IconEye,
+  IconEyeOff,
   IconHeart,
-  IconId,
   IconLink,
   IconLinkOff,
   IconLogout,
-  IconMail,
   IconPlus,
   IconPencil,
   IconSettings,
@@ -32,6 +33,7 @@ import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import useProfileAccount from "../features/profile/model/useProfileAccount";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import classes from "./ProfileScreen.module.css";
+import { useState } from "react";
 
 export default function ProfileScreen() {
   const { user, logout, openAuthModal, status, refreshAuth } = useAuth();
@@ -90,6 +92,7 @@ export default function ProfileScreen() {
   const levelPointsToNext = Math.max(0, Math.round(reputationProfile?.pointsToNextLevel ?? 0));
   const levelScore = Math.round(reputationProfile?.score ?? 0);
   const levelEventsCount = reputationProfile?.eventsCount ?? 0;
+  const [showProfileData, setShowProfileData] = useState(false);
 
   return (
     <Box className={classes.screen} data-ui="profile-screen">
@@ -113,23 +116,38 @@ export default function ProfileScreen() {
           <Text size="sm" className={classes.headerTitle}>
             Профиль
           </Text>
-          <ActionIcon
-            size={42}
-            variant="transparent"
-            className={`${classes.iconButton} glass-action glass-action--square`}
-            onClick={() => {
-              if (backgroundLocation) {
-                void navigate("/settings", {
-                  state: { backgroundLocation },
-                });
-                return;
-              }
-              void navigate("/settings");
-            }}
-            aria-label="Настройки"
-          >
-            <IconSettings size={18} />
-          </ActionIcon>
+          <div className={classes.headerActions}>
+            {user && (
+              <ActionIcon
+                size={42}
+                variant="transparent"
+                className={`${classes.iconButton} glass-action glass-action--square`}
+                onClick={() => {
+                  void navigate("/favorites");
+                }}
+                aria-label="Избранные кофейни"
+              >
+                <IconHeart size={18} />
+              </ActionIcon>
+            )}
+            <ActionIcon
+              size={42}
+              variant="transparent"
+              className={`${classes.iconButton} glass-action glass-action--square`}
+              onClick={() => {
+                if (backgroundLocation) {
+                  void navigate("/settings", {
+                    state: { backgroundLocation },
+                  });
+                  return;
+                }
+                void navigate("/settings");
+              }}
+              aria-label="Настройки"
+            >
+              <IconSettings size={18} />
+            </ActionIcon>
+          </div>
         </header>
 
         <Stack gap="lg">
@@ -264,72 +282,88 @@ export default function ProfileScreen() {
                     {nameSuccess && <Text className={classes.successText}>{nameSuccess}</Text>}
                     {avatarError && <Text className={classes.errorText}>{avatarError}</Text>}
                     {avatarSuccess && <Text className={classes.successText}>{avatarSuccess}</Text>}
-                    <Text className={classes.heroCaption}>
-                      Здесь будет история, избранные места и персональные настройки.
-                    </Text>
-                    <Group gap={8} justify="center">
-                      <Badge variant="light">
-                        {user.reputationBadge ?? "Участник"}
-                      </Badge>
-                      {user.trustedParticipant && (
-                        <Badge color="blue" variant="light">
-                          Доверенный участник
-                        </Badge>
-                      )}
-                    </Group>
                   </div>
                 </div>
 
-                <div className={classes.listCard}>
-                  <div className={classes.listRow}>
-                    <div className={classes.listIcon}>
-                      <IconMail size={18} />
-                    </div>
-                    <div className={classes.listText}>
-                      <Text fw={600} className={classes.listPrimary}>
-                        {profile.email}
+                <div className={classes.levelCard}>
+                  <div className={classes.levelTop}>
+                    <div>
+                      <Text fw={700} className={classes.levelTitle}>
+                        Lv. {levelNumber} - {levelLabel}
+                      </Text>
+                      <Text size="sm" className={classes.muted}>
+                        Очки: {levelScore} · событий: {levelEventsCount}
                       </Text>
                     </div>
-                    <div className={classes.rowMeta}>
-                      {profile.isVerified && (
-                        <span className={classes.verifiedBadge} aria-label="Email подтверждён">
-                          <IconCheck size={12} />
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className={classes.listRow}>
-                    <div className={classes.listIcon}>
-                      <IconId size={18} />
-                    </div>
-                    <div className={classes.listText}>
-                      <Text fw={600}>ID аккаунта</Text>
-                      <Text size="xs" className={classes.muted}>
-                        {profile.id}
+                    {isReputationLoading && (
+                      <Text size="sm" className={classes.sectionAction}>
+                        Обновляем...
                       </Text>
-                    </div>
+                    )}
                   </div>
+                  <div className={classes.levelBar}>
+                    <div
+                      className={classes.levelBarFill}
+                      style={{ width: `${levelProgress}%` }}
+                    />
+                  </div>
+                  <Text size="sm" className={classes.levelProgressText}>
+                    Прогресс: {levelProgress}%{levelPointsToNext > 0 ? ` · до следующего уровня ${levelPointsToNext}` : " · максимальный уровень"}
+                  </Text>
+                  {Boolean(reputationError) && <Text className={classes.errorText}>{reputationError}</Text>}
                 </div>
+
+                <Button
+                  variant="transparent"
+                  fullWidth
+                  leftSection={
+                    showProfileData ? <IconEyeOff size={16} /> : <IconEye size={16} />
+                  }
+                  rightSection={
+                    showProfileData ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />
+                  }
+                  className={`${classes.profileDataToggle} ${
+                    showProfileData ? classes.profileDataToggleOpen : ""
+                  }`}
+                  onClick={() => setShowProfileData((prev) => !prev)}
+                >
+                  {showProfileData ? "Скрыть данные" : "Показать данные"}
+                </Button>
+
+                {showProfileData && (
+                  <div className={classes.listCard}>
+                    <div className={classes.listRow}>
+                      <div className={classes.listText}>
+                        <Text size="xs" className={classes.muted}>
+                          Email
+                        </Text>
+                        <Text fw={600} className={classes.listPrimary}>
+                          {profile.email}
+                        </Text>
+                      </div>
+                      <div className={classes.rowMeta}>
+                        {profile.isVerified && (
+                          <span className={classes.verifiedBadge} aria-label="Email подтверждён">
+                            <IconCheck size={12} />
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className={classes.listRow}>
+                      <div className={classes.listText}>
+                        <Text size="xs" className={classes.muted}>
+                          ID аккаунта
+                        </Text>
+                        <Text fw={600} className={classes.listPrimary}>
+                          {profile.id}
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </Stack>
             )}
           </section>
-
-          {user && (
-            <section className={classes.sectionCard}>
-              <div className={classes.sectionHeader}>
-                <Group gap="xs">
-                  <IconHeart size={18} />
-                  <Text fw={600}>Избранные кофейни</Text>
-                </Group>
-              </div>
-              <Button
-                variant="light"
-                onClick={() => void navigate("/favorites")}
-              >
-                Открыть избранное
-              </Button>
-            </section>
-          )}
 
           {user && (
             <section className={classes.sectionCard}>
@@ -450,47 +484,6 @@ export default function ProfileScreen() {
                   Задания появятся позже
                 </Text>
               </div>
-            </div>
-          </section>
-
-          <section className={classes.sectionCard}>
-            <div className={classes.sectionHeader}>
-              <Group gap="xs">
-                <IconCrown size={18} />
-                <Text fw={600}>Ваш уровень</Text>
-              </Group>
-              {isReputationLoading && (
-                <Text size="sm" className={classes.sectionAction}>
-                  Обновляем...
-                </Text>
-              )}
-            </div>
-            <div className={classes.levelCard}>
-              <div className={classes.levelTop}>
-                <div>
-                  <Text fw={700} className={classes.levelTitle}>
-                    Lv. {levelNumber} - {levelLabel}
-                  </Text>
-                  <Text size="sm" className={classes.muted}>
-                    Очки: {levelScore} · событий: {levelEventsCount}
-                  </Text>
-                </div>
-                {user?.trustedParticipant && (
-                  <Badge color="blue" variant="light">
-                    Доверенный
-                  </Badge>
-                )}
-              </div>
-              <div className={classes.levelBar}>
-                <div
-                  className={classes.levelBarFill}
-                  style={{ width: `${levelProgress}%` }}
-                />
-              </div>
-              <Text size="sm" className={classes.levelProgressText}>
-                Прогресс: {levelProgress}%{levelPointsToNext > 0 ? ` · до следующего уровня ${levelPointsToNext}` : " · максимальный уровень"}
-              </Text>
-              {Boolean(reputationError) && <Text className={classes.errorText}>{reputationError}</Text>}
             </div>
           </section>
 

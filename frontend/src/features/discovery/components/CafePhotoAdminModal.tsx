@@ -7,6 +7,7 @@ import {
   Group,
   Modal,
   Paper,
+  Skeleton,
   Stack,
   Text,
 } from "@mantine/core";
@@ -90,6 +91,7 @@ export default function CafePhotoAdminModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [uploadSkeletonCount, setUploadSkeletonCount] = useState(0);
   const [draggedPhotoId, setDraggedPhotoId] = useState<string | null>(null);
   const [orderDirty, setOrderDirty] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -98,7 +100,7 @@ export default function CafePhotoAdminModal({
     if (!opened) return;
     setPhotos(initialPhotos);
     setOrderDirty(false);
-  }, [opened, cafeId, kind, initialPhotos]);
+  }, [opened, cafeId, kind]);
 
   useEffect(() => {
     if (!opened || !cafeId) return;
@@ -168,6 +170,7 @@ export default function CafePhotoAdminModal({
     }
 
     setIsUploading(true);
+    setUploadSkeletonCount(files.length);
     setLastError(null);
     try {
       const hadNoPhotos = photos.length === 0;
@@ -203,6 +206,7 @@ export default function CafePhotoAdminModal({
       });
     } finally {
       setIsUploading(false);
+      setUploadSkeletonCount(0);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -333,7 +337,11 @@ export default function CafePhotoAdminModal({
           borderBottom: "1px solid var(--border)",
         },
         body: {
-          paddingBottom: 96,
+          paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+          overflowY: "auto",
         },
         overlay: {
           backgroundColor: "var(--color-surface-overlay-strong)",
@@ -342,103 +350,134 @@ export default function CafePhotoAdminModal({
       }}
     >
       <Stack gap="md">
-        <Button
-          variant="default"
-          leftSection={<IconArrowLeft size={16} />}
-          onClick={onClose}
-          radius="xl"
-          styles={glassButtonStyles}
-          style={{ alignSelf: "flex-start", marginTop: 8, marginBottom: 8 }}
-        >
-          К карточке
-        </Button>
+        <Stack gap={0}>
+          <Button
+            variant="default"
+            leftSection={<IconArrowLeft size={16} />}
+            onClick={onClose}
+            radius="xl"
+            styles={glassButtonStyles}
+            style={{ alignSelf: "flex-start", marginTop: 8, marginBottom: 0 }}
+          >
+            К карточке
+          </Button>
 
-        <Paper
-          withBorder
-          p="md"
-          radius="md"
-          onDrop={handleDropUpload}
-          onDragOver={handleDragOverUpload}
-          style={{
-            border: "1px dashed var(--border)",
-            background: "var(--surface)",
-          }}
-        >
-          <Stack gap="sm">
-            <Group justify="space-between" align="center">
-              <Text fw={600}>Загрузка фото</Text>
-              <Badge variant="light">{photosCountLabel}</Badge>
-            </Group>
-            <Text size="sm" c="dimmed">
-              Нажмите на слот с плюсом или перетащите файлы в эту область.
-            </Text>
-            <Box
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))",
-                gap: 8,
-              }}
-            >
-              {uploadPreviewPhotos.map((photo, index) => (
-                <Box
-                  key={`upload-preview-${photo.id}`}
+          <Paper
+            withBorder
+            p="md"
+            radius="md"
+            onDrop={handleDropUpload}
+            onDragOver={handleDragOverUpload}
+            style={{
+              border: "1px dashed var(--border)",
+              background: "var(--surface)",
+            }}
+          >
+            <Stack gap="sm">
+              <Group justify="space-between" align="center">
+                <Text fw={600}>Загрузка фото</Text>
+                <Badge variant="light">
+                  {isUploading
+                    ? `Обрабатываем ${uploadSkeletonCount}...`
+                    : photosCountLabel}
+                </Badge>
+              </Group>
+              <Text size="sm" c="dimmed">
+                Нажмите на слот с плюсом или перетащите файлы в эту область.
+              </Text>
+              <Box
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))",
+                  gap: 8,
+                }}
+              >
+                {uploadPreviewPhotos.map((photo, index) => (
+                  <Box
+                    key={`upload-preview-${photo.id}`}
+                    style={{
+                      position: "relative",
+                      width: "100%",
+                      aspectRatio: "1 / 1",
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface)",
+                    }}
+                  >
+                    <img
+                      src={photo.url}
+                      alt={`Фото ${index + 1}`}
+                      loading="lazy"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  </Box>
+                ))}
+                {Array.from({ length: uploadSkeletonCount }).map((_, index) => (
+                  <Box
+                    key={`upload-skeleton-${index + 1}`}
+                    style={{
+                      position: "relative",
+                      width: "100%",
+                      aspectRatio: "1 / 1",
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface)",
+                    }}
+                  >
+                    <Skeleton
+                      visible
+                      animate
+                      h="100%"
+                      radius={12}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                      }}
+                    />
+                  </Box>
+                ))}
+                <button
+                  type="button"
+                  onClick={handlePickFiles}
+                  disabled={isUploading || !cafeId}
+                  aria-label="Добавить фото"
                   style={{
-                    position: "relative",
                     width: "100%",
                     aspectRatio: "1 / 1",
                     borderRadius: 12,
-                    overflow: "hidden",
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
+                    border: "1.5px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
+                    background: "color-mix(in srgb, var(--surface) 86%, transparent)",
+                    color: "var(--muted)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: isUploading || !cafeId ? "not-allowed" : "pointer",
+                    opacity: isUploading ? 0.6 : 1,
                   }}
                 >
-                  <img
-                    src={photo.url}
-                    alt={`Фото ${index + 1}`}
-                    loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-                </Box>
-              ))}
-              <button
-                type="button"
-                onClick={handlePickFiles}
-                disabled={isUploading || !cafeId}
-                aria-label="Добавить фото"
-                style={{
-                  width: "100%",
-                  aspectRatio: "1 / 1",
-                  borderRadius: 12,
-                  border: "1.5px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
-                  background: "color-mix(in srgb, var(--surface) 86%, transparent)",
-                  color: "var(--muted)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: isUploading || !cafeId ? "not-allowed" : "pointer",
-                  opacity: isUploading ? 0.6 : 1,
+                  <IconPlus size={24} />
+                </button>
+              </Box>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                multiple
+                hidden
+                onChange={(event) => {
+                  void handleUploadFiles(event.currentTarget.files);
                 }}
-              >
-                <IconPlus size={24} />
-              </button>
-            </Box>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif"
-              multiple
-              hidden
-              onChange={(event) => {
-                void handleUploadFiles(event.currentTarget.files);
-              }}
-            />
-          </Stack>
-        </Paper>
+              />
+            </Stack>
+          </Paper>
+        </Stack>
 
         {lastError && (
           <Paper withBorder p="sm" radius="md" style={{ borderColor: "var(--color-status-error)" }}>
@@ -558,13 +597,14 @@ export default function CafePhotoAdminModal({
 
       <Box
         style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
+          position: "sticky",
           bottom: 0,
+          marginTop: "auto",
+          marginInline: -16,
           padding: "12px 16px calc(12px + env(safe-area-inset-bottom))",
           borderTop: "1px solid var(--border)",
           background: "var(--surface)",
+          zIndex: 2,
         }}
       >
         <Button

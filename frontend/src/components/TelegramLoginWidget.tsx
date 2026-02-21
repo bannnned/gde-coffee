@@ -1,5 +1,14 @@
-import { Box, Text } from "@mantine/core";
+import {
+  Box,
+  Group,
+  Loader,
+  Paper,
+  Skeleton,
+  Text,
+  ThemeIcon,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { IconBrandTelegram } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -229,30 +238,88 @@ export default function TelegramLoginWidget({
   }, [botUsername, flow, isConfigLoading, size]);
 
   return (
-    <Box>
-      <div
-        ref={containerRef}
+    <Box w="100%" maw={340}>
+      <Paper
+        radius="xl"
+        p="sm"
+        withBorder
         style={{
-          opacity: isSubmitting ? 0.6 : 1,
-          pointerEvents: isSubmitting ? "none" : "auto",
-          minHeight: 40,
+          border: "1px solid var(--glass-border)",
+          background:
+            "linear-gradient(150deg, var(--glass-grad-1), var(--glass-grad-2))",
+          boxShadow: "0 12px 26px color-mix(in srgb, var(--attention-glow) 35%, transparent)",
+          backdropFilter: "blur(16px) saturate(150%)",
+          WebkitBackdropFilter: "blur(16px) saturate(150%)",
         }}
-      />
-      {isSubmitting && (
-        <Text size="xs" c="dimmed" mt={4}>
-          Авторизуем через Telegram...
-        </Text>
-      )}
-      {!widgetError && (isConfigLoading || isWidgetLoading) && (
-        <Text size="xs" c="dimmed" mt={4}>
-          Загружаем Telegram login...
-        </Text>
-      )}
-      {widgetError && (
-        <Text size="xs" c="red" mt={4}>
-          {widgetError}
-        </Text>
-      )}
+      >
+        <Group justify="space-between" mb={8}>
+          <Group gap={8}>
+            <ThemeIcon
+              size={28}
+              radius="md"
+              variant="gradient"
+              gradient={{ from: "#31A9E8", to: "#1886CC", deg: 135 }}
+            >
+              <IconBrandTelegram size={16} />
+            </ThemeIcon>
+            <Text size="sm" fw={700}>
+              {flow === "link" ? "Подключить Telegram" : "Вход через Telegram"}
+            </Text>
+          </Group>
+          {isSubmitting && <Loader size={14} color="var(--accent)" />}
+        </Group>
+
+        <Box
+          style={{
+            position: "relative",
+            borderRadius: 14,
+            border: "1px solid color-mix(in srgb, var(--accent) 22%, var(--glass-border))",
+            background:
+              "linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, white), color-mix(in srgb, var(--surface) 64%, transparent))",
+            padding: 8,
+            minHeight: size === "large" ? 58 : size === "medium" ? 46 : 40,
+          }}
+        >
+          {!widgetError && (isConfigLoading || isWidgetLoading) && (
+            <Skeleton
+              radius="md"
+              style={{
+                position: "absolute",
+                inset: 8,
+                zIndex: 1,
+              }}
+            />
+          )}
+          <div
+            ref={containerRef}
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              opacity: isSubmitting ? 0.6 : 1,
+              pointerEvents: isSubmitting ? "none" : "auto",
+              minHeight: size === "large" ? 40 : size === "medium" ? 34 : 30,
+              position: "relative",
+              zIndex: 2,
+            }}
+          />
+        </Box>
+
+        {isSubmitting && (
+          <Text size="xs" c="dimmed" mt={6}>
+            Авторизуем через Telegram...
+          </Text>
+        )}
+        {!widgetError && (isConfigLoading || isWidgetLoading) && (
+          <Text size="xs" c="dimmed" mt={6}>
+            Загружаем Telegram...
+          </Text>
+        )}
+        {widgetError && (
+          <Text size="xs" c="red" mt={6}>
+            {widgetError}
+          </Text>
+        )}
+      </Paper>
     </Box>
   );
 }

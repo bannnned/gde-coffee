@@ -8,6 +8,7 @@ import {
   Modal,
   Paper,
   SegmentedControl,
+  Skeleton,
   Stack,
   Text,
 } from "@mantine/core";
@@ -302,6 +303,18 @@ export default function CafePhotoSubmissionModal({
                       display: "block",
                     }}
                   />
+                  {isUploading && (
+                    <Skeleton
+                      visible
+                      animate
+                      h="100%"
+                      radius={12}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                      }}
+                    />
+                  )}
                   <ActionIcon
                     size={22}
                     variant="filled"
@@ -310,6 +323,7 @@ export default function CafePhotoSubmissionModal({
                     onClick={() =>
                       setFiles((prev) => prev.filter((_, fileIdx) => fileIdx !== index))
                     }
+                    disabled={isUploading}
                     style={{
                       position: "absolute",
                       top: 6,

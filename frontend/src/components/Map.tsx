@@ -13,6 +13,9 @@ const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const USER_ICON_ID = "user-pin";
 const CAFE_ICON_ID = "cafe-cup";
 const MARKER_FALLBACK = { user: "#FFFFF0", cafe: "#457E73" };
+const NON_FATAL_STYLE_MESSAGES = [
+  "Expected value to be of type number, but found null instead.",
+];
 
 type Props = {
   center: [number, number];
@@ -37,6 +40,21 @@ function isSameLngLat(a: [number, number], b: [number, number]) {
     Math.abs(a[0] - b[0]) < FOCUS_EPS &&
     Math.abs(a[1] - b[1]) < FOCUS_EPS
   );
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  const next = Number(value);
+  return Number.isFinite(next) ? next : null;
+}
+
+function readMapErrorMessage(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
+  return "";
 }
 
 function loadImage(map: MLMap, id: string, url: string) {
@@ -304,21 +322,31 @@ export default function Map({
   }, [selectedCafeId]);
 
   const geojson = useMemo(() => {
-    return {
-      type: "FeatureCollection" as const,
-      features: cafes.map((c) => ({
+    const features = cafes.flatMap((cafe) => {
+      const lng = asFiniteNumber(cafe.longitude);
+      const lat = asFiniteNumber(cafe.latitude);
+      if (lng == null || lat == null) {
+        return [];
+      }
+
+      return [{
         type: "Feature" as const,
         properties: {
-          id: c.id,
-          name: c.name,
-          address: c.address,
-          distance_m: c.distance_m,
+          id: cafe.id,
+          name: cafe.name,
+          address: cafe.address,
+          distance_m: asFiniteNumber(cafe.distance_m) ?? 0,
         },
         geometry: {
           type: "Point" as const,
-          coordinates: [c.longitude, c.latitude],
+          coordinates: [lng, lat],
         },
-      })),
+      }];
+    });
+
+    return {
+      type: "FeatureCollection" as const,
+      features,
     };
   }, [cafes]);
 
@@ -380,6 +408,16 @@ export default function Map({
       map.getCanvas().style.cursor = "";
     };
 
+    const handleError = (event: { error?: unknown }) => {
+      const message = readMapErrorMessage(event.error);
+      if (NON_FATAL_STYLE_MESSAGES.some((part) => message.includes(part))) {
+        return;
+      }
+      if (message) {
+        console.warn("[MapLibre]", message);
+      }
+    };
+
     const runLoad = async () => {
       addSources(
         map,
@@ -413,12 +451,14 @@ export default function Map({
     map.on("load", handleLoad);
     map.on("click", handleMapClick);
     map.on("moveend", handleMoveEnd);
+    map.on("error", handleError);
     mapRef.current = map;
 
     return () => {
       map.off("load", handleLoad);
       map.off("click", handleMapClick);
       map.off("moveend", handleMoveEnd);
+      map.off("error", handleError);
       if (!disableCafeClick) {
         map.off("click", "cafes-layer", handleClick);
         map.off("mouseenter", "cafes-layer", handleMouseEnter);
@@ -513,7 +553,10 @@ export default function Map({
     if (!selectedCafeId) return null;
     const cafe = cafes.find((c) => c.id === selectedCafeId);
     if (!cafe) return null;
-    return [cafe.longitude, cafe.latitude] as [number, number];
+    const lng = asFiniteNumber(cafe.longitude);
+    const lat = asFiniteNumber(cafe.latitude);
+    if (lng == null || lat == null) return null;
+    return [lng, lat] as [number, number];
   }, [cafes, selectedCafeId]);
 
   useEffect(() => {
