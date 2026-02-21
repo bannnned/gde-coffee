@@ -7,6 +7,7 @@
   Stack,
   Text,
   TextInput,
+  Textarea,
   Title,
   useComputedColorScheme,
   useMantineColorScheme,
@@ -18,6 +19,7 @@ import {
   IconCircleCheck,
   IconCircleX,
   IconMail,
+  IconMessageCircle,
   IconMoon,
   IconShieldCheck,
   IconSun,
@@ -27,6 +29,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useLocation, useNavigate, useSearchParams, type Location as RouterLocation } from "react-router-dom";
 
 import * as authApi from "../api/auth";
+import { submitAppFeedback } from "../api/feedback";
 import {
   getReviewsVersioningStatus,
   listReviewsDLQ,
@@ -100,6 +103,12 @@ export default function SettingsScreen() {
   const [dlqReplayingID, setDlqReplayingID] = useState<number | null>(null);
   const [versioningExpanded, setVersioningExpanded] = useState(false);
   const [dlqExpanded, setDlqExpanded] = useState(false);
+  const [feedbackExpanded, setFeedbackExpanded] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackContact, setFeedbackContact] = useState("");
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
+  const [isFeedbackSending, setIsFeedbackSending] = useState(false);
 
   const verifiedParam = searchParams.get("verified") === "1";
   const emailChangedParam = searchParams.get("email_changed") === "1";
@@ -118,6 +127,41 @@ export default function SettingsScreen() {
       target.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }, []);
+
+  const handleFeedbackSubmit = useCallback(async () => {
+    const message = feedbackMessage.trim();
+    const contact = feedbackContact.trim();
+
+    if (!message) {
+      setFeedbackError("Напишите текст отзыва.");
+      setFeedbackSuccess(null);
+      return;
+    }
+    if (message.length > 4000) {
+      setFeedbackError("Отзыв слишком длинный (максимум 4000 символов).");
+      setFeedbackSuccess(null);
+      return;
+    }
+    if (contact.length > 255) {
+      setFeedbackError("Контакт слишком длинный (максимум 255 символов).");
+      setFeedbackSuccess(null);
+      return;
+    }
+
+    setIsFeedbackSending(true);
+    setFeedbackError(null);
+    setFeedbackSuccess(null);
+    try {
+      await submitAppFeedback({ message, contact });
+      setFeedbackMessage("");
+      setFeedbackContact("");
+      setFeedbackSuccess("Спасибо, отзыв отправлен.");
+    } catch (error: unknown) {
+      setFeedbackError(extractSettingsErrorMessage(error, "Не удалось отправить отзыв."));
+    } finally {
+      setIsFeedbackSending(false);
+    }
+  }, [feedbackContact, feedbackMessage]);
 
   const {
     control: emailControl,
@@ -905,6 +949,91 @@ export default function SettingsScreen() {
                 <div className={classes.error} style={{ marginTop: 12 }}>
                   {resetError}
                 </div>
+              )}
+            </div>
+
+            <div className={classes.section}>
+              <div className={classes.sectionHeader}>
+                <Group gap="xs">
+                  <IconMessageCircle size={18} />
+                  <Title order={4}>Отзыв о приложении</Title>
+                </Group>
+              </div>
+              <Text size="sm" className={classes.muted}>
+                Есть идея или баг? Напишите команде продукта.
+              </Text>
+              {!feedbackExpanded ? (
+                <Group className={classes.actionsRow} mt="md">
+                  <Button
+                    variant="filled"
+                    className={classes.actionButton}
+                    onClick={() => setFeedbackExpanded(true)}
+                    disabled={status !== "authed"}
+                  >
+                    Оставить отзыв
+                  </Button>
+                </Group>
+              ) : (
+                <Stack gap="sm" mt="md">
+                  <Textarea
+                    minRows={4}
+                    autosize
+                    maxRows={8}
+                    placeholder="Например: на iPhone иногда дергается карта при открытии карточки кофейни..."
+                    value={feedbackMessage}
+                    onChange={(event) => {
+                      setFeedbackMessage(event.currentTarget.value);
+                      setFeedbackError(null);
+                      setFeedbackSuccess(null);
+                    }}
+                    disabled={isFeedbackSending}
+                  />
+                  <TextInput
+                    placeholder="Контакт для ответа (опционально): email, Telegram"
+                    value={feedbackContact}
+                    onChange={(event) => {
+                      setFeedbackContact(event.currentTarget.value);
+                      setFeedbackError(null);
+                      setFeedbackSuccess(null);
+                    }}
+                    disabled={isFeedbackSending}
+                  />
+                  {feedbackError && (
+                    <div className={classes.error}>
+                      {feedbackError}
+                    </div>
+                  )}
+                  {feedbackSuccess && (
+                    <div className={classes.banner}>
+                      {feedbackSuccess}
+                    </div>
+                  )}
+                  <Group className={classes.actionsRow}>
+                    <Button
+                      variant="filled"
+                      className={classes.actionButton}
+                      onClick={() => {
+                        void handleFeedbackSubmit();
+                      }}
+                      loading={isFeedbackSending}
+                      disabled={status !== "authed"}
+                    >
+                      Отправить отзыв
+                    </Button>
+                    <Button
+                      variant="subtle"
+                      className={classes.actionButton}
+                      onClick={() => {
+                        setFeedbackExpanded(false);
+                        setFeedbackError(null);
+                        setFeedbackSuccess(null);
+                      }}
+                      disabled={isFeedbackSending}
+                    >
+                      Скрыть форму
+                    </Button>
+                  </Group>
+                </Stack>
               )}
             </div>
 

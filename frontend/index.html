@@ -24,13 +24,54 @@
       as="fetch"
       crossorigin="anonymous"
     />
+    <style>
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff8f2;
+      }
+
+      #app-splash .splash-lockup {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #app-splash .splash-logo-wrap {
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transform: scale(2.22);
+      }
+
+      #app-splash .splash-logo {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+
+      #app-splash .splash-wordmark {
+        max-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        opacity: 0;
+      }
+    </style>
     <title>Где кофе</title>
   </head>
   <body>
     <div id="app-splash" aria-hidden="true">
       <div class="splash-lockup">
         <div class="splash-logo-wrap">
-          <img src="/logo.png?v=2" alt="" class="splash-logo" />
+          <img src="/logo.png?v=2" alt="" class="splash-logo" width="128" height="128" />
         </div>
         <div class="splash-wordmark">где кофе?</div>
       </div>
