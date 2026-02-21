@@ -329,7 +329,7 @@ export default function CafeCardHero({
           inset: 0,
           pointerEvents: "none",
           background:
-            "linear-gradient(180deg, transparent 0%, transparent 50%, var(--cafe-hero-overlay-1) 50%, var(--cafe-hero-overlay-2) 70%, var(--cafe-hero-overlay-3) 100%)",
+            "linear-gradient(180deg, transparent 0%, transparent 45%, var(--cafe-hero-overlay-1) 45%, var(--cafe-hero-overlay-2) 66%, var(--cafe-hero-overlay-3) 80%)",
           transition: "background 260ms ease",
           zIndex: 1,
         }}

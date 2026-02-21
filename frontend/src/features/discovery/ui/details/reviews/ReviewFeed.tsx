@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Group, Paper, Rating, Select, Skeleton, Stack, Text, Transition } from "@mantine/core";
+import { Badge, Box, Button, Group, Loader, Paper, Rating, Select, Skeleton, Stack, Text, Transition } from "@mantine/core";
 import { IconThumbUp } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 
@@ -98,7 +98,7 @@ export function ReviewFeed({
   ];
 
   return (
-    <>
+    <Box style={{ position: "relative" }}>
       <Group grow align="flex-end" gap={8} wrap="nowrap">
         <Select
           size="xs"
@@ -130,21 +130,7 @@ export function ReviewFeed({
               <ReviewCardSkeleton />
               <ReviewCardSkeleton />
             </>
-          ) : (
-            <Paper
-              withBorder
-              radius="md"
-              p="sm"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-            >
-              <Group justify="space-between" align="center">
-                <Text size="xs" c="dimmed">
-                  Обновляем отзывы...
-                </Text>
-                <Skeleton h={8} w={120} radius="xl" />
-              </Group>
-            </Paper>
-          )}
+          ) : null}
         </>
       )}
 
@@ -198,7 +184,34 @@ export function ReviewFeed({
           Показать еще
         </Button>
       )}
-    </>
+
+      <Transition mounted={isLoading && reviews.length > 0} transition="fade" duration={180} timingFunction="ease">
+        {(styles) => (
+          <Paper
+            withBorder
+            radius="xl"
+            px={10}
+            py={6}
+            style={{
+              ...styles,
+              position: "absolute",
+              left: "50%",
+              bottom: 8,
+              transform: "translateX(-50%)",
+              border: "1px solid var(--glass-border)",
+              background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+              boxShadow: "var(--glass-shadow)",
+              backdropFilter: "blur(10px) saturate(130%)",
+              WebkitBackdropFilter: "blur(10px) saturate(130%)",
+              pointerEvents: "none",
+              zIndex: 6,
+            }}
+          >
+            <Loader size={14} type="dots" />
+          </Paper>
+        )}
+      </Transition>
+    </Box>
   );
 }
 
@@ -391,7 +404,7 @@ function ReviewCard({
         )}
 
         <MotionBox
-          whileTap={{ scale: isOwn ? 1 : 0.96 }}
+          whileTap={{ scale: isOwn || helpfulLoading ? 1 : 0.96 }}
           transition={{ duration: 0.12, ease: "easeOut" }}
           style={{ alignSelf: "flex-start" }}
         >
@@ -399,8 +412,7 @@ function ReviewCard({
             size="xs"
             variant="light"
             onClick={() => onMarkHelpful(review)}
-            loading={helpfulLoading}
-            disabled={isOwn}
+            disabled={isOwn || helpfulLoading}
             styles={{
               root: {
                 borderRadius: 999,
@@ -440,7 +452,7 @@ function ReviewCard({
                   border: "1px solid color-mix(in srgb, var(--color-brand-accent) 34%, var(--border))",
                 }}
               >
-                {review.helpful_votes}
+                {helpfulLoading ? <Loader size={11} type="dots" /> : review.helpful_votes}
               </Box>
             </Group>
           </Button>
