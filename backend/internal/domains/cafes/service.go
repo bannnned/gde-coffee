@@ -377,3 +377,17 @@ func (s *Service) ImportJSON(ctx context.Context, req adminCafeImportRequest) (a
 
 	return resp, nil
 }
+
+func (s *Service) SearchAdminCafesByName(ctx context.Context, query string, limit int) ([]AdminCafeSearchItem, error) {
+	normalizedQuery := strings.TrimSpace(query)
+	if normalizedQuery == "" {
+		return []AdminCafeSearchItem{}, nil
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	return s.repository.SearchAdminCafesByName(ctx, normalizedQuery, limit)
+}

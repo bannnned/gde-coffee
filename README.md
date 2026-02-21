@@ -79,6 +79,14 @@ The backend serves:
 
 Critical actions (`review publish`, `helpful vote`, `visit verify`) are idempotent via `Idempotency-Key`.
 
+### Product metrics (North Star)
+- `POST /api/metrics/events` — ingest client telemetry events (optional auth)
+  - supported `event_type`: `review_read`, `route_click`, `checkin_start`
+  - payload: `{ "events": [{ "event_type": "...", "journey_id": "...", "cafe_id": "...", "anon_id": "...", "client_event_id": "...", "review_id"?: "...", "provider"?: "2gis|yandex", "occurred_at"?: "RFC3339", "meta"?: {} }] }`
+- `GET /api/admin/metrics/north-star?days=14&cafe_id=<uuid>` — North Star summary + daily series (admin/moderator), optionally scoped to one cafe
+- `GET /api/admin/cafes/search?q=<name>&limit=15` — server-side cafe search by name for admin filters
+- Details: `docs/north_star_metrics.md`
+
 ### Auth (cookie sessions)
 - `POST /api/auth/register` — create local user + session
   - body: `{ "email": "...", "password": "...", "display_name"?: "..." }`
@@ -169,6 +177,7 @@ Current:
 - `000009_session_version` (session invalidation versioning)
 - `000010_cafe_photos` (cafe images metadata for S3 object keys)
 - `000015_reviews_stage1` (reviews/reputation/rating snapshots + idempotency keys + domain events queue)
+- `000026_product_metrics_events` (North Star telemetry events)
 
 ## Notes
 - Sessions are stored server-side in Postgres with HttpOnly cookies.

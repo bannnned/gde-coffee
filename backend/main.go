@@ -19,6 +19,7 @@ import (
 	"backend/internal/domains/cafes"
 	"backend/internal/domains/favorites"
 	"backend/internal/domains/feedback"
+	"backend/internal/domains/metrics"
 	"backend/internal/domains/moderation"
 	"backend/internal/domains/photos"
 	"backend/internal/domains/reviews"
@@ -206,6 +207,7 @@ func main() {
 	photosHandler := photos.NewHandler(pool, mediaService, cfg.Media)
 	moderationHandler := moderation.NewHandler(pool, mediaService, cfg.Media)
 	reviewsHandler := reviews.NewDefaultHandler(pool, mediaService, cfg.Media)
+	metricsHandler := metrics.NewDefaultHandler(pool)
 
 	go reviewsHandler.Service().StartEventWorker(context.Background(), 2*time.Second)
 	go reviewsHandler.Service().StartInboxWorker(context.Background(), 2*time.Second)
@@ -230,6 +232,7 @@ func main() {
 	api.POST("/reviews/:id/visit/verify", auth.RequireAuth(pool), reviewsHandler.VerifyVisit)
 	api.POST("/reviews/:id/abuse", auth.RequireAuth(pool), reviewsHandler.ReportAbuse)
 	api.POST("/abuse-reports/:id/confirm", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.ConfirmAbuse)
+	api.POST("/metrics/events", auth.OptionalAuth(pool), metricsHandler.IngestEvents)
 	api.GET("/cafes/:id/rating", reviewsHandler.GetCafeRating)
 	api.GET("/cafes/:id/reviews", reviewsHandler.ListCafeReviews)
 	api.GET("/reputation/me", auth.RequireAuth(pool), reviewsHandler.GetMyReputation)
@@ -247,6 +250,7 @@ func main() {
 
 	adminCafesGroup := api.Group("/admin/cafes")
 	adminCafesGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
+	adminCafesGroup.GET("/search", cafesHandler.AdminSearch)
 	adminCafesGroup.GET("/:id/rating-diagnostics", reviewsHandler.GetCafeRatingDiagnostics)
 	api.POST("/admin/cafes/import-json", auth.RequireRole(pool, "admin"), cafesHandler.ImportJSON)
 
@@ -257,6 +261,10 @@ func main() {
 	adminReviewsGroup.POST("/dlq/replay-open", reviewsHandler.ReplayAllOpenDLQ)
 	adminReviewsGroup.POST("/dlq/resolve-open", reviewsHandler.ResolveOpenDLQWithoutReplay)
 	adminReviewsGroup.POST("/dlq/:id/replay", reviewsHandler.ReplayDLQEvent)
+
+	adminMetricsGroup := api.Group("/admin/metrics")
+	adminMetricsGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
+	adminMetricsGroup.GET("/north-star", metricsHandler.GetNorthStar)
 
 	api.GET("/cafes/:id/photos", photosHandler.List)
 	api.POST("/cafes/:id/photos/presign", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Presign)

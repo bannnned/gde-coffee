@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -233,4 +234,40 @@ func (h *Handler) ImportJSON(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) AdminSearch(c *gin.Context) {
+	query := strings.TrimSpace(c.Query("q"))
+	if len([]rune(query)) < 2 {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "q должен содержать минимум 2 символа.", nil)
+		return
+	}
+
+	limit := 20
+	if rawLimit := strings.TrimSpace(c.Query("limit")); rawLimit != "" {
+		value, err := strconv.Atoi(rawLimit)
+		if err != nil || value <= 0 {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "limit должен быть целым числом больше 0.", nil)
+			return
+		}
+		if value > 50 {
+			value = 50
+		}
+		limit = value
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	items, err := h.service.SearchAdminCafesByName(ctx, query, limit)
+	if err != nil {
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось выполнить поиск кофеен.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"q":     query,
+		"limit": limit,
+		"items": items,
+	})
 }

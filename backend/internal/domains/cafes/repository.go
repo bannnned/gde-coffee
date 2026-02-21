@@ -256,3 +256,44 @@ func (r *Repository) UpdateCafeByID(ctx context.Context, cafeID string, item nor
 	}
 	return nil
 }
+
+func (r *Repository) SearchAdminCafesByName(ctx context.Context, query string, limit int) ([]AdminCafeSearchItem, error) {
+	pattern := "%" + strings.TrimSpace(query) + "%"
+	rows, err := r.pool.Query(
+		ctx,
+		`select
+		    id::text,
+		    name,
+		    coalesce(address, '') as address
+		  from public.cafes
+		  where name ilike $1
+		  order by
+		    case
+		      when lower(name) = lower($2) then 0
+		      when lower(name) like lower($2) || '%' then 1
+		      else 2
+		    end asc,
+		    created_at desc
+		  limit $3`,
+		pattern,
+		strings.TrimSpace(query),
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]AdminCafeSearchItem, 0, limit)
+	for rows.Next() {
+		var item AdminCafeSearchItem
+		if err := rows.Scan(&item.ID, &item.Name, &item.Address); err != nil {
+			return nil, err
+		}
+		result = append(result, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}

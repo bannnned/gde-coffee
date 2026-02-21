@@ -34,6 +34,7 @@ import {
 type CafeDetailsScreenProps = {
   opened: boolean;
   cafe: Cafe | null;
+  journeyID?: string;
   onClose: () => void;
   showDistance?: boolean;
   showRoutes?: boolean;
@@ -61,6 +62,7 @@ const DETAILS_SECTION_CONTROL_DATA = [
 export default function CafeDetailsScreen({
   opened,
   cafe,
+  journeyID = "",
   onClose,
   showDistance = true,
   showRoutes = true,
@@ -519,7 +521,7 @@ export default function CafeDetailsScreen({
 
           {section === "reviews" && (
             <Box pb="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
-              <ReviewsSection cafeId={cafe.id} opened={opened} />
+              <ReviewsSection cafeId={cafe.id} opened={opened} journeyID={journeyID} />
             </Box>
           )}
         </Stack>

@@ -34,6 +34,7 @@ export default function DiscoveryScreen() {
     focusLngLat,
     selectedCafeId,
     selectedCafe,
+    selectedCafeJourneyID,
     itemRefs,
     showFetchingBadge,
     showFirstChoice,
@@ -221,6 +222,7 @@ export default function DiscoveryScreen() {
           <CafeDetailsScreen
             opened={detailsOpen}
             cafe={selectedCafe ?? null}
+            journeyID={selectedCafeJourneyID}
             onClose={() => setDetailsOpen(false)}
             showDistance={!isCityOnlyMode}
             showRoutes={!isCityOnlyMode}

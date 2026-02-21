@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../../../components/AuthGate";
 import { updateCafeDescription } from "../../../api/cafes";
+import { createJourneyID, reportMetricEvent } from "../../../api/metrics";
 import { submitCafeDescription } from "../../../api/submissions";
 import type { Amenity, Cafe } from "../../../entities/cafe/model/types";
 import { DEFAULT_AMENITIES, DEFAULT_RADIUS_M } from "../constants";
@@ -20,6 +21,7 @@ export default function useDiscoveryPageController() {
   );
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [favoriteBusyCafeId, setFavoriteBusyCafeId] = useState<string | null>(null);
+  const [selectedCafeJourneyID, setSelectedCafeJourneyID] = useState("");
   const { sheetHeight, sheetState, filtersBarHeight } = useLayoutMetrics();
 
   const userRole = (user?.role ?? "").toLowerCase();
@@ -27,6 +29,7 @@ export default function useDiscoveryPageController() {
   const isPhotoAdmin = userRole === "admin";
 
   const sheetRef = useRef<HTMLDivElement | null>(null);
+  const journeyByCafeRef = useRef<Record<string, string>>({});
 
   const location = useDiscoveryLocation({
     radiusM,
@@ -46,6 +49,20 @@ export default function useDiscoveryPageController() {
   const visibleCafes = location.locationChoice ? cafes : [];
   const { selectedCafeId, selectedCafe, selectCafe, itemRefs } =
     useCafeSelection({ cafes: visibleCafes, onFocusLngLat: location.setFocusLngLat });
+
+  useEffect(() => {
+    if (!selectedCafeId) {
+      setSelectedCafeJourneyID("");
+      return;
+    }
+
+    let journeyID = journeyByCafeRef.current[selectedCafeId];
+    if (!journeyID) {
+      journeyID = createJourneyID(selectedCafeId);
+      journeyByCafeRef.current[selectedCafeId] = journeyID;
+    }
+    setSelectedCafeJourneyID(journeyID);
+  }, [selectedCafeId]);
 
   const modals = useDiscoveryModals(selectedCafe);
   const { handleToggleFavoritesFilter, handleToggleFavorite } = useDiscoveryFavoriteActions({
@@ -71,6 +88,17 @@ export default function useDiscoveryPageController() {
     !cafesQuery.isLoading &&
     visibleCafes.length === 0;
 
+  function resolveJourneyID(cafeID: string): string {
+    const safeCafeID = cafeID.trim();
+    if (!safeCafeID) return "";
+    let journeyID = journeyByCafeRef.current[safeCafeID];
+    if (!journeyID) {
+      journeyID = createJourneyID(safeCafeID);
+      journeyByCafeRef.current[safeCafeID] = journeyID;
+    }
+    return journeyID;
+  }
+
   function resetFilters() {
     setRadiusM(0);
     setSelectedAmenities([]);
@@ -83,6 +111,16 @@ export default function useDiscoveryPageController() {
   };
 
   function open2gisRoute(cafe: Cafe) {
+    const journeyID = resolveJourneyID(cafe.id);
+    if (journeyID) {
+      reportMetricEvent({
+        event_type: "route_click",
+        journey_id: journeyID,
+        cafe_id: cafe.id,
+        provider: "2gis",
+        meta: { source: "discovery" },
+      });
+    }
     const from = `${location.userCenter[0]},${location.userCenter[1]}`;
     const to = `${cafe.longitude},${cafe.latitude}`;
     window.open(
@@ -93,6 +131,16 @@ export default function useDiscoveryPageController() {
   }
 
   function openYandexRoute(cafe: Cafe) {
+    const journeyID = resolveJourneyID(cafe.id);
+    if (journeyID) {
+      reportMetricEvent({
+        event_type: "route_click",
+        journey_id: journeyID,
+        cafe_id: cafe.id,
+        provider: "yandex",
+        meta: { source: "discovery" },
+      });
+    }
     const from = `${location.userCenter[1]}%2C${location.userCenter[0]}`;
     const to = `${cafe.latitude}%2C${cafe.longitude}`;
     window.open(
@@ -100,6 +148,15 @@ export default function useDiscoveryPageController() {
       "_blank",
       "noopener,noreferrer",
     );
+  }
+
+  function selectCafeWithJourney(id: string) {
+    const nextID = id.trim();
+    if (!nextID) return;
+    if (!journeyByCafeRef.current[nextID] || selectedCafeId !== nextID) {
+      journeyByCafeRef.current[nextID] = createJourneyID(nextID);
+    }
+    selectCafe(nextID);
   }
 
   const handleOpenPhotoAdmin = (kind: "cafe" | "menu") => {
@@ -176,6 +233,7 @@ export default function useDiscoveryPageController() {
     focusLngLat: location.focusLngLat,
     selectedCafeId,
     selectedCafe,
+    selectedCafeJourneyID,
     itemRefs,
     showFetchingBadge,
     showFirstChoice: location.showFirstChoice,
@@ -211,7 +269,7 @@ export default function useDiscoveryPageController() {
     setCafeProposalOpen: modals.setCafeProposalOpen,
     setSelectedAmenities,
     setRadiusM,
-    selectCafe,
+    selectCafe: selectCafeWithJourney,
     handleManualCenterChange: location.handleManualCenterChange,
     handleCancelManualPick: location.handleCancelManualPick,
     handleConfirmManualPick: location.handleConfirmManualPick,

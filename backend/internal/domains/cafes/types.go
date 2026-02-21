@@ -35,6 +35,12 @@ type GeocodeLookupResponse struct {
 
 type ListResult []model.CafeResponse
 
+type AdminCafeSearchItem struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Address string `json:"address"`
+}
+
 type adminCafeImportItem struct {
 	Name        string   `json:"name"`
 	Address     string   `json:"address"`

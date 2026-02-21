@@ -467,6 +467,15 @@ export default function SettingsScreen() {
                   >
                     Справочник напитков
                   </Button>
+                  <Button
+                    variant="light"
+                    className={classes.actionButton}
+                    onClick={() => {
+                      void navigate("/admin/metrics");
+                    }}
+                  >
+                    North Star метрика
+                  </Button>
                   {userRole === "admin" && (
                     <Button
                       variant="light"

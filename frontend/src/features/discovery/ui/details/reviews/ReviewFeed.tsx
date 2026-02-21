@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Box, Button, Group, Loader, Modal, Paper, Rating, Select, Skeleton, Stack, Text, Transition } from "@mantine/core";
 import { IconThumbUp } from "@tabler/icons-react";
 import { motion } from "framer-motion";
@@ -40,6 +40,7 @@ type ReviewFeedProps = {
   onDeleteReview: (review: CafeReview) => void;
   hasMore: boolean;
   onLoadMore: () => void;
+  onReviewRead: (review: CafeReview) => void;
 };
 
 export function ReviewFeed({
@@ -60,6 +61,7 @@ export function ReviewFeed({
   onDeleteReview,
   hasMore,
   onLoadMore,
+  onReviewRead,
 }: ReviewFeedProps) {
   const [expandedReviewID, setExpandedReviewID] = useState<string | null>(null);
   const expandedReview = useMemo(
@@ -182,7 +184,11 @@ export function ReviewFeed({
                     isOwn={review.user_id === currentUserId}
                     helpfulLoading={helpfulPendingReviewID === review.id}
                     onMarkHelpful={onMarkHelpful}
-                    onOpenExpandedReview={(item) => setExpandedReviewID(item.id)}
+                    onOpenExpandedReview={(item) => {
+                      onReviewRead(item);
+                      setExpandedReviewID(item.id);
+                    }}
+                    onReviewRead={onReviewRead}
                     canDeleteReviews={canDeleteReviews}
                     isAdmin={isAdmin}
                     onDeleteReview={onDeleteReview}
@@ -251,6 +257,7 @@ export function ReviewFeed({
             isOwn={expandedReview.user_id === currentUserId}
             helpfulLoading={helpfulPendingReviewID === expandedReview.id}
             onMarkHelpful={onMarkHelpful}
+            onReviewRead={onReviewRead}
             canDeleteReviews={canDeleteReviews}
             isAdmin={isAdmin}
             onDeleteReview={onDeleteReview}
@@ -300,6 +307,7 @@ type ReviewCardProps = {
   helpfulLoading: boolean;
   onMarkHelpful: (review: CafeReview) => void;
   onOpenExpandedReview?: (review: CafeReview) => void;
+  onReviewRead?: (review: CafeReview) => void;
   canDeleteReviews: boolean;
   isAdmin: boolean;
   onDeleteReview: (review: CafeReview) => void;
@@ -312,12 +320,15 @@ function ReviewCard({
   helpfulLoading,
   onMarkHelpful,
   onOpenExpandedReview,
+  onReviewRead,
   canDeleteReviews,
   isAdmin,
   onDeleteReview,
   forceExpanded = false,
 }: ReviewCardProps) {
   const [textExpanded, setTextExpanded] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const hasTrackedReadRef = useRef(false);
   const MotionBox = motion(Box);
   const reviewBody = parseReviewSummarySections(review.summary);
   const visitDateLabel = resolveVisitDate(review);
@@ -342,8 +353,53 @@ function ReviewCard({
   const canOpenExpandedModal =
     !forceExpanded && hasLargeContent && review.photos.length > 0 && Boolean(onOpenExpandedReview);
 
+  useEffect(() => {
+    if (forceExpanded || !onReviewRead || hasTrackedReadRef.current) return;
+    const node = cardRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    let timerID: number | null = null;
+    const markRead = () => {
+      if (hasTrackedReadRef.current) return;
+      hasTrackedReadRef.current = true;
+      onReviewRead(review);
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+          if (timerID == null) {
+            timerID = window.setTimeout(markRead, 3000);
+          }
+          return;
+        }
+        if (timerID != null) {
+          window.clearTimeout(timerID);
+          timerID = null;
+        }
+      },
+      {
+        threshold: [0, 0.6, 1],
+      },
+    );
+
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      if (timerID != null) {
+        window.clearTimeout(timerID);
+      }
+    };
+  }, [forceExpanded, onReviewRead, review]);
+
   return (
     <Paper
+      ref={cardRef}
       withBorder
       radius="md"
       p="md"

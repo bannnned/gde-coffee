@@ -9,10 +9,11 @@ import { useReviewsSectionController } from "./reviews/useReviewsSectionControll
 type ReviewsSectionProps = {
   cafeId: string;
   opened: boolean;
+  journeyID?: string;
 };
 
-export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) {
-  const controller = useReviewsSectionController({ cafeId, opened });
+export default function ReviewsSection({ cafeId, opened, journeyID = "" }: ReviewsSectionProps) {
+  const controller = useReviewsSectionController({ cafeId, opened, journeyID });
   const [composerOpen, setComposerOpen] = useState(false);
 
   return (
@@ -63,6 +64,7 @@ export default function ReviewsSection({ cafeId, opened }: ReviewsSectionProps) 
         onDeleteReview={controller.onDeleteReview}
         hasMore={controller.hasMore}
         onLoadMore={controller.onLoadMore}
+        onReviewRead={controller.onReviewRead}
       />
 
       <Box

@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { searchDrinks, type DrinkSuggestion } from "../../../../../api/drinks";
+import { reportMetricEvent } from "../../../../../api/metrics";
 import {
   addHelpfulVote,
   confirmReviewPhotoUpload,
@@ -42,6 +43,7 @@ import {
 type UseReviewsSectionControllerParams = {
   cafeId: string;
   opened: boolean;
+  journeyID?: string;
 };
 
 export type ReviewQualityInsight = {
@@ -182,6 +184,7 @@ function buildQualityInsight(review: CafeReview | undefined): ReviewQualityInsig
 export function useReviewsSectionController({
   cafeId,
   opened,
+  journeyID = "",
 }: UseReviewsSectionControllerParams) {
   const { user, status, openAuthModal } = useAuth();
   const currentUserId = (user?.id ?? "").trim();
@@ -213,6 +216,8 @@ export function useReviewsSectionController({
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitHint, setSubmitHint] = useState<string | null>(null);
+  const readReportedRef = useRef<Set<string>>(new Set());
+  const normalizedJourneyID = journeyID.trim();
 
   const {
     control,
@@ -277,6 +282,10 @@ export function useReviewsSectionController({
     () => (positionFilter === "all" ? undefined : positionFilter),
     [positionFilter],
   );
+
+  useEffect(() => {
+    readReportedRef.current = new Set();
+  }, [cafeId, normalizedJourneyID]);
 
   const loadFirstPage = useCallback(async () => {
     setIsLoading(true);
@@ -675,6 +684,17 @@ export function useReviewsSectionController({
       };
       setActiveCheckIn(next);
       setCheckInCoords(point);
+      if (normalizedJourneyID) {
+        reportMetricEvent({
+          event_type: "checkin_start",
+          journey_id: normalizedJourneyID,
+          cafe_id: cafeId,
+          meta: {
+            source: "reviews",
+            distance_meters: next.distanceMeters,
+          },
+        });
+      }
 
       const waitSeconds = readCanVerifyInSeconds(checkIn.can_verify_after);
       if (waitSeconds > 0) {
@@ -689,7 +709,30 @@ export function useReviewsSectionController({
     } finally {
       setCheckInStarting(false);
     }
-  }, [cafeId, currentUserId, openAuthModal, status]);
+  }, [cafeId, currentUserId, normalizedJourneyID, openAuthModal, status]);
+
+  const reportReviewRead = useCallback(
+    (review: CafeReview) => {
+      const reviewID = review.id.trim();
+      if (!reviewID || !normalizedJourneyID) return;
+
+      const dedupeKey = `${normalizedJourneyID}:${reviewID}`;
+      if (readReportedRef.current.has(dedupeKey)) return;
+      readReportedRef.current.add(dedupeKey);
+
+      reportMetricEvent({
+        event_type: "review_read",
+        journey_id: normalizedJourneyID,
+        cafe_id: cafeId,
+        review_id: reviewID,
+        meta: {
+          sort,
+          position_filter: activePositionFilter || "all",
+        },
+      });
+    },
+    [activePositionFilter, cafeId, normalizedJourneyID, sort],
+  );
 
   const verifyCurrentVisit = useCallback(async () => {
     if (!currentUserId || status !== "authed") {
@@ -759,6 +802,9 @@ export function useReviewsSectionController({
     onRemovePhoto: handleRemovePhoto,
     onLoadMore: () => {
       void loadMore();
+    },
+    onReviewRead: (review: CafeReview) => {
+      reportReviewRead(review);
     },
     onDeleteReview: (review: CafeReview) => {
       void deleteReviewByModerator(review);
