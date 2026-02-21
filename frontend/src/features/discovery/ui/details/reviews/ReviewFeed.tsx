@@ -1,9 +1,14 @@
-import { Badge, Box, Button, Group, Loader, Paper, Rating, Select, Skeleton, Stack, Text, Transition } from "@mantine/core";
+import { useMemo, useState } from "react";
+import { Badge, Box, Button, Group, Loader, Modal, Paper, Rating, Select, Skeleton, Stack, Text, Transition } from "@mantine/core";
 import { IconThumbUp } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 
 import type { CafeReview, ReviewSort } from "../../../../../api/reviews";
 import { formatReviewDate, parseReviewSummarySections } from "./reviewForm";
+
+const COLLAPSED_TEXT_LENGTH_THRESHOLD = 220;
+const COLLAPSED_PHOTO_PREVIEW_LIMIT = 3;
+const REVIEW_LARGE_TOTAL_CONTENT_THRESHOLD = 260;
 
 function resolveVisitDate(review: CafeReview): string {
   const withVisitDate = review as CafeReview & {
@@ -56,6 +61,12 @@ export function ReviewFeed({
   hasMore,
   onLoadMore,
 }: ReviewFeedProps) {
+  const [expandedReviewID, setExpandedReviewID] = useState<string | null>(null);
+  const expandedReview = useMemo(
+    () => reviews.find((item) => item.id === expandedReviewID) ?? null,
+    [expandedReviewID, reviews],
+  );
+
   const filterSelectStyles = {
     input: {
       borderRadius: 14,
@@ -170,6 +181,7 @@ export function ReviewFeed({
                   isOwn={review.user_id === currentUserId}
                   helpfulLoading={helpfulPendingReviewID === review.id}
                   onMarkHelpful={onMarkHelpful}
+                  onOpenExpandedReview={(item) => setExpandedReviewID(item.id)}
                   canDeleteReviews={canDeleteReviews}
                   isAdmin={isAdmin}
                   onDeleteReview={onDeleteReview}
@@ -211,6 +223,39 @@ export function ReviewFeed({
           </Paper>
         )}
       </Transition>
+
+      <Modal
+        opened={Boolean(expandedReview)}
+        onClose={() => setExpandedReviewID(null)}
+        title="Полный отзыв"
+        size="lg"
+        centered
+        styles={{
+          content: {
+            background: "var(--glass-bg)",
+            border: "1px solid var(--glass-border)",
+            boxShadow: "var(--shadow)",
+            backdropFilter: "blur(14px) saturate(145%)",
+            WebkitBackdropFilter: "blur(14px) saturate(145%)",
+          },
+          header: {
+            background: "transparent",
+          },
+        }}
+      >
+        {expandedReview && (
+          <ReviewCard
+            review={expandedReview}
+            isOwn={expandedReview.user_id === currentUserId}
+            helpfulLoading={helpfulPendingReviewID === expandedReview.id}
+            onMarkHelpful={onMarkHelpful}
+            canDeleteReviews={canDeleteReviews}
+            isAdmin={isAdmin}
+            onDeleteReview={onDeleteReview}
+            forceExpanded
+          />
+        )}
+      </Modal>
     </Box>
   );
 }
@@ -252,9 +297,11 @@ type ReviewCardProps = {
   isOwn: boolean;
   helpfulLoading: boolean;
   onMarkHelpful: (review: CafeReview) => void;
+  onOpenExpandedReview?: (review: CafeReview) => void;
   canDeleteReviews: boolean;
   isAdmin: boolean;
   onDeleteReview: (review: CafeReview) => void;
+  forceExpanded?: boolean;
 };
 
 function ReviewCard({
@@ -262,10 +309,13 @@ function ReviewCard({
   isOwn,
   helpfulLoading,
   onMarkHelpful,
+  onOpenExpandedReview,
   canDeleteReviews,
   isAdmin,
   onDeleteReview,
+  forceExpanded = false,
 }: ReviewCardProps) {
+  const [textExpanded, setTextExpanded] = useState(false);
   const MotionBox = motion(Box);
   const reviewBody = parseReviewSummarySections(review.summary);
   const visitDateLabel = resolveVisitDate(review);
@@ -278,6 +328,17 @@ function ReviewCard({
     review.positions.length > 0
       ? review.positions.map((item) => item.drink_name || item.drink_id).filter(Boolean)
       : [review.drink_name || review.drink_id].filter(Boolean);
+  const reviewTextLength = reviewSections.reduce((sum, section) => sum + section.value.length, 0);
+  const hasLargeContent =
+    reviewTextLength + review.photos.length * 40 >= REVIEW_LARGE_TOTAL_CONTENT_THRESHOLD;
+  const canCollapseText = !forceExpanded && reviewTextLength >= COLLAPSED_TEXT_LENGTH_THRESHOLD;
+  const shouldClampText = canCollapseText && !textExpanded;
+  const shouldCollapsePhotos = !forceExpanded && hasLargeContent && review.photos.length > 0;
+  const visiblePhotos = shouldCollapsePhotos
+    ? review.photos.slice(0, COLLAPSED_PHOTO_PREVIEW_LIMIT)
+    : review.photos;
+  const canOpenExpandedModal =
+    !forceExpanded && hasLargeContent && review.photos.length > 0 && Boolean(onOpenExpandedReview);
 
   return (
     <Paper
@@ -311,9 +372,6 @@ function ReviewCard({
               )}
             </Group>
             <Text size="xs" c="dimmed">
-              Отзыв: {formatReviewDate(review.updated_at)}
-            </Text>
-            <Text size="xs" c="dimmed">
               Дата визита: {visitDateLabel}
             </Text>
           </Stack>
@@ -332,44 +390,76 @@ function ReviewCard({
                 >
                   {section.label}
                 </Text>
-                <Text size="sm" style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
+                <Text
+                  size="sm"
+                  lineClamp={shouldClampText ? 3 : undefined}
+                  style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+                >
                   {section.value}
                 </Text>
               </Box>
             ))}
+            {canCollapseText && !textExpanded && (
+              <Button
+                variant="subtle"
+                size="compact-xs"
+                onClick={() => setTextExpanded(true)}
+                style={{ alignSelf: "flex-start", paddingInline: 0 }}
+              >
+                Показать еще
+              </Button>
+            )}
           </Stack>
         )}
 
         {review.photos.length > 0 && (
-          <Group wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
-            {review.photos.map((photoUrl, index) => (
-              <Paper
-                key={`${review.id}:${index}`}
-                withBorder
-                radius="sm"
-                style={{
-                  width: 96,
-                  minWidth: 96,
-                  height: 72,
-                  overflow: "hidden",
-                  border: "1px solid var(--border)",
-                  background: "var(--surface)",
-                }}
-              >
-                <img
-                  src={photoUrl}
-                  alt={`Фото отзыва ${index + 1}`}
-                  loading="lazy"
+          <Stack gap={6}>
+            <Group wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
+              {visiblePhotos.map((photoUrl, index) => (
+                <Paper
+                  key={`${review.id}:${index}`}
+                  withBorder
+                  radius="sm"
                   style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
+                    width: 96,
+                    minWidth: 96,
+                    height: 72,
+                    overflow: "hidden",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
                   }}
-                />
-              </Paper>
-            ))}
-          </Group>
+                >
+                  <img
+                    src={photoUrl}
+                    alt={`Фото отзыва ${index + 1}`}
+                    loading="lazy"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </Paper>
+              ))}
+            </Group>
+            {canOpenExpandedModal && (
+              <Button
+                variant="subtle"
+                size="compact-xs"
+                onClick={() => onOpenExpandedReview?.(review)}
+                style={{ alignSelf: "flex-start", paddingInline: 0 }}
+              >
+                Смотреть все
+              </Button>
+            )}
+          </Stack>
+        )}
+
+        {!forceExpanded && shouldCollapsePhotos && review.photos.length > visiblePhotos.length && (
+          <Text size="xs" c="dimmed">
+            Показано {visiblePhotos.length} из {review.photos.length} фото
+          </Text>
         )}
 
         <Group gap={6} wrap="wrap">
