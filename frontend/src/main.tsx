@@ -88,7 +88,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 const splashMountedAt = performance.now()
-const MIN_SPLASH_VISIBLE_MS = 1400
+const MIN_SPLASH_VISIBLE_MS = 2000
 
 const hideSplash = () => {
   const elapsed = performance.now() - splashMountedAt
