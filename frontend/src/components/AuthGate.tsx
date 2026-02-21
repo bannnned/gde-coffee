@@ -269,6 +269,7 @@ export default function AuthGate({ children }: PropsWithChildren) {
         centered
         withCloseButton
         size="md"
+        zIndex={4000}
         title={
           <Title order={3} style={{ margin: 0 }}>
             {titleText}
