@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "../../../components/AuthGate";
 import { updateCafeDescription } from "../../../api/cafes";
 import { createJourneyID, reportMetricEvent } from "../../../api/metrics";
 import { submitCafeDescription } from "../../../api/submissions";
+import {
+  getDescriptiveTagOptions,
+  getDiscoveryDescriptiveTags,
+  getMyDescriptiveTagPreferences,
+  updateMyDescriptiveTagPreferences,
+} from "../../../api/tags";
 import type { Amenity, Cafe } from "../../../entities/cafe/model/types";
 import { DEFAULT_AMENITIES, DEFAULT_RADIUS_M } from "../constants";
 import useCafeSelection from "./useCafeSelection";
@@ -12,6 +18,21 @@ import useDiscoveryLocation from "../model/location/useDiscoveryLocation";
 import useDiscoveryModals from "../model/modals/useDiscoveryModals";
 import useDiscoveryFavoriteActions from "../model/favorites/useDiscoveryFavoriteActions";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
+
+function normalizeTagList(raw: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of raw) {
+    const label = value.trim();
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(label);
+    if (result.length >= 12) break;
+  }
+  return result;
+}
 
 export default function useDiscoveryPageController() {
   const { user, openAuthModal } = useAuth();
@@ -23,6 +44,17 @@ export default function useDiscoveryPageController() {
   const [favoriteBusyCafeId, setFavoriteBusyCafeId] = useState<string | null>(null);
   const [selectedCafeJourneyID, setSelectedCafeJourneyID] = useState("");
   const [photosRefreshToken, setPhotosRefreshToken] = useState(0);
+  const [topDescriptiveTags, setTopDescriptiveTags] = useState<string[]>([]);
+  const [topDescriptiveTagsSource, setTopDescriptiveTagsSource] = useState("city_popular");
+  const [isTopTagsLoading, setIsTopTagsLoading] = useState(false);
+  const [tagOptions, setTagOptions] = useState<string[]>([]);
+  const [tagOptionsQuery, setTagOptionsQuery] = useState("");
+  const [isTagOptionsLoading, setIsTagOptionsLoading] = useState(false);
+  const [favoriteDescriptiveTags, setFavoriteDescriptiveTags] = useState<string[]>([]);
+  const [favoriteDescriptiveTagsDraft, setFavoriteDescriptiveTagsDraft] = useState<string[]>([]);
+  const [isFavoriteTagsLoading, setIsFavoriteTagsLoading] = useState(false);
+  const [isFavoriteTagsSaving, setIsFavoriteTagsSaving] = useState(false);
+  const [favoriteTagsError, setFavoriteTagsError] = useState<string | null>(null);
   const { sheetHeight, sheetState, filtersBarHeight } = useLayoutMetrics();
 
   const userRole = (user?.role ?? "").toLowerCase();
@@ -85,6 +117,155 @@ export default function useDiscoveryPageController() {
     favoriteBusyCafeId,
     setFavoriteBusyCafeId,
   });
+
+  const refreshTopTags = useCallback(async () => {
+    if (location.showFirstChoice) {
+      setTopDescriptiveTags([]);
+      setTopDescriptiveTagsSource("city_popular");
+      return;
+    }
+
+    setIsTopTagsLoading(true);
+    try {
+      const response = await getDiscoveryDescriptiveTags({
+        lat,
+        lng,
+        radius_m: location.effectiveRadiusM,
+        limit: 8,
+      });
+      setTopDescriptiveTags(response.tags.map((item) => item.label).filter(Boolean));
+      setTopDescriptiveTagsSource(response.source || "city_popular");
+    } catch {
+      setTopDescriptiveTags([]);
+      setTopDescriptiveTagsSource("city_popular");
+    } finally {
+      setIsTopTagsLoading(false);
+    }
+  }, [lat, lng, location.effectiveRadiusM, location.showFirstChoice]);
+
+  useEffect(() => {
+    void refreshTopTags();
+  }, [refreshTopTags, user?.id]);
+
+  useEffect(() => {
+    if (!modals.settingsOpen) {
+      return;
+    }
+    if (location.showFirstChoice) {
+      setTagOptions([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setIsTagOptionsLoading(true);
+      getDescriptiveTagOptions({
+        lat,
+        lng,
+        radius_m: location.effectiveRadiusM,
+        q: tagOptionsQuery.trim() || undefined,
+        limit: 120,
+      })
+        .then((response) => {
+          if (cancelled) return;
+          const merged = normalizeTagList([...response.tags, ...favoriteDescriptiveTagsDraft]);
+          setTagOptions(merged);
+        })
+        .catch(() => {
+          if (!cancelled) setTagOptions(normalizeTagList(favoriteDescriptiveTagsDraft));
+        })
+        .finally(() => {
+          if (!cancelled) setIsTagOptionsLoading(false);
+        });
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    favoriteDescriptiveTagsDraft,
+    lat,
+    lng,
+    location.effectiveRadiusM,
+    location.showFirstChoice,
+    modals.settingsOpen,
+    tagOptionsQuery,
+  ]);
+
+  useEffect(() => {
+    if (!user) {
+      setFavoriteDescriptiveTags([]);
+      setFavoriteDescriptiveTagsDraft([]);
+      setFavoriteTagsError(null);
+      return;
+    }
+    if (!modals.settingsOpen) {
+      return;
+    }
+
+    let cancelled = false;
+    setIsFavoriteTagsLoading(true);
+    setFavoriteTagsError(null);
+    getMyDescriptiveTagPreferences({
+      lat,
+      lng,
+      radius_m: location.effectiveRadiusM,
+    })
+      .then((response) => {
+        if (cancelled) return;
+        const normalized = normalizeTagList(response.tags);
+        setFavoriteDescriptiveTags(normalized);
+        setFavoriteDescriptiveTagsDraft(normalized);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFavoriteTagsError("Не удалось загрузить любимые теги.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsFavoriteTagsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, lat, lng, location.effectiveRadiusM, modals.settingsOpen]);
+
+  const handleFavoriteTagsDraftChange = (next: string[]) => {
+    setFavoriteDescriptiveTagsDraft(normalizeTagList(next));
+    setFavoriteTagsError(null);
+  };
+
+  const handleSaveFavoriteTags = async () => {
+    if (!user) {
+      openAuthModal("login");
+      return;
+    }
+    setIsFavoriteTagsSaving(true);
+    setFavoriteTagsError(null);
+    try {
+      const response = await updateMyDescriptiveTagPreferences(
+        {
+          lat,
+          lng,
+          radius_m: location.effectiveRadiusM,
+        },
+        favoriteDescriptiveTagsDraft,
+      );
+      const normalized = normalizeTagList(response.tags);
+      setFavoriteDescriptiveTags(normalized);
+      setFavoriteDescriptiveTagsDraft(normalized);
+      await refreshTopTags();
+    } catch {
+      setFavoriteTagsError("Не удалось сохранить любимые теги.");
+    } finally {
+      setIsFavoriteTagsSaving(false);
+    }
+  };
+
+  const isFavoriteTagsDirty =
+    favoriteDescriptiveTags.length !== favoriteDescriptiveTagsDraft.length ||
+    favoriteDescriptiveTags.some((value, index) => value !== favoriteDescriptiveTagsDraft[index]);
 
   const emptyState = cafesQuery.isError
     ? "error"
@@ -265,6 +446,17 @@ export default function useDiscoveryPageController() {
     selectedAmenities,
     favoritesOnly,
     favoriteBusyCafeId,
+    topDescriptiveTags,
+    topDescriptiveTagsSource,
+    isTopTagsLoading,
+    tagOptions,
+    tagOptionsQuery,
+    isTagOptionsLoading,
+    favoriteDescriptiveTagsDraft,
+    isFavoriteTagsLoading,
+    isFavoriteTagsSaving,
+    favoriteTagsError,
+    isFavoriteTagsDirty,
     manualPickMode: location.manualPickMode,
     manualPickedCenter: location.manualPickedCenter,
     manualPinOffsetY: location.manualPinOffsetY,
@@ -273,6 +465,7 @@ export default function useDiscoveryPageController() {
     selectedLocationId: location.selectedLocationId,
     locationLabel: location.locationLabel,
     proposalCity: location.proposalCity,
+    isAuthed: Boolean(user),
     isPrivilegedUser,
     isPhotoAdmin,
     setSettingsOpen: modals.setSettingsOpen,
@@ -296,6 +489,9 @@ export default function useDiscoveryPageController() {
     handleStartCafeDescriptionEdit,
     handleSaveCafeDescription,
     handleOpenCafeProposal,
+    setTagOptionsQuery,
+    handleFavoriteTagsDraftChange,
+    handleSaveFavoriteTags,
     open2gisRoute,
     openYandexRoute,
     radiusM,

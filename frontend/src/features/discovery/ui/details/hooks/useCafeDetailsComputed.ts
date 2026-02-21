@@ -58,6 +58,9 @@ export function useCafeDetailsComputed({
   const ratingReviews = ratingSnapshot?.reviews_count ?? 0;
   const verifiedSharePercent = Math.round((ratingSnapshot?.verified_share ?? 0) * 100);
   const bestReview = ratingSnapshot?.best_review ?? null;
+  const specificTags = Array.from(
+    new Set((ratingSnapshot?.specific_tags ?? []).map((tag) => tag.label).filter(Boolean)),
+  );
 
   const diagnosticsComponents = ratingDiagnostics?.components ?? {};
   const diagnosticsTrust = Number(diagnosticsComponents.trust) || 0;
@@ -75,6 +78,7 @@ export function useCafeDetailsComputed({
     ratingReviews,
     verifiedSharePercent,
     bestReview,
+    specificTags,
     diagnosticsTrust,
     diagnosticsBase,
     diagnosticsTopReviews,

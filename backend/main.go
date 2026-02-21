@@ -23,6 +23,7 @@ import (
 	"backend/internal/domains/moderation"
 	"backend/internal/domains/photos"
 	"backend/internal/domains/reviews"
+	"backend/internal/domains/tags"
 	"backend/internal/mailer"
 	"backend/internal/media"
 	"backend/internal/shared/httpx"
@@ -207,6 +208,7 @@ func main() {
 	photosHandler := photos.NewHandler(pool, mediaService, cfg.Media)
 	moderationHandler := moderation.NewHandler(pool, mediaService, cfg.Media)
 	reviewsHandler := reviews.NewDefaultHandler(pool, mediaService, cfg.Media)
+	tagsHandler := tags.NewDefaultHandler(pool)
 	metricsHandler := metrics.NewDefaultHandler(pool)
 
 	go reviewsHandler.Service().StartEventWorker(context.Background(), 2*time.Second)
@@ -235,6 +237,10 @@ func main() {
 	api.POST("/metrics/events", auth.OptionalAuth(pool), metricsHandler.IngestEvents)
 	api.GET("/cafes/:id/rating", reviewsHandler.GetCafeRating)
 	api.GET("/cafes/:id/reviews", reviewsHandler.ListCafeReviews)
+	api.GET("/tags/descriptive/discovery", auth.OptionalAuth(pool), tagsHandler.GetDiscoveryDescriptive)
+	api.GET("/tags/descriptive/options", tagsHandler.GetDescriptiveOptions)
+	api.GET("/tags/descriptive/preferences", auth.RequireAuth(pool), tagsHandler.GetMyDescriptivePreferences)
+	api.PUT("/tags/descriptive/preferences", auth.RequireAuth(pool), tagsHandler.PutMyDescriptivePreferences)
 	api.GET("/reputation/me", auth.RequireAuth(pool), reviewsHandler.GetMyReputation)
 	api.GET("/reputation/me/events", auth.RequireAuth(pool), reviewsHandler.GetMyReputationEvents)
 	api.GET("/reputation/users/:id/events", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.GetUserReputationEvents)

@@ -130,6 +130,7 @@ export default function CafeDetailsScreen({
     ratingReviews,
     verifiedSharePercent,
     bestReview,
+    specificTags,
     diagnosticsTrust,
     diagnosticsBase,
     diagnosticsTopReviews,
@@ -507,6 +508,7 @@ export default function CafeDetailsScreen({
               cafe={cafe}
               menuMainPhoto={menuMainPhoto}
               menuPhotoItems={menuPhotoItems}
+              specificTags={specificTags}
               menuActiveIndex={menuActiveIndex}
               menuImageReady={menuImageReady}
               onOpenViewer={() => openViewer("menu", menuActiveIndex)}

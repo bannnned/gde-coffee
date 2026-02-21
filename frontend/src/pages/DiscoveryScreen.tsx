@@ -54,6 +54,17 @@ export default function DiscoveryScreen() {
     selectedAmenities,
     favoritesOnly,
     favoriteBusyCafeId,
+    topDescriptiveTags,
+    topDescriptiveTagsSource,
+    isTopTagsLoading,
+    tagOptions,
+    tagOptionsQuery,
+    isTagOptionsLoading,
+    favoriteDescriptiveTagsDraft,
+    isFavoriteTagsLoading,
+    isFavoriteTagsSaving,
+    favoriteTagsError,
+    isFavoriteTagsDirty,
     manualPickMode,
     manualPickedCenter,
     manualPinOffsetY,
@@ -62,6 +73,7 @@ export default function DiscoveryScreen() {
     selectedLocationId,
     locationLabel,
     proposalCity,
+    isAuthed,
     isPrivilegedUser,
     isPhotoAdmin,
     setSettingsOpen,
@@ -85,6 +97,9 @@ export default function DiscoveryScreen() {
     handleStartCafeDescriptionEdit,
     handleSaveCafeDescription,
     handleOpenCafeProposal,
+    setTagOptionsQuery,
+    handleFavoriteTagsDraftChange,
+    handleSaveFavoriteTags,
     open2gisRoute,
     openYandexRoute,
     radiusM,
@@ -135,6 +150,9 @@ export default function DiscoveryScreen() {
       <FiltersBar
         selectedAmenities={selectedAmenities}
         onChangeAmenities={setSelectedAmenities}
+        topTags={topDescriptiveTags}
+        topTagsSource={topDescriptiveTagsSource}
+        topTagsLoading={isTopTagsLoading}
         favoritesOnly={favoritesOnly}
         onToggleFavorites={handleToggleFavoritesFilter}
         canToggleFavorites
@@ -218,6 +236,18 @@ export default function DiscoveryScreen() {
         onOpenMapPicker={handleStartManualPick}
         highlightLocationBlock={needsLocationChoice}
         onSuggestCafe={handleOpenCafeProposal}
+        topTags={favoriteDescriptiveTagsDraft}
+        topTagsOptions={tagOptions}
+        topTagsQuery={tagOptionsQuery}
+        topTagsOptionsLoading={isTagOptionsLoading}
+        topTagsLoading={isFavoriteTagsLoading}
+        topTagsSaving={isFavoriteTagsSaving}
+        topTagsError={favoriteTagsError}
+        topTagsDirty={isFavoriteTagsDirty}
+        isAuthed={isAuthed}
+        onTopTagsChange={handleFavoriteTagsDraftChange}
+        onTopTagsQueryChange={setTagOptionsQuery}
+        onSaveTopTags={handleSaveFavoriteTags}
       />
 
       {detailsOpen && (

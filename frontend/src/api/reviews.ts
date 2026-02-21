@@ -15,6 +15,16 @@ export type ReviewPositionOption = {
   reviews_count: number;
 };
 
+export type CafeSemanticTag = {
+  key: string;
+  label: string;
+  type: string;
+  category: string;
+  score: number;
+  support_count: number;
+  source: string;
+};
+
 export type CafeRatingBestReview = {
   id: string;
   author_name: string;
@@ -40,6 +50,8 @@ export type CafeRatingSnapshot = {
   verified_share: number;
   fraud_risk: number;
   best_review: CafeRatingBestReview | null;
+  descriptive_tags: CafeSemanticTag[];
+  specific_tags: CafeSemanticTag[];
   components: Record<string, unknown>;
   computed_at: string;
 };
@@ -166,6 +178,7 @@ export type CafeReview = {
   drink_name: string;
   positions: ReviewPosition[];
   taste_tags: string[];
+  specific_tags?: string[];
   photos: string[];
   photo_count: number;
   helpful_votes: number;
@@ -375,6 +388,28 @@ function parseBestReview(rawValue: unknown): CafeRatingBestReview | null {
   };
 }
 
+function parseCafeSemanticTag(rawValue: unknown): CafeSemanticTag | null {
+  if (!isRecord(rawValue)) return null;
+  const key = asString(rawValue.key).trim();
+  const label = asString(rawValue.label).trim();
+  if (!key || !label) return null;
+  return {
+    key,
+    label,
+    type: asString(rawValue.type, "specific"),
+    category: asString(rawValue.category, "other"),
+    score: asNumber(rawValue.score),
+    support_count: asNumber(rawValue.support_count),
+    source: asString(rawValue.source, "rules_v1"),
+  };
+}
+
+function parseCafeSemanticTags(rawValue: unknown): CafeSemanticTag[] {
+  return asArray(rawValue)
+    .map(parseCafeSemanticTag)
+    .filter((item): item is CafeSemanticTag => Boolean(item));
+}
+
 function parseDiagnosticsReview(rawValue: unknown): CafeRatingDiagnosticsReview {
   const raw = asRecord(rawValue);
   return {
@@ -556,12 +591,23 @@ export async function listCafeReviews(
       positionOptions: [],
     };
   }
-  const reviews = res.data.reviews.map((review) => ({
-    ...review,
-    positions: Array.isArray(review.positions) ? review.positions : [],
-    quality_formula:
-      typeof review.quality_formula === "string" ? review.quality_formula : "quality_v1",
-  }));
+  const reviews = res.data.reviews.map((review) => {
+    const specificTags = Array.isArray((review as { specific_tags?: unknown }).specific_tags)
+      ? ((review as { specific_tags?: unknown[] }).specific_tags ?? []).filter(
+          (item): item is string => typeof item === "string",
+        )
+      : Array.isArray(review.taste_tags)
+        ? review.taste_tags
+        : [];
+    return {
+      ...review,
+      positions: Array.isArray(review.positions) ? review.positions : [],
+      taste_tags: Array.isArray(review.taste_tags) ? review.taste_tags : [],
+      specific_tags: specificTags,
+      quality_formula:
+        typeof review.quality_formula === "string" ? review.quality_formula : "quality_v1",
+    };
+  });
   return {
     apiContractVersion:
       typeof res.data?.api_contract_version === "string"
@@ -637,6 +683,8 @@ export async function getCafeRatingSnapshot(
     verified_share: asNumber(raw.verified_share),
     fraud_risk: asNumber(raw.fraud_risk),
     best_review: parseBestReview(raw.best_review),
+    descriptive_tags: parseCafeSemanticTags(raw.descriptive_tags),
+    specific_tags: parseCafeSemanticTags(raw.specific_tags),
     components: asRecord(raw.components),
     computed_at: asString(raw.computed_at),
   };

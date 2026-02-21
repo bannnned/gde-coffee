@@ -11,6 +11,7 @@ type MenuSectionProps = {
   cafe: Cafe;
   menuMainPhoto: CafePhoto | null;
   menuPhotoItems: CafePhoto[];
+  specificTags: string[];
   menuActiveIndex: number;
   menuImageReady: boolean;
   onOpenViewer: () => void;
@@ -42,6 +43,7 @@ export default function MenuSection({
   cafe,
   menuMainPhoto,
   menuPhotoItems,
+  specificTags,
   menuActiveIndex,
   menuImageReady,
   onOpenViewer,
@@ -113,6 +115,40 @@ export default function MenuSection({
             Фото меню добавлено: {menuPhotoAddedDate}
           </Text>
         </Box>
+      )}
+
+      {specificTags.length > 0 && (
+        <Group
+          className="horizontal-scroll-modern"
+          wrap="nowrap"
+          gap={8}
+          pt="sm"
+          pb={menuPhotoItems.length > 1 ? 0 : "sm"}
+          style={{
+            overflowX: "auto",
+            paddingInline: "var(--page-edge-padding)",
+          }}
+        >
+          {specificTags.slice(0, 10).map((tag) => (
+            <Paper
+              key={tag}
+              withBorder
+              radius="xl"
+              px="sm"
+              py={4}
+              style={{
+                border: "1px solid color-mix(in srgb, var(--accent) 28%, var(--glass-border))",
+                background:
+                  "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 42%, var(--surface)), color-mix(in srgb, var(--glass-grad-1) 88%, var(--surface)))",
+                color: "var(--cafe-hero-emphasis-color)",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {tag}
+            </Paper>
+          ))}
+        </Group>
       )}
 
       {menuPhotoItems.length > 1 && (

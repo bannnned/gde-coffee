@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"sort"
+	"strings"
 	"time"
 
 	"backend/internal/reputation"
@@ -20,6 +22,7 @@ const (
 	r.rating::float8,
 	r.summary,
 	coalesce(nullif(ra.drink_id, ''), coalesce(ra.drink_name, '')),
+	coalesce(ra.taste_tags, '{}'::text[]),
 	coalesce(cardinality(ra.taste_tags), 0),
 	coalesce(ra.summary_length, 0),
 	coalesce(ra.photo_count, 0),
@@ -112,6 +115,16 @@ type bestReviewCandidate struct {
 	CreatedAt     time.Time
 }
 
+type cafeSemanticTag struct {
+	Key          string  `json:"key"`
+	Label        string  `json:"label"`
+	Type         string  `json:"type"`
+	Category     string  `json:"category"`
+	Score        float64 `json:"score"`
+	SupportCount int     `json:"support_count"`
+	Source       string  `json:"source"`
+}
+
 func (s *Service) GetCafeRatingSnapshot(ctx context.Context, cafeID string) (map[string]interface{}, error) {
 	snapshot, err := s.loadCafeRatingSnapshot(ctx, cafeID)
 	if err == nil {
@@ -135,6 +148,7 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		Rating           float64
 		Summary          string
 		DrinkID          string
+		TasteTags        []string
 		TagsCount        int
 		SummaryLength    int
 		PhotoCount       int
@@ -165,6 +179,7 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 			&item.Rating,
 			&item.Summary,
 			&item.DrinkID,
+			&item.TasteTags,
 			&item.TagsCount,
 			&item.SummaryLength,
 			&item.PhotoCount,
@@ -201,6 +216,8 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 			"author_rep_avg_norm": 0.0,
 			"trust":               1.0,
 			"best_review":         nil,
+			"descriptive_tags":    []cafeSemanticTag{},
+			"specific_tags":       []cafeSemanticTag{},
 			"rating_formula":      ratingFormulaVersion,
 			"quality_formula":     qualityFormulaVersion,
 		}
@@ -230,6 +247,7 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		confirmedReports     int
 		bestReview           *bestReviewCandidate
 	)
+	specificTagStats := map[string]*cafeSemanticTag{}
 
 	for _, item := range reviews {
 		authorRep := authorRepCache[item.AuthorUserID]
@@ -250,6 +268,16 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		)
 		qualityFormulaVersion = resolvedQualityFormula
 		confirmedReports += item.ConfirmedReports
+		tagWeight := scoreWeightForTagSignals(
+			item.HelpfulScore,
+			qualityScore,
+			item.VisitVerified,
+			item.ConfirmedReports,
+		)
+		appendSpecificTagSignal(specificTagStats, "drink:"+item.DrinkID, item.DrinkID, "drink", tagWeight)
+		for _, tasteTag := range item.TasteTags {
+			appendSpecificTagSignal(specificTagStats, "taste:"+tasteTag, tasteTag, "taste", tagWeight)
+		}
 
 		sumRatings += item.Rating
 		sumAuthorRepNorm += clamp(authorRep/ratingAuthorRepNormMax, 0, 1)
@@ -275,6 +303,14 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 	verifiedShare := float64(verifiedReviewsCount) / float64(reviewsCount)
 	authorRepAvgNorm := sumAuthorRepNorm / float64(reviewsCount)
 	fraudRisk := clamp(float64(flaggedReviewsCount)/float64(reviewsCount), 0, 1)
+	descriptiveTags := buildDescriptiveCafeTags(
+		reviewsCount,
+		verifiedReviewsCount,
+		ratingsMean,
+		verifiedShare,
+		fraudRisk,
+	)
+	specificTags := buildTopSpecificCafeTags(specificTagStats, 8)
 
 	// rating_v2 formula:
 	// 1) base = bayesian_mean(cafe_ratings, global_mean, m)
@@ -343,6 +379,8 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		"verified_reviews":    verifiedReviewsCount,
 		"published_reviews":   reviewsCount,
 		"best_review":         bestReviewPayload,
+		"descriptive_tags":    descriptiveTags,
+		"specific_tags":       specificTags,
 	}
 	for key, value := range s.versioningSnapshot() {
 		components[key] = value
@@ -438,6 +476,8 @@ func (s *Service) loadCafeRatingSnapshot(ctx context.Context, cafeID string) (ma
 	if raw, ok := components["best_review"]; ok {
 		bestReview = raw
 	}
+	descriptiveTags := sanitizeCafeSemanticTags(components["descriptive_tags"], "descriptive")
+	specificTags := sanitizeCafeSemanticTags(components["specific_tags"], "specific")
 
 	response := map[string]interface{}{
 		"cafe_id":                cafeID,
@@ -448,6 +488,8 @@ func (s *Service) loadCafeRatingSnapshot(ctx context.Context, cafeID string) (ma
 		"verified_share":         roundFloat(verifiedShare, 4),
 		"fraud_risk":             fraudRisk,
 		"best_review":            bestReview,
+		"descriptive_tags":       descriptiveTags,
+		"specific_tags":          specificTags,
 		"components":             components,
 		"computed_at":            computedAt.UTC().Format(time.RFC3339),
 	}
@@ -481,6 +523,222 @@ func isBetterBestReviewCandidate(next bestReviewCandidate, current bestReviewCan
 
 func almostEqual(a float64, b float64) bool {
 	return math.Abs(a-b) < 0.0000001
+}
+
+func scoreWeightForTagSignals(helpfulScore float64, qualityScore float64, visitVerified bool, confirmedReports int) float64 {
+	weight := 1.0 + clamp(helpfulScore, 0, 10)/4.0 + clamp(qualityScore, 0, 100)/180.0
+	if visitVerified {
+		weight += 0.6
+	}
+	if confirmedReports > 0 {
+		weight -= clamp(float64(confirmedReports)*0.25, 0, 0.8)
+	}
+	if weight < 0.3 {
+		return 0.3
+	}
+	return roundFloat(weight, 4)
+}
+
+func appendSpecificTagSignal(
+	target map[string]*cafeSemanticTag,
+	rawKey string,
+	rawLabel string,
+	category string,
+	weight float64,
+) {
+	key := normalizeSemanticTagToken(rawKey)
+	label := normalizeSemanticTagLabel(rawLabel)
+	if key == "" || label == "" {
+		return
+	}
+	current, ok := target[key]
+	if !ok {
+		target[key] = &cafeSemanticTag{
+			Key:          key,
+			Label:        label,
+			Type:         "specific",
+			Category:     category,
+			Score:        weight,
+			SupportCount: 1,
+			Source:       "rules_v1",
+		}
+		return
+	}
+	current.SupportCount++
+	current.Score = roundFloat(current.Score+weight, 4)
+}
+
+func buildTopSpecificCafeTags(target map[string]*cafeSemanticTag, limit int) []cafeSemanticTag {
+	if limit <= 0 || len(target) == 0 {
+		return []cafeSemanticTag{}
+	}
+	items := make([]cafeSemanticTag, 0, len(target))
+	for _, item := range target {
+		if item == nil {
+			continue
+		}
+		next := *item
+		next.Score = roundFloat(next.Score, 3)
+		items = append(items, next)
+	}
+	sort.SliceStable(items, func(i, j int) bool {
+		if !almostEqual(items[i].Score, items[j].Score) {
+			return items[i].Score > items[j].Score
+		}
+		if items[i].SupportCount != items[j].SupportCount {
+			return items[i].SupportCount > items[j].SupportCount
+		}
+		return items[i].Label < items[j].Label
+	})
+	if len(items) > limit {
+		items = items[:limit]
+	}
+	return items
+}
+
+func buildDescriptiveCafeTags(
+	reviewsCount int,
+	verifiedReviewsCount int,
+	ratingsMean float64,
+	verifiedShare float64,
+	fraudRisk float64,
+) []cafeSemanticTag {
+	tags := make([]cafeSemanticTag, 0, 4)
+	appendTag := func(key, label, category string, score float64, support int) {
+		tags = append(tags, cafeSemanticTag{
+			Key:          key,
+			Label:        label,
+			Type:         "descriptive",
+			Category:     category,
+			Score:        roundFloat(score, 3),
+			SupportCount: support,
+			Source:       "rules_v1",
+		})
+	}
+
+	if ratingsMean >= 4.4 && reviewsCount >= 5 {
+		appendTag("stable_quality", "стабильное качество", "quality", ratingsMean, reviewsCount)
+	}
+	if verifiedShare >= 0.35 && verifiedReviewsCount >= 3 {
+		appendTag(
+			"verified_visits",
+			"проверенные визиты",
+			"trust",
+			verifiedShare*100,
+			verifiedReviewsCount,
+		)
+	}
+	if reviewsCount >= 15 {
+		appendTag("many_reviews", "много отзывов", "social_proof", float64(reviewsCount), reviewsCount)
+	}
+	if fraudRisk <= 0.08 && reviewsCount >= 8 {
+		appendTag(
+			"reliable_feedback",
+			"надежные отзывы",
+			"trust",
+			(1-fraudRisk)*100,
+			reviewsCount,
+		)
+	}
+
+	if len(tags) == 0 {
+		return []cafeSemanticTag{}
+	}
+	sort.SliceStable(tags, func(i, j int) bool {
+		if !almostEqual(tags[i].Score, tags[j].Score) {
+			return tags[i].Score > tags[j].Score
+		}
+		return tags[i].Label < tags[j].Label
+	})
+	return tags
+}
+
+func sanitizeCafeSemanticTags(raw interface{}, fallbackType string) []cafeSemanticTag {
+	if raw == nil {
+		return []cafeSemanticTag{}
+	}
+
+	rawItems, ok := raw.([]interface{})
+	if !ok {
+		return []cafeSemanticTag{}
+	}
+
+	result := make([]cafeSemanticTag, 0, len(rawItems))
+	for _, item := range rawItems {
+		rec, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		key := normalizeSemanticTagToken(toStringSafe(rec["key"]))
+		label := normalizeSemanticTagLabel(toStringSafe(rec["label"]))
+		if key == "" || label == "" {
+			continue
+		}
+		tagType := normalizeSemanticTagToken(toStringSafe(rec["type"]))
+		if tagType == "" {
+			tagType = fallbackType
+		}
+		category := normalizeSemanticTagToken(toStringSafe(rec["category"]))
+		if category == "" {
+			category = "other"
+		}
+		result = append(result, cafeSemanticTag{
+			Key:          key,
+			Label:        label,
+			Type:         tagType,
+			Category:     category,
+			Score:        roundFloat(toFloatSafe(rec["score"]), 3),
+			SupportCount: int(math.Max(0, math.Round(toFloatSafe(rec["support_count"])))),
+			Source:       normalizeSemanticTagToken(toStringSafe(rec["source"])),
+		})
+	}
+	return result
+}
+
+func normalizeSemanticTagToken(value string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(value))
+	if trimmed == "" {
+		return ""
+	}
+	parts := strings.Fields(trimmed)
+	return strings.Join(parts, " ")
+}
+
+func normalizeSemanticTagLabel(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+	parts := strings.Fields(trimmed)
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, " ")
+}
+
+func toStringSafe(value interface{}) string {
+	cast, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return cast
+}
+
+func toFloatSafe(value interface{}) float64 {
+	switch typed := value.(type) {
+	case float64:
+		return typed
+	case float32:
+		return float64(typed)
+	case int:
+		return float64(typed)
+	case int64:
+		return float64(typed)
+	case int32:
+		return float64(typed)
+	default:
+		return 0
+	}
 }
 
 func (s *Service) lookupUserReputationScore(ctx context.Context, userID string) (float64, error) {

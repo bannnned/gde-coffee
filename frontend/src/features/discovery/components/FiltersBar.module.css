@@ -117,6 +117,55 @@
   display: inline-flex;
 }
 
+.topTagsRow {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topTagsTitle {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.topTagsScroller {
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.topTagsScroller::-webkit-scrollbar {
+  display: none;
+}
+
+.topTagChip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text);
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2));
+  box-shadow: var(--glass-shadow);
+}
+
+.topTagSkeleton {
+  width: 120px;
+  height: 24px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.18));
+  background-size: 220% 100%;
+  animation: tagSkeletonShift 1.1s linear infinite;
+}
+
 .attentionButton {
   box-shadow:
     0 0 0 1px var(--attention-ring),
@@ -133,5 +182,14 @@
   50% {
     transform: scale(1.02);
     filter: brightness(1.04);
+  }
+}
+
+@keyframes tagSkeletonShift {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
   }
 }

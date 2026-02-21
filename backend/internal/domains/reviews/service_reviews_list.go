@@ -122,6 +122,7 @@ func (s *Service) ListCafeReviews(
 			"drink_name":        item.DrinkName,
 			"positions":         mapReviewPositionsForResponse(item.Positions),
 			"taste_tags":        tasteTags,
+			"specific_tags":     tasteTags,
 			"photos":            reviewPhotos,
 			"photo_count":       len(reviewPhotos),
 			"helpful_votes":     helpfulVotes,

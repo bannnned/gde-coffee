@@ -13,6 +13,16 @@ type CafeCardFooterProps = {
 
 const cafeRatingSnapshotCache = new Map<string, CafeRatingSnapshot>();
 
+function buildAmenityDescriptors(amenities: string[]): string[] {
+  const descriptors: string[] = [];
+  for (const amenity of amenities) {
+    const label = (AMENITY_LABELS[amenity] ?? amenity).trim();
+    if (!label) continue;
+    descriptors.push(`есть ${label}`);
+  }
+  return descriptors;
+}
+
 export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProps) {
   const [ratingState, setRatingState] = useState<{
     cafeId: string;
@@ -69,6 +79,14 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
     if (!ratingSnapshot) return "";
     return ratingSnapshot.rating.toFixed(1);
   }, [ratingSnapshot]);
+  const descriptiveLabels = useMemo(() => {
+    const fromSnapshot = (ratingSnapshot?.descriptive_tags ?? [])
+      .map((item) => item.label.trim())
+      .filter(Boolean);
+    const base = fromSnapshot.length > 0 ? fromSnapshot : buildAmenityDescriptors(cafe.amenities);
+    const unique = Array.from(new Set(base));
+    return unique.slice(0, 4);
+  }, [cafe.amenities, ratingSnapshot?.descriptive_tags]);
 
   return (
     <Box
@@ -154,22 +172,24 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
           </Box>
         </Group>
       </Box>
-      <Group
-        gap={6}
-        mt={8}
-        wrap="nowrap"
-        style={{
-          overflow: "hidden",
-          WebkitMaskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
-          maskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
-        }}
-      >
-        {cafe.amenities.map((a) => (
-          <Badge key={a} variant="light" styles={badgeStyles}>
-            {AMENITY_LABELS[a] ?? a}
-          </Badge>
-        ))}
-      </Group>
+      {descriptiveLabels.length > 0 && (
+        <Group
+          gap={6}
+          mt={8}
+          wrap="nowrap"
+          style={{
+            overflow: "hidden",
+            WebkitMaskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
+            maskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
+          }}
+        >
+          {descriptiveLabels.map((label) => (
+            <Badge key={label} variant="light" styles={badgeStyles}>
+              {label}
+            </Badge>
+          ))}
+        </Group>
+      )}
     </Box>
   );
 }

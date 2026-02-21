@@ -2,6 +2,7 @@ import {
   Chip,
   Drawer,
   Group,
+  MultiSelect,
   Select,
   Stack,
   Text,
@@ -39,6 +40,18 @@ type SettingsDrawerProps = {
   onOpenMapPicker: () => void;
   highlightLocationBlock?: boolean;
   onSuggestCafe?: () => void;
+  topTags: string[];
+  topTagsOptions: string[];
+  topTagsQuery: string;
+  topTagsOptionsLoading?: boolean;
+  topTagsLoading?: boolean;
+  topTagsSaving?: boolean;
+  topTagsError?: string | null;
+  topTagsDirty?: boolean;
+  isAuthed: boolean;
+  onTopTagsChange: (next: string[]) => void;
+  onTopTagsQueryChange: (value: string) => void;
+  onSaveTopTags: () => void;
 };
 
 const RADIUS_OPTIONS = [1000, 2500, 5000, 0] as const;
@@ -58,6 +71,18 @@ export default function SettingsDrawer({
   onOpenMapPicker,
   highlightLocationBlock = false,
   onSuggestCafe,
+  topTags,
+  topTagsOptions,
+  topTagsQuery,
+  topTagsOptionsLoading = false,
+  topTagsLoading = false,
+  topTagsSaving = false,
+  topTagsError = null,
+  topTagsDirty = false,
+  isAuthed,
+  onTopTagsChange,
+  onTopTagsQueryChange,
+  onSaveTopTags,
 }: SettingsDrawerProps) {
   const theme = useMantineTheme();
   const isCoarsePointer = useMediaQuery("(pointer: coarse)") ?? false;
@@ -199,6 +224,48 @@ export default function SettingsDrawer({
               })}
             </div>
           </Chip.Group>
+        </Stack>
+
+        <Stack gap="xs">
+          <Text>Теги на главной</Text>
+          {!isAuthed ? (
+            <Text size="sm" c="dimmed">
+              Войдите в аккаунт, чтобы выбрать любимые теги.
+            </Text>
+          ) : (
+            <>
+              <MultiSelect
+                data={topTagsOptions.map((tag) => ({ value: tag, label: tag }))}
+                value={topTags}
+                searchable
+                maxValues={12}
+                clearable
+                disabled={topTagsLoading || topTagsSaving}
+                placeholder="Начните вводить тег"
+                nothingFoundMessage="Тег не найден"
+                searchValue={topTagsQuery}
+                onSearchChange={onTopTagsQueryChange}
+                onChange={onTopTagsChange}
+                comboboxProps={{ withinPortal: false }}
+                rightSection={topTagsOptionsLoading ? <Text size="xs">...</Text> : null}
+                styles={discoveryGlassSelectStyles}
+              />
+              <Button
+                variant="light"
+                onClick={onSaveTopTags}
+                disabled={!topTagsDirty || topTagsSaving || topTagsLoading}
+                loading={topTagsSaving}
+                styles={getDiscoveryGlassButtonStyles(Boolean(topTagsDirty))}
+              >
+                Сохранить теги
+              </Button>
+              {topTagsError && (
+                <Text size="sm" c="red">
+                  {topTagsError}
+                </Text>
+              )}
+            </>
+          )}
         </Stack>
 
         <Group justify="space-between">

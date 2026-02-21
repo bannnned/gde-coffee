@@ -26,6 +26,9 @@ import {
 type FiltersBarProps = {
   selectedAmenities: Amenity[];
   onChangeAmenities: (next: Amenity[]) => void;
+  topTags?: string[];
+  topTagsSource?: string;
+  topTagsLoading?: boolean;
   favoritesOnly?: boolean;
   onToggleFavorites?: () => void;
   canToggleFavorites?: boolean;
@@ -39,6 +42,9 @@ const CHIP_GAP_PX = 4;
 export default function FiltersBar({
   selectedAmenities,
   onChangeAmenities,
+  topTags = [],
+  topTagsSource = "city_popular",
+  topTagsLoading = false,
   favoritesOnly = false,
   onToggleFavorites,
   canToggleFavorites = false,
@@ -76,6 +82,7 @@ export default function FiltersBar({
   }, [user]);
 
   const amenityChipLabelStyles = createDiscoveryAmenityChipLabelStyles(theme.fontSizes.xs);
+  const hasTopTags = topTags.length > 0;
 
   useLayoutEffect(() => {
     const container = chipsScrollerRef.current;
@@ -283,6 +290,25 @@ export default function FiltersBar({
           </Chip.Group>
         </div>
       </Group>
+
+      {(topTagsLoading || hasTopTags) && (
+        <Box mt={6} className={classes.topTagsRow}>
+          <Text size="xs" className={classes.topTagsTitle}>
+            {topTagsSource === "user_favorites" ? "Ваши теги" : "Популярные теги"}
+          </Text>
+          <div className={classes.topTagsScroller}>
+            {topTagsLoading && !hasTopTags ? (
+              <span className={classes.topTagSkeleton} />
+            ) : (
+              topTags.map((tag) => (
+                <span key={tag} className={classes.topTagChip}>
+                  {tag}
+                </span>
+              ))
+            )}
+          </div>
+        </Box>
+      )}
 
       {showFetchingBadge && (
         <Box mt="xs" className={classes.fetchRow}>
