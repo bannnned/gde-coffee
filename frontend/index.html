@@ -10,14 +10,23 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="dns-prefetch" href="//tiles.openfreemap.org" />
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+    <link
+      rel="preload"
+      href="https://tiles.openfreemap.org/styles/liberty"
+      as="fetch"
+      crossorigin="anonymous"
+    />
     <title>Где кофе</title>
   </head>
   <body>
     <div id="app-splash" aria-hidden="true">
-      <div class="splash-card">
-        <img src="/logo.png?v=2" alt="" />
-        <div class="splash-title">Где кофе</div>
-        <div class="splash-spinner"></div>
+      <div class="splash-lockup">
+        <div class="splash-logo-wrap">
+          <img src="/logo.png?v=2" alt="" class="splash-logo" />
+        </div>
+        <div class="splash-wordmark">где кофе?</div>
       </div>
     </div>
     <div id="root"></div>

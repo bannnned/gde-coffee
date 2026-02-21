@@ -282,7 +282,7 @@ export default function ProfileScreen() {
                             aria-label="Редактировать имя"
                             onClick={handleNameEditStart}
                           >
-                            <IconPencil size={16} />
+                            <IconPencil size={24} />
                           </button>
                         </>
                       )}

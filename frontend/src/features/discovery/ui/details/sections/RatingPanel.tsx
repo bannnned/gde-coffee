@@ -41,12 +41,51 @@ export default function RatingPanel({
   diagnosticsBase,
   diagnosticsTopReviews,
 }: RatingPanelProps) {
+  const statChipStyles = {
+    root: {
+      borderRadius: 999,
+      minHeight: 30,
+      paddingInline: 12,
+      border: "1px solid color-mix(in srgb, var(--accent) 34%, var(--glass-border))",
+      background:
+        "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 56%, var(--surface)), color-mix(in srgb, var(--glass-grad-1) 90%, var(--surface)))",
+      color: "var(--cafe-hero-emphasis-color)",
+      fontWeight: 700,
+      letterSpacing: "0.02em",
+      boxShadow:
+        "0 8px 18px color-mix(in srgb, var(--color-brand-accent-soft) 44%, transparent)",
+      backdropFilter: "blur(8px) saturate(130%)",
+      WebkitBackdropFilter: "blur(8px) saturate(130%)",
+    },
+    label: {
+      lineHeight: 1.2,
+    },
+  } as const;
+
+  const metaChipStyles = {
+    root: {
+      borderRadius: 999,
+      minHeight: 24,
+      paddingInline: 10,
+      border: "1px solid color-mix(in srgb, var(--accent) 26%, var(--glass-border))",
+      background:
+        "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 48%, var(--surface)), color-mix(in srgb, var(--glass-grad-1) 84%, var(--surface)))",
+      color: "var(--cafe-hero-emphasis-color)",
+      fontWeight: 700,
+      letterSpacing: "0.015em",
+      boxShadow:
+        "0 6px 14px color-mix(in srgb, var(--color-brand-accent-soft) 34%, transparent)",
+      backdropFilter: "blur(6px) saturate(125%)",
+      WebkitBackdropFilter: "blur(6px) saturate(125%)",
+    },
+  } as const;
+
   return (
     <>
       <Group gap={6} wrap="wrap">
-        <Badge variant="light">Рейтинг: {ratingLabel}</Badge>
-        <Badge variant="light">Отзывы: {ratingReviews}</Badge>
-        <Badge variant="light">Визиты: {verifiedSharePercent}%</Badge>
+        <Badge styles={statChipStyles}>Рейтинг: {ratingLabel}</Badge>
+        <Badge styles={statChipStyles}>Отзывы: {ratingReviews}</Badge>
+        <Badge styles={statChipStyles}>Визиты: {verifiedSharePercent}%</Badge>
       </Group>
       {ratingLoading && (
         <Text size="xs" c="dimmed">
@@ -85,7 +124,7 @@ export default function RatingPanel({
               <Text fw={600} size="sm">
                 Лучший отзыв
               </Text>
-              <Badge size="xs" variant="light">
+              <Badge size="xs" styles={metaChipStyles}>
                 Полезность: {bestReview.helpful_score.toFixed(1)}
               </Badge>
             </Group>

@@ -1,0 +1,79 @@
+.loadingList {
+  width: 100%;
+}
+
+.loadingItem {
+  position: relative;
+  height: 42px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--glass-grad-1), var(--glass-grad-2));
+  box-shadow: 0 6px 16px rgba(31, 26, 23, 0.08);
+}
+
+.loadingShine {
+  position: absolute;
+  inset: 0;
+  transform: translateX(-120%);
+  background: linear-gradient(
+    104deg,
+    rgba(255, 255, 255, 0) 24%,
+    rgba(255, 255, 255, 0.34) 46%,
+    rgba(255, 255, 255, 0.12) 56%,
+    rgba(255, 255, 255, 0) 76%
+  );
+  animation: cafe-list-skeleton-shine 1.25s ease-in-out infinite;
+}
+
+.loadingContent {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+}
+
+.loadingLine {
+  display: block;
+  height: 11px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 78, 31, 0.14),
+    rgba(255, 78, 31, 0.22)
+  );
+}
+
+@keyframes cafe-list-skeleton-shine {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+:global(:root[data-mantine-color-scheme='dark']) .loadingItem {
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+}
+
+:global(:root[data-mantine-color-scheme='dark']) .loadingShine {
+  background: linear-gradient(
+    104deg,
+    rgba(255, 248, 242, 0) 22%,
+    rgba(255, 248, 242, 0.2) 46%,
+    rgba(255, 248, 242, 0.08) 58%,
+    rgba(255, 248, 242, 0) 76%
+  );
+}
+
+:global(:root[data-mantine-color-scheme='dark']) .loadingLine {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 107, 58, 0.24),
+    rgba(255, 138, 95, 0.3)
+  );
+}

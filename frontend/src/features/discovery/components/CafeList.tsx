@@ -1,9 +1,10 @@
-import { Button, Stack, Text } from "@mantine/core";
+import { Button, Stack } from "@mantine/core";
 import type { MutableRefObject } from "react";
 
 import type { Cafe } from "../../../entities/cafe/model/types";
 import { DISCOVERY_UI_TEXT } from "../constants";
 import { formatDistance } from "../utils";
+import classes from "./CafeList.module.css";
 
 type CafeListProps = {
   cafes: Cafe[];
@@ -23,7 +24,31 @@ export default function CafeList({
   showDistance = true,
 }: CafeListProps) {
   if (isLoading) {
-    return <Text size="sm">{DISCOVERY_UI_TEXT.loading}</Text>;
+    return (
+      <Stack
+        gap="xs"
+        className={classes.loadingList}
+        role="status"
+        aria-live="polite"
+        aria-label={DISCOVERY_UI_TEXT.loading}
+      >
+        {[
+          { name: "48%", meta: "16%" },
+          { name: "62%", meta: "20%" },
+          { name: "54%", meta: "14%" },
+          { name: "68%", meta: "22%" },
+          { name: "44%", meta: "18%" },
+        ].map((item, idx) => (
+          <div key={idx} className={classes.loadingItem}>
+            <div className={classes.loadingShine} />
+            <div className={classes.loadingContent}>
+              <span className={classes.loadingLine} style={{ width: item.name }} />
+              <span className={classes.loadingLine} style={{ width: item.meta }} />
+            </div>
+          </div>
+        ))}
+      </Stack>
+    );
   }
 
   if (cafes.length === 0) {

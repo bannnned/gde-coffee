@@ -133,69 +133,71 @@ export function ReviewFeed({
         />
       </Group>
 
-      {isLoading && (
-        <>
-          {reviews.length === 0 ? (
-            <>
-              <ReviewCardSkeleton />
-              <ReviewCardSkeleton />
-              <ReviewCardSkeleton />
-            </>
-          ) : null}
-        </>
-      )}
+      <Stack gap="sm" mt="sm">
+        {isLoading && (
+          <>
+            {reviews.length === 0 ? (
+              <>
+                <ReviewCardSkeleton />
+                <ReviewCardSkeleton />
+                <ReviewCardSkeleton />
+              </>
+            ) : null}
+          </>
+        )}
 
-      {loadError && (
-        <Paper
-          withBorder
-          radius="md"
-          p="md"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-        >
-          <Text size="sm" c="red">
-            {loadError}
-          </Text>
-        </Paper>
-      )}
+        {loadError && (
+          <Paper
+            withBorder
+            radius="md"
+            p="md"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+          >
+            <Text size="sm" c="red">
+              {loadError}
+            </Text>
+          </Paper>
+        )}
 
-      {!isLoading && !loadError && reviews.length === 0 && (
-        <Paper
-          withBorder
-          radius="md"
-          p="md"
-          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-        >
-          <Text size="sm" c="dimmed">
-            Пока нет отзывов. Станьте первым автором.
-          </Text>
-        </Paper>
-      )}
+        {!isLoading && !loadError && reviews.length === 0 && (
+          <Paper
+            withBorder
+            radius="md"
+            p="md"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+          >
+            <Text size="sm" c="dimmed">
+              Пока нет отзывов. Станьте первым автором.
+            </Text>
+          </Paper>
+        )}
 
-      {!loadError &&
-        reviews.map((review, index) => (
-          <Transition key={review.id} mounted transition="fade" duration={220} timingFunction="ease">
-            {(styles) => (
-              <div style={{ ...styles, transitionDelay: `${Math.min(index, 6) * 24}ms` }}>
-                <ReviewCard
-                  review={review}
-                  isOwn={review.user_id === currentUserId}
-                  helpfulLoading={helpfulPendingReviewID === review.id}
-                  onMarkHelpful={onMarkHelpful}
-                  onOpenExpandedReview={(item) => setExpandedReviewID(item.id)}
-                  canDeleteReviews={canDeleteReviews}
-                  isAdmin={isAdmin}
-                  onDeleteReview={onDeleteReview}
-                />
-              </div>
-            )}
-          </Transition>
-        ))}
+        {!loadError &&
+          reviews.map((review, index) => (
+            <Transition key={review.id} mounted transition="fade" duration={220} timingFunction="ease">
+              {(styles) => (
+                <div style={{ ...styles, transitionDelay: `${Math.min(index, 6) * 24}ms` }}>
+                  <ReviewCard
+                    review={review}
+                    isOwn={review.user_id === currentUserId}
+                    helpfulLoading={helpfulPendingReviewID === review.id}
+                    onMarkHelpful={onMarkHelpful}
+                    onOpenExpandedReview={(item) => setExpandedReviewID(item.id)}
+                    canDeleteReviews={canDeleteReviews}
+                    isAdmin={isAdmin}
+                    onDeleteReview={onDeleteReview}
+                  />
+                </div>
+              )}
+            </Transition>
+          ))}
 
-      {!isLoading && !loadError && hasMore && (
-        <Button variant="light" onClick={onLoadMore} loading={isLoadingMore}>
-          Показать еще
-        </Button>
-      )}
+        {!isLoading && !loadError && hasMore && (
+          <Button variant="light" onClick={onLoadMore} loading={isLoadingMore}>
+            Показать еще
+          </Button>
+        )}
+      </Stack>
 
       <Transition mounted={isLoading && reviews.length > 0} transition="fade" duration={180} timingFunction="ease">
         {(styles) => (
@@ -414,7 +416,7 @@ function ReviewCard({
 
         {review.photos.length > 0 && (
           <Stack gap={6}>
-            <Group wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
+            <Group className="horizontal-scroll-modern" wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
               {visiblePhotos.map((photoUrl, index) => (
                 <Paper
                   key={`${review.id}:${index}`}

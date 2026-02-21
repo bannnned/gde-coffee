@@ -341,6 +341,8 @@ export default function Map({
       style: MAP_STYLE_URL,
       center,
       zoom,
+      attributionControl: false,
+      fadeDuration: 0,
     });
 
     const handleClick = (e: maplibregl.MapLayerMouseEvent) => {

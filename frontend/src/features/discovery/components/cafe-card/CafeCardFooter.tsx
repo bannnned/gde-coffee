@@ -65,7 +65,6 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
   }, [cafe.id, cachedSnapshot]);
 
   const hasReviewStats = (ratingSnapshot?.reviews_count ?? 0) > 0;
-  const showNewBadge = !ratingLoading && !hasReviewStats;
   const ratingLabel = useMemo(() => {
     if (!ratingSnapshot) return "";
     return ratingSnapshot.rating.toFixed(1);
@@ -82,80 +81,79 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
         zIndex: 3,
       }}
     >
-      <Group justify="space-between" align="flex-start" gap={10} wrap="nowrap">
-        <Box style={{ minWidth: 0, flex: 1 }}>
-          <Text
-            fw={700}
-            size="md"
-            lineClamp={1}
-            title={cafe.name}
-            style={{
-              color: "var(--cafe-hero-emphasis-color)",
-              textShadow: "0 1px 2px color-mix(in srgb, var(--cafe-hero-overlay-3) 26%, transparent)",
-            }}
-          >
-            {cafe.name}
-          </Text>
-          <Text
-            size="sm"
-            lineClamp={1}
-            title={cafe.address}
-            style={{
-              color: "color-mix(in srgb, var(--cafe-hero-subtitle-color) 92%, var(--text))",
-              textShadow: "0 1px 2px color-mix(in srgb, var(--cafe-hero-overlay-3) 18%, transparent)",
-            }}
-          >
-            {cafe.address}
-          </Text>
-        </Box>
-        <Box
-          style={{
-            minWidth: 92,
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            paddingTop: showNewBadge ? 20 : 2,
-          }}
-        >
-          {ratingLoading ? (
-            <Text size="xs" style={{ color: "var(--cafe-hero-subtitle-color)" }}>
-              ...
-            </Text>
-          ) : hasReviewStats ? (
-            <Box
+      <Box
+        style={{
+          borderRadius: 14,
+          border: "1px solid color-mix(in srgb, var(--glass-border) 82%, transparent)",
+          background:
+            "linear-gradient(135deg, color-mix(in srgb, var(--surface) 86%, transparent), color-mix(in srgb, var(--surface) 62%, transparent))",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          padding: "8px 10px",
+        }}
+      >
+        <Group justify="space-between" align="flex-end" gap={10} wrap="nowrap">
+          <Box style={{ minWidth: 0, flex: 1 }}>
+            <Text
+              fw={700}
+              size="md"
+              lineClamp={1}
+              title={cafe.name}
               style={{
-                display: "grid",
-                justifyItems: "end",
-                gap: 8,
-                padding: "6px 8px",
-                borderRadius: 12,
-                background:
-                  "linear-gradient(135deg, color-mix(in srgb, var(--surface) 82%, transparent), color-mix(in srgb, var(--surface) 58%, transparent))",
-                border: "1px solid color-mix(in srgb, var(--glass-border) 82%, transparent)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
+                color: "var(--cafe-hero-emphasis-color)",
+                textShadow: "0 1px 2px color-mix(in srgb, var(--cafe-hero-overlay-3) 26%, transparent)",
               }}
             >
-              <Group gap={4} wrap="nowrap">
-                <IconStarFilled size={14} color="var(--cafe-hero-emphasis-color)" />
-                <Text fw={700} size="sm" style={{ color: "var(--cafe-hero-emphasis-color)" }}>
-                  {ratingLabel}
-                </Text>
-              </Group>
-              <Group gap={4} wrap="nowrap">
-                <IconMessageCircle size={14} color="var(--cafe-hero-subtitle-color)" />
-                <Text size="sm" style={{ color: "var(--cafe-hero-subtitle-color)" }}>
-                  {ratingSnapshot?.reviews_count ?? 0}
-                </Text>
-              </Group>
-            </Box>
-          ) : (
-            <Badge variant="light" radius="xl" styles={badgeStyles}>
-              new
-            </Badge>
-          )}
-        </Box>
-      </Group>
+              {cafe.name}
+            </Text>
+            <Text
+              size="sm"
+              lineClamp={1}
+              title={cafe.address}
+              style={{
+                color: "color-mix(in srgb, var(--cafe-hero-subtitle-color) 92%, var(--text))",
+                textShadow: "0 1px 2px color-mix(in srgb, var(--cafe-hero-overlay-3) 18%, transparent)",
+              }}
+            >
+              {cafe.address}
+            </Text>
+          </Box>
+          <Box
+            style={{
+              minWidth: 74,
+              display: "grid",
+              justifyItems: "end",
+              gap: 6,
+              alignContent: "end",
+            }}
+          >
+            {ratingLoading ? (
+              <Text size="xs" style={{ color: "var(--cafe-hero-subtitle-color)" }}>
+                ...
+              </Text>
+            ) : hasReviewStats ? (
+              <>
+                <Group gap={4} wrap="nowrap">
+                  <IconStarFilled size={14} color="var(--cafe-hero-emphasis-color)" />
+                  <Text fw={700} size="sm" style={{ color: "var(--cafe-hero-emphasis-color)" }}>
+                    {ratingLabel}
+                  </Text>
+                </Group>
+                <Group gap={4} wrap="nowrap">
+                  <IconMessageCircle size={14} color="var(--cafe-hero-subtitle-color)" />
+                  <Text size="sm" style={{ color: "var(--cafe-hero-subtitle-color)" }}>
+                    {ratingSnapshot?.reviews_count ?? 0}
+                  </Text>
+                </Group>
+              </>
+            ) : (
+              <Badge variant="light" radius="xl" styles={badgeStyles}>
+                new
+              </Badge>
+            )}
+          </Box>
+        </Group>
+      </Box>
       <Group
         gap={6}
         mt={8}

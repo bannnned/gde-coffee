@@ -87,12 +87,20 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 )
 
+const splashMountedAt = performance.now()
+const MIN_SPLASH_VISIBLE_MS = 1400
+
 const hideSplash = () => {
-  document.body.classList.add('app-loaded')
-  const splash = document.getElementById('app-splash')
-  if (splash) {
-    window.setTimeout(() => splash.remove(), 400)
-  }
+  const elapsed = performance.now() - splashMountedAt
+  const delay = Math.max(0, MIN_SPLASH_VISIBLE_MS - elapsed)
+
+  window.setTimeout(() => {
+    document.body.classList.add('app-loaded')
+    const splash = document.getElementById('app-splash')
+    if (splash) {
+      window.setTimeout(() => splash.remove(), 400)
+    }
+  }, delay)
 }
 
 if (document.readyState === 'complete') {

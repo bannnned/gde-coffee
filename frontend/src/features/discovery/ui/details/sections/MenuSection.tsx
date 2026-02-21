@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Group, Paper, Stack, Text } from "@mantine/core";
+import { Box, Button, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconCamera, IconPlus } from "@tabler/icons-react";
 
 import type { Cafe, CafePhoto } from "../../../../../entities/cafe/model/types";
@@ -119,6 +119,7 @@ export default function MenuSection({
 
       {menuPhotoItems.length > 1 && (
         <Group
+          className="horizontal-scroll-modern"
           wrap="nowrap"
           gap={8}
           py="sm"
@@ -175,27 +176,33 @@ export default function MenuSection({
         )}
         {onManagePhotos && (
           <Group justify="center" mt={menuPhotoItems.length === 0 ? "xs" : 0}>
-            <ActionIcon
-              size="xl"
+            <Button
+              size="sm"
               radius="xl"
               variant="default"
               aria-label="Фото меню"
               onClick={() => onManagePhotos("menu")}
+              leftSection={<IconCamera size={16} />}
+              rightSection={<IconPlus size={14} />}
               styles={{
                 root: {
-                  border: "1px solid var(--glass-border)",
-                  background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-                  boxShadow: "var(--glass-shadow)",
-                  backdropFilter: "blur(12px) saturate(140%)",
-                  WebkitBackdropFilter: "blur(12px) saturate(140%)",
+                  borderRadius: 999,
+                  border: "1px solid color-mix(in srgb, var(--accent) 46%, var(--glass-border))",
+                  background:
+                    "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 66%, var(--surface)), color-mix(in srgb, var(--glass-grad-1) 88%, var(--surface)))",
+                  color: "var(--cafe-hero-emphasis-color)",
+                  boxShadow:
+                    "0 10px 24px color-mix(in srgb, var(--color-brand-accent-soft) 58%, transparent)",
+                  backdropFilter: "blur(12px) saturate(150%)",
+                  WebkitBackdropFilter: "blur(12px) saturate(150%)",
+                  paddingInline: 14,
                 },
+                inner: { gap: 8 },
+                label: { fontWeight: 700, letterSpacing: "0.01em" },
               }}
             >
-              <Group gap={2} wrap="nowrap">
-                <IconCamera size={16} />
-                <IconPlus size={14} />
-              </Group>
-            </ActionIcon>
+              Добавить фото
+            </Button>
           </Group>
         )}
       </Box>
