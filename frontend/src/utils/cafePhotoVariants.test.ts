@@ -58,7 +58,7 @@ describe("buildCafePhotoSrcSet", () => {
     expect(sources).toEqual({
       fallbackSrcSet: "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w640.jpg 640w",
       webpSrcSet: "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w640.webp 640w",
-      avifSrcSet: "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w640.avif 640w",
+      avifSrcSet: undefined,
     });
   });
 });

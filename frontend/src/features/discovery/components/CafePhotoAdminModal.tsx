@@ -357,7 +357,7 @@ export default function CafePhotoAdminModal({
             onClick={onClose}
             radius="xl"
             styles={glassButtonStyles}
-            style={{ alignSelf: "flex-start", marginTop: 8, marginBottom: 0 }}
+            style={{ alignSelf: "flex-start", marginTop: 8, marginBottom: 8 }}
           >
             К карточке
           </Button>

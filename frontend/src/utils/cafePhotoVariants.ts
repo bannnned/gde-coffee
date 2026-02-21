@@ -111,6 +111,8 @@ export function buildCafePhotoPictureSources(
   return {
     fallbackSrcSet: buildCafePhotoSrcSet(rawURL, widths),
     webpSrcSet: buildCafePhotoFormatSrcSet(rawURL, widths, "webp"),
-    avifSrcSet: buildCafePhotoFormatSrcSet(rawURL, widths, "avif"),
+    // AVIF variants are optional and often missing in fresh storage environments.
+    // Keep AVIF disabled by default to avoid noisy 403 requests.
+    avifSrcSet: undefined,
   };
 }
