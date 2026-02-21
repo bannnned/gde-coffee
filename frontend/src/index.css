@@ -496,10 +496,12 @@ body {
 
 .splash-lockup {
   --splash-word-size: clamp(30px, 8.6vw, 44px);
+  --splash-word-width: 9.2ch;
+  --splash-word-gap: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 0;
   min-height: 132px;
 }
 
@@ -520,6 +522,8 @@ body {
 
 .splash-wordmark {
   margin: 0;
+  width: 0;
+  overflow: hidden;
   font-family: var(--font-display);
   font-size: var(--splash-word-size);
   line-height: 1;
@@ -528,8 +532,10 @@ body {
   color: var(--text);
   white-space: nowrap;
   opacity: 0;
-  transform: translateX(30px);
-  animation: splash-wordmark-in 520ms cubic-bezier(0.22, 0.8, 0.2, 1) 860ms forwards;
+  margin-left: 0;
+  animation:
+    splash-wordmark-in 540ms cubic-bezier(0.22, 0.8, 0.2, 1) 760ms forwards,
+    splash-wordmark-gap 540ms cubic-bezier(0.22, 0.8, 0.2, 1) 760ms forwards;
 }
 
 body.app-loaded #app-splash {
@@ -562,12 +568,24 @@ body.app-loaded #app-splash {
 
 @keyframes splash-wordmark-in {
   0% {
+    width: 0;
     opacity: 0;
-    transform: translateX(30px);
+  }
+  20% {
+    opacity: 0.92;
   }
   100% {
+    width: var(--splash-word-width);
     opacity: 1;
-    transform: translateX(0);
+  }
+}
+
+@keyframes splash-wordmark-gap {
+  0% {
+    margin-left: 0;
+  }
+  100% {
+    margin-left: var(--splash-word-gap);
   }
 }
 

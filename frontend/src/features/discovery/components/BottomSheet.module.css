@@ -82,7 +82,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: calc(var(--sheet-header-height, 0px) + 10px) 0 14px;
+  padding: calc(var(--sheet-header-height, 0px) + 10px) var(--page-edge-padding) 14px;
   pointer-events: auto;
   touch-action: pan-y;
   transition: opacity 160ms ease;

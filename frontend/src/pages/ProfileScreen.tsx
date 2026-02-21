@@ -88,6 +88,10 @@ export default function ProfileScreen() {
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
   const [isFeedbackSending, setIsFeedbackSending] = useState(false);
+  const inlineNameWidthCh = Math.max(
+    10,
+    Math.min(28, ((nameDraft || profile.name || "").trim().length || 8) + 1),
+  );
 
   const handleFeedbackSubmit = async () => {
     const message = feedbackMessage.trim();
@@ -224,15 +228,21 @@ export default function ProfileScreen() {
                     <div className={classes.heroNameRow}>
                       {isNameEditing ? (
                         <>
-                          <TextInput
+                          <input
+                            type="text"
                             value={nameDraft}
                             placeholder="Введите имя"
                             autoFocus
-                            className={classes.nameInlineInput}
+                            aria-label="Имя профиля"
+                            className={classes.nameInlineEditor}
+                            style={{ width: `${inlineNameWidthCh}ch` }}
                             onChange={(event) => {
                               setNameDraft(event.currentTarget.value);
                               setNameError(null);
                               setNameSuccess(null);
+                            }}
+                            onFocus={(event) => {
+                              event.currentTarget.select();
                             }}
                             onKeyDown={(event) => {
                               if (event.key === "Enter") {

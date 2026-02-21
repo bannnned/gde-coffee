@@ -120,8 +120,29 @@
   margin: 0;
 }
 
-.nameInlineInput {
-  width: min(280px, 74vw);
+.nameInlineEditor {
+  min-width: 10ch;
+  max-width: min(74vw, 320px);
+  border: none;
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 46%, transparent);
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4.8vw, 2rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  text-align: center;
+  padding: 0 2px 2px;
+}
+
+.nameInlineEditor::placeholder {
+  color: color-mix(in srgb, var(--muted) 82%, transparent);
+}
+
+.nameInlineEditor:disabled {
+  opacity: 0.68;
 }
 
 .nameInlineAction {
