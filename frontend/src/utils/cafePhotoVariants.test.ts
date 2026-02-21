@@ -22,7 +22,7 @@ describe("buildCafePhotoSrcSet", () => {
       "https://img.gde-kofe.ru/cafes/1/cafe/optimized/a.jpg?v=1",
       [320],
     );
-    expect(srcSet).toBe("https://img.gde-kofe.ru/cafes/1/cafe/optimized/a_w320.jpg?v=1 320w");
+    expect(srcSet).toBe("https://img.gde-kofe.ru/cafes/1/cafe/optimized/a.jpg?v=1 320w");
   });
 
   it("returns undefined for non-optimized URLs", () => {
@@ -39,6 +39,15 @@ describe("buildCafePhotoSrcSet", () => {
     expect(srcSet).toBe(
       "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w640.avif 640w, https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w1024.avif 1024w",
     );
+  });
+
+  it("skips 320 format variants to avoid legacy 403s", () => {
+    const srcSet = buildCafePhotoFormatSrcSet(
+      "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash.jpg",
+      [320, 640],
+      "webp",
+    );
+    expect(srcSet).toBe("https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w640.webp 640w");
   });
 
   it("builds picture sources", () => {

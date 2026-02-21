@@ -265,6 +265,7 @@ func main() {
 	adminMetricsGroup := api.Group("/admin/metrics")
 	adminMetricsGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
 	adminMetricsGroup.GET("/north-star", metricsHandler.GetNorthStar)
+	adminMetricsGroup.GET("/funnel", metricsHandler.GetFunnel)
 
 	api.GET("/cafes/:id/photos", photosHandler.List)
 	api.POST("/cafes/:id/photos/presign", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Presign)

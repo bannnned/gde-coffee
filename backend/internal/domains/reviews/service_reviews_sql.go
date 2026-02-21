@@ -127,7 +127,7 @@ const sqlListCafeReviewsBase = `select
 	r.id::text,
 	r.user_id::text,
 	coalesce(nullif(trim(u.display_name), ''), 'Участник') as author_name,
-	coalesce(ur.score, 0)::float8 as author_reputation_score,
+	0::float8 as author_reputation_score,
 	r.rating,
 	r.summary,
 	coalesce(nullif(ra.drink_id, ''), coalesce(ra.drink_name, '')) as drink_id,
@@ -166,16 +166,6 @@ const sqlListCafeReviewsBase = `select
 	), '[]'::jsonb) as positions
 from reviews r
 join users u on u.id = r.user_id
-left join lateral (
-	select coalesce(sum(
-		case
-			when re.created_at >= now() - interval '365 days' then re.points::numeric
-			else re.points::numeric * 0.5
-		end
-	), 0)::float8 as score
-	  from reputation_events re
-	 where re.user_id = u.id
-) ur on true
 left join review_attributes ra on ra.review_id = r.id
 left join drinks d on d.id = ra.drink_id
 left join visit_verifications vv on vv.review_id = r.id

@@ -27,7 +27,7 @@ const (
 	cafePhotoJPEGQuality = 82
 )
 
-var cafePhotoVariantWidths = []int{640, 1024, 1536}
+var cafePhotoVariantWidths = []int{320, 640, 1024, 1536}
 
 var (
 	ErrCafePhotoInvalid  = errors.New("invalid cafe photo")

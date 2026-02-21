@@ -89,8 +89,8 @@ func TestBuildCafePhotoFormatVariantObjectKey(t *testing.T) {
 
 func TestEstimateCafePhotoFormatVariantCount(t *testing.T) {
 	count := estimateCafePhotoFormatVariantCount(1800, []string{"webp", "avif"})
-	if count != 6 {
-		t.Fatalf("expected 6 variants, got %d", count)
+	if count != 8 {
+		t.Fatalf("expected 8 variants, got %d", count)
 	}
 }
 

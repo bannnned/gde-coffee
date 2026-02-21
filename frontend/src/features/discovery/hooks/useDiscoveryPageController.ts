@@ -30,6 +30,7 @@ export default function useDiscoveryPageController() {
 
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const journeyByCafeRef = useRef<Record<string, string>>({});
+  const cardOpenedJourneyRef = useRef<Set<string>>(new Set());
 
   const location = useDiscoveryLocation({
     radiusM,
@@ -62,6 +63,15 @@ export default function useDiscoveryPageController() {
       journeyByCafeRef.current[selectedCafeId] = journeyID;
     }
     setSelectedCafeJourneyID(journeyID);
+    if (!cardOpenedJourneyRef.current.has(journeyID)) {
+      cardOpenedJourneyRef.current.add(journeyID);
+      reportMetricEvent({
+        event_type: "cafe_card_open",
+        journey_id: journeyID,
+        cafe_id: selectedCafeId,
+        meta: { source: "discovery" },
+      });
+    }
   }, [selectedCafeId]);
 
   const modals = useDiscoveryModals(selectedCafe);

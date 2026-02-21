@@ -19,8 +19,9 @@ const (
 
 const (
 	PointsHelpfulBase          = 2.0
-	PointsVisitLow             = 1
-	PointsVisitMediumHigh      = 3
+	PointsVisitLow             = 3
+	PointsVisitMedium          = 6
+	PointsVisitHigh            = 8
 	PointsAbuseConfirmed       = -25
 	PointsDataUpdateApproved   = 4
 	PointsCafeCreateApproved   = 8

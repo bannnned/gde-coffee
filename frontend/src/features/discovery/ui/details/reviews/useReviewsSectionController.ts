@@ -534,6 +534,7 @@ export function useReviewsSectionController({
 
     let savedMessage = "";
     let savedReviewID = "";
+    let createdNewReview = false;
     try {
       if (ownReview) {
         const updated = await updateReview(ownReview.id, payload);
@@ -545,11 +546,24 @@ export function useReviewsSectionController({
           ...payload,
         });
         savedReviewID = created.review_id;
+        createdNewReview = true;
         savedMessage = "Отзыв опубликован.";
       }
     } catch (error: unknown) {
       setSubmitError(extractErrorMessage(error, "Не удалось сохранить отзыв."));
       return;
+    }
+
+    if (createdNewReview && savedReviewID && normalizedJourneyID) {
+      reportMetricEvent({
+        event_type: "review_submit",
+        journey_id: normalizedJourneyID,
+        cafe_id: cafeId,
+        review_id: savedReviewID,
+        meta: {
+          source: "reviews",
+        },
+      });
     }
 
     if (activeCheckIn && checkInCoords && savedReviewID) {

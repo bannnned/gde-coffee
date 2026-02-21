@@ -80,21 +80,8 @@ func (h *Handler) IngestEvents(c *gin.Context) {
 }
 
 func (h *Handler) GetNorthStar(c *gin.Context) {
-	days := DefaultRangeDays
-	if rawDays := strings.TrimSpace(c.Query("days")); rawDays != "" {
-		value, err := strconv.Atoi(rawDays)
-		if err != nil || value <= 0 {
-			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "days должен быть целым числом больше 0.", nil)
-			return
-		}
-		if value > MaxRangeDays {
-			value = MaxRangeDays
-		}
-		days = value
-	}
-	cafeID := strings.TrimSpace(c.Query("cafe_id"))
-	if cafeID != "" && !validation.IsValidUUID(cafeID) {
-		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "cafe_id должен быть UUID.", nil)
+	days, cafeID, ok := readNorthStarRangeParams(c)
+	if !ok {
 		return
 	}
 
@@ -110,12 +97,51 @@ func (h *Handler) GetNorthStar(c *gin.Context) {
 	c.JSON(http.StatusOK, report)
 }
 
+func (h *Handler) GetFunnel(c *gin.Context) {
+	days, cafeID, ok := readNorthStarRangeParams(c)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+	defer cancel()
+
+	report, err := h.service.GetFunnelReport(ctx, days, cafeID, time.Now())
+	if err != nil {
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить funnel-метрики.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, report)
+}
+
+func readNorthStarRangeParams(c *gin.Context) (int, string, bool) {
+	days := DefaultRangeDays
+	if rawDays := strings.TrimSpace(c.Query("days")); rawDays != "" {
+		value, err := strconv.Atoi(rawDays)
+		if err != nil || value <= 0 {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "days должен быть целым числом больше 0.", nil)
+			return 0, "", false
+		}
+		if value > MaxRangeDays {
+			value = MaxRangeDays
+		}
+		days = value
+	}
+	cafeID := strings.TrimSpace(c.Query("cafe_id"))
+	if cafeID != "" && !validation.IsValidUUID(cafeID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "cafe_id должен быть UUID.", nil)
+		return 0, "", false
+	}
+	return days, cafeID, true
+}
+
 func normalizeEvent(raw ingestEventRequest, userID string, now time.Time) (EventInput, error) {
 	eventType := strings.ToLower(strings.TrimSpace(raw.EventType))
 	switch eventType {
-	case EventReviewRead, EventRouteClick, EventCheckIn:
+	case EventCafeCardOpen, EventReviewRead, EventRouteClick, EventCheckIn, EventReviewSubmit:
 	default:
-		return EventInput{}, validationError("event_type должен быть review_read, route_click или checkin_start.")
+		return EventInput{}, validationError("event_type должен быть cafe_card_open, review_read, route_click, checkin_start или review_submit.")
 	}
 
 	journeyID := strings.TrimSpace(raw.JourneyID)
@@ -145,9 +171,9 @@ func normalizeEvent(raw ingestEventRequest, userID string, now time.Time) (Event
 	}
 
 	reviewID := strings.TrimSpace(raw.ReviewID)
-	if eventType == EventReviewRead {
+	if eventType == EventReviewRead || eventType == EventReviewSubmit {
 		if reviewID == "" || !validation.IsValidUUID(reviewID) {
-			return EventInput{}, validationError("review_id обязателен для review_read и должен быть UUID.")
+			return EventInput{}, validationError("review_id обязателен для review_read/review_submit и должен быть UUID.")
 		}
 	} else {
 		reviewID = ""

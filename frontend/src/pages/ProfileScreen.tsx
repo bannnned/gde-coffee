@@ -62,6 +62,9 @@ export default function ProfileScreen() {
     isAvatarUploading,
     avatarError,
     avatarSuccess,
+    reputationProfile,
+    isReputationLoading,
+    reputationError,
     setNameDraft,
     setNameError,
     setNameSuccess,
@@ -81,6 +84,12 @@ export default function ProfileScreen() {
     10,
     Math.min(28, ((nameDraft || profile.name || "").trim().length || 8) + 1),
   );
+  const levelLabel = reputationProfile?.levelLabel || user?.reputationBadge || "Участник";
+  const levelNumber = reputationProfile?.level ?? 1;
+  const levelProgress = Math.max(0, Math.min(100, Math.round((reputationProfile?.levelProgress ?? 0) * 100)));
+  const levelPointsToNext = Math.max(0, Math.round(reputationProfile?.pointsToNextLevel ?? 0));
+  const levelScore = Math.round(reputationProfile?.score ?? 0);
+  const levelEventsCount = reputationProfile?.eventsCount ?? 0;
 
   return (
     <Box className={classes.screen} data-ui="profile-screen">
@@ -444,23 +453,44 @@ export default function ProfileScreen() {
             </div>
           </section>
 
-          <section className={`${classes.sectionCard} ${classes.disabledSection}`}>
+          <section className={classes.sectionCard}>
             <div className={classes.sectionHeader}>
               <Group gap="xs">
                 <IconCrown size={18} />
                 <Text fw={600}>Ваш уровень</Text>
               </Group>
+              {isReputationLoading && (
+                <Text size="sm" className={classes.sectionAction}>
+                  Обновляем...
+                </Text>
+              )}
             </div>
             <div className={classes.levelCard}>
-              <div>
-                <Text fw={600}>Lv. 1</Text>
-                <Text size="sm" className={classes.muted}>
-                  Прокачка появится позже
-                </Text>
+              <div className={classes.levelTop}>
+                <div>
+                  <Text fw={700} className={classes.levelTitle}>
+                    Lv. {levelNumber} - {levelLabel}
+                  </Text>
+                  <Text size="sm" className={classes.muted}>
+                    Очки: {levelScore} · событий: {levelEventsCount}
+                  </Text>
+                </div>
+                {user?.trustedParticipant && (
+                  <Badge color="blue" variant="light">
+                    Доверенный
+                  </Badge>
+                )}
               </div>
               <div className={classes.levelBar}>
-                <div className={classes.levelBarFill} />
+                <div
+                  className={classes.levelBarFill}
+                  style={{ width: `${levelProgress}%` }}
+                />
               </div>
+              <Text size="sm" className={classes.levelProgressText}>
+                Прогресс: {levelProgress}%{levelPointsToNext > 0 ? ` · до следующего уровня ${levelPointsToNext}` : " · максимальный уровень"}
+              </Text>
+              {Boolean(reputationError) && <Text className={classes.errorText}>{reputationError}</Text>}
             </div>
           </section>
 

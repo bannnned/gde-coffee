@@ -19,9 +19,11 @@ import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 
 import {
+  getAdminFunnel,
   getAdminNorthStar,
   searchAdminCafesByName,
   type AdminCafeSearchItem,
+  type AdminFunnelReport,
   type AdminNorthStarReport,
 } from "../api/adminMetrics";
 import { useAuth } from "../components/AuthGate";
@@ -75,6 +77,7 @@ export default function AdminNorthStarPage() {
   const [selectedCafeId, setSelectedCafeId] = useState<string | null>(null);
 
   const [report, setReport] = useState<AdminNorthStarReport | null>(null);
+  const [funnelReport, setFunnelReport] = useState<AdminFunnelReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -133,6 +136,7 @@ export default function AdminNorthStarPage() {
     if (!allowed) return;
     if (scope === "cafe" && !selectedCafeId) {
       setReport(null);
+      setFunnelReport(null);
       setLoadError(null);
       return;
     }
@@ -140,14 +144,20 @@ export default function AdminNorthStarPage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const nextReport = await getAdminNorthStar({
+      const params = {
         days,
         cafe_id: scope === "cafe" ? selectedCafeId ?? undefined : undefined,
-      });
+      };
+      const [nextReport, nextFunnelReport] = await Promise.all([
+        getAdminNorthStar(params),
+        getAdminFunnel(params),
+      ]);
       setReport(nextReport);
+      setFunnelReport(nextFunnelReport);
     } catch (error: unknown) {
       setLoadError(extractApiErrorMessage(error, "Не удалось загрузить метрики North Star."));
       setReport(null);
+      setFunnelReport(null);
     } finally {
       setLoading(false);
     }
@@ -350,6 +360,44 @@ export default function AdminNorthStarPage() {
                     )}
                   </Table.Tbody>
                 </Table>
+              </Paper>
+
+              <Paper withBorder radius="lg" p="md">
+                <Stack gap="xs">
+                  <Group justify="space-between" align="center">
+                    <Text fw={700}>Воронка Journey</Text>
+                    <Text size="sm" c="dimmed">
+                      Карточка → отзыв → маршрут → check-in → отзыв
+                    </Text>
+                  </Group>
+                  <Table striped highlightOnHover withTableBorder>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Этап</Table.Th>
+                        <Table.Th>Journeys</Table.Th>
+                        <Table.Th>CR от предыдущего</Table.Th>
+                        <Table.Th>CR от старта</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {(funnelReport?.stages ?? []).map((stage) => (
+                        <Table.Tr key={stage.key}>
+                          <Table.Td>{stage.label}</Table.Td>
+                          <Table.Td>{stage.journeys}</Table.Td>
+                          <Table.Td>{formatPercent(stage.conversion_from_prev)}</Table.Td>
+                          <Table.Td>{formatPercent(stage.conversion_from_start)}</Table.Td>
+                        </Table.Tr>
+                      ))}
+                      {(funnelReport?.stages.length ?? 0) === 0 && (
+                        <Table.Tr>
+                          <Table.Td colSpan={4}>
+                            <Text c="dimmed">По воронке пока нет данных.</Text>
+                          </Table.Td>
+                        </Table.Tr>
+                      )}
+                    </Table.Tbody>
+                  </Table>
+                </Stack>
               </Paper>
             </>
           )}

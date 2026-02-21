@@ -157,3 +157,55 @@ order by day asc`
 
 	return result, nil
 }
+
+func (r *Repository) GetFunnelJourneyCounts(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+	cafeID string,
+) (FunnelJourneyCounts, error) {
+	const query = `with journey_events as (
+	select
+		journey_id,
+		min(case when event_type = 'cafe_card_open' then occurred_at end) as card_open_at,
+		min(case when event_type = 'review_read' then occurred_at end) as review_read_at,
+		min(case when event_type = 'route_click' then occurred_at end) as route_click_at,
+		min(case when event_type = 'checkin_start' then occurred_at end) as checkin_start_at,
+		min(case when event_type = 'review_submit' then occurred_at end) as review_submit_at
+	from public.product_metrics_events
+	where journey_id <> ''
+	  and occurred_at >= $1
+	  and occurred_at < $2
+	  and (nullif($3, '')::uuid is null or cafe_id = nullif($3, '')::uuid)
+	group by journey_id
+), stage_flags as (
+	select
+		journey_id,
+		(card_open_at is not null) as reached_card_open,
+		(card_open_at is not null and review_read_at is not null and review_read_at >= card_open_at) as reached_review_read,
+		(card_open_at is not null and review_read_at is not null and route_click_at is not null and route_click_at >= review_read_at) as reached_route_click,
+		(card_open_at is not null and review_read_at is not null and route_click_at is not null and checkin_start_at is not null and checkin_start_at >= route_click_at) as reached_checkin,
+		(card_open_at is not null and review_read_at is not null and route_click_at is not null and checkin_start_at is not null and review_submit_at is not null and review_submit_at >= checkin_start_at) as reached_review_submit
+	from journey_events
+)
+select
+	count(*) filter (where reached_card_open)::int as card_open_journeys,
+	count(*) filter (where reached_review_read)::int as review_read_journeys,
+	count(*) filter (where reached_route_click)::int as route_click_journeys,
+	count(*) filter (where reached_checkin)::int as checkin_journeys,
+	count(*) filter (where reached_review_submit)::int as review_submit_journeys
+from stage_flags`
+
+	var counts FunnelJourneyCounts
+	if err := r.pool.QueryRow(ctx, query, dateFrom.UTC(), dateTo.UTC(), cafeID).Scan(
+		&counts.CardOpenJourneys,
+		&counts.ReviewReadJourneys,
+		&counts.RouteClickJourneys,
+		&counts.CheckInJourneys,
+		&counts.ReviewSubmitJourneys,
+	); err != nil {
+		return FunnelJourneyCounts{}, err
+	}
+
+	return counts, nil
+}

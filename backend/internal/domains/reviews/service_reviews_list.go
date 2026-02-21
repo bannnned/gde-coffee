@@ -39,6 +39,7 @@ func (s *Service) ListCafeReviews(
 	defer rows.Close()
 
 	result := make([]map[string]interface{}, 0, fetchLimit)
+	authorReputationCache := make(map[string]float64)
 	for rows.Next() {
 		var (
 			item             cafeReviewState
@@ -77,6 +78,17 @@ func (s *Service) ListCafeReviews(
 		); err != nil {
 			return nil, nil, false, offset, err
 		}
+
+		cachedAuthorScore, ok := authorReputationCache[item.UserID]
+		if !ok {
+			score, err := s.lookupUserReputationScore(ctx, item.UserID)
+			if err != nil {
+				return nil, nil, false, offset, err
+			}
+			cachedAuthorScore = score
+			authorReputationCache[item.UserID] = score
+		}
+		authorRepScore = cachedAuthorScore
 
 		item.Positions = decodeReviewPositionsJSON(positionsRaw)
 		if len(item.Positions) == 0 && (item.DrinkID != "" || item.DrinkName != "") {

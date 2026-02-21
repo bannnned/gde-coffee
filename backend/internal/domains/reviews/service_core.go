@@ -39,4 +39,5 @@ func (s *Service) SetMedia(service *media.Service, cfg config.MediaConfig) {
 
 type queryer interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }

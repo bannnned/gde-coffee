@@ -98,7 +98,7 @@ const hideSplash = () => {
     document.body.classList.add('app-loaded')
     const splash = document.getElementById('app-splash')
     if (splash) {
-      window.setTimeout(() => splash.remove(), 400)
+      window.setTimeout(() => splash.remove(), 620)
     }
   }, delay)
 }

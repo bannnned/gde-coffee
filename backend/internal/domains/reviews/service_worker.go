@@ -236,8 +236,10 @@ func (s *Service) applyVisitReputation(ctx context.Context, payload map[string]i
 	switch normalizeConfidence(confidence) {
 	case "low":
 		points = reputation.PointsVisitLow
-	case "medium", "high":
-		points = reputation.PointsVisitMediumHigh
+	case "medium":
+		points = reputation.PointsVisitMedium
+	case "high":
+		points = reputation.PointsVisitHigh
 	}
 	if points == 0 {
 		return nil

@@ -3,9 +3,11 @@ package metrics
 import "time"
 
 const (
+	EventCafeCardOpen  = "cafe_card_open"
 	EventReviewRead    = "review_read"
 	EventRouteClick    = "route_click"
 	EventCheckIn       = "checkin_start"
+	EventReviewSubmit  = "review_submit"
 	Provider2GIS       = "2gis"
 	ProviderYandex     = "yandex"
 	DefaultRangeDays   = 14
@@ -52,6 +54,34 @@ type NorthStarSummary struct {
 type NorthStarReport struct {
 	Summary NorthStarSummary      `json:"summary"`
 	Daily   []NorthStarDailyPoint `json:"daily"`
+}
+
+type FunnelJourneyCounts struct {
+	CardOpenJourneys     int
+	ReviewReadJourneys   int
+	RouteClickJourneys   int
+	CheckInJourneys      int
+	ReviewSubmitJourneys int
+}
+
+type FunnelSummary struct {
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Days   int    `json:"days"`
+	CafeID string `json:"cafe_id,omitempty"`
+}
+
+type FunnelStage struct {
+	Key                 string  `json:"key"`
+	Label               string  `json:"label"`
+	Journeys            int     `json:"journeys"`
+	ConversionFromPrev  float64 `json:"conversion_from_prev"`
+	ConversionFromStart float64 `json:"conversion_from_start"`
+}
+
+type FunnelReport struct {
+	Summary FunnelSummary `json:"summary"`
+	Stages  []FunnelStage `json:"stages"`
 }
 
 type ingestEventRequest struct {

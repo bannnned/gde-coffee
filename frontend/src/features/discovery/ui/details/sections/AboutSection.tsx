@@ -84,8 +84,6 @@ export default function AboutSection({
           style={{
             overflow: "hidden",
             cursor: "pointer",
-            borderTop: "1px solid var(--border)",
-            borderBottom: "1px solid var(--border)",
           }}
         >
           <picture style={{ display: "block" }}>
@@ -132,7 +130,6 @@ export default function AboutSection({
           py="sm"
           style={{
             overflowX: "auto",
-            borderBottom: "1px solid var(--border)",
             paddingInline: "var(--page-edge-padding)",
           }}
         >

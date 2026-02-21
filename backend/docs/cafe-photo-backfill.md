@@ -3,7 +3,7 @@
 Backfill rewrites existing `cafe_photos` objects through the same optimizer pipeline as new uploads:
 - resize/recompress heavy originals
 - normalize storage path to `cafes/<cafe_id>/<kind>/optimized/...`
-- generate responsive variants (`_w640`, `_w1024`, `_w1536`)
+- generate responsive variants (`_w320`, `_w640`, `_w1024`, `_w1536`)
 - optionally generate format variants via external encoder (`webp`, `avif`)
 
 ## Run

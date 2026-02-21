@@ -1,6 +1,8 @@
 const OPTIMIZED_MARKER = "/optimized/";
 const SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".avif"] as const;
 const SUPPORTED_FORMAT_VARIANTS = ["webp", "avif"] as const;
+const LEGACY_SAFE_BASE_WIDTH = 320;
+const FORMAT_VARIANT_MIN_WIDTH = 640;
 
 function splitBaseAndQuery(rawUrl: string): { baseURL: string; querySuffix: string } {
   const trimmed = rawUrl.trim();
@@ -57,6 +59,11 @@ export function buildCafePhotoSrcSet(rawURL: string | null | undefined, widths: 
 
   const items: string[] = [];
   for (const width of sorted) {
+    // Older uploads may not have _w320 assets. Keep base URL for 320w to prevent 403.
+    if (width <= LEGACY_SAFE_BASE_WIDTH) {
+      items.push(`${value} ${width}w`);
+      continue;
+    }
     const candidate = buildVariantURL(baseURL, querySuffix, width);
     if (!candidate) continue;
     items.push(`${candidate} ${width}w`);
@@ -81,6 +88,9 @@ export function buildCafePhotoFormatSrcSet(
 
   const items: string[] = [];
   for (const width of sorted) {
+    if (width < FORMAT_VARIANT_MIN_WIDTH) {
+      continue;
+    }
     const candidate = buildFormatVariantURL(baseURL, querySuffix, width, format);
     if (!candidate) continue;
     items.push(`${candidate} ${width}w`);

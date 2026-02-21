@@ -1,6 +1,11 @@
 import { http } from "./http";
 
-export type MetricEventType = "review_read" | "route_click" | "checkin_start";
+export type MetricEventType =
+  | "cafe_card_open"
+  | "review_read"
+  | "route_click"
+  | "checkin_start"
+  | "review_submit";
 export type RouteProvider = "2gis" | "yandex";
 
 type MetricEventInput = {

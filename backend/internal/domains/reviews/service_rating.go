@@ -7,6 +7,8 @@ import (
 	"math"
 	"time"
 
+	"backend/internal/reputation"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -73,14 +75,14 @@ do update set
    from cafe_rating_snapshots
   where cafe_id = $1::uuid`
 
-	sqlSelectUserReputationWeightedSum = `select coalesce(sum(
-	case
-		when created_at >= now() - interval '365 days' then points::numeric
-		else points::numeric * 0.5
-	end
-), 0)::float8
+	sqlSelectUserReputationEvents = `select
+	id,
+	event_type,
+	points::float8,
+	created_at
 from reputation_events
-where user_id = $1::uuid`
+where user_id = $1::uuid
+order by created_at asc, id asc`
 
 	sqlSelectGlobalMeanRating = `select coalesce(avg(rating)::float8, 4.0)
    from reviews
@@ -490,16 +492,35 @@ func (s *Service) lookupUserReputationScoreTx(ctx context.Context, tx pgx.Tx, us
 }
 
 func (s *Service) lookupUserReputationScoreQuery(ctx context.Context, q queryer, userID string) (float64, error) {
-	var weightedSum float64
-	err := q.QueryRow(
-		ctx,
-		sqlSelectUserReputationWeightedSum,
-		userID,
-	).Scan(&weightedSum)
+	rows, err := q.Query(ctx, sqlSelectUserReputationEvents, userID)
 	if err != nil {
 		return 0, err
 	}
-	return clamp(100+weightedSum, 0, 1000), nil
+	defer rows.Close()
+
+	events := make([]reputation.ScoreEvent, 0, 64)
+	for rows.Next() {
+		var (
+			id        int64
+			eventType string
+			points    float64
+			createdAt time.Time
+		)
+		if err := rows.Scan(&id, &eventType, &points, &createdAt); err != nil {
+			return 0, err
+		}
+		events = append(events, reputation.ScoreEvent{
+			ID:        id,
+			EventType: eventType,
+			Points:    points,
+			CreatedAt: createdAt,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	return reputation.ComputeScore(events, time.Now().UTC()), nil
 }
 
 func (s *Service) globalMeanRating(ctx context.Context) (float64, error) {

@@ -7,6 +7,7 @@ import {
 } from "@tabler/icons-react";
 
 import * as authApi from "../../../api/auth";
+import * as reputationApi from "../../../api/reputation";
 import { buildOAuthLinkUrl } from "../../../api/url";
 import useOauthRedirect from "../../../hooks/useOauthRedirect";
 import { extractApiErrorMessage, extractApiErrorStatus } from "../../../utils/apiError";
@@ -47,6 +48,10 @@ export default function useProfileAccount({
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [avatarSuccess, setAvatarSuccess] = useState<string | null>(null);
+  const [reputationProfile, setReputationProfile] =
+    useState<reputationApi.MyReputationProfile | null>(null);
+  const [isReputationLoading, setIsReputationLoading] = useState(false);
+  const [reputationError, setReputationError] = useState<string | null>(null);
 
   const profile = useMemo(() => {
     const name = user?.name?.trim() || user?.displayName?.trim() || "Без имени";
@@ -116,6 +121,35 @@ export default function useProfileAccount({
     if (status !== "authed") return;
     void refreshIdentities();
   }, [refreshIdentities, status]);
+
+  const refreshReputationProfile = useCallback(async () => {
+    if (status !== "authed") {
+      setReputationProfile(null);
+      setReputationError(null);
+      return;
+    }
+    setIsReputationLoading(true);
+    setReputationError(null);
+    try {
+      const profile = await reputationApi.getMyReputationProfile();
+      setReputationProfile(profile);
+    } catch (err: unknown) {
+      setReputationError(extractApiErrorMessage(err, "Не удалось обновить уровень."));
+      setReputationProfile(null);
+    } finally {
+      setIsReputationLoading(false);
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== "authed") {
+      setReputationProfile(null);
+      setReputationError(null);
+      setIsReputationLoading(false);
+      return;
+    }
+    void refreshReputationProfile();
+  }, [refreshReputationProfile, status]);
 
   useOauthRedirect({
     onResultOk: refreshAuth,
@@ -250,6 +284,9 @@ export default function useProfileAccount({
     isAvatarUploading,
     avatarError,
     avatarSuccess,
+    reputationProfile,
+    isReputationLoading,
+    reputationError,
     setNameDraft,
     setNameError,
     setNameSuccess,

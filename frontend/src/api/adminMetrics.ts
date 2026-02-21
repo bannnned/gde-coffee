@@ -22,6 +22,26 @@ export type AdminNorthStarReport = {
   daily: AdminNorthStarDailyPoint[];
 };
 
+export type AdminFunnelSummary = {
+  from: string;
+  to: string;
+  days: number;
+  cafe_id?: string;
+};
+
+export type AdminFunnelStage = {
+  key: string;
+  label: string;
+  journeys: number;
+  conversion_from_prev: number;
+  conversion_from_start: number;
+};
+
+export type AdminFunnelReport = {
+  summary: AdminFunnelSummary;
+  stages: AdminFunnelStage[];
+};
+
 export type AdminCafeSearchItem = {
   id: string;
   name: string;
@@ -80,6 +100,38 @@ export async function getAdminNorthStar(params?: { days?: number; cafe_id?: stri
         visit_intent_journeys: asNumber(record.visit_intent_journeys),
         north_star_journeys: asNumber(record.north_star_journeys),
         rate: asNumber(record.rate),
+      };
+    }),
+  };
+}
+
+export async function getAdminFunnel(params?: { days?: number; cafe_id?: string }): Promise<AdminFunnelReport> {
+  const res = await http.get<unknown>("/api/admin/metrics/funnel", {
+    params: {
+      days: params?.days,
+      cafe_id: params?.cafe_id,
+    },
+  });
+
+  const root = asRecord(res.data);
+  const summaryRaw = asRecord(root.summary);
+  const stagesRaw = asArray(root.stages);
+
+  return {
+    summary: {
+      from: asString(summaryRaw.from),
+      to: asString(summaryRaw.to),
+      days: asNumber(summaryRaw.days),
+      cafe_id: asString(summaryRaw.cafe_id) || undefined,
+    },
+    stages: stagesRaw.map((item) => {
+      const record = asRecord(item);
+      return {
+        key: asString(record.key),
+        label: asString(record.label),
+        journeys: asNumber(record.journeys),
+        conversion_from_prev: asNumber(record.conversion_from_prev),
+        conversion_from_start: asNumber(record.conversion_from_start),
       };
     }),
   };

@@ -62,6 +62,21 @@
   --color-cafe-hero-emphasis: #7A5A1F;
   --color-cafe-hero-indicator-active: rgba(31, 26, 23, 0.82);
   --color-cafe-hero-indicator-idle: rgba(31, 26, 23, 0.32);
+  --scrollbar-size: 10px;
+  --scrollbar-track: color-mix(in srgb, var(--surface) 60%, transparent);
+  --scrollbar-track-border: color-mix(in srgb, var(--glass-border) 52%, transparent);
+  --scrollbar-thumb: linear-gradient(
+    140deg,
+    color-mix(in srgb, var(--color-brand-accent-soft) 88%, var(--surface)),
+    color-mix(in srgb, var(--color-brand-accent) 74%, var(--glass-grad-1))
+  );
+  --scrollbar-thumb-hover: linear-gradient(
+    140deg,
+    color-mix(in srgb, var(--color-brand-accent-soft) 96%, var(--surface)),
+    color-mix(in srgb, var(--color-brand-accent) 84%, var(--glass-grad-1))
+  );
+  --scrollbar-thumb-border: color-mix(in srgb, var(--color-brand-accent) 44%, var(--glass-border));
+  --scrollbar-thumb-shadow: 0 2px 10px color-mix(in srgb, var(--color-brand-accent-soft) 45%, transparent);
 
   /* Compatibility aliases used by existing components/styles. */
   --coffee: var(--color-bg-base);
@@ -324,40 +339,28 @@
 
 .horizontal-scroll-modern {
   scrollbar-width: thin;
-  scrollbar-color:
-    color-mix(in srgb, var(--color-brand-accent) 58%, var(--glass-border))
-    color-mix(in srgb, var(--surface) 72%, transparent);
+  scrollbar-color: color-mix(in srgb, var(--color-brand-accent) 58%, var(--glass-border)) var(--scrollbar-track);
 }
 
 .horizontal-scroll-modern::-webkit-scrollbar {
-  height: 8px;
+  height: var(--scrollbar-size);
 }
 
 .horizontal-scroll-modern::-webkit-scrollbar-track {
   border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  border: 1px solid color-mix(in srgb, var(--glass-border) 56%, transparent);
+  background: var(--scrollbar-track);
+  border: 1px solid var(--scrollbar-track-border);
 }
 
 .horizontal-scroll-modern::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--color-brand-accent-soft) 84%, var(--surface)),
-      color-mix(in srgb, var(--color-brand-accent) 72%, var(--glass-grad-1))
-    );
-  border: 1px solid color-mix(in srgb, var(--color-brand-accent) 40%, var(--glass-border));
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-brand-accent-soft) 44%, transparent);
+  background: var(--scrollbar-thumb);
+  border: 1px solid var(--scrollbar-thumb-border);
+  box-shadow: var(--scrollbar-thumb-shadow);
 }
 
 .horizontal-scroll-modern::-webkit-scrollbar-thumb:hover {
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--color-brand-accent-soft) 90%, var(--surface)),
-      color-mix(in srgb, var(--color-brand-accent) 80%, var(--glass-grad-1))
-    );
+  background: var(--scrollbar-thumb-hover);
 }
 
 .map-zoom-button {
@@ -456,6 +459,37 @@
   box-sizing: border-box;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-brand-accent) 58%, var(--glass-border)) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: var(--scrollbar-track);
+  border: 1px solid var(--scrollbar-track-border);
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--scrollbar-thumb);
+  border: 1px solid var(--scrollbar-thumb-border);
+  box-shadow: var(--scrollbar-thumb-shadow);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 html,
 body,
 #root {
@@ -496,7 +530,10 @@ body {
   --splash-word-size: clamp(30px, 8.6vw, 44px);
   --splash-word-max-width: 9.6ch;
   --splash-word-gap: 10px;
-  --splash-logo-scale-peak: 3.05;
+  --splash-logo-scale-start: 0.96;
+  --splash-logo-scale-peak: 1.18;
+  --splash-ease-smooth: cubic-bezier(0.42, 0, 0.58, 1);
+  --splash-ease-soft-out: cubic-bezier(0.22, 1, 0.36, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -507,14 +544,16 @@ body {
 .splash-logo-wrap {
   width: var(--splash-word-size);
   height: var(--splash-word-size);
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transform: scale(2.22);
+  transform: scale(var(--splash-logo-scale-start));
   backface-visibility: hidden;
   will-change: transform, opacity;
-  animation: splash-logo-sequence 1320ms cubic-bezier(0.2, 0.86, 0.24, 1) 150ms both;
+  animation: splash-logo-sequence 1600ms var(--splash-ease-soft-out) 120ms both;
 }
 
 .splash-logo {
@@ -525,6 +564,8 @@ body {
 
 .splash-wordmark {
   margin: 0;
+  position: relative;
+  z-index: 1;
   display: inline-block;
   max-width: 0;
   overflow: hidden;
@@ -540,25 +581,31 @@ body {
   margin-left: 0;
   backface-visibility: hidden;
   will-change: max-width, opacity, margin-left, transform;
-  animation: splash-wordmark-reveal 820ms cubic-bezier(0.22, 0.82, 0.26, 1) 1020ms both;
+  animation: splash-wordmark-reveal 900ms var(--splash-ease-soft-out) 940ms both;
 }
 
 body.app-loaded #app-splash {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  transition-duration: 360ms;
+  transition-timing-function: var(--splash-ease-smooth);
 }
 
 @keyframes splash-logo-sequence {
   0% {
     opacity: 0;
-    transform: scale(2.22);
+    transform: scale(var(--splash-logo-scale-start));
   }
-  24% {
+  18% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  36% {
     opacity: 1;
     transform: scale(var(--splash-logo-scale-peak));
   }
-  62% {
+  54% {
     opacity: 1;
     transform: scale(var(--splash-logo-scale-peak));
   }

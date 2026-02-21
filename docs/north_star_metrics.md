@@ -26,9 +26,11 @@
 
 События V1:
 
+- `cafe_card_open`
 - `review_read`
 - `route_click`
 - `checkin_start`
+- `review_submit`
 
 ### API
 
@@ -37,6 +39,13 @@
   - поддерживает дедупликацию по `client_event_id`
 - `GET /api/admin/metrics/north-star?days=14&cafe_id=<uuid>` (admin/moderator)
   - возвращает summary и daily-ряд
+- `GET /api/admin/metrics/funnel?days=14&cafe_id=<uuid>` (admin/moderator)
+  - возвращает funnel по journeys:
+    - карточка открыта
+    - прочитан отзыв
+    - открыт маршрут
+    - начат check-in
+    - опубликован отзыв
 - `GET /api/admin/cafes/search?q=<name>&limit=15` (admin/moderator)
   - серверный поиск кофеен по названию для фильтра метрики
 
@@ -53,9 +62,13 @@
 
 Реализовано:
 
+- `cafe_card_open` при выборе/открытии карточки кофейни
+  - `frontend/src/features/discovery/hooks/useDiscoveryPageController.ts`
 - `route_click` при открытии маршрута в 2ГИС/Яндекс
   - `frontend/src/features/discovery/hooks/useDiscoveryPageController.ts`
 - `checkin_start` после успешного check-in
+  - `frontend/src/features/discovery/ui/details/reviews/useReviewsSectionController.ts`
+- `review_submit` после публикации нового отзыва
   - `frontend/src/features/discovery/ui/details/reviews/useReviewsSectionController.ts`
 - `review_read`
   - карточка отзыва видима >= 3 секунды (IntersectionObserver)
@@ -104,3 +117,33 @@
 - Диапазон `days` в админ-эндпоинте: `1..90`.
 - `cafe_id` в админ-эндпоинте опционален: без него метрика считается по всему продукту, с ним — по конкретной кофейне.
 - Телеметрия best-effort: отправка с фронта не блокирует UX.
+
+## Funnel (V1)
+
+- Funnel строится по `journey_id` и считает этапы в строгой последовательности:
+  1. `cafe_card_open`
+  2. `review_read`
+  3. `route_click`
+  4. `checkin_start`
+  5. `review_submit`
+- Фильтр `cafe_id` опционален и работает так же, как в North Star.
+
+## Репутация (V1.1)
+
+Чтобы поддержать North Star качеством контента, включена модель репутации `reputation_v1_1`:
+
+- веса событий:
+  - `helpful_received`: `+2 * voter_weight`
+  - `visit_verified`: `+3 / +6 / +8` (`low / medium / high`)
+  - `abuse_confirmed`: `-25`
+- daily cap:
+  - `helpful_received`: `+20` в день
+  - `visit_verified`: `+24` в день
+- затухание очков:
+  - `<= 90` дней: `1.0`
+  - `91..180` дней: `0.7`
+  - `181..365` дней: `0.4`
+  - `> 365` дней: `0.2`
+- уровень и прогресс:
+  - пороги: `0, 40, 120, 180, 320, 500, 750`
+  - в API профиля отдаются `level`, `level_progress`, `points_to_next_level`.
