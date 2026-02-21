@@ -140,14 +140,14 @@ export default function CafeCardHero({
                 height: "100%",
                 objectFit: "cover",
                 display: "block",
-                opacity: photoReady ? 0.92 : 0,
-                filter: "blur(32px) saturate(138%) brightness(0.94)",
-                transform: "scale(1.16)",
+                opacity: photoReady ? 0.58 : 0,
+                filter: "blur(18px) saturate(122%) brightness(0.92)",
+                transform: "scale(1.11)",
                 transformOrigin: "center",
                 WebkitMaskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(0,0,0,0.16) 49%, rgba(0,0,0,0.52) 61%, rgba(0,0,0,0.92) 81%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 56%, rgba(0,0,0,0.12) 66%, rgba(0,0,0,0.44) 76%, rgba(0,0,0,0.78) 88%, rgba(0,0,0,1) 100%)",
                 maskImage:
-                  "linear-gradient(180deg, transparent 0%, transparent 38%, rgba(0,0,0,0.16) 49%, rgba(0,0,0,0.52) 61%, rgba(0,0,0,0.92) 81%, rgba(0,0,0,1) 100%)",
+                  "linear-gradient(180deg, transparent 0%, transparent 56%, rgba(0,0,0,0.12) 66%, rgba(0,0,0,0.44) 76%, rgba(0,0,0,0.78) 88%, rgba(0,0,0,1) 100%)",
                 WebkitMaskRepeat: "no-repeat",
                 maskRepeat: "no-repeat",
                 pointerEvents: "none",
@@ -329,25 +329,9 @@ export default function CafeCardHero({
           inset: 0,
           pointerEvents: "none",
           background:
-            "linear-gradient(180deg, transparent 0%, transparent 45%, var(--cafe-hero-overlay-1) 45%, var(--cafe-hero-overlay-2) 66%, var(--cafe-hero-overlay-3) 80%)",
+            "linear-gradient(180deg, transparent 0%, transparent 56%, var(--cafe-hero-overlay-1) 64%, var(--cafe-hero-overlay-2) 82%, var(--cafe-hero-overlay-3) 100%)",
           transition: "background 260ms ease",
           zIndex: 1,
-        }}
-      />
-      <Box
-        style={{
-          position: "absolute",
-          left: -16,
-          right: -16,
-          bottom: "calc(44px + 40%)",
-          height: 64,
-          pointerEvents: "none",
-          background:
-            "radial-gradient(90% 110% at 50% 100%, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.17) 42%, rgba(255,255,255,0.08) 68%, rgba(255,255,255,0) 100%)",
-          filter: "blur(26.6px)",
-          opacity: 0.72,
-          transition: "opacity 220ms ease",
-          zIndex: 2,
         }}
       />
       {children}

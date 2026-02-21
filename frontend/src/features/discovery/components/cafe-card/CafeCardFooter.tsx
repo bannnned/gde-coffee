@@ -89,7 +89,10 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
             size="md"
             lineClamp={1}
             title={cafe.name}
-            style={{ color: "var(--cafe-hero-emphasis-color)" }}
+            style={{
+              color: "var(--cafe-hero-emphasis-color)",
+              textShadow: "0 1px 2px color-mix(in srgb, var(--cafe-hero-overlay-3) 26%, transparent)",
+            }}
           >
             {cafe.name}
           </Text>
@@ -97,7 +100,10 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
             size="sm"
             lineClamp={1}
             title={cafe.address}
-            style={{ color: "var(--cafe-hero-subtitle-color)" }}
+            style={{
+              color: "color-mix(in srgb, var(--cafe-hero-subtitle-color) 92%, var(--text))",
+              textShadow: "0 1px 2px color-mix(in srgb, var(--cafe-hero-overlay-3) 18%, transparent)",
+            }}
           >
             {cafe.address}
           </Text>
@@ -116,10 +122,23 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
               ...
             </Text>
           ) : hasReviewStats ? (
-              <Group style={{ display: 'grid', justifyItems: 'end' }} gap={8} wrap="nowrap">
+            <Box
+              style={{
+                display: "grid",
+                justifyItems: "end",
+                gap: 8,
+                padding: "6px 8px",
+                borderRadius: 12,
+                background:
+                  "linear-gradient(135deg, color-mix(in srgb, var(--surface) 82%, transparent), color-mix(in srgb, var(--surface) 58%, transparent))",
+                border: "1px solid color-mix(in srgb, var(--glass-border) 82%, transparent)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+              }}
+            >
               <Group gap={4} wrap="nowrap">
                 <IconStarFilled size={14} color="var(--cafe-hero-emphasis-color)" />
-                <Text fw={600} size="sm" style={{ color: "var(--cafe-hero-emphasis-color)" }}>
+                <Text fw={700} size="sm" style={{ color: "var(--cafe-hero-emphasis-color)" }}>
                   {ratingLabel}
                 </Text>
               </Group>
@@ -129,7 +148,7 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
                   {ratingSnapshot?.reviews_count ?? 0}
                 </Text>
               </Group>
-            </Group>
+            </Box>
           ) : (
             <Badge variant="light" radius="xl" styles={badgeStyles}>
               new
