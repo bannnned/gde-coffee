@@ -124,6 +124,9 @@ export default function useDiscoveryLocation({
 
   const effectiveRadiusM = useMemo(() => {
     if (locationChoice?.type === "city") {
+      if (radiusM > 0) {
+        return radiusM;
+      }
       return CITY_RADIUS_M_BY_ID[locationChoice.id];
     }
     if (radiusM === 0) {

@@ -377,6 +377,7 @@ export default function AdminCafesImportPage() {
     );
   };
 
+
   const handleLoadFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -505,6 +506,9 @@ export default function AdminCafesImportPage() {
               <Title order={3}>Импорт кофеен из JSON</Title>
             </Group>
             <Group>
+              <Button variant="light" onClick={() => void navigate("/admin/cafes/manage")}>
+                Управление кофейнями
+              </Button>
               <Button variant="light" onClick={() => setJsonText(sampleJSON)}>
                 Подставить пример
               </Button>

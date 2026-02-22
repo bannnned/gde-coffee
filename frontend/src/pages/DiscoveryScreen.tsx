@@ -53,7 +53,6 @@ export default function DiscoveryScreen() {
     photoSubmitOpen,
     photoSubmitKind,
     cafeProposalOpen,
-    selectedAmenities,
     favoritesOnly,
     favoriteBusyCafeId,
     topDescriptiveTags,
@@ -83,7 +82,6 @@ export default function DiscoveryScreen() {
     setPhotoAdminOpen,
     setPhotoSubmitOpen,
     setCafeProposalOpen,
-    setSelectedAmenities,
     setRadiusM,
     selectCafe,
     handleManualCenterChange,
@@ -145,8 +143,6 @@ export default function DiscoveryScreen() {
       )}
 
       <FiltersBar
-        selectedAmenities={selectedAmenities}
-        onChangeAmenities={setSelectedAmenities}
         topTags={topDescriptiveTags}
         topTagsSource={topDescriptiveTagsSource}
         topTagsLoading={isTopTagsLoading}
@@ -225,7 +221,6 @@ export default function DiscoveryScreen() {
         onClose={() => setSettingsOpen(false)}
         radiusM={radiusM}
         onRadiusChange={setRadiusM}
-        isRadiusLocked={isCityOnlyMode}
         locationLabel={locationLabel}
         locationOptions={locationOptions}
         selectedLocationId={selectedLocationId}

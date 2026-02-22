@@ -391,3 +391,18 @@ func (s *Service) SearchAdminCafesByName(ctx context.Context, query string, limi
 	}
 	return s.repository.SearchAdminCafesByName(ctx, normalizedQuery, limit)
 }
+
+func (s *Service) GetAdminCafeByID(ctx context.Context, cafeID string) (AdminCafeDetails, error) {
+	return s.repository.GetAdminCafeByID(ctx, cafeID)
+}
+
+func (s *Service) UpdateAdminCafeByID(ctx context.Context, cafeID string, item normalizedCafeImportItem) (AdminCafeDetails, error) {
+	if err := s.repository.UpdateCafeByID(ctx, cafeID, item); err != nil {
+		return AdminCafeDetails{}, err
+	}
+	return s.repository.GetAdminCafeByID(ctx, cafeID)
+}
+
+func (s *Service) DeleteCafeByID(ctx context.Context, cafeID string) error {
+	return s.repository.DeleteCafeByID(ctx, cafeID)
+}

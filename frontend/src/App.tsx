@@ -20,6 +20,7 @@ const SettingsScreen = lazy(() => import("./pages/SettingsScreen"));
 const AdminModerationPage = lazy(() => import("./pages/AdminModerationPage"));
 const AdminDrinksPage = lazy(() => import("./pages/AdminDrinksPage"));
 const AdminCafesImportPage = lazy(() => import("./pages/AdminCafesImportPage"));
+const AdminCafesManagePage = lazy(() => import("./pages/AdminCafesManagePage"));
 const AdminFeedbackPage = lazy(() => import("./pages/AdminFeedbackPage"));
 const AdminNorthStarPage = lazy(() => import("./pages/AdminNorthStarPage"));
 const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage"));
@@ -68,6 +69,7 @@ function AppRoutes() {
         <Route path="/admin/moderation" element={<AdminModerationPage />} />
         <Route path="/admin/drinks" element={<AdminDrinksPage />} />
         <Route path="/admin/metrics" element={<AdminNorthStarPage />} />
+        <Route path="/admin/cafes/manage" element={<AdminCafesManagePage />} />
         <Route path="/admin/cafes/import" element={<AdminCafesImportPage />} />
         <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />

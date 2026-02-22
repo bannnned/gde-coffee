@@ -512,6 +512,17 @@ export default function SettingsScreen() {
                       variant="light"
                       className={classes.actionButton}
                       onClick={() => {
+                        void navigate("/admin/cafes/manage");
+                      }}
+                    >
+                      Кофейни (CRUD)
+                    </Button>
+                  )}
+                  {userRole === "admin" && (
+                    <Button
+                      variant="light"
+                      className={classes.actionButton}
+                      onClick={() => {
                         void navigate("/admin/cafes/import");
                       }}
                     >

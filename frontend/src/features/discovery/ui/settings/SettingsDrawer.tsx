@@ -30,7 +30,6 @@ type SettingsDrawerProps = {
   onClose: () => void;
   radiusM: number;
   onRadiusChange: (value: number) => void;
-  isRadiusLocked?: boolean;
   locationLabel: string;
   locationOptions: LocationOption[];
   selectedLocationId: string;
@@ -60,7 +59,6 @@ export default function SettingsDrawer({
   onClose,
   radiusM,
   onRadiusChange,
-  isRadiusLocked = false,
   locationLabel,
   locationOptions,
   selectedLocationId,
@@ -250,7 +248,7 @@ export default function SettingsDrawer({
                 root: {
                   borderRadius: 999,
                   border: "1px solid var(--glass-border)",
-                  background: "var(--glass-bg-soft)",
+                  background: "color-mix(in srgb, var(--glass-bg) 88%, var(--bg))",
                 },
               }}
               onClick={() => {
@@ -381,33 +379,16 @@ export default function SettingsDrawer({
 
         <Group justify="space-between">
           <Text>{DISCOVERY_UI_TEXT.radiusTitle}</Text>
-          {isRadiusLocked && (
-            <Text size="xs" c="dimmed">
-              Фиксирован по городу
-            </Text>
-          )}
           <Group gap="xs">
             {RADIUS_OPTIONS.map((value) => (
               <Button
                 key={value}
                 variant="transparent"
                 size="xs"
-                styles={getDiscoveryGlassButtonStyles(
-                  isRadiusLocked ? value === 0 : radiusM === value,
-                )}
-                onClick={() => {
-                  if (isRadiusLocked) return;
-                  onRadiusChange(value);
-                }}
-                disabled={isRadiusLocked}
+                styles={getDiscoveryGlassButtonStyles(radiusM === value)}
+                onClick={() => onRadiusChange(value)}
               >
-                {value === 0
-                  ? DISCOVERY_UI_TEXT.radiusAll
-                  : `${value / 1000}${value === 2500 ? "2.5" : ""}`.includes(
-                        "2.5",
-                      )
-                    ? "2.5 км"
-                    : `${value / 1000} км`}
+                {value === 0 ? DISCOVERY_UI_TEXT.radiusAll : value === 2500 ? "2.5 км" : `${value / 1000} км`}
               </Button>
             ))}
           </Group>

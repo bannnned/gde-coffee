@@ -271,3 +271,88 @@ func (h *Handler) AdminSearch(c *gin.Context) {
 		"items": items,
 	})
 }
+
+func (h *Handler) AdminGetByID(c *gin.Context) {
+	cafeID := strings.TrimSpace(c.Param("id"))
+	if cafeID == "" || !validation.IsValidUUID(cafeID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	item, err := h.service.GetAdminCafeByID(ctx, cafeID)
+	if err != nil {
+		if h.service.IsNotFound(err) {
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			return
+		}
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *Handler) AdminUpdateByID(c *gin.Context) {
+	cafeID := strings.TrimSpace(c.Param("id"))
+	if cafeID == "" || !validation.IsValidUUID(cafeID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		return
+	}
+
+	var req adminCafeImportItem
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		return
+	}
+
+	normalized, issues := normalizeCafeImportItem(req)
+	if len(issues) > 0 {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", issues[0].Message, gin.H{
+			"issues": issues,
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	updated, err := h.service.UpdateAdminCafeByID(ctx, cafeID, normalized)
+	if err != nil {
+		if h.service.IsNotFound(err) {
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			return
+		}
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось обновить кофейню.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, updated)
+}
+
+func (h *Handler) AdminDeleteByID(c *gin.Context) {
+	cafeID := strings.TrimSpace(c.Param("id"))
+	if cafeID == "" || !validation.IsValidUUID(cafeID) {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный id кофейни.", nil)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	if err := h.service.DeleteCafeByID(ctx, cafeID); err != nil {
+		if h.service.IsNotFound(err) {
+			httpx.RespondError(c, http.StatusNotFound, "not_found", "Кофейня не найдена.", nil)
+			return
+		}
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось удалить кофейню.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"deleted": true,
+		"id":      cafeID,
+	})
+}

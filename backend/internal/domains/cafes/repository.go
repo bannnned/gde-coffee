@@ -297,3 +297,51 @@ func (r *Repository) SearchAdminCafesByName(ctx context.Context, query string, l
 	}
 	return result, nil
 }
+
+func (r *Repository) GetAdminCafeByID(ctx context.Context, cafeID string) (AdminCafeDetails, error) {
+	var item AdminCafeDetails
+	err := r.pool.QueryRow(
+		ctx,
+		`select
+		    id::text,
+		    name,
+		    coalesce(address, '') as address,
+		    coalesce(description, '') as description,
+		    lat,
+		    lng,
+		    coalesce(amenities, '{}'::text[]) as amenities
+		   from public.cafes
+		  where id = $1::uuid`,
+		cafeID,
+	).Scan(
+		&item.ID,
+		&item.Name,
+		&item.Address,
+		&item.Description,
+		&item.Latitude,
+		&item.Longitude,
+		&item.Amenities,
+	)
+	if err != nil {
+		return AdminCafeDetails{}, err
+	}
+	item.ID = strings.TrimSpace(item.ID)
+	item.Name = strings.TrimSpace(item.Name)
+	item.Address = strings.TrimSpace(item.Address)
+	item.Description = strings.TrimSpace(item.Description)
+	if item.Amenities == nil {
+		item.Amenities = []string{}
+	}
+	return item, nil
+}
+
+func (r *Repository) DeleteCafeByID(ctx context.Context, cafeID string) error {
+	result, err := r.pool.Exec(ctx, `delete from public.cafes where id = $1::uuid`, cafeID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}

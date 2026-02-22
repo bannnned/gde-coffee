@@ -35,6 +35,26 @@ function normalizeTagList(raw: string[]): string[] {
   return result;
 }
 
+const LEGACY_MAIN_TAG_PATTERNS = [
+  /\bwifi\b/u,
+  /\bwi[\s-]?fi\b/u,
+  /\bpower\b/u,
+  /\blaptop\b/u,
+  /\btoilet\b/u,
+  /\bquiet\b/u,
+  /розетк/u,
+  /вайф/u,
+  /туалет/u,
+  /ноут/u,
+  /тихо/u,
+];
+
+function isLegacyMainTag(label: string): boolean {
+  const value = label.trim().toLowerCase();
+  if (!value) return false;
+  return LEGACY_MAIN_TAG_PATTERNS.some((pattern) => pattern.test(value));
+}
+
 function countCafePhotosByKind(cafe: Cafe | null | undefined, kind: CafePhotoKind): number {
   if (!cafe) return 0;
   const fromList = (cafe.photos ?? []).filter((photo) => photo.kind === kind).length;
@@ -189,7 +209,12 @@ export default function useDiscoveryPageController() {
         radius_m: location.effectiveRadiusM,
         limit: 8,
       });
-      setTopDescriptiveTags(response.tags.map((item) => item.label).filter(Boolean));
+      setTopDescriptiveTags(
+        response.tags
+          .map((item) => item.label)
+          .filter(Boolean)
+          .filter((tag) => !isLegacyMainTag(tag)),
+      );
       setTopDescriptiveTagsSource(response.source || "city_popular");
     } catch {
       setTopDescriptiveTags([]);
@@ -223,7 +248,11 @@ export default function useDiscoveryPageController() {
       })
         .then((response) => {
           if (cancelled) return;
-          const merged = normalizeTagList([...response.tags, ...favoriteDescriptiveTagsDraft]);
+          const merged = normalizeTagList(
+            [...response.tags, ...favoriteDescriptiveTagsDraft].filter(
+              (tag) => !isLegacyMainTag(tag),
+            ),
+          );
           setTagOptions(merged);
         })
         .catch(() => {
@@ -269,7 +298,7 @@ export default function useDiscoveryPageController() {
     })
       .then((response) => {
         if (cancelled) return;
-        const normalized = normalizeTagList(response.tags);
+        const normalized = normalizeTagList(response.tags.filter((tag) => !isLegacyMainTag(tag)));
         setFavoriteDescriptiveTags(normalized);
         setFavoriteDescriptiveTagsDraft(normalized);
       })
@@ -288,7 +317,9 @@ export default function useDiscoveryPageController() {
   }, [user?.id, lat, lng, location.effectiveRadiusM, modals.settingsOpen]);
 
   const handleFavoriteTagsDraftChange = (next: string[]) => {
-    setFavoriteDescriptiveTagsDraft(normalizeTagList(next));
+    setFavoriteDescriptiveTagsDraft(
+      normalizeTagList(next.filter((tag) => !isLegacyMainTag(tag))),
+    );
     setFavoriteTagsError(null);
   };
 
@@ -308,7 +339,7 @@ export default function useDiscoveryPageController() {
         },
         favoriteDescriptiveTagsDraft,
       );
-      const normalized = normalizeTagList(response.tags);
+      const normalized = normalizeTagList(response.tags.filter((tag) => !isLegacyMainTag(tag)));
       setFavoriteDescriptiveTags(normalized);
       setFavoriteDescriptiveTagsDraft(normalized);
       await refreshTopTags();

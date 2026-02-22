@@ -17,7 +17,7 @@ export const discoveryGlassSelectStyles = {
   input: {
     borderRadius: 12,
     border: "1px solid var(--glass-border)",
-    background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+    background: "color-mix(in srgb, var(--surface) 82%, var(--bg))",
     boxShadow: "var(--glass-shadow)",
     color: "var(--text)",
     backdropFilter: "blur(16px) saturate(180%)",
@@ -26,8 +26,19 @@ export const discoveryGlassSelectStyles = {
   dropdown: {
     borderRadius: 12,
     border: "1px solid var(--glass-border)",
-    background: "var(--card)",
+    background: "color-mix(in srgb, var(--bg) 90%, var(--surface))",
     boxShadow: "var(--shadow)",
+  },
+  option: {
+    borderRadius: 8,
+    color: "var(--text)",
+    "&[data-checked]": {
+      background: "color-mix(in srgb, var(--color-brand-accent-soft) 82%, var(--surface))",
+      color: "var(--text)",
+    },
+    "&[data-hovered]": {
+      background: "color-mix(in srgb, var(--color-brand-accent-soft) 62%, var(--surface))",
+    },
   },
 } as const;
 

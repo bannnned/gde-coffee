@@ -41,6 +41,16 @@ type AdminCafeSearchItem struct {
 	Address string `json:"address"`
 }
 
+type AdminCafeDetails struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Address     string   `json:"address"`
+	Description string   `json:"description"`
+	Latitude    float64  `json:"latitude"`
+	Longitude   float64  `json:"longitude"`
+	Amenities   []string `json:"amenities"`
+}
+
 type adminCafeImportItem struct {
 	Name        string   `json:"name"`
 	Address     string   `json:"address"`
