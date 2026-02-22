@@ -107,7 +107,7 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
             "linear-gradient(135deg, color-mix(in srgb, var(--surface) 86%, transparent), color-mix(in srgb, var(--surface) 62%, transparent))",
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
-          padding: "8px 10px",
+          padding: "8px 32px",
           marginBottom: 4,
         }}
       >
