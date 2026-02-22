@@ -135,6 +135,27 @@ export default function AdminDiagnosticsPanel({
                     Prompt: {aiSummary.prompt_version}
                   </Text>
                 ) : null}
+                {(typeof aiSummary.eligible_reviews_count === "number" ||
+                  typeof aiSummary.attempted_reviews_count === "number" ||
+                  aiSummary.last_attempt_reason) ? (
+                  <Group gap={6} wrap="wrap">
+                    {typeof aiSummary.eligible_reviews_count === "number" ? (
+                      <Badge size="xs" variant="light">
+                        Eligible: {aiSummary.eligible_reviews_count}
+                      </Badge>
+                    ) : null}
+                    {typeof aiSummary.attempted_reviews_count === "number" ? (
+                      <Badge size="xs" variant="light">
+                        Attempted: {aiSummary.attempted_reviews_count}
+                      </Badge>
+                    ) : null}
+                    {aiSummary.last_attempt_reason ? (
+                      <Badge size="xs" variant="light" color="gray">
+                        Last attempt: {aiSummary.last_attempt_reason}
+                      </Badge>
+                    ) : null}
+                  </Group>
+                ) : null}
                 {aiSummary.token_usage ? (
                   <Group gap={6} wrap="wrap">
                     <Badge size="xs" variant="light">

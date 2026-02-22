@@ -52,6 +52,7 @@ export type CafeRatingSnapshot = {
   best_review: CafeRatingBestReview | null;
   descriptive_tags: CafeSemanticTag[];
   specific_tags: CafeSemanticTag[];
+  ai_summary: CafeAISummaryDiagnostics | null;
   components: Record<string, unknown>;
   computed_at: string;
 };
@@ -106,6 +107,9 @@ export type CafeAISummaryDiagnostics = {
   enabled: boolean;
   status: string;
   reason?: string;
+  eligible_reviews_count?: number;
+  attempted_reviews_count?: number;
+  last_attempt_reason?: string;
   summary_short?: string;
   tags?: string[];
   used_reviews?: number;
@@ -558,10 +562,21 @@ function parseAISummaryDiagnostics(rawValue: unknown): CafeAISummaryDiagnostics 
   const dailyTokenUsageRaw = raw.daily_token_usage;
   const dailyTokenRemainingRaw = raw.daily_token_remaining;
   const budgetGuardEnabledRaw = raw.budget_guard_enabled;
+  const eligibleReviewsCountRaw = raw.eligible_reviews_count;
+  const attemptedReviewsCountRaw = raw.attempted_reviews_count;
   return {
     enabled: Boolean(raw.enabled),
     status: asString(raw.status, "unknown"),
     reason: asString(raw.reason),
+    eligible_reviews_count:
+      eligibleReviewsCountRaw === undefined || eligibleReviewsCountRaw === null
+        ? undefined
+        : asNumber(eligibleReviewsCountRaw),
+    attempted_reviews_count:
+      attemptedReviewsCountRaw === undefined || attemptedReviewsCountRaw === null
+        ? undefined
+        : asNumber(attemptedReviewsCountRaw),
+    last_attempt_reason: asString(raw.last_attempt_reason),
     summary_short: asString(raw.summary_short),
     tags: asStringArray(raw.tags),
     used_reviews: asNumber(raw.used_reviews),
@@ -838,6 +853,9 @@ export async function getCafeRatingSnapshot(
 ): Promise<CafeRatingSnapshot> {
   const res = await http.get<unknown>(`/api/cafes/${encodeURIComponent(cafeId)}/rating`);
   const raw = asRecord(res.data);
+  const components = asRecord(raw.components);
+  const aiSummaryFromRoot = parseAISummaryDiagnostics(raw.ai_summary);
+  const aiSummaryFromComponents = parseAISummaryDiagnostics(components.ai_summary);
   return {
     api_contract_version: asString(raw.api_contract_version, "reviews_api_v1"),
     formula_versions: parseFormulaVersions(raw),
@@ -851,7 +869,8 @@ export async function getCafeRatingSnapshot(
     best_review: parseBestReview(raw.best_review),
     descriptive_tags: parseCafeSemanticTags(raw.descriptive_tags),
     specific_tags: parseCafeSemanticTags(raw.specific_tags),
-    components: asRecord(raw.components),
+    ai_summary: aiSummaryFromRoot ?? aiSummaryFromComponents,
+    components,
     computed_at: asString(raw.computed_at),
   };
 }

@@ -1,5 +1,5 @@
 import { Badge, Box, Group, Text } from "@mantine/core";
-import { IconMessageCircle, IconStarFilled } from "@tabler/icons-react";
+import { IconMessageCircle, IconSparkles, IconStarFilled } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { getCafeRatingSnapshot, type CafeRatingSnapshot } from "../../../../api/reviews";
@@ -29,6 +29,11 @@ function buildAmenityDescriptors(amenities: string[]): string[] {
     descriptors.push(`есть ${label}`);
   }
   return descriptors;
+}
+
+function normalizeSummaryText(raw: string | undefined): string {
+  if (!raw) return "";
+  return raw.replace(/\s+/g, " ").trim();
 }
 
 export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProps) {
@@ -91,10 +96,24 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
     const fromSnapshot = (ratingSnapshot?.descriptive_tags ?? [])
       .map((item) => item.label.trim())
       .filter(Boolean);
-    const base = fromSnapshot.length > 0 ? fromSnapshot : buildAmenityDescriptors(cafe.amenities);
-    const unique = Array.from(new Set(base));
+    const fromAISummary = (ratingSnapshot?.ai_summary?.tags ?? [])
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const base =
+      fromSnapshot.length > 0
+        ? fromSnapshot
+        : fromAISummary.length > 0
+          ? fromAISummary
+          : buildAmenityDescriptors(cafe.amenities);
+    const unique = Array.from(new Map(base.map((item) => [item.toLowerCase(), item])).values());
     return unique.slice(0, 4);
-  }, [cafe.amenities, ratingSnapshot?.descriptive_tags]);
+  }, [cafe.amenities, ratingSnapshot?.ai_summary?.tags, ratingSnapshot?.descriptive_tags]);
+
+  const summaryPreview = useMemo(() => {
+    const summary = normalizeSummaryText(ratingSnapshot?.ai_summary?.summary_short);
+    if (summary) return summary;
+    return normalizeSummaryText(ratingSnapshot?.ai_summary?.stale_notice);
+  }, [ratingSnapshot?.ai_summary?.stale_notice, ratingSnapshot?.ai_summary?.summary_short]);
 
   return (
     <Box
@@ -144,6 +163,45 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
             >
               {cafe.address}
             </Text>
+            {ratingLoading ? (
+              <Text
+                size="xs"
+                mt={6}
+                style={{
+                  color: "color-mix(in srgb, var(--cafe-hero-subtitle-color) 90%, var(--text))",
+                }}
+              >
+                Считываем отзывы...
+              </Text>
+            ) : summaryPreview ? (
+              <Group
+                gap={6}
+                wrap="nowrap"
+                mt={6}
+                style={{
+                  width: "fit-content",
+                  maxWidth: "100%",
+                  borderRadius: 10,
+                  padding: "4px 8px",
+                  border: "1px solid color-mix(in srgb, var(--glass-border) 85%, transparent)",
+                  background:
+                    "linear-gradient(135deg, color-mix(in srgb, var(--surface) 85%, transparent), color-mix(in srgb, var(--surface) 58%, transparent))",
+                  backdropFilter: "blur(6px)",
+                  WebkitBackdropFilter: "blur(6px)",
+                }}
+              >
+                <IconSparkles size={12} color="var(--cafe-hero-emphasis-color)" />
+                <Text
+                  size="xs"
+                  lineClamp={2}
+                  style={{
+                    color: "color-mix(in srgb, var(--cafe-hero-title-color) 84%, var(--text))",
+                  }}
+                >
+                  {summaryPreview}
+                </Text>
+              </Group>
+            ) : null}
           </Box>
           <Box
             style={{
