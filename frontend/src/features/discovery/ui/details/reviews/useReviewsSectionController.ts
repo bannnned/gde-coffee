@@ -60,6 +60,23 @@ function extractErrorMessage(error: unknown, fallback: string): string {
   return extractApiErrorMessage(error, fallback);
 }
 
+function dedupePositionOptions(
+  options: Array<{ key: string; label: string }>,
+): Array<{ key: string; label: string }> {
+  const seen = new Set<string>();
+  const unique: Array<{ key: string; label: string }> = [];
+  for (const item of options) {
+    const key = item.key.trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push({
+      key,
+      label: item.label.trim() || key,
+    });
+  }
+  return unique;
+}
+
 type GeoPoint = {
   lat: number;
   lng: number;
@@ -303,10 +320,12 @@ export function useReviewsSectionController({
       setHasMore(page.hasMore);
       setNextCursor(page.nextCursor);
       setPositionOptions(
-        page.positionOptions.map((item) => ({
-          key: item.key,
-          label: item.label || item.key,
-        })),
+        dedupePositionOptions(
+          page.positionOptions.map((item) => ({
+            key: item.key,
+            label: item.label || item.key,
+          })),
+        ),
       );
     } catch (error: unknown) {
       setLoadError(extractErrorMessage(error, "Не удалось загрузить отзывы."));

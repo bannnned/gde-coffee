@@ -102,13 +102,20 @@ export function ReviewFeed({
     },
   } as const;
 
-  const positionFilterData = [
-    { value: "all", label: "Все позиции" },
-    ...positionOptions.map((item) => ({
-      value: item.key,
-      label: item.label,
-    })),
-  ];
+  const positionFilterData = useMemo(() => {
+    const seen = new Set<string>(["all"]);
+    const options = [{ value: "all", label: "Все позиции" }];
+    for (const item of positionOptions) {
+      const value = item.key.trim();
+      if (!value || seen.has(value)) continue;
+      seen.add(value);
+      options.push({
+        value,
+        label: item.label || value,
+      });
+    }
+    return options;
+  }, [positionOptions]);
 
   const sortSelectData = [
     { value: "new", label: "Новые" },

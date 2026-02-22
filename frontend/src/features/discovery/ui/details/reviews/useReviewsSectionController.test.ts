@@ -265,6 +265,35 @@ describe("useReviewsSectionController", () => {
     });
   });
 
+  it("deduplicates position options by key", async () => {
+    mockListCafeReviews.mockResolvedValueOnce({
+      reviews: [],
+      hasMore: false,
+      nextCursor: "",
+      position: "",
+      positionOptions: [
+        { key: "espresso", label: "Эспрессо", reviews_count: 12 },
+        { key: "espresso", label: "espresso", reviews_count: 3 },
+        { key: "latte", label: "Латте", reviews_count: 8 },
+        { key: "", label: "Пусто", reviews_count: 1 },
+      ],
+    });
+
+    const { result } = renderHook(() =>
+      useReviewsSectionController({
+        cafeId: "cafe-1",
+        opened: true,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.positionOptions).toEqual([
+        { key: "espresso", label: "Эспрессо" },
+        { key: "latte", label: "Латте" },
+      ]);
+    });
+  });
+
   it("submits update for own review and refreshes list", async () => {
     const ownReview = makeReview({ id: "review-own", user_id: "user-1" });
 
