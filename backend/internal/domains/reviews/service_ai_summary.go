@@ -21,6 +21,7 @@ const (
 	defaultAISummaryMaxInput       = 20
 	defaultAISummaryMaxOutputTags  = 6
 	defaultAISummaryMinReviewCount = 3
+	defaultAISummaryPromptVersion  = aiSummaryPromptVersionV1
 	defaultAIProxySource           = "gde-kofe-backend"
 	defaultAIModel                 = "gpt-4"
 	aiSummaryReviewStep            = 5
@@ -29,16 +30,58 @@ const (
 	aiSummaryCompletionTokens      = 120
 )
 
+const (
+	aiSummaryPromptVersionV1 = "review_summary_ru_v1"
+	aiSummaryPromptVersionV2 = "review_summary_ru_v2"
+)
+
+const (
+	sqlInsertAISummaryMetric = `insert into public.ai_summary_metrics (
+	cafe_id,
+	status,
+	reason,
+	model,
+	used_reviews,
+	prompt_tokens,
+	completion_tokens,
+	total_tokens,
+	input_hash,
+	metadata,
+	created_at
+) values (
+	$1::uuid,
+	$2,
+	$3,
+	$4,
+	$5,
+	$6,
+	$7,
+	$8,
+	$9,
+	$10::jsonb,
+	$11
+)`
+
+	sqlSelectAISummaryDailyTokenUsage = `select coalesce(sum(total_tokens), 0)
+	from public.ai_summary_metrics
+	where status = 'ok'
+	  and created_at >= $1
+	  and created_at < $2`
+)
+
 type aiSummaryConfig struct {
 	Enabled            bool
 	ChatCompletionsURL string
 	BearerToken        string
 	ProxySource        string
 	Model              string
+	PromptVersion      string
 	Timeout            time.Duration
 	MaxInputReviews    int
 	MaxOutputTags      int
 	MinReviews         int
+	BudgetGuardEnabled bool
+	DailyTokenBudget   int
 }
 
 type aiReviewSignal struct {
@@ -52,10 +95,15 @@ type aiReviewSignal struct {
 }
 
 type aiSummaryResult struct {
-	SummaryShort string
-	Tags         []string
-	UsedReviews  int
-	InputHash    string
+	SummaryShort     string
+	Tags             []string
+	UsedReviews      int
+	InputHash        string
+	Model            string
+	PromptVersion    string
+	PromptTokens     int
+	CompletionTokens int
+	TotalTokens      int
 }
 
 type aiSummaryState struct {
@@ -64,6 +112,29 @@ type aiSummaryState struct {
 	GeneratedAtStep int
 	DescriptiveTags []cafeSemanticTag
 	Payload         map[string]interface{}
+}
+
+type aiSummaryBudgetDecision struct {
+	GuardEnabled    bool
+	LimitTokens     int
+	UsedTokens      int
+	RemainingTokens int
+	UsageKnown      bool
+	Blocked         bool
+	Reason          string
+}
+
+type aiSummaryMetricEvent struct {
+	Status           string
+	Reason           string
+	Model            string
+	UsedReviews      int
+	PromptTokens     int
+	CompletionTokens int
+	TotalTokens      int
+	InputHash        string
+	Metadata         map[string]interface{}
+	CreatedAt        time.Time
 }
 
 type aiSummaryPromptReview struct {
@@ -79,10 +150,13 @@ func loadAISummaryConfigFromEnv() aiSummaryConfig {
 		BearerToken:        loadTimewebBearerTokenFromEnv(),
 		ProxySource:        normalizeNonEmpty(os.Getenv("TIMEWEB_AI_PROXY_SOURCE"), defaultAIProxySource),
 		Model:              normalizeNonEmpty(os.Getenv("TIMEWEB_AI_MODEL"), defaultAIModel),
+		PromptVersion:      normalizeAISummaryPromptVersion(os.Getenv("AI_SUMMARY_PROMPT_VERSION")),
 		Timeout:            parseDurationWithFallback("TIMEWEB_AI_TIMEOUT", defaultAISummaryTimeout),
 		MaxInputReviews:    parseIntWithFallback("TIMEWEB_AI_MAX_INPUT_REVIEWS", defaultAISummaryMaxInput),
 		MaxOutputTags:      parseIntWithFallback("TIMEWEB_AI_MAX_OUTPUT_TAGS", defaultAISummaryMaxOutputTags),
 		MinReviews:         parseIntWithFallback("TIMEWEB_AI_MIN_REVIEWS", defaultAISummaryMinReviewCount),
+		BudgetGuardEnabled: envBool("AI_SUMMARY_BUDGET_GUARD_ENABLED", false),
+		DailyTokenBudget:   parseIntWithFallback("AI_SUMMARY_DAILY_TOKEN_BUDGET", 0),
 	}
 
 	if cfg.MaxInputReviews < 1 {
@@ -94,6 +168,9 @@ func loadAISummaryConfigFromEnv() aiSummaryConfig {
 	if cfg.MinReviews < 1 {
 		cfg.MinReviews = defaultAISummaryMinReviewCount
 	}
+	if cfg.DailyTokenBudget < 0 {
+		cfg.DailyTokenBudget = 0
+	}
 
 	if !cfg.Enabled {
 		return cfg
@@ -104,6 +181,17 @@ func loadAISummaryConfigFromEnv() aiSummaryConfig {
 		cfg.Enabled = false
 	}
 	return cfg
+}
+
+func normalizeAISummaryPromptVersion(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", aiSummaryPromptVersionV1:
+		return aiSummaryPromptVersionV1
+	case aiSummaryPromptVersionV2:
+		return aiSummaryPromptVersionV2
+	default:
+		return defaultAISummaryPromptVersion
+	}
 }
 
 func loadTimewebBearerTokenFromEnv() string {
@@ -232,10 +320,29 @@ func buildAISummaryPromptReviews(
 	return promptItems, nil
 }
 
-func computeAISummaryInputHash(cafeID string, promptItems []aiSummaryPromptReview) (string, error) {
+func countAISummaryEligibleReviews(reviews []aiReviewSignal) int {
+	if len(reviews) == 0 {
+		return 0
+	}
+	count := 0
+	for _, item := range reviews {
+		summary := truncateText(collapseWhitespace(item.Summary), aiSummaryPromptSummaryRunes)
+		if summary != "" {
+			count++
+		}
+	}
+	return count
+}
+
+func computeAISummaryInputHash(
+	cafeID string,
+	promptVersion string,
+	promptItems []aiSummaryPromptReview,
+) (string, error) {
 	payloadRaw, err := json.Marshal(map[string]interface{}{
-		"cafe_id": cafeID,
-		"reviews": promptItems,
+		"cafe_id":        cafeID,
+		"prompt_version": normalizeAISummaryPromptVersion(promptVersion),
+		"reviews":        promptItems,
 	})
 	if err != nil {
 		return "", err
@@ -256,7 +363,7 @@ func (s *Service) calculateAISummaryInputHash(
 	if err != nil {
 		return "", 0, err
 	}
-	inputHash, err := computeAISummaryInputHash(cafeID, promptItems)
+	inputHash, err := computeAISummaryInputHash(cafeID, cfg.PromptVersion, promptItems)
 	if err != nil {
 		return "", 0, err
 	}
@@ -373,6 +480,13 @@ func buildAISummaryStaleNotice(reviews []aiReviewSignal, now time.Time) string {
 	return "Сюда давно не заходили. Исправьте это и оставьте свежий отзыв."
 }
 
+func isAISummaryNotEnoughInputError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "not enough reviews for ai summary")
+}
+
 func intFromAny(value interface{}) int {
 	switch cast := value.(type) {
 	case int:
@@ -417,10 +531,21 @@ func extractAISummaryState(snapshot map[string]interface{}, snapshotErr error) a
 	return aiSummaryState{
 		Reusable:        reusable,
 		GeneratedAt:     generatedAt,
-		GeneratedAtStep: intFromAny(rawPayload["generated_reviews_count"]),
+		GeneratedAtStep: extractAISummaryStep(rawPayload),
 		DescriptiveTags: descriptiveTags,
 		Payload:         payload,
 	}
+}
+
+func extractAISummaryStep(rawPayload map[string]interface{}) int {
+	if rawPayload == nil {
+		return 0
+	}
+	attempted := intFromAny(rawPayload["attempted_reviews_count"])
+	if attempted > 0 {
+		return attempted
+	}
+	return intFromAny(rawPayload["generated_reviews_count"])
 }
 
 func parseSnapshotDescriptiveTags(raw interface{}) []cafeSemanticTag {
@@ -462,6 +587,31 @@ func cloneMap(input map[string]interface{}) map[string]interface{} {
 	return out
 }
 
+func buildAISummaryPrompts(promptVersion string, payloadRaw []byte) (string, string, string) {
+	version := normalizeAISummaryPromptVersion(promptVersion)
+	reviewsPayload := string(payloadRaw)
+
+	switch version {
+	case aiSummaryPromptVersionV2:
+		systemPrompt := "Ты продуктовый аналитик отзывов о кофейнях. Отвечай только валидным JSON."
+		userPrompt := "Верни строго JSON: {\"summary_short\":\"...\",\"descriptive_tags\":[\"...\"]}.\n" +
+			"Правила:\n" +
+			"- summary_short: 1 короткое предложение на русском (до 140 символов).\n" +
+			"- descriptive_tags: 3-6 тегов, lowercase, 1-3 слова, только атмосфера/сервис/удобство.\n" +
+			"- Не упоминай напитки, еду, цены, бренды и внешние догадки.\n" +
+			"- Если данных мало, верни наиболее устойчивые сигналы без фантазий.\n" +
+			"Отзывы:\n" + reviewsPayload
+		return systemPrompt, userPrompt, version
+	default:
+		systemPrompt := "Ты аналитик отзывов о кофейнях. Ответ строго JSON без пояснений."
+		userPrompt := "Верни JSON: {\"summary_short\":\"...\",\"descriptive_tags\":[\"...\"]}.\n" +
+			"Правила: summary_short 1-2 коротких предложения по-русски; descriptive_tags 3-6 тегов, lowercase, 1-3 слова; " +
+			"только про опыт в заведении, без напитков/меню.\n" +
+			"Отзывы:\n" + reviewsPayload
+		return systemPrompt, userPrompt, aiSummaryPromptVersionV1
+	}
+}
+
 func (s *Service) generateAIReviewSummary(
 	ctx context.Context,
 	cafeID string,
@@ -484,16 +634,11 @@ func (s *Service) generateAIReviewSummary(
 	if err != nil {
 		return nil, err
 	}
-	inputHash, err := computeAISummaryInputHash(cafeID, promptItems)
+	inputHash, err := computeAISummaryInputHash(cafeID, cfg.PromptVersion, promptItems)
 	if err != nil {
 		return nil, err
 	}
-
-	systemPrompt := "Ты аналитик отзывов о кофейнях. Ответ строго JSON без пояснений."
-	userPrompt := "Верни JSON: {\"summary_short\":\"...\",\"descriptive_tags\":[\"...\"]}.\n" +
-		"Правила: summary_short 1-2 коротких предложения по-русски; descriptive_tags 3-6 тегов, lowercase, 1-3 слова; " +
-		"только про опыт в заведении, без напитков/меню.\n" +
-		"Отзывы:\n" + string(payloadRaw)
+	systemPrompt, userPrompt, promptVersion := buildAISummaryPrompts(cfg.PromptVersion, payloadRaw)
 
 	requestBody := map[string]interface{}{
 		"model": cfg.Model,
@@ -542,6 +687,12 @@ func (s *Service) generateAIReviewSummary(
 	}
 
 	type openAIChatResponse struct {
+		Model string `json:"model"`
+		Usage struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+			TotalTokens      int `json:"total_tokens"`
+		} `json:"usage"`
 		Choices []struct {
 			Message struct {
 				Content interface{} `json:"content"`
@@ -581,10 +732,15 @@ func (s *Service) generateAIReviewSummary(
 	}
 
 	return &aiSummaryResult{
-		SummaryShort: summary,
-		Tags:         tags,
-		UsedReviews:  len(promptItems),
-		InputHash:    inputHash,
+		SummaryShort:     summary,
+		Tags:             tags,
+		UsedReviews:      len(promptItems),
+		InputHash:        inputHash,
+		Model:            strings.TrimSpace(parsed.Model),
+		PromptVersion:    promptVersion,
+		PromptTokens:     maxInt(0, parsed.Usage.PromptTokens),
+		CompletionTokens: maxInt(0, parsed.Usage.CompletionTokens),
+		TotalTokens:      maxInt(0, parsed.Usage.TotalTokens),
 	}, nil
 }
 
@@ -624,4 +780,106 @@ func extractFirstJSONObject(raw string) []byte {
 		return []byte(text)
 	}
 	return []byte(text[start : end+1])
+}
+
+func (s *Service) loadAISummaryDailyTokenUsage(ctx context.Context, now time.Time) (int, error) {
+	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	dayEnd := dayStart.Add(24 * time.Hour)
+
+	var used int
+	if err := s.repository.Pool().QueryRow(
+		ctx,
+		sqlSelectAISummaryDailyTokenUsage,
+		dayStart,
+		dayEnd,
+	).Scan(&used); err != nil {
+		return 0, err
+	}
+	return maxInt(0, used), nil
+}
+
+func decideAISummaryBudget(
+	cfg aiSummaryConfig,
+	usedTokens int,
+	usageErr error,
+	force bool,
+) aiSummaryBudgetDecision {
+	limit := maxInt(0, cfg.DailyTokenBudget)
+	guardEnabled := cfg.BudgetGuardEnabled && limit > 0
+	used := maxInt(0, usedTokens)
+
+	decision := aiSummaryBudgetDecision{
+		GuardEnabled:    guardEnabled,
+		LimitTokens:     limit,
+		UsedTokens:      used,
+		RemainingTokens: maxInt(0, limit-used),
+		UsageKnown:      usageErr == nil,
+	}
+	if !guardEnabled || force {
+		return decision
+	}
+	if usageErr != nil {
+		decision.Blocked = true
+		decision.Reason = "budget_usage_unavailable"
+		return decision
+	}
+	if used >= limit {
+		decision.Blocked = true
+		decision.Reason = "daily_budget_reached"
+	}
+	return decision
+}
+
+func appendAISummaryBudgetPayload(payload map[string]interface{}, decision aiSummaryBudgetDecision) {
+	payload["budget_guard_enabled"] = decision.GuardEnabled
+	payload["daily_token_budget"] = decision.LimitTokens
+	if decision.GuardEnabled && decision.UsageKnown {
+		payload["daily_token_usage"] = decision.UsedTokens
+		payload["daily_token_remaining"] = decision.RemainingTokens
+	}
+}
+
+func (s *Service) recordAISummaryMetricBestEffort(
+	ctx context.Context,
+	cafeID string,
+	event aiSummaryMetricEvent,
+) {
+	_ = s.recordAISummaryMetric(ctx, cafeID, event)
+}
+
+func (s *Service) recordAISummaryMetric(
+	ctx context.Context,
+	cafeID string,
+	event aiSummaryMetricEvent,
+) error {
+	metadata := event.Metadata
+	if metadata == nil {
+		metadata = map[string]interface{}{}
+	}
+	metadataRaw, err := json.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+
+	createdAt := event.CreatedAt.UTC()
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+
+	_, err = s.repository.Pool().Exec(
+		ctx,
+		sqlInsertAISummaryMetric,
+		cafeID,
+		strings.TrimSpace(event.Status),
+		strings.TrimSpace(event.Reason),
+		strings.TrimSpace(event.Model),
+		maxInt(0, event.UsedReviews),
+		maxInt(0, event.PromptTokens),
+		maxInt(0, event.CompletionTokens),
+		maxInt(0, event.TotalTokens),
+		strings.TrimSpace(event.InputHash),
+		metadataRaw,
+		createdAt,
+	)
+	return err
 }

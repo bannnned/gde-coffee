@@ -14,6 +14,7 @@ order by id asc`
 
 const (
 	defaultRatingRebuildBatchSize             = 25
+	defaultRatingRebuildLeaderLockKey         = 740051
 	sqlSelectCafeIDsForRatingRebuildFromStart = `select id::text
 from cafes
 order by id asc
@@ -33,10 +34,14 @@ func (s *Service) StartRatingRebuildWorker(ctx context.Context, interval time.Du
 	if batchSize <= 0 {
 		batchSize = defaultRatingRebuildBatchSize
 	}
+	lockKey := int64(parseIntWithFallback("REVIEWS_RATING_REBUILD_LOCK_KEY", defaultRatingRebuildLeaderLockKey))
+	if lockKey == 0 {
+		lockKey = defaultRatingRebuildLeaderLockKey
+	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	log.Printf("reviews rating rebuild worker started: interval=%s batch=%d", interval, batchSize)
+	log.Printf("reviews rating rebuild worker started: interval=%s batch=%d lock_key=%d", interval, batchSize, lockKey)
 	defer log.Printf("reviews rating rebuild worker stopped")
 
 	cursor := ""
@@ -44,34 +49,44 @@ func (s *Service) StartRatingRebuildWorker(ctx context.Context, interval time.Du
 		// Batch rebuild keeps snapshots healthy without creating periodic load spikes.
 		runCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 		defer cancel()
-		processed, failed, nextCursor, wrapped, err := s.rebuildCafeRatingSnapshotsBatch(runCtx, batchSize, cursor)
-		if err != nil {
+		locked, err := s.withRatingRebuildLeaderLock(runCtx, lockKey, func() error {
+			processed, failed, nextCursor, wrapped, rebuildErr := s.rebuildCafeRatingSnapshotsBatch(runCtx, batchSize, cursor)
+			if rebuildErr != nil {
+				log.Printf(
+					"reviews rating rebuild failed: processed=%d failed=%d cursor=%q err=%v",
+					processed,
+					failed,
+					cursor,
+					rebuildErr,
+				)
+				return rebuildErr
+			}
+			cursor = nextCursor
+			if failed > 0 {
+				log.Printf(
+					"reviews rating rebuild completed with errors: processed=%d failed=%d cursor=%q wrapped=%t",
+					processed,
+					failed,
+					cursor,
+					wrapped,
+				)
+				return nil
+			}
 			log.Printf(
-				"reviews rating rebuild failed: processed=%d failed=%d cursor=%q err=%v",
+				"reviews rating rebuild completed: processed=%d cursor=%q wrapped=%t",
 				processed,
-				failed,
-				cursor,
-				err,
-			)
-			return
-		}
-		cursor = nextCursor
-		if failed > 0 {
-			log.Printf(
-				"reviews rating rebuild completed with errors: processed=%d failed=%d cursor=%q wrapped=%t",
-				processed,
-				failed,
 				cursor,
 				wrapped,
 			)
+			return nil
+		})
+		if err != nil {
+			log.Printf("reviews rating rebuild lock failed: lock_key=%d err=%v", lockKey, err)
 			return
 		}
-		log.Printf(
-			"reviews rating rebuild completed: processed=%d cursor=%q wrapped=%t",
-			processed,
-			cursor,
-			wrapped,
-		)
+		if !locked {
+			log.Printf("reviews rating rebuild skipped: another instance holds lock_key=%d", lockKey)
+		}
 	}
 
 	rebuild()
@@ -83,6 +98,42 @@ func (s *Service) StartRatingRebuildWorker(ctx context.Context, interval time.Du
 			rebuild()
 		}
 	}
+}
+
+func (s *Service) withRatingRebuildLeaderLock(
+	ctx context.Context,
+	lockKey int64,
+	run func() error,
+) (bool, error) {
+	conn, err := s.repository.Pool().Acquire(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer conn.Release()
+
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	var locked bool
+	if err := tx.QueryRow(ctx, `select pg_try_advisory_xact_lock($1::bigint)`, lockKey).Scan(&locked); err != nil {
+		return false, err
+	}
+	if !locked {
+		return false, nil
+	}
+
+	if err := run(); err != nil {
+		return true, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return true, err
+	}
+	return true, nil
 }
 
 func (s *Service) fetchCafeIDsForRatingRebuildBatch(

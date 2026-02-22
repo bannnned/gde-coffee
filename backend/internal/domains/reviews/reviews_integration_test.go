@@ -126,6 +126,7 @@ func newIntegrationRouterWithMedia(pool *pgxpool.Pool, s3 *media.Service, mediaC
 	adminReviews := router.Group("/api/admin/reviews")
 	adminReviews.Use(testRequireRoles("admin", "moderator"))
 	adminReviews.GET("/versioning", handler.GetVersioningStatus)
+	adminReviews.GET("/health", handler.GetReviewsAIHealth)
 	adminReviews.GET("/dlq", handler.ListDLQ)
 	adminReviews.POST("/dlq/replay-open", handler.ReplayAllOpenDLQ)
 	adminReviews.POST("/dlq/resolve-open", handler.ResolveOpenDLQWithoutReplay)
@@ -2616,6 +2617,77 @@ func TestAdminReviewsVersioningAccessAndPayload(t *testing.T) {
 	qualityVersion := strings.TrimSpace(fmt.Sprintf("%v", formulaVersions["quality"]))
 	if qualityVersion == "" {
 		t.Fatalf("expected non-empty formula_versions.quality")
+	}
+
+	aiSummary, ok := body["ai_summary"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected ai_summary object in versioning payload, got %T", body["ai_summary"])
+	}
+	promptVersion := strings.TrimSpace(fmt.Sprintf("%v", aiSummary["prompt_version"]))
+	if promptVersion == "" {
+		t.Fatalf("expected non-empty ai_summary.prompt_version")
+	}
+}
+
+func TestAdminReviewsHealthAccessAndPayload(t *testing.T) {
+	pool := integrationTestPool(t)
+	router := newIntegrationRouter(pool)
+
+	adminID := mustCreateTestUser(t, pool, "admin")
+	userID := mustCreateTestUser(t, pool, "user")
+	t.Cleanup(func() {
+		mustDeleteTestUser(t, pool, adminID)
+		mustDeleteTestUser(t, pool, userID)
+	})
+
+	forbiddenRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/admin/reviews/health",
+		map[string]string{
+			"X-Test-User-ID": userID,
+			"X-Test-Role":    "user",
+		},
+		nil,
+	)
+	if forbiddenRec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin health expected 403, got %d, body=%s", forbiddenRec.Code, forbiddenRec.Body.String())
+	}
+
+	adminRec := performJSONRequest(
+		t,
+		router,
+		http.MethodGet,
+		"/api/admin/reviews/health",
+		map[string]string{
+			"X-Test-User-ID": adminID,
+			"X-Test-Role":    "admin",
+		},
+		nil,
+	)
+	if adminRec.Code != http.StatusOK {
+		t.Fatalf("admin health expected 200, got %d, body=%s", adminRec.Code, adminRec.Body.String())
+	}
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(adminRec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode health response: %v", err)
+	}
+	if strings.TrimSpace(fmt.Sprintf("%v", body["generated_at"])) == "" {
+		t.Fatalf("expected generated_at in health payload")
+	}
+	if _, ok := body["ai_summary"].(map[string]interface{}); !ok {
+		t.Fatalf("expected ai_summary object, got %T", body["ai_summary"])
+	}
+	if _, ok := body["windows"].(map[string]interface{}); !ok {
+		t.Fatalf("expected windows object, got %T", body["windows"])
+	}
+	if _, ok := body["queues"].(map[string]interface{}); !ok {
+		t.Fatalf("expected queues object, got %T", body["queues"])
+	}
+	if _, ok := body["coverage"].(map[string]interface{}); !ok {
+		t.Fatalf("expected coverage object, got %T", body["coverage"])
 	}
 }
 

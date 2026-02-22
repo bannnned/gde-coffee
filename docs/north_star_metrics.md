@@ -147,3 +147,46 @@
 - уровень и прогресс:
   - пороги: `0, 40, 120, 180, 320, 500, 750`
   - в API профиля отдаются `level`, `level_progress`, `points_to_next_level`.
+
+## AI Summary Ops (V1)
+
+- Добавлена таблица `public.ai_summary_metrics` для операционных метрик AI-суммаризации:
+  - `status`, `reason`, `model`
+  - `used_reviews`, `prompt_tokens`, `completion_tokens`, `total_tokens`
+  - `input_hash`, `metadata`, `created_at`
+- Миграция:
+  - `backend/migrations/000029_ai_summary_metrics.up.sql`
+  - `backend/migrations/000029_ai_summary_metrics.down.sql`
+- В метрики пишутся события:
+  - `ok` (успешный AI-ответ),
+  - `cache_hit` (переиспользован прошлый результат),
+  - `budget_blocked` (запрос пропущен лимитом),
+  - `error` / `prepare_error` (ошибки подготовки/вызова).
+
+### Daily Budget Guard
+
+- Конфиг:
+  - `AI_SUMMARY_BUDGET_GUARD_ENABLED=false` (по умолчанию выключен),
+  - `AI_SUMMARY_DAILY_TOKEN_BUDGET=0` (лимит в токенах/день).
+- Лимит считается по сумме `total_tokens` за текущий UTC-день.
+- Ручной админ-триггер (`force`) guard не блокирует.
+
+### Prompt Versioning
+
+- Добавлено версионирование prompt для AI summary:
+  - `AI_SUMMARY_PROMPT_VERSION=review_summary_ru_v1|review_summary_ru_v2`
+  - по умолчанию: `review_summary_ru_v1`
+- Примененная версия prompt отдается в:
+  - `ai_summary.prompt_version` в rating snapshot/diagnostics,
+  - `GET /api/admin/reviews/versioning` в секции `ai_summary`,
+  - метаданных `ai_summary_metrics`.
+
+### Reviews/AI Health Dashboard API
+
+- Добавлен endpoint:
+  - `GET /api/admin/reviews/health` (admin/moderator)
+- Возвращает:
+  - AI конфиг (model/prompt version/budget settings),
+  - окна метрик `last_24h`, `last_7d`,
+  - состояние очередей outbox/inbox и открытый DLQ,
+  - покрытие пересчетов и последние `ok/error` события.

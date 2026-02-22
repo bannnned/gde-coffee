@@ -125,6 +125,48 @@ export default function AdminDiagnosticsPanel({
                     ))}
                   </Group>
                 ) : null}
+                {aiSummary.model ? (
+                  <Text size="xs" c="dimmed">
+                    Model: {aiSummary.model}
+                  </Text>
+                ) : null}
+                {aiSummary.prompt_version ? (
+                  <Text size="xs" c="dimmed">
+                    Prompt: {aiSummary.prompt_version}
+                  </Text>
+                ) : null}
+                {aiSummary.token_usage ? (
+                  <Group gap={6} wrap="wrap">
+                    <Badge size="xs" variant="light">
+                      Prompt: {aiSummary.token_usage.prompt_tokens}
+                    </Badge>
+                    <Badge size="xs" variant="light">
+                      Completion: {aiSummary.token_usage.completion_tokens}
+                    </Badge>
+                    <Badge size="xs" variant="light">
+                      Total: {aiSummary.token_usage.total_tokens}
+                    </Badge>
+                  </Group>
+                ) : null}
+                {aiSummary.budget_guard_enabled ? (
+                  <Group gap={6} wrap="wrap">
+                    {typeof aiSummary.daily_token_budget === "number" ? (
+                      <Badge size="xs" variant="light">
+                        Budget/day: {aiSummary.daily_token_budget}
+                      </Badge>
+                    ) : null}
+                    {typeof aiSummary.daily_token_usage === "number" ? (
+                      <Badge size="xs" variant="light">
+                        Used today: {aiSummary.daily_token_usage}
+                      </Badge>
+                    ) : null}
+                    {typeof aiSummary.daily_token_remaining === "number" ? (
+                      <Badge size="xs" variant="light">
+                        Remaining: {aiSummary.daily_token_remaining}
+                      </Badge>
+                    ) : null}
+                  </Group>
+                ) : null}
               </Stack>
             )}
 

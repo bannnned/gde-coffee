@@ -224,6 +224,15 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 	previousSnapshot, previousSnapshotErr := s.loadCafeRatingSnapshot(ctx, cafeID)
 	previousAIState := extractAISummaryState(previousSnapshot, previousSnapshotErr)
 	nowUTC := time.Now().UTC()
+	aiBudgetDecision := decideAISummaryBudget(s.aiSummaryCfg, 0, nil, options.ForceAISummary)
+	if s.aiSummaryCfg.Enabled && aiBudgetDecision.GuardEnabled {
+		usedTokens, usageErr := s.loadAISummaryDailyTokenUsage(ctx, nowUTC)
+		aiBudgetDecision = decideAISummaryBudget(s.aiSummaryCfg, usedTokens, usageErr, options.ForceAISummary)
+	}
+	aiTrigger := "auto"
+	if options.ForceAISummary {
+		aiTrigger = "admin_manual"
+	}
 
 	globalMean, err := s.globalMeanRating(ctx)
 	if err != nil {
@@ -239,10 +248,13 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 			aiReason = "no_reviews_manual"
 		}
 		aiSummaryPayload := map[string]interface{}{
-			"enabled": s.aiSummaryCfg.Enabled,
-			"status":  aiStatus,
-			"reason":  aiReason,
+			"enabled":                s.aiSummaryCfg.Enabled,
+			"status":                 aiStatus,
+			"reason":                 aiReason,
+			"eligible_reviews_count": 0,
+			"prompt_version":         s.aiSummaryCfg.PromptVersion,
 		}
+		appendAISummaryBudgetPayload(aiSummaryPayload, aiBudgetDecision)
 		if !previousAIState.GeneratedAt.IsZero() {
 			aiSummaryPayload["last_generated_at"] = previousAIState.GeneratedAt.UTC().Format(time.RFC3339)
 		}
@@ -359,6 +371,7 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 	}
 
 	reviewsCount := len(reviews)
+	eligibleReviewsCount := countAISummaryEligibleReviews(aiSignals)
 	ratingsMean := sumRatings / float64(reviewsCount)
 	verifiedShare := float64(verifiedReviewsCount) / float64(reviewsCount)
 	authorRepAvgNorm := sumAuthorRepNorm / float64(reviewsCount)
@@ -372,8 +385,10 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 	)
 	descriptiveTagsSource := "rules_v1"
 	aiSummaryPayload := map[string]interface{}{
-		"enabled": s.aiSummaryCfg.Enabled,
-		"status":  "disabled",
+		"enabled":                s.aiSummaryCfg.Enabled,
+		"status":                 "disabled",
+		"eligible_reviews_count": eligibleReviewsCount,
+		"prompt_version":         s.aiSummaryCfg.PromptVersion,
 	}
 
 	if !s.aiSummaryCfg.Enabled {
@@ -386,12 +401,17 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 			aiSummaryPayload["enabled"] = true
 			aiSummaryPayload["status"] = "threshold_wait"
 			aiSummaryPayload["reason"] = aiAttemptReason
+			aiSummaryPayload["prompt_version"] = normalizeNonEmpty(
+				toStringSafe(aiSummaryPayload["prompt_version"]),
+				s.aiSummaryCfg.PromptVersion,
+			)
 			if nextThresholdReviews > 0 {
 				aiSummaryPayload["next_threshold_reviews"] = nextThresholdReviews
 			}
 		} else {
 			aiSummaryPayload["status"] = "fallback_rules"
 			aiSummaryPayload["reason"] = aiAttemptReason
+			aiSummaryPayload["prompt_version"] = s.aiSummaryCfg.PromptVersion
 			if nextThresholdReviews > 0 {
 				aiSummaryPayload["next_threshold_reviews"] = nextThresholdReviews
 			}
@@ -400,17 +420,56 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 		aiSummaryPayload["status"] = "fallback_rules"
 		aiSummaryPayload["reason"] = "ai_error"
 		skipAIRequest := false
+		inputHash := ""
+		usedInputReviews := 0
+		markAISummaryAttempt := func(payload map[string]interface{}, usedReviews int, reason string) {
+			payload["attempted_reviews_count"] = reviewsCount
+			payload["last_attempt_at"] = nowUTC.Format(time.RFC3339)
+			payload["last_attempt_reason"] = reason
+			payload["eligible_reviews_count"] = eligibleReviewsCount
+			payload["prompt_version"] = normalizeNonEmpty(
+				toStringSafe(payload["prompt_version"]),
+				s.aiSummaryCfg.PromptVersion,
+			)
+			if usedReviews > 0 {
+				payload["used_reviews"] = usedReviews
+			}
+			if nextThresholdReviews > 0 {
+				payload["next_threshold_reviews"] = nextThresholdReviews
+			}
+		}
 		if !options.ForceAISummary {
 			inputHash, usedReviews, hashErr := s.calculateAISummaryInputHash(cafeID, aiSignals)
 			if hashErr != nil {
 				skipAIRequest = true
-				aiSummaryPayload["reason"] = truncateText(hashErr.Error(), 140)
+				errorReason := truncateText(hashErr.Error(), 140)
+				metricReason := "input_hash_error"
+				if isAISummaryNotEnoughInputError(hashErr) {
+					errorReason = "not_enough_clean_reviews"
+					metricReason = "not_enough_clean_reviews"
+					aiSummaryPayload["status"] = "input_quality_wait"
+					aiSummaryPayload["required_clean_reviews"] = s.aiSummaryCfg.MinReviews
+					aiSummaryPayload["eligible_reviews_count"] = eligibleReviewsCount
+				}
+				aiSummaryPayload["reason"] = errorReason
+				markAISummaryAttempt(aiSummaryPayload, 0, errorReason)
+				s.recordAISummaryMetricBestEffort(ctx, cafeID, aiSummaryMetricEvent{
+					Status:      "prepare_error",
+					Reason:      metricReason,
+					UsedReviews: 0,
+					Metadata: map[string]interface{}{
+						"trigger":        aiTrigger,
+						"prompt_version": s.aiSummaryCfg.PromptVersion,
+					},
+					CreatedAt: nowUTC,
+				})
 				if previousAIState.Reusable {
 					descriptiveTags = previousAIState.DescriptiveTags
 					descriptiveTagsSource = "timeweb_ai_v1"
 					aiSummaryPayload["status"] = "fallback_previous"
 				}
 			} else {
+				usedInputReviews = usedReviews
 				previousInputHash := strings.TrimSpace(toStringSafe(previousAIState.Payload["input_hash"]))
 				if previousAIState.Reusable && previousInputHash != "" && previousInputHash == inputHash {
 					skipAIRequest = true
@@ -421,12 +480,53 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 					aiSummaryPayload["status"] = "input_unchanged"
 					aiSummaryPayload["reason"] = "cache_hit"
 					aiSummaryPayload["used_reviews"] = usedReviews
+					markAISummaryAttempt(aiSummaryPayload, usedReviews, "cache_hit")
+					s.recordAISummaryMetricBestEffort(ctx, cafeID, aiSummaryMetricEvent{
+						Status:      "cache_hit",
+						Reason:      "input_unchanged",
+						UsedReviews: usedReviews,
+						InputHash:   inputHash,
+						Metadata: map[string]interface{}{
+							"trigger":        aiTrigger,
+							"prompt_version": s.aiSummaryCfg.PromptVersion,
+						},
+						CreatedAt: nowUTC,
+					})
 				}
 			}
+		}
+		if !skipAIRequest && aiBudgetDecision.Blocked {
+			skipAIRequest = true
+			aiSummaryPayload["status"] = "budget_blocked"
+			aiSummaryPayload["reason"] = aiBudgetDecision.Reason
+			aiSummaryPayload["used_reviews"] = usedInputReviews
+			if inputHash != "" {
+				aiSummaryPayload["input_hash"] = inputHash
+			}
+			if previousAIState.Reusable {
+				descriptiveTags = previousAIState.DescriptiveTags
+				descriptiveTagsSource = "timeweb_ai_v1"
+			}
+			markAISummaryAttempt(aiSummaryPayload, usedInputReviews, aiBudgetDecision.Reason)
+			s.recordAISummaryMetricBestEffort(ctx, cafeID, aiSummaryMetricEvent{
+				Status:      "budget_blocked",
+				Reason:      aiBudgetDecision.Reason,
+				UsedReviews: usedInputReviews,
+				InputHash:   inputHash,
+				Metadata: map[string]interface{}{
+					"trigger":        aiTrigger,
+					"prompt_version": s.aiSummaryCfg.PromptVersion,
+				},
+				CreatedAt: nowUTC,
+			})
 		}
 		if !skipAIRequest {
 			aiSummaryResult, aiErr := s.generateAIReviewSummary(ctx, cafeID, aiSignals)
 			if aiErr == nil && aiSummaryResult != nil && len(aiSummaryResult.Tags) > 0 {
+				if aiBudgetDecision.GuardEnabled && aiBudgetDecision.UsageKnown {
+					aiBudgetDecision.UsedTokens = maxInt(0, aiBudgetDecision.UsedTokens+maxInt(0, aiSummaryResult.TotalTokens))
+					aiBudgetDecision.RemainingTokens = maxInt(0, aiBudgetDecision.LimitTokens-aiBudgetDecision.UsedTokens)
+				}
 				descriptiveTags = buildAIDescriptiveCafeTags(aiSummaryResult.Tags, reviewsCount)
 				descriptiveTagsSource = "timeweb_ai_v1"
 				aiSummaryPayload = map[string]interface{}{
@@ -436,13 +536,55 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 					"tags":                    aiSummaryResult.Tags,
 					"used_reviews":            aiSummaryResult.UsedReviews,
 					"input_hash":              aiSummaryResult.InputHash,
+					"attempted_reviews_count": reviewsCount,
+					"last_attempt_at":         nowUTC.Format(time.RFC3339),
+					"last_attempt_reason":     "ok",
+					"eligible_reviews_count":  eligibleReviewsCount,
+					"model":                   normalizeNonEmpty(aiSummaryResult.Model, s.aiSummaryCfg.Model),
+					"prompt_version":          normalizeNonEmpty(aiSummaryResult.PromptVersion, s.aiSummaryCfg.PromptVersion),
+					"token_usage": map[string]interface{}{
+						"prompt_tokens":     aiSummaryResult.PromptTokens,
+						"completion_tokens": aiSummaryResult.CompletionTokens,
+						"total_tokens":      aiSummaryResult.TotalTokens,
+					},
 					"generated_at":            nowUTC.Format(time.RFC3339),
 					"generated_reviews_count": reviewsCount,
 					"next_threshold_reviews":  nextAISummaryStepThreshold(reviewsCount),
 					"force":                   options.ForceAISummary,
 				}
+				s.recordAISummaryMetricBestEffort(ctx, cafeID, aiSummaryMetricEvent{
+					Status:           "ok",
+					Reason:           "",
+					Model:            normalizeNonEmpty(aiSummaryResult.Model, s.aiSummaryCfg.Model),
+					UsedReviews:      aiSummaryResult.UsedReviews,
+					PromptTokens:     aiSummaryResult.PromptTokens,
+					CompletionTokens: aiSummaryResult.CompletionTokens,
+					TotalTokens:      aiSummaryResult.TotalTokens,
+					InputHash:        aiSummaryResult.InputHash,
+					Metadata: map[string]interface{}{
+						"trigger": aiTrigger,
+						"force":   options.ForceAISummary,
+						"prompt_version": normalizeNonEmpty(
+							aiSummaryResult.PromptVersion,
+							s.aiSummaryCfg.PromptVersion,
+						),
+					},
+					CreatedAt: nowUTC,
+				})
 			} else if aiErr != nil {
 				aiSummaryPayload["reason"] = truncateText(aiErr.Error(), 140)
+				s.recordAISummaryMetricBestEffort(ctx, cafeID, aiSummaryMetricEvent{
+					Status:      "error",
+					Reason:      truncateText(aiErr.Error(), 200),
+					UsedReviews: usedInputReviews,
+					InputHash:   inputHash,
+					Metadata: map[string]interface{}{
+						"trigger":        aiTrigger,
+						"force":          options.ForceAISummary,
+						"prompt_version": s.aiSummaryCfg.PromptVersion,
+					},
+					CreatedAt: nowUTC,
+				})
 				if previousAIState.Reusable {
 					descriptiveTags = previousAIState.DescriptiveTags
 					descriptiveTagsSource = "timeweb_ai_v1"
@@ -451,9 +593,11 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 			}
 		}
 	}
+	aiSummaryPayload["eligible_reviews_count"] = eligibleReviewsCount
 	if staleNotice := buildAISummaryStaleNotice(aiSignals, nowUTC); staleNotice != "" {
 		aiSummaryPayload["stale_notice"] = staleNotice
 	}
+	appendAISummaryBudgetPayload(aiSummaryPayload, aiBudgetDecision)
 	specificTags := buildTopSpecificCafeTags(specificTagStats, 8)
 
 	// rating_v2 formula:

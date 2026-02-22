@@ -109,12 +109,23 @@ export type CafeAISummaryDiagnostics = {
   summary_short?: string;
   tags?: string[];
   used_reviews?: number;
+  model?: string;
+  prompt_version?: string;
+  token_usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
   generated_at?: string;
   generated_reviews_count?: number;
   next_threshold_reviews?: number;
   last_generated_at?: string;
   stale_notice?: string;
   force?: boolean;
+  budget_guard_enabled?: boolean;
+  daily_token_budget?: number;
+  daily_token_usage?: number;
+  daily_token_remaining?: number;
 };
 
 export type TriggerCafeAISummaryResponse = {
@@ -142,6 +153,86 @@ export type ReviewsVersioningStatus = {
   feature_flags: {
     rating_v3_enabled: boolean;
     quality_v2_enabled: boolean;
+  };
+  ai_summary?: {
+    enabled: boolean;
+    model: string;
+    prompt_version: string;
+    max_input_reviews: number;
+    max_output_tags: number;
+    min_reviews: number;
+    budget_guard_enabled: boolean;
+    daily_token_budget: number;
+    daily_token_usage?: number;
+    daily_token_remaining?: number;
+  };
+};
+
+export type ReviewsAIHealth = {
+  generated_at: string;
+  ai_summary: {
+    enabled: boolean;
+    model: string;
+    prompt_version: string;
+    timeout: string;
+    max_input_reviews: number;
+    max_output_tags: number;
+    min_reviews: number;
+    review_step: number;
+    budget_guard_enabled: boolean;
+    daily_token_budget: number;
+    daily_token_usage: number;
+    daily_token_remaining: number;
+    daily_budget_blocked: boolean;
+    daily_budget_block_reason: string;
+  };
+  windows: {
+    last_24h: {
+      total_events: number;
+      ok_events: number;
+      error_events: number;
+      prompt_tokens: number;
+      completion_tokens: number;
+      total_tokens: number;
+      success_rate: number;
+      status_event_counts: Record<string, number>;
+    };
+    last_7d: {
+      total_events: number;
+      ok_events: number;
+      error_events: number;
+      prompt_tokens: number;
+      completion_tokens: number;
+      total_tokens: number;
+      success_rate: number;
+      status_event_counts: Record<string, number>;
+    };
+  };
+  queues: {
+    outbox: {
+      pending: number;
+      processing: number;
+      failed: number;
+    };
+    inbox: {
+      pending: number;
+      processing: number;
+      failed: number;
+    };
+    dlq_open: number;
+  };
+  coverage: {
+    cafes_total: number;
+    snapshots_total: number;
+    snapshots_recent_24h: number;
+    ai_ok_recent_24h: number;
+    ai_ok_recent_7d: number;
+  };
+  last: {
+    event: Record<string, unknown>;
+    ok_at: string;
+    error_at: string;
+    event_status: string;
   };
 };
 
@@ -462,6 +553,11 @@ function parseDiagnosticsReview(rawValue: unknown): CafeRatingDiagnosticsReview 
 function parseAISummaryDiagnostics(rawValue: unknown): CafeAISummaryDiagnostics | null {
   const raw = asRecord(rawValue);
   if (Object.keys(raw).length === 0) return null;
+  const tokenUsageRaw = asRecord(raw.token_usage);
+  const dailyTokenBudgetRaw = raw.daily_token_budget;
+  const dailyTokenUsageRaw = raw.daily_token_usage;
+  const dailyTokenRemainingRaw = raw.daily_token_remaining;
+  const budgetGuardEnabledRaw = raw.budget_guard_enabled;
   return {
     enabled: Boolean(raw.enabled),
     status: asString(raw.status, "unknown"),
@@ -469,12 +565,38 @@ function parseAISummaryDiagnostics(rawValue: unknown): CafeAISummaryDiagnostics 
     summary_short: asString(raw.summary_short),
     tags: asStringArray(raw.tags),
     used_reviews: asNumber(raw.used_reviews),
+    model: asString(raw.model),
+    prompt_version: asString(raw.prompt_version),
+    token_usage:
+      Object.keys(tokenUsageRaw).length > 0
+        ? {
+            prompt_tokens: asNumber(tokenUsageRaw.prompt_tokens),
+            completion_tokens: asNumber(tokenUsageRaw.completion_tokens),
+            total_tokens: asNumber(tokenUsageRaw.total_tokens),
+          }
+        : undefined,
     generated_at: asString(raw.generated_at),
     generated_reviews_count: asNumber(raw.generated_reviews_count),
     next_threshold_reviews: asNumber(raw.next_threshold_reviews),
     last_generated_at: asString(raw.last_generated_at),
     stale_notice: asString(raw.stale_notice),
     force: Boolean(raw.force),
+    budget_guard_enabled:
+      budgetGuardEnabledRaw === true || budgetGuardEnabledRaw === false
+        ? Boolean(budgetGuardEnabledRaw)
+        : undefined,
+    daily_token_budget:
+      dailyTokenBudgetRaw === undefined || dailyTokenBudgetRaw === null
+        ? undefined
+        : asNumber(dailyTokenBudgetRaw),
+    daily_token_usage:
+      dailyTokenUsageRaw === undefined || dailyTokenUsageRaw === null
+        ? undefined
+        : asNumber(dailyTokenUsageRaw),
+    daily_token_remaining:
+      dailyTokenRemainingRaw === undefined || dailyTokenRemainingRaw === null
+        ? undefined
+        : asNumber(dailyTokenRemainingRaw),
   };
 }
 
@@ -803,6 +925,114 @@ export async function getReviewsVersioningStatus(): Promise<ReviewsVersioningSta
     feature_flags: {
       rating_v3_enabled: asBoolean(featureFlags.rating_v3_enabled),
       quality_v2_enabled: asBoolean(featureFlags.quality_v2_enabled),
+    },
+    ai_summary: (() => {
+      const aiSummary = asRecord(raw.ai_summary);
+      if (Object.keys(aiSummary).length === 0) return undefined;
+      return {
+        enabled: asBoolean(aiSummary.enabled),
+        model: asString(aiSummary.model),
+        prompt_version: asString(aiSummary.prompt_version),
+        max_input_reviews: asNumber(aiSummary.max_input_reviews),
+        max_output_tags: asNumber(aiSummary.max_output_tags),
+        min_reviews: asNumber(aiSummary.min_reviews),
+        budget_guard_enabled: asBoolean(aiSummary.budget_guard_enabled),
+        daily_token_budget: asNumber(aiSummary.daily_token_budget),
+        daily_token_usage:
+          aiSummary.daily_token_usage === undefined || aiSummary.daily_token_usage === null
+            ? undefined
+            : asNumber(aiSummary.daily_token_usage),
+        daily_token_remaining:
+          aiSummary.daily_token_remaining === undefined || aiSummary.daily_token_remaining === null
+            ? undefined
+            : asNumber(aiSummary.daily_token_remaining),
+      };
+    })(),
+  };
+}
+
+function parseStatusEventCounts(rawValue: unknown): Record<string, number> {
+  const raw = asRecord(rawValue);
+  return Object.entries(raw).reduce<Record<string, number>>((acc, [key, value]) => {
+    const normalizedKey = asString(key).trim();
+    if (!normalizedKey) return acc;
+    acc[normalizedKey] = asNumber(value);
+    return acc;
+  }, {});
+}
+
+function parseHealthWindow(rawValue: unknown) {
+  const raw = asRecord(rawValue);
+  return {
+    total_events: asNumber(raw.total_events),
+    ok_events: asNumber(raw.ok_events),
+    error_events: asNumber(raw.error_events),
+    prompt_tokens: asNumber(raw.prompt_tokens),
+    completion_tokens: asNumber(raw.completion_tokens),
+    total_tokens: asNumber(raw.total_tokens),
+    success_rate: asNumber(raw.success_rate),
+    status_event_counts: parseStatusEventCounts(raw.status_event_counts),
+  };
+}
+
+export async function getReviewsAIHealth(): Promise<ReviewsAIHealth> {
+  const res = await http.get<unknown>("/api/admin/reviews/health");
+  const raw = asRecord(res.data);
+  const aiSummary = asRecord(raw.ai_summary);
+  const windows = asRecord(raw.windows);
+  const queues = asRecord(raw.queues);
+  const outbox = asRecord(queues.outbox);
+  const inbox = asRecord(queues.inbox);
+  const coverage = asRecord(raw.coverage);
+  const last = asRecord(raw.last);
+
+  return {
+    generated_at: asString(raw.generated_at),
+    ai_summary: {
+      enabled: asBoolean(aiSummary.enabled),
+      model: asString(aiSummary.model),
+      prompt_version: asString(aiSummary.prompt_version),
+      timeout: asString(aiSummary.timeout),
+      max_input_reviews: asNumber(aiSummary.max_input_reviews),
+      max_output_tags: asNumber(aiSummary.max_output_tags),
+      min_reviews: asNumber(aiSummary.min_reviews),
+      review_step: asNumber(aiSummary.review_step),
+      budget_guard_enabled: asBoolean(aiSummary.budget_guard_enabled),
+      daily_token_budget: asNumber(aiSummary.daily_token_budget),
+      daily_token_usage: asNumber(aiSummary.daily_token_usage),
+      daily_token_remaining: asNumber(aiSummary.daily_token_remaining),
+      daily_budget_blocked: asBoolean(aiSummary.daily_budget_blocked),
+      daily_budget_block_reason: asString(aiSummary.daily_budget_block_reason),
+    },
+    windows: {
+      last_24h: parseHealthWindow(windows.last_24h),
+      last_7d: parseHealthWindow(windows.last_7d),
+    },
+    queues: {
+      outbox: {
+        pending: asNumber(outbox.pending),
+        processing: asNumber(outbox.processing),
+        failed: asNumber(outbox.failed),
+      },
+      inbox: {
+        pending: asNumber(inbox.pending),
+        processing: asNumber(inbox.processing),
+        failed: asNumber(inbox.failed),
+      },
+      dlq_open: asNumber(queues.dlq_open),
+    },
+    coverage: {
+      cafes_total: asNumber(coverage.cafes_total),
+      snapshots_total: asNumber(coverage.snapshots_total),
+      snapshots_recent_24h: asNumber(coverage.snapshots_recent_24h),
+      ai_ok_recent_24h: asNumber(coverage.ai_ok_recent_24h),
+      ai_ok_recent_7d: asNumber(coverage.ai_ok_recent_7d),
+    },
+    last: {
+      event: asRecord(last.event),
+      ok_at: asString(last.ok_at),
+      error_at: asString(last.error_at),
+      event_status: asString(last.event_status),
     },
   };
 }

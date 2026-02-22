@@ -31,11 +31,13 @@ import { useLocation, useNavigate, useSearchParams, type Location as RouterLocat
 import * as authApi from "../api/auth";
 import { submitAppFeedback } from "../api/feedback";
 import {
+  getReviewsAIHealth,
   getReviewsVersioningStatus,
   listReviewsDLQ,
   replayAllOpenReviewsDLQ,
   replayReviewsDLQEvent,
   resolveOpenReviewsDLQWithoutReplay,
+  type ReviewsAIHealth,
   type ReviewsDLQEvent,
   type ReviewsDLQStatus,
   type ReviewsVersioningStatus,
@@ -93,6 +95,9 @@ export default function SettingsScreen() {
   const [reviewsVersioning, setReviewsVersioning] = useState<ReviewsVersioningStatus | null>(null);
   const [reviewsVersioningLoading, setReviewsVersioningLoading] = useState(false);
   const [reviewsVersioningError, setReviewsVersioningError] = useState<string | null>(null);
+  const [reviewsHealth, setReviewsHealth] = useState<ReviewsAIHealth | null>(null);
+  const [reviewsHealthLoading, setReviewsHealthLoading] = useState(false);
+  const [reviewsHealthError, setReviewsHealthError] = useState<string | null>(null);
   const [dlqStatus, setDlqStatus] = useState<ReviewsDLQStatus>("open");
   const [dlqEvents, setDlqEvents] = useState<ReviewsDLQEvent[]>([]);
   const [dlqLoading, setDlqLoading] = useState(false);
@@ -102,6 +107,7 @@ export default function SettingsScreen() {
   const [dlqBulkLoading, setDlqBulkLoading] = useState<"replay" | "resolve" | null>(null);
   const [dlqReplayingID, setDlqReplayingID] = useState<number | null>(null);
   const [versioningExpanded, setVersioningExpanded] = useState(false);
+  const [healthExpanded, setHealthExpanded] = useState(false);
   const [dlqExpanded, setDlqExpanded] = useState(false);
   const [feedbackExpanded, setFeedbackExpanded] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -232,6 +238,31 @@ export default function SettingsScreen() {
       cancelled = true;
     };
   }, [canModerate, status]);
+
+  const loadReviewsHealth = useCallback(async () => {
+    if (!canModerate || status !== "authed") {
+      setReviewsHealth(null);
+      setReviewsHealthError(null);
+      setReviewsHealthLoading(false);
+      return;
+    }
+    setReviewsHealthLoading(true);
+    setReviewsHealthError(null);
+    try {
+      const response = await getReviewsAIHealth();
+      setReviewsHealth(response);
+    } catch (error: unknown) {
+      setReviewsHealthError(
+        extractSettingsErrorMessage(error, "Не удалось загрузить health-дашборд reviews/AI."),
+      );
+    } finally {
+      setReviewsHealthLoading(false);
+    }
+  }, [canModerate, status]);
+
+  useEffect(() => {
+    void loadReviewsHealth();
+  }, [loadReviewsHealth]);
 
   const loadDLQ = useCallback(async () => {
     if (!canModerate || status !== "authed") {
@@ -590,6 +621,152 @@ export default function SettingsScreen() {
                             >
                               {reviewsVersioning.feature_flags.quality_v2_enabled ? "on" : "off"}
                             </span>
+                          </div>
+                          {reviewsVersioning.ai_summary && (
+                            <>
+                              <div className={classes.versioningRow}>
+                                <span className={classes.versioningKey}>AI prompt version</span>
+                                <span className={classes.versioningValue}>
+                                  {reviewsVersioning.ai_summary.prompt_version}
+                                </span>
+                              </div>
+                              <div className={classes.versioningRow}>
+                                <span className={classes.versioningKey}>AI model</span>
+                                <span className={classes.versioningValue}>
+                                  {reviewsVersioning.ai_summary.model}
+                                </span>
+                              </div>
+                              <div className={classes.versioningRow}>
+                                <span className={classes.versioningKey}>AI min reviews</span>
+                                <span className={classes.versioningValue}>
+                                  {reviewsVersioning.ai_summary.min_reviews}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className={classes.versioningPanel}>
+                  <button
+                    type="button"
+                    className={classes.panelToggle}
+                    onClick={() => setHealthExpanded((value) => !value)}
+                    aria-expanded={healthExpanded}
+                  >
+                    <Text fw={600} size="sm">
+                      Health reviews/AI
+                    </Text>
+                    {healthExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+                  </button>
+                  {healthExpanded && (
+                    <>
+                      <div className={classes.dlqHeader} style={{ marginTop: 8 }}>
+                        <Text size="xs" className={classes.muted}>
+                          Мониторинг AI-суммаризации, очередей и покрытия снапшотов.
+                        </Text>
+                        <Button
+                          size="xs"
+                          variant="light"
+                          className={classes.actionButton}
+                          onClick={() => {
+                            void loadReviewsHealth();
+                          }}
+                          loading={reviewsHealthLoading}
+                        >
+                          Обновить
+                        </Button>
+                      </div>
+                      {reviewsHealthError && !reviewsHealthLoading && (
+                        <div className={classes.error} style={{ marginTop: 10 }}>
+                          {reviewsHealthError}
+                        </div>
+                      )}
+                      {reviewsHealthLoading && (
+                        <Text size="sm" className={classes.muted} mt={8}>
+                          Загружаем health-дашборд...
+                        </Text>
+                      )}
+                      {!reviewsHealthLoading && !reviewsHealthError && reviewsHealth && (
+                        <div className={classes.versioningGrid}>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Собрано в</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.generated_at || "—"}</span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Prompt version</span>
+                            <span className={classes.versioningValue}>
+                              {reviewsHealth.ai_summary.prompt_version || "—"}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Model</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.ai_summary.model || "—"}</span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>24h events</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.windows.last_24h.total_events}</span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>24h success rate</span>
+                            <span className={classes.versioningValue}>
+                              {(reviewsHealth.windows.last_24h.success_rate * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>24h tokens</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.windows.last_24h.total_tokens}</span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>7d tokens</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.windows.last_7d.total_tokens}</span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Budget guard</span>
+                            <span
+                              className={classes.versioningBoolean}
+                              data-active={reviewsHealth.ai_summary.budget_guard_enabled ? "true" : "false"}
+                            >
+                              {reviewsHealth.ai_summary.budget_guard_enabled ? "on" : "off"}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Budget (today)</span>
+                            <span className={classes.versioningValue}>
+                              {reviewsHealth.ai_summary.daily_token_usage} / {reviewsHealth.ai_summary.daily_token_budget}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>DLQ open</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.queues.dlq_open}</span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Outbox pending</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.queues.outbox.pending}</span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Inbox pending</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.queues.inbox.pending}</span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Snapshots 24h</span>
+                            <span className={classes.versioningValue}>
+                              {reviewsHealth.coverage.snapshots_recent_24h}
+                            </span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>AI OK 24h</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.coverage.ai_ok_recent_24h}</span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Last OK</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.last.ok_at || "—"}</span>
+                          </div>
+                          <div className={classes.versioningRow}>
+                            <span className={classes.versioningKey}>Last error</span>
+                            <span className={classes.versioningValue}>{reviewsHealth.last.error_at || "—"}</span>
                           </div>
                         </div>
                       )}

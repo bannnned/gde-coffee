@@ -1,6 +1,7 @@
 package reviews
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -195,11 +196,11 @@ func TestComputeAISummaryInputHashStable(t *testing.T) {
 		{Rating: 4, Summary: "быстрая подача", VisitVerified: false},
 	}
 
-	hashA, err := computeAISummaryInputHash("cafe-1", items)
+	hashA, err := computeAISummaryInputHash("cafe-1", aiSummaryPromptVersionV1, items)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	hashB, err := computeAISummaryInputHash("cafe-1", items)
+	hashB, err := computeAISummaryInputHash("cafe-1", aiSummaryPromptVersionV1, items)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -207,7 +208,7 @@ func TestComputeAISummaryInputHashStable(t *testing.T) {
 		t.Fatalf("expected stable hash, got %q and %q", hashA, hashB)
 	}
 
-	hashC, err := computeAISummaryInputHash("cafe-1", []aiSummaryPromptReview{
+	hashC, err := computeAISummaryInputHash("cafe-1", aiSummaryPromptVersionV1, []aiSummaryPromptReview{
 		{Rating: 5, Summary: "другая выжимка", VisitVerified: true},
 	})
 	if err != nil {
@@ -215,5 +216,153 @@ func TestComputeAISummaryInputHashStable(t *testing.T) {
 	}
 	if hashA == hashC {
 		t.Fatalf("expected hash to change for different prompt payload")
+	}
+}
+
+func TestDecideAISummaryBudgetDisabledByDefault(t *testing.T) {
+	decision := decideAISummaryBudget(
+		aiSummaryConfig{
+			BudgetGuardEnabled: false,
+			DailyTokenBudget:   12000,
+		},
+		3400,
+		nil,
+		false,
+	)
+	if decision.GuardEnabled {
+		t.Fatalf("expected guard disabled, got enabled")
+	}
+	if decision.Blocked {
+		t.Fatalf("expected not blocked when guard disabled")
+	}
+}
+
+func TestDecideAISummaryBudgetBlocksOnLimit(t *testing.T) {
+	decision := decideAISummaryBudget(
+		aiSummaryConfig{
+			BudgetGuardEnabled: true,
+			DailyTokenBudget:   1000,
+		},
+		1000,
+		nil,
+		false,
+	)
+	if !decision.GuardEnabled {
+		t.Fatalf("expected guard enabled")
+	}
+	if !decision.Blocked {
+		t.Fatalf("expected blocked at daily limit")
+	}
+	if decision.Reason != "daily_budget_reached" {
+		t.Fatalf("unexpected reason: %q", decision.Reason)
+	}
+}
+
+func TestDecideAISummaryBudgetForceBypassesGuard(t *testing.T) {
+	decision := decideAISummaryBudget(
+		aiSummaryConfig{
+			BudgetGuardEnabled: true,
+			DailyTokenBudget:   1000,
+		},
+		1800,
+		nil,
+		true,
+	)
+	if !decision.GuardEnabled {
+		t.Fatalf("expected guard enabled")
+	}
+	if decision.Blocked {
+		t.Fatalf("expected force mode to bypass budget block")
+	}
+}
+
+func TestDecideAISummaryBudgetUsageErrorBlocks(t *testing.T) {
+	decision := decideAISummaryBudget(
+		aiSummaryConfig{
+			BudgetGuardEnabled: true,
+			DailyTokenBudget:   1000,
+		},
+		0,
+		errors.New("db down"),
+		false,
+	)
+	if !decision.Blocked {
+		t.Fatalf("expected blocked when usage query fails")
+	}
+	if decision.Reason != "budget_usage_unavailable" {
+		t.Fatalf("unexpected reason: %q", decision.Reason)
+	}
+}
+
+func TestCountAISummaryEligibleReviews(t *testing.T) {
+	reviews := []aiReviewSignal{
+		{Summary: "   "},
+		{Summary: "\n\t"},
+		{Summary: "хороший эспрессо"},
+		{Summary: "  уютно и спокойно  "},
+	}
+	got := countAISummaryEligibleReviews(reviews)
+	if got != 2 {
+		t.Fatalf("expected 2 eligible reviews, got %d", got)
+	}
+}
+
+func TestExtractAISummaryStepUsesAttemptedReviewsCount(t *testing.T) {
+	payload := map[string]interface{}{
+		"generated_reviews_count": float64(5),
+		"attempted_reviews_count": float64(10),
+	}
+	got := extractAISummaryStep(payload)
+	if got != 10 {
+		t.Fatalf("expected attempted_reviews_count to win, got %d", got)
+	}
+}
+
+func TestIsAISummaryNotEnoughInputError(t *testing.T) {
+	if !isAISummaryNotEnoughInputError(errors.New("not enough reviews for ai summary")) {
+		t.Fatalf("expected not_enough_input error to be detected")
+	}
+	if isAISummaryNotEnoughInputError(errors.New("timeout")) {
+		t.Fatalf("did not expect generic error to be detected")
+	}
+}
+
+func TestNormalizeAISummaryPromptVersion(t *testing.T) {
+	if got := normalizeAISummaryPromptVersion(""); got != aiSummaryPromptVersionV1 {
+		t.Fatalf("expected default prompt version, got %q", got)
+	}
+	if got := normalizeAISummaryPromptVersion(aiSummaryPromptVersionV2); got != aiSummaryPromptVersionV2 {
+		t.Fatalf("expected v2 prompt version, got %q", got)
+	}
+	if got := normalizeAISummaryPromptVersion("unknown"); got != aiSummaryPromptVersionV1 {
+		t.Fatalf("expected fallback to v1 for unknown prompt version, got %q", got)
+	}
+}
+
+func TestBuildAISummaryPromptsReturnsAppliedVersion(t *testing.T) {
+	systemPrompt, userPrompt, version := buildAISummaryPrompts(aiSummaryPromptVersionV2, []byte(`{"reviews":[]}`))
+	if version != aiSummaryPromptVersionV2 {
+		t.Fatalf("expected applied v2, got %q", version)
+	}
+	if strings.TrimSpace(systemPrompt) == "" || strings.TrimSpace(userPrompt) == "" {
+		t.Fatalf("expected non-empty prompts")
+	}
+}
+
+func TestComputeAISummaryInputHashIncludesPromptVersion(t *testing.T) {
+	items := []aiSummaryPromptReview{
+		{Rating: 5, Summary: "чистая чашка", VisitVerified: true},
+		{Rating: 4, Summary: "уютный зал", VisitVerified: false},
+	}
+	hashV1, err := computeAISummaryInputHash("cafe-1", aiSummaryPromptVersionV1, items)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	hashV2, err := computeAISummaryInputHash("cafe-1", aiSummaryPromptVersionV2, items)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if hashV1 == hashV2 {
+		t.Fatalf("expected hash to change when prompt version changes")
 	}
 }
