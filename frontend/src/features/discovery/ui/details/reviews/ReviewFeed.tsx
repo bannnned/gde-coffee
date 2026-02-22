@@ -3,6 +3,7 @@ import { Badge, Box, Button, Group, Loader, Modal, Paper, Rating, Select, Skelet
 import { IconThumbUp } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 
+import PhotoLightboxModal, { type PhotoLightboxItem } from "../../../../../components/PhotoLightboxModal";
 import type { CafeReview, ReviewSort } from "../../../../../api/reviews";
 import { formatReviewDate, parseReviewSummarySections } from "./reviewForm";
 
@@ -64,6 +65,11 @@ export function ReviewFeed({
   onReviewRead,
 }: ReviewFeedProps) {
   const [expandedReviewID, setExpandedReviewID] = useState<string | null>(null);
+  const [photoViewerState, setPhotoViewerState] = useState<{
+    title: string;
+    photos: PhotoLightboxItem[];
+    index: number;
+  } | null>(null);
   const expandedReview = useMemo(
     () => reviews.find((item) => item.id === expandedReviewID) ?? null,
     [expandedReviewID, reviews],
@@ -189,13 +195,27 @@ export function ReviewFeed({
                       setExpandedReviewID(item.id);
                     }}
                     onReviewRead={onReviewRead}
-                    canDeleteReviews={canDeleteReviews}
-                    isAdmin={isAdmin}
-                    onDeleteReview={onDeleteReview}
-                  />
-                </div>
-              )}
-            </Transition>
+                  canDeleteReviews={canDeleteReviews}
+                  isAdmin={isAdmin}
+                  onDeleteReview={onDeleteReview}
+                  onOpenPhoto={(item, photoIndex) => {
+                    const photos = item.photos.map((url, index) => ({
+                      id: `${item.id}:photo:${index + 1}`,
+                      url,
+                      alt: `Фото отзыва ${index + 1}`,
+                    }));
+                    if (photos.length === 0) return;
+                    const safeIndex = Math.max(0, Math.min(photoIndex, photos.length - 1));
+                    setPhotoViewerState({
+                      title: "Фото отзыва",
+                      photos,
+                      index: safeIndex,
+                    });
+                  }}
+                />
+              </div>
+            )}
+          </Transition>
           ))}
 
         {!isLoading && !loadError && hasMore && (
@@ -261,10 +281,35 @@ export function ReviewFeed({
             canDeleteReviews={canDeleteReviews}
             isAdmin={isAdmin}
             onDeleteReview={onDeleteReview}
+            onOpenPhoto={(item, photoIndex) => {
+              const photos = item.photos.map((url, index) => ({
+                id: `${item.id}:photo:${index + 1}`,
+                url,
+                alt: `Фото отзыва ${index + 1}`,
+              }));
+              if (photos.length === 0) return;
+              const safeIndex = Math.max(0, Math.min(photoIndex, photos.length - 1));
+              setPhotoViewerState({
+                title: "Фото отзыва",
+                photos,
+                index: safeIndex,
+              });
+            }}
             forceExpanded
           />
         )}
       </Modal>
+
+      <PhotoLightboxModal
+        opened={Boolean(photoViewerState)}
+        onClose={() => setPhotoViewerState(null)}
+        title={photoViewerState?.title ?? "Фото"}
+        photos={photoViewerState?.photos ?? []}
+        index={photoViewerState?.index ?? 0}
+        onIndexChange={(nextIndex) =>
+          setPhotoViewerState((prev) => (prev ? { ...prev, index: nextIndex } : prev))
+        }
+      />
     </Box>
   );
 }
@@ -308,6 +353,7 @@ type ReviewCardProps = {
   onMarkHelpful: (review: CafeReview) => void;
   onOpenExpandedReview?: (review: CafeReview) => void;
   onReviewRead?: (review: CafeReview) => void;
+  onOpenPhoto?: (review: CafeReview, photoIndex: number) => void;
   canDeleteReviews: boolean;
   isAdmin: boolean;
   onDeleteReview: (review: CafeReview) => void;
@@ -321,6 +367,7 @@ function ReviewCard({
   onMarkHelpful,
   onOpenExpandedReview,
   onReviewRead,
+  onOpenPhoto,
   canDeleteReviews,
   isAdmin,
   onDeleteReview,
@@ -478,6 +525,7 @@ function ReviewCard({
                   key={`${review.id}:${index}`}
                   withBorder
                   radius="sm"
+                  onClick={() => onOpenPhoto?.(review, index)}
                   style={{
                     width: 96,
                     minWidth: 96,
@@ -485,6 +533,7 @@ function ReviewCard({
                     overflow: "hidden",
                     border: "1px solid var(--border)",
                     background: "var(--surface)",
+                    cursor: onOpenPhoto ? "pointer" : "default",
                   }}
                 >
                   <img

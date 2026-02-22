@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type TouchEventHandler } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActionIcon,
   Box,
@@ -10,9 +10,6 @@ import {
   Text,
 } from "@mantine/core";
 import {
-  IconArrowsLeftRight,
-  IconChevronLeft,
-  IconChevronRight,
   IconHeart,
   IconHeartFilled,
 } from "@tabler/icons-react";
@@ -24,18 +21,18 @@ import AboutSection from "./sections/AboutSection";
 import MenuSection from "./sections/MenuSection";
 import RatingPanel from "./sections/RatingPanel";
 
+import PhotoLightboxModal from "../../../../components/PhotoLightboxModal";
 import type { Cafe, CafePhotoKind } from "../../../../entities/cafe/model/types";
 import { extractApiErrorMessage } from "../../../../utils/apiError";
-import {
-  buildCafePhotoPictureSources,
-  buildCafePhotoSrcSet,
-} from "../../../../utils/cafePhotoVariants";
 
 type CafeDetailsScreenProps = {
   opened: boolean;
   cafe: Cafe | null;
   journeyID?: string;
   photosRefreshToken?: number;
+  onReviewSaved?: (cafeId: string) => void;
+  isCafePhotoProcessing?: boolean;
+  isMenuPhotoProcessing?: boolean;
   onClose: () => void;
   showDistance?: boolean;
   showRoutes?: boolean;
@@ -65,6 +62,9 @@ export default function CafeDetailsScreen({
   cafe,
   journeyID = "",
   photosRefreshToken = 0,
+  onReviewSaved,
+  isCafePhotoProcessing = false,
+  isMenuPhotoProcessing = false,
   onClose,
   showDistance = true,
   showRoutes = true,
@@ -95,13 +95,10 @@ export default function CafeDetailsScreen({
 
   const [aboutImageReady, setAboutImageReady] = useState(true);
   const [menuImageReady, setMenuImageReady] = useState(true);
-  const [viewerImageReady, setViewerImageReady] = useState(true);
   const [ratingDiagnosticsExpanded, setRatingDiagnosticsExpanded] = useState(false);
 
-  const touchStartXRef = useRef<number | null>(null);
   const loadedAboutUrlsRef = useRef<Set<string>>(new Set());
   const loadedMenuUrlsRef = useRef<Set<string>>(new Set());
-  const loadedViewerUrlsRef = useRef<Set<string>>(new Set());
 
   const {
     cafePhotos,
@@ -125,7 +122,6 @@ export default function CafeDetailsScreen({
     aboutMainPhoto,
     menuMainPhoto,
     viewerPhotos,
-    viewerPhoto,
     ratingLabel,
     ratingReviews,
     verifiedSharePercent,
@@ -145,7 +141,6 @@ export default function CafeDetailsScreen({
     ratingSnapshot,
     ratingDiagnostics,
   });
-  const viewerMainSources = buildCafePhotoPictureSources(viewerPhoto?.url, [640, 1024, 1536]);
 
   useEffect(() => {
     if (!opened) return;
@@ -199,36 +194,6 @@ export default function CafeDetailsScreen({
     }
     setMenuImageReady(loadedMenuUrlsRef.current.has(nextURL));
   }, [menuMainPhoto?.url]);
-
-  useEffect(() => {
-    const nextURL = viewerPhoto?.url?.trim();
-    if (!nextURL) {
-      setViewerImageReady(true);
-      return;
-    }
-    setViewerImageReady(loadedViewerUrlsRef.current.has(nextURL));
-  }, [viewerPhoto?.url]);
-
-  useEffect(() => {
-    if (!viewerOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setViewerOpen(false);
-        return;
-      }
-      if (viewerPhotos.length <= 1) return;
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        setViewerIndex((prev) => (prev - 1 + viewerPhotos.length) % viewerPhotos.length);
-      }
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        setViewerIndex((prev) => (prev + 1) % viewerPhotos.length);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [viewerOpen, viewerPhotos.length]);
 
   if (!cafe) return null;
 
@@ -337,26 +302,6 @@ export default function CafeDetailsScreen({
     setViewerKind(kind);
     setViewerIndex(safeIndex);
     setViewerOpen(true);
-  };
-
-  const stepViewer = (direction: -1 | 1) => {
-    if (viewerPhotos.length <= 1) return;
-    setViewerIndex((prev) => (prev + direction + viewerPhotos.length) % viewerPhotos.length);
-  };
-
-  const handleViewerTouchStart: TouchEventHandler<HTMLDivElement> = (event) => {
-    touchStartXRef.current = event.touches[0]?.clientX ?? null;
-  };
-
-  const handleViewerTouchEnd: TouchEventHandler<HTMLDivElement> = (event) => {
-    const startX = touchStartXRef.current;
-    const endX = event.changedTouches[0]?.clientX ?? null;
-    touchStartXRef.current = null;
-    if (startX == null || endX == null || viewerPhotos.length <= 1) return;
-    const deltaX = endX - startX;
-    if (Math.abs(deltaX) < 45) return;
-    if (deltaX < 0) stepViewer(1);
-    if (deltaX > 0) stepViewer(-1);
   };
 
   const descriptionActionLabel = description ? "Редактировать описание" : "Добавить описание";
@@ -469,6 +414,7 @@ export default function CafeDetailsScreen({
               aboutPhotoItems={aboutPhotoItems}
               aboutActiveIndex={aboutActiveIndex}
               aboutImageReady={aboutImageReady}
+              isPhotoProcessing={isCafePhotoProcessing}
               onOpenViewer={() => openViewer("cafe", aboutActiveIndex)}
               onAboutMainPhotoLoad={(src) => {
                 if (src) {
@@ -511,6 +457,7 @@ export default function CafeDetailsScreen({
               specificTags={specificTags}
               menuActiveIndex={menuActiveIndex}
               menuImageReady={menuImageReady}
+              isPhotoProcessing={isMenuPhotoProcessing}
               onOpenViewer={() => openViewer("menu", menuActiveIndex)}
               onMenuMainPhotoLoad={(src) => {
                 if (src) {
@@ -526,171 +473,29 @@ export default function CafeDetailsScreen({
 
           {section === "reviews" && (
             <Box pb="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
-              <ReviewsSection cafeId={cafe.id} opened={opened} journeyID={journeyID} />
+              <ReviewsSection
+                cafeId={cafe.id}
+                opened={opened}
+                journeyID={journeyID}
+                onReviewSaved={onReviewSaved}
+              />
             </Box>
           )}
         </Stack>
       </Paper>
 
-      <Modal
+      <PhotoLightboxModal
         opened={viewerOpen}
         onClose={() => setViewerOpen(false)}
-        fullScreen
-        withCloseButton
         title={viewerKind === "menu" ? "Фото меню" : "Фото места"}
-        styles={{
-          content: {
-            background: "var(--bg)",
-          },
-          header: {
-            background: "var(--surface)",
-            borderBottom: "1px solid var(--border)",
-          },
-          body: {
-            padding: 12,
-          },
-          overlay: {
-            backgroundColor: "var(--color-surface-overlay-strong)",
-            backdropFilter: "blur(4px)",
-          },
-        }}
-      >
-        {viewerPhoto ? (
-          <Stack gap="sm">
-            <Paper
-              withBorder
-              radius="md"
-              onTouchStart={handleViewerTouchStart}
-              onTouchEnd={handleViewerTouchEnd}
-              style={{
-                overflow: "hidden",
-                border: "1px solid var(--border)",
-                background: "var(--surface)",
-              }}
-            >
-              <picture style={{ display: "block" }}>
-                {viewerMainSources.avifSrcSet && (
-                  <source
-                    type="image/avif"
-                    srcSet={viewerMainSources.avifSrcSet}
-                    sizes="(max-width: 768px) 100vw, 1200px"
-                  />
-                )}
-                {viewerMainSources.webpSrcSet && (
-                  <source
-                    type="image/webp"
-                    srcSet={viewerMainSources.webpSrcSet}
-                    sizes="(max-width: 768px) 100vw, 1200px"
-                  />
-                )}
-                <img
-                  src={viewerPhoto.url}
-                  srcSet={viewerMainSources.fallbackSrcSet}
-                  sizes="(max-width: 768px) 100vw, 1200px"
-                  alt={viewerKind === "menu" ? `Меню: ${cafe.name}` : `Фото: ${cafe.name}`}
-                  onLoad={(event) => {
-                    const src = event.currentTarget.currentSrc || event.currentTarget.src;
-                    if (src) {
-                      loadedViewerUrlsRef.current.add(src);
-                    }
-                    setViewerImageReady(true);
-                  }}
-                  onError={() => setViewerImageReady(true)}
-                  style={{
-                    width: "100%",
-                    maxHeight: "72vh",
-                    objectFit: "contain",
-                    display: "block",
-                    opacity: viewerImageReady ? 1 : 0.28,
-                    filter: viewerImageReady ? "blur(0px)" : "blur(3px)",
-                    transition: "opacity 240ms ease, filter 260ms ease",
-                  }}
-                />
-              </picture>
-            </Paper>
-            <Group justify="space-between" align="center">
-              <ActionIcon
-                variant="light"
-                size="lg"
-                radius="xl"
-                onClick={() => stepViewer(-1)}
-                disabled={viewerPhotos.length <= 1}
-                aria-label="Предыдущее фото"
-              >
-                <IconChevronLeft size={18} />
-              </ActionIcon>
-              <Text size="sm" c="dimmed">
-                {viewerIndex + 1} / {viewerPhotos.length}
-              </Text>
-              <ActionIcon
-                variant="light"
-                size="lg"
-                radius="xl"
-                onClick={() => stepViewer(1)}
-                disabled={viewerPhotos.length <= 1}
-                aria-label="Следующее фото"
-              >
-                <IconChevronRight size={18} />
-              </ActionIcon>
-            </Group>
-            {viewerPhotos.length > 1 && (
-              <Group justify="center" gap={6}>
-                <IconArrowsLeftRight size={14} style={{ opacity: 0.65 }} />
-                <Text size="xs" c="dimmed">
-                  Свайп влево/вправо или кнопки для листания
-                </Text>
-              </Group>
-            )}
-            {viewerPhotos.length > 1 && (
-              <Group
-                className="horizontal-scroll-modern"
-                wrap="nowrap"
-                gap={8}
-                style={{ overflowX: "auto", paddingBottom: 2 }}
-              >
-                {viewerPhotos.map((photo, index) => (
-                  <Paper
-                    key={photo.id}
-                    withBorder
-                    radius="sm"
-                    onClick={() => setViewerIndex(index)}
-                    style={{
-                      width: 88,
-                      minWidth: 88,
-                      height: 66,
-                      overflow: "hidden",
-                      border:
-                        index === viewerIndex
-                          ? "1px solid var(--color-brand-accent)"
-                          : "1px solid var(--border)",
-                      background: "var(--surface)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <img
-                      src={photo.url}
-                      srcSet={buildCafePhotoSrcSet(photo.url, [320, 640])}
-                      sizes="88px"
-                      alt={`Миниатюра ${index + 1}`}
-                      loading="lazy"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        display: "block",
-                      }}
-                    />
-                  </Paper>
-                ))}
-              </Group>
-            )}
-          </Stack>
-        ) : (
-          <Paper withBorder radius="md" p="md">
-            <Text c="dimmed">Фото не найдено.</Text>
-          </Paper>
-        )}
-      </Modal>
+        photos={viewerPhotos.map((photo, index) => ({
+          id: photo.id || `${viewerKind}-${index + 1}`,
+          url: photo.url,
+          alt: viewerKind === "menu" ? `Меню: ${cafe.name}` : `Фото: ${cafe.name}`,
+        }))}
+        index={viewerIndex}
+        onIndexChange={setViewerIndex}
+      />
     </Modal>
   );
 }

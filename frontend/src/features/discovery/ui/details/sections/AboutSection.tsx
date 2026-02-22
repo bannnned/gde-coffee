@@ -1,5 +1,5 @@
-import { Badge, Box, Button, Group, Paper, Stack, Text, Textarea } from "@mantine/core";
-import { IconCamera, IconPlus } from "@tabler/icons-react";
+import { Badge, Box, Button, Group, Paper, Skeleton, Stack, Text, Textarea } from "@mantine/core";
+import { IconCamera, IconCameraPlus, IconPlus } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 
 import type { Cafe, CafePhoto } from "../../../../../entities/cafe/model/types";
@@ -16,6 +16,7 @@ type AboutSectionProps = {
   aboutPhotoItems: CafePhoto[];
   aboutActiveIndex: number;
   aboutImageReady: boolean;
+  isPhotoProcessing?: boolean;
   onOpenViewer: () => void;
   onAboutMainPhotoLoad: (src: string) => void;
   onAboutMainPhotoError: () => void;
@@ -48,6 +49,7 @@ export default function AboutSection({
   aboutPhotoItems,
   aboutActiveIndex,
   aboutImageReady,
+  isPhotoProcessing = false,
   onOpenViewer,
   onAboutMainPhotoLoad,
   onAboutMainPhotoError,
@@ -78,7 +80,7 @@ export default function AboutSection({
 
   return (
     <Stack gap={0}>
-      {aboutMainPhoto && (
+      {aboutMainPhoto ? (
         <Box
           onClick={onOpenViewer}
           style={{
@@ -119,6 +121,72 @@ export default function AboutSection({
               }}
             />
           </picture>
+        </Box>
+      ) : (
+        <Box
+          style={{
+            height: 260,
+            display: "grid",
+            placeItems: "center",
+            padding: "18px var(--page-edge-padding)",
+            background:
+              "radial-gradient(circle at 18% 20%, color-mix(in srgb, var(--bg-accent-1) 52%, transparent), transparent 45%), linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+            borderBottom: "1px solid var(--glass-border)",
+          }}
+        >
+          <Stack
+            gap={8}
+            align="center"
+            style={{
+              width: "100%",
+              maxWidth: 340,
+              borderRadius: 16,
+              border: "1px solid var(--glass-border)",
+              background:
+                "linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 74%, transparent))",
+              boxShadow: "var(--glass-shadow)",
+              padding: "14px 12px",
+              textAlign: "center",
+            }}
+          >
+            {isPhotoProcessing ? (
+              <>
+                <Skeleton
+                  radius={12}
+                  animate
+                  visible
+                  style={{ width: "100%", height: 92 }}
+                />
+                <Text fw={600} size="sm">
+                  Обрабатываем фото...
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Фото места появится после обработки и модерации.
+                </Text>
+              </>
+            ) : (
+              <>
+                <IconCameraPlus size={22} />
+                <Text fw={600} size="sm">
+                  Фото места пока нет
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Добавьте первое фото, чтобы другим было проще выбрать кофейню.
+                </Text>
+                {onManagePhotos && (
+                  <Button
+                    size="xs"
+                    radius="xl"
+                    variant="light"
+                    leftSection={<IconCameraPlus size={14} />}
+                    onClick={() => onManagePhotos("cafe")}
+                  >
+                    Добавить первое фото
+                  </Button>
+                )}
+              </>
+            )}
+          </Stack>
         </Box>
       )}
 

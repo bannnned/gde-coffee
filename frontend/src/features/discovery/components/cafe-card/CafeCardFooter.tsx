@@ -13,6 +13,14 @@ type CafeCardFooterProps = {
 
 const cafeRatingSnapshotCache = new Map<string, CafeRatingSnapshot>();
 
+export function invalidateCafeCardRatingSnapshot(cafeId?: string) {
+  if (cafeId && cafeId.trim()) {
+    cafeRatingSnapshotCache.delete(cafeId.trim());
+    return;
+  }
+  cafeRatingSnapshotCache.clear();
+}
+
 function buildAmenityDescriptors(amenities: string[]): string[] {
   const descriptors: string[] = [];
   for (const amenity of amenities) {

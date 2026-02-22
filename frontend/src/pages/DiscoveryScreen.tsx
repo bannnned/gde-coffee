@@ -36,6 +36,8 @@ export default function DiscoveryScreen() {
     selectedCafe,
     selectedCafeJourneyID,
     photosRefreshToken,
+    selectedCafePhotoProcessing,
+    selectedMenuPhotoProcessing,
     itemRefs,
     showFetchingBadge,
     showFirstChoice,
@@ -94,9 +96,11 @@ export default function DiscoveryScreen() {
     handleToggleFavorite,
     handleOpenPhotoAdmin,
     handlePhotosChanged,
+    handlePhotoSubmissionQueued,
     handleStartCafeDescriptionEdit,
     handleSaveCafeDescription,
     handleOpenCafeProposal,
+    handleReviewSaved,
     setTagOptionsQuery,
     handleFavoriteTagsDraftChange,
     handleSaveFavoriteTags,
@@ -105,13 +109,6 @@ export default function DiscoveryScreen() {
     radiusM,
     resetFilters,
   } = useDiscoveryPageController();
-
-  const singleSelectedCafeMode = Boolean(
-    !manualPickMode &&
-      !showFirstChoice &&
-      selectedCafe &&
-      visibleCafes.length === 1,
-  );
 
   return (
     <Box
@@ -174,7 +171,7 @@ export default function DiscoveryScreen() {
         isListEmpty={manualPickMode || showFirstChoice || visibleCafes.length === 0}
         lockedState={manualPickMode ? "peek" : null}
         disableMidState={false}
-        hideHeaderContentInPeek={singleSelectedCafeMode}
+        hideHeaderContentInPeek={false}
         header={
           showFirstChoice ? (
             <DiscoveryLocationChoiceHeader
@@ -191,7 +188,9 @@ export default function DiscoveryScreen() {
               cafe={selectedCafe}
               onOpen2gis={open2gisRoute}
               onOpenYandex={openYandexRoute}
+              onAddFirstPhoto={() => handleOpenPhotoAdmin("cafe")}
               onOpenDetails={() => setDetailsOpen(true)}
+              isPhotoProcessing={selectedCafePhotoProcessing}
               showDistance={!isCityOnlyMode}
               showRoutes={!isCityOnlyMode}
             />
@@ -257,7 +256,10 @@ export default function DiscoveryScreen() {
             cafe={selectedCafe ?? null}
             journeyID={selectedCafeJourneyID}
             photosRefreshToken={photosRefreshToken}
+            onReviewSaved={handleReviewSaved}
             onClose={() => setDetailsOpen(false)}
+            isCafePhotoProcessing={selectedCafePhotoProcessing}
+            isMenuPhotoProcessing={selectedMenuPhotoProcessing}
             showDistance={!isCityOnlyMode}
             showRoutes={!isCityOnlyMode}
             onOpen2gis={selectedCafe ? () => open2gisRoute(selectedCafe) : undefined}
@@ -299,6 +301,17 @@ export default function DiscoveryScreen() {
             cafeId={selectedCafe?.id ?? null}
             cafeName={selectedCafe?.name ?? ""}
             kind={photoSubmitKind}
+            existingPhotosCount={
+              selectedCafe
+                ? (photoSubmitKind === "menu"
+                    ? (selectedCafe?.photos ?? []).filter((photo) => photo.kind === "menu").length
+                    : Math.max(
+                        (selectedCafe?.photos ?? []).filter((photo) => photo.kind === "cafe").length,
+                        selectedCafe?.cover_photo_url ? 1 : 0,
+                      ))
+                : 0
+            }
+            onSubmitted={handlePhotoSubmissionQueued}
             onClose={() => setPhotoSubmitOpen(false)}
           />
         </Suspense>

@@ -1,6 +1,6 @@
 import { ActionIcon, Box, Collapse, Stack } from "@mantine/core";
-import { IconPlus } from "@tabler/icons-react";
-import { useState } from "react";
+import { IconPencil, IconPlus } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
 
 import { ReviewComposerCard } from "./reviews/ReviewComposerCard";
 import { ReviewFeed } from "./reviews/ReviewFeed";
@@ -10,11 +10,34 @@ type ReviewsSectionProps = {
   cafeId: string;
   opened: boolean;
   journeyID?: string;
+  onReviewSaved?: (cafeId: string) => void;
 };
 
-export default function ReviewsSection({ cafeId, opened, journeyID = "" }: ReviewsSectionProps) {
-  const controller = useReviewsSectionController({ cafeId, opened, journeyID });
+export default function ReviewsSection({
+  cafeId,
+  opened,
+  journeyID = "",
+  onReviewSaved,
+}: ReviewsSectionProps) {
+  const controller = useReviewsSectionController({ cafeId, opened, journeyID, onReviewSaved });
   const [composerOpen, setComposerOpen] = useState(false);
+
+  useEffect(() => {
+    if (controller.submitSuccessVersion <= 0) return;
+    setComposerOpen(false);
+  }, [controller.submitSuccessVersion]);
+
+  const handleComposerToggle = () => {
+    setComposerOpen((prev) => {
+      const next = !prev;
+      if (next && controller.ownReview) {
+        controller.hydrateComposerFromOwnReview();
+      }
+      return next;
+    });
+  };
+
+  const hasOwnReview = Boolean(controller.ownReview);
 
   return (
     <Stack gap="sm" pos="relative">
@@ -84,8 +107,14 @@ export default function ReviewsSection({ cafeId, opened, journeyID = "" }: Revie
           variant={composerOpen ? "filled" : "light"}
           radius="xl"
           size={48}
-          aria-label={composerOpen ? "Скрыть форму отзыва" : "Добавить отзыв"}
-          onClick={() => setComposerOpen((prev) => !prev)}
+          aria-label={
+            composerOpen
+              ? "Скрыть форму отзыва"
+              : hasOwnReview
+                ? "Редактировать отзыв"
+                : "Добавить отзыв"
+          }
+          onClick={handleComposerToggle}
           style={{
             pointerEvents: "auto",
             boxShadow: "0 10px 24px color-mix(in srgb, var(--color-brand-accent-soft) 55%, transparent)",
@@ -94,7 +123,7 @@ export default function ReviewsSection({ cafeId, opened, journeyID = "" }: Revie
             WebkitBackdropFilter: "blur(10px) saturate(140%)",
           }}
         >
-          <IconPlus size={20} />
+          {hasOwnReview ? <IconPencil size={20} /> : <IconPlus size={20} />}
         </ActionIcon>
       </Box>
     </Stack>

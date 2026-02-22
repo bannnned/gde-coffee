@@ -1,5 +1,5 @@
-import { Box, Button, Group, Paper, Stack, Text } from "@mantine/core";
-import { IconCamera, IconPlus } from "@tabler/icons-react";
+import { Box, Button, Group, Paper, Skeleton, Stack, Text } from "@mantine/core";
+import { IconCamera, IconCameraPlus, IconPlus } from "@tabler/icons-react";
 
 import type { Cafe, CafePhoto } from "../../../../../entities/cafe/model/types";
 import {
@@ -14,6 +14,7 @@ type MenuSectionProps = {
   specificTags: string[];
   menuActiveIndex: number;
   menuImageReady: boolean;
+  isPhotoProcessing?: boolean;
   onOpenViewer: () => void;
   onMenuMainPhotoLoad: (src: string) => void;
   onMenuMainPhotoError: () => void;
@@ -46,6 +47,7 @@ export default function MenuSection({
   specificTags,
   menuActiveIndex,
   menuImageReady,
+  isPhotoProcessing = false,
   onOpenViewer,
   onMenuMainPhotoLoad,
   onMenuMainPhotoError,
@@ -58,7 +60,7 @@ export default function MenuSection({
 
   return (
     <Stack gap={0}>
-      {menuMainPhoto && (
+      {menuMainPhoto ? (
         <Box
           onClick={onOpenViewer}
           style={{
@@ -100,6 +102,72 @@ export default function MenuSection({
               }}
             />
           </picture>
+        </Box>
+      ) : (
+        <Box
+          style={{
+            height: 260,
+            display: "grid",
+            placeItems: "center",
+            padding: "18px var(--page-edge-padding)",
+            background:
+              "radial-gradient(circle at 78% 24%, color-mix(in srgb, var(--bg-accent-2) 52%, transparent), transparent 45%), linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+            borderBottom: "1px solid var(--glass-border)",
+          }}
+        >
+          <Stack
+            gap={8}
+            align="center"
+            style={{
+              width: "100%",
+              maxWidth: 340,
+              borderRadius: 16,
+              border: "1px solid var(--glass-border)",
+              background:
+                "linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 74%, transparent))",
+              boxShadow: "var(--glass-shadow)",
+              padding: "14px 12px",
+              textAlign: "center",
+            }}
+          >
+            {isPhotoProcessing ? (
+              <>
+                <Skeleton
+                  radius={12}
+                  animate
+                  visible
+                  style={{ width: "100%", height: 92 }}
+                />
+                <Text fw={600} size="sm">
+                  Обрабатываем фото...
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Фото меню появится после обработки и модерации.
+                </Text>
+              </>
+            ) : (
+              <>
+                <IconCameraPlus size={22} />
+                <Text fw={600} size="sm">
+                  Фото меню пока нет
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Добавьте первое фото меню, чтобы быстрее находили нужные позиции.
+                </Text>
+                {onManagePhotos && (
+                  <Button
+                    size="xs"
+                    radius="xl"
+                    variant="light"
+                    leftSection={<IconCameraPlus size={14} />}
+                    onClick={() => onManagePhotos("menu")}
+                  >
+                    Добавить первое фото
+                  </Button>
+                )}
+              </>
+            )}
+          </Stack>
         </Box>
       )}
 
@@ -202,9 +270,9 @@ export default function MenuSection({
       )}
 
       <Box py="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
-        {menuPhotoItems.length === 0 && (
+        {menuPhotoItems.length === 0 && specificTags.length === 0 && (
           <Text size="sm" c="dimmed">
-            Фото меню и позиций
+            После добавления фото и отзывов здесь появятся позиции и теги меню.
           </Text>
         )}
         {onManagePhotos && (

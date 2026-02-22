@@ -10,7 +10,7 @@ import {
   getMyDescriptiveTagPreferences,
   updateMyDescriptiveTagPreferences,
 } from "../../../api/tags";
-import type { Amenity, Cafe } from "../../../entities/cafe/model/types";
+import type { Amenity, Cafe, CafePhotoKind } from "../../../entities/cafe/model/types";
 import { DEFAULT_AMENITIES, DEFAULT_RADIUS_M } from "../constants";
 import useCafeSelection from "./useCafeSelection";
 import useCafes from "./useCafes";
@@ -18,6 +18,7 @@ import useDiscoveryLocation from "../model/location/useDiscoveryLocation";
 import useDiscoveryModals from "../model/modals/useDiscoveryModals";
 import useDiscoveryFavoriteActions from "../model/favorites/useDiscoveryFavoriteActions";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
+import { invalidateCafeCardRatingSnapshot } from "../components/cafe-card/CafeCardFooter";
 
 function normalizeTagList(raw: string[]): string[] {
   const seen = new Set<string>();
@@ -32,6 +33,15 @@ function normalizeTagList(raw: string[]): string[] {
     if (result.length >= 12) break;
   }
   return result;
+}
+
+function countCafePhotosByKind(cafe: Cafe | null | undefined, kind: CafePhotoKind): number {
+  if (!cafe) return 0;
+  const fromList = (cafe.photos ?? []).filter((photo) => photo.kind === kind).length;
+  if (kind === "cafe" && fromList <= 0 && typeof cafe.cover_photo_url === "string" && cafe.cover_photo_url.trim()) {
+    return 1;
+  }
+  return fromList;
 }
 
 export default function useDiscoveryPageController() {
@@ -55,6 +65,9 @@ export default function useDiscoveryPageController() {
   const [isFavoriteTagsLoading, setIsFavoriteTagsLoading] = useState(false);
   const [isFavoriteTagsSaving, setIsFavoriteTagsSaving] = useState(false);
   const [favoriteTagsError, setFavoriteTagsError] = useState<string | null>(null);
+  const [pendingPhotoProcessingByCafeId, setPendingPhotoProcessingByCafeId] = useState<
+    Record<string, { cafe: number; menu: number; updatedAt: number }>
+  >({});
   const { sheetHeight, sheetState, filtersBarHeight } = useLayoutMetrics();
 
   const userRole = (user?.role ?? "").toLowerCase();
@@ -83,6 +96,49 @@ export default function useDiscoveryPageController() {
   const visibleCafes = location.locationChoice ? cafes : [];
   const { selectedCafeId, selectedCafe, selectCafe, itemRefs } =
     useCafeSelection({ cafes: visibleCafes, onFocusLngLat: location.setFocusLngLat });
+  const selectedCafePendingPhotos = selectedCafe?.id
+    ? pendingPhotoProcessingByCafeId[selectedCafe.id] ?? null
+    : null;
+  const selectedCafePhotoProcessing = Boolean((selectedCafePendingPhotos?.cafe ?? 0) > 0);
+  const selectedMenuPhotoProcessing = Boolean((selectedCafePendingPhotos?.menu ?? 0) > 0);
+
+  useEffect(() => {
+    if (Object.keys(pendingPhotoProcessingByCafeId).length === 0) return;
+    const now = Date.now();
+    const ttlMs = 5 * 60_000;
+    setPendingPhotoProcessingByCafeId((prev) => {
+      let changed = false;
+      const next: Record<string, { cafe: number; menu: number; updatedAt: number }> = {};
+      for (const [cafeID, item] of Object.entries(prev)) {
+        const cafe = visibleCafes.find((row) => row.id === cafeID) ?? null;
+        let nextCafePending = item.cafe;
+        let nextMenuPending = item.menu;
+        const stale = now - item.updatedAt > ttlMs;
+        if (stale) {
+          nextCafePending = 0;
+          nextMenuPending = 0;
+        } else if (cafe) {
+          if (countCafePhotosByKind(cafe, "cafe") > 0) {
+            nextCafePending = 0;
+          }
+          if (countCafePhotosByKind(cafe, "menu") > 0) {
+            nextMenuPending = 0;
+          }
+        }
+        if (nextCafePending > 0 || nextMenuPending > 0) {
+          next[cafeID] = {
+            cafe: nextCafePending,
+            menu: nextMenuPending,
+            updatedAt: item.updatedAt,
+          };
+        }
+        if (nextCafePending !== item.cafe || nextMenuPending !== item.menu || stale) {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [pendingPhotoProcessingByCafeId, visibleCafes]);
 
   useEffect(() => {
     if (!selectedCafeId) {
@@ -415,6 +471,38 @@ export default function useDiscoveryPageController() {
     modals.setSettingsOpen(false);
   };
 
+  const handlePhotoSubmissionQueued = (payload: {
+    cafeId: string;
+    kind: CafePhotoKind;
+    count: number;
+  }) => {
+    const targetCafeId = payload.cafeId.trim();
+    if (!targetCafeId) return;
+    const count = Math.max(1, Math.floor(payload.count || 0));
+    setPendingPhotoProcessingByCafeId((prev) => {
+      const current = prev[targetCafeId] ?? { cafe: 0, menu: 0, updatedAt: Date.now() };
+      return {
+        ...prev,
+        [targetCafeId]: {
+          cafe: payload.kind === "cafe" ? current.cafe + count : current.cafe,
+          menu: payload.kind === "menu" ? current.menu + count : current.menu,
+          updatedAt: Date.now(),
+        },
+      };
+    });
+    setPhotosRefreshToken((prev) => prev + 1);
+  };
+
+  const handleReviewSaved = (reviewCafeId: string) => {
+    const normalizedCafeId = reviewCafeId.trim();
+    if (normalizedCafeId) {
+      invalidateCafeCardRatingSnapshot(normalizedCafeId);
+    } else {
+      invalidateCafeCardRatingSnapshot();
+    }
+    void cafesQuery.refetch();
+  };
+
   return {
     sheetRef,
     sheetHeight,
@@ -428,6 +516,8 @@ export default function useDiscoveryPageController() {
     selectedCafe,
     selectedCafeJourneyID,
     photosRefreshToken,
+    selectedCafePhotoProcessing,
+    selectedMenuPhotoProcessing,
     itemRefs,
     showFetchingBadge,
     showFirstChoice: location.showFirstChoice,
@@ -489,6 +579,8 @@ export default function useDiscoveryPageController() {
     handleStartCafeDescriptionEdit,
     handleSaveCafeDescription,
     handleOpenCafeProposal,
+    handlePhotoSubmissionQueued,
+    handleReviewSaved,
     setTagOptionsQuery,
     handleFavoriteTagsDraftChange,
     handleSaveFavoriteTags,

@@ -44,6 +44,7 @@ type UseReviewsSectionControllerParams = {
   cafeId: string;
   opened: boolean;
   journeyID?: string;
+  onReviewSaved?: (cafeId: string) => void;
 };
 
 export type ReviewQualityInsight = {
@@ -185,6 +186,7 @@ export function useReviewsSectionController({
   cafeId,
   opened,
   journeyID = "",
+  onReviewSaved,
 }: UseReviewsSectionControllerParams) {
   const { user, status, openAuthModal } = useAuth();
   const currentUserId = (user?.id ?? "").trim();
@@ -216,6 +218,7 @@ export function useReviewsSectionController({
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitHint, setSubmitHint] = useState<string | null>(null);
+  const [submitSuccessVersion, setSubmitSuccessVersion] = useState(0);
   const readReportedRef = useRef<Set<string>>(new Set());
   const normalizedJourneyID = journeyID.trim();
 
@@ -370,13 +373,11 @@ export function useReviewsSectionController({
     void loadFirstPage();
   }, [loadFirstPage, opened]);
 
-  useEffect(() => {
-    if (!opened) return;
+  const hydrateComposerFromOwnReview = useCallback(() => {
     if (!ownReview) {
       reset(DEFAULT_REVIEW_FORM_VALUES);
       return;
     }
-
     const ownReviewPositions = ownReview.positions?.length
       ? ownReview.positions
           .map((item) => normalizeDrinkInput(item.drink_name || item.drink_id))
@@ -397,7 +398,12 @@ export function useReviewsSectionController({
         objectKey: "",
       })),
     });
-  }, [opened, ownReview, reset]);
+  }, [ownReview, reset]);
+
+  useEffect(() => {
+    if (!opened) return;
+    hydrateComposerFromOwnReview();
+  }, [hydrateComposerFromOwnReview, opened]);
 
   const appendFiles = useCallback(
     async (fileList: FileList | null) => {
@@ -586,6 +592,8 @@ export function useReviewsSectionController({
       }
     }
     setSubmitHint(savedMessage);
+    setSubmitSuccessVersion((prev) => prev + 1);
+    onReviewSaved?.(cafeId);
 
     try {
       await loadFirstPage();
@@ -808,7 +816,9 @@ export function useReviewsSectionController({
     verifyVisitPending,
     submitError,
     submitHint,
+    submitSuccessVersion,
     fileInputRef,
+    hydrateComposerFromOwnReview,
     onFormSubmit,
     onAppendFiles: (fileList: FileList | null) => {
       void appendFiles(fileList);

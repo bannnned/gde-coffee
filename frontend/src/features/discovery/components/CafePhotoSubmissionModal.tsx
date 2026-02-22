@@ -28,6 +28,8 @@ type CafePhotoSubmissionModalProps = {
   cafeId: string | null;
   cafeName: string;
   kind: "cafe" | "menu";
+  existingPhotosCount?: number;
+  onSubmitted?: (payload: { cafeId: string; kind: "cafe" | "menu"; count: number }) => void;
   onClose: () => void;
 };
 
@@ -59,6 +61,8 @@ export default function CafePhotoSubmissionModal({
   cafeId,
   cafeName,
   kind,
+  existingPhotosCount = 0,
+  onSubmitted,
   onClose,
 }: CafePhotoSubmissionModalProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -86,6 +90,7 @@ export default function CafePhotoSubmissionModal({
   }, [kind, opened]);
 
   const modeLabel = mode === "menu" ? "фото меню" : "фото заведения";
+  const isFirstPhotographer = existingPhotosCount <= 0;
   const fileCountLabel = useMemo(() => {
     if (files.length === 0) return "Файлы не выбраны";
     if (files.length === 1) return "1 файл";
@@ -158,11 +163,18 @@ export default function CafePhotoSubmissionModal({
       } else {
         await submitCafePhotos(cafeId, uploadedObjectKeys);
       }
+      onSubmitted?.({
+        cafeId,
+        kind: mode,
+        count: uploadedObjectKeys.length,
+      });
 
       notifications.show({
         color: "green",
         title: "Заявка отправлена",
-        message: `Отправили ${modeLabel} на модерацию.`,
+        message: isFirstPhotographer
+          ? `Отправили ${modeLabel} на модерацию. После одобрения получите +4 к репутации как первый фотограф.`
+          : `Отправили ${modeLabel} на модерацию. После одобрения получите +4 к репутации.`,
       });
       setFiles([]);
       onClose();
@@ -251,6 +263,28 @@ export default function CafePhotoSubmissionModal({
             },
           }}
         />
+
+        {isFirstPhotographer && (
+          <Paper
+            withBorder
+            p="sm"
+            radius="md"
+            style={{
+              border: "1px solid color-mix(in srgb, var(--color-brand-accent) 35%, var(--glass-border))",
+              background:
+                "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 58%, var(--surface)), var(--surface))",
+            }}
+          >
+            <Group justify="space-between" align="center" wrap="nowrap" gap={8}>
+              <Badge radius="xl" variant="filled">
+                Первый фотограф
+              </Badge>
+              <Text size="sm" fw={600}>
+                +4 к репутации после одобрения
+              </Text>
+            </Group>
+          </Paper>
+        )}
 
         <Paper
           withBorder

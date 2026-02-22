@@ -13,7 +13,9 @@ type CafeCardProps = {
   cafe: Cafe;
   onOpen2gis: (cafe: Cafe) => void;
   onOpenYandex: (cafe: Cafe) => void;
+  onAddFirstPhoto?: () => void;
   onOpenDetails?: () => void;
+  isPhotoProcessing?: boolean;
   showDistance?: boolean;
   showRoutes?: boolean;
 };
@@ -22,7 +24,9 @@ export default function CafeCard({
   cafe,
   onOpen2gis,
   onOpenYandex,
+  onAddFirstPhoto,
   onOpenDetails,
+  isPhotoProcessing = false,
   showDistance = true,
   showRoutes = true,
 }: CafeCardProps) {
@@ -103,6 +107,8 @@ export default function CafeCard({
         showRoutes={showRoutes}
         onOpen2gis={onOpen2gis}
         onOpenYandex={onOpenYandex}
+        onAddFirstPhoto={onAddFirstPhoto}
+        isPhotoProcessing={isPhotoProcessing}
         onPhotoLoad={handlePhotoLoad}
         onPhotoError={handlePhotoError}
         onTouchStart={handlePhotoTouchStart}
