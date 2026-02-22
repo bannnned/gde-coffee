@@ -1,4 +1,4 @@
-import { Box, Button, Group, Paper, Skeleton, Stack, Text } from "@mantine/core";
+import { Box, Button, Group, Paper, Stack, Text } from "@mantine/core";
 import { IconCamera, IconCameraPlus, IconPlus } from "@tabler/icons-react";
 
 import type { Cafe, CafePhoto } from "../../../../../entities/cafe/model/types";
@@ -115,59 +115,30 @@ export default function MenuSection({
             borderBottom: "1px solid var(--glass-border)",
           }}
         >
-          <Stack
-            gap={8}
-            align="center"
-            style={{
-              width: "100%",
-              maxWidth: 340,
-              borderRadius: 16,
-              border: "1px solid var(--glass-border)",
-              background:
-                "linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 74%, transparent))",
-              boxShadow: "var(--glass-shadow)",
-              padding: "14px 12px",
-              textAlign: "center",
-            }}
-          >
-            {isPhotoProcessing ? (
-              <>
-                <Skeleton
-                  radius={12}
-                  animate
-                  visible
-                  style={{ width: "100%", height: 92 }}
-                />
-                <Text fw={600} size="sm">
-                  Обрабатываем фото...
-                </Text>
-                <Text size="xs" c="dimmed">
-                  Фото меню появится после обработки и модерации.
-                </Text>
-              </>
-            ) : (
-              <>
-                <IconCameraPlus size={22} />
-                <Text fw={600} size="sm">
-                  Фото меню пока нет
-                </Text>
-                <Text size="xs" c="dimmed">
-                  Добавьте первое фото меню, чтобы быстрее находили нужные позиции.
-                </Text>
-                {onManagePhotos && (
-                  <Button
-                    size="xs"
-                    radius="xl"
-                    variant="light"
-                    leftSection={<IconCameraPlus size={14} />}
-                    onClick={() => onManagePhotos("menu")}
-                  >
-                    Добавить первое фото
-                  </Button>
-                )}
-              </>
-            )}
-          </Stack>
+          {onManagePhotos && (
+            <Button
+              size="sm"
+              radius="xl"
+              variant="light"
+              loading={isPhotoProcessing}
+              leftSection={<IconCameraPlus size={16} />}
+              onClick={() => onManagePhotos("menu")}
+              styles={{
+                root: {
+                  height: 44,
+                  paddingInline: 16,
+                  border: "1px solid color-mix(in srgb, var(--color-brand-accent) 45%, var(--glass-border))",
+                  background:
+                    "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
+                  color: "var(--cafe-hero-emphasis-color)",
+                  fontWeight: 700,
+                  boxShadow: "var(--glass-shadow)",
+                },
+              }}
+            >
+              Добавить первое фото
+            </Button>
+          )}
         </Box>
       )}
 

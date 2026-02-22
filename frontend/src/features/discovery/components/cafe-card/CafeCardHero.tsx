@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Group, Skeleton, Stack, Text } from "@mantine/core";
+import { Badge, Box, Button, Group } from "@mantine/core";
 import { IconCameraPlus, IconRoute2 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ReactNode } from "react";
@@ -176,73 +176,33 @@ export default function CafeCardHero({
           }}
           data-no-drag="true"
         >
-          <Stack
-            gap={8}
-            align="center"
-            style={{
-              width: "100%",
-              maxWidth: 320,
-              borderRadius: 16,
-              border: "1px solid color-mix(in srgb, var(--glass-border) 86%, transparent)",
-              background:
-                "linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 72%, transparent))",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-              padding: "12px 10px",
-              boxShadow: "var(--glass-shadow)",
-            }}
-          >
-            {isPhotoProcessing ? (
-              <>
-                <Skeleton
-                  radius={12}
-                  animate
-                  visible
-                  style={{ width: "100%", height: 36 }}
-                />
-                <Text size="sm" fw={600} ta="center">
-                  Обрабатываем фото...
-                </Text>
-              </>
-            ) : (
-              <>
-                <IconCameraPlus size={20} style={{ opacity: 0.78 }} />
-                <Box
-                  style={{
-                    textAlign: "center",
-                    fontWeight: 600,
-                    lineHeight: 1.3,
-                    color: "var(--text)",
-                  }}
-                >
-                  Фото пока нет
-                </Box>
-                {onAddFirstPhoto && (
-                  <Button
-                    size="compact-xs"
-                    variant="light"
-                    radius="xl"
-                    leftSection={<IconCameraPlus size={14} />}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onAddFirstPhoto();
-                    }}
-                    styles={{
-                      root: {
-                        border: "1px solid color-mix(in srgb, var(--color-brand-accent) 45%, var(--glass-border))",
-                        background:
-                          "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
-                        color: "var(--cafe-hero-emphasis-color)",
-                        fontWeight: 700,
-                      },
-                    }}
-                  >
-                    Добавить первое фото
-                  </Button>
-                )}
-              </>
-            )}
-          </Stack>
+          {onAddFirstPhoto && (
+            <Button
+              size="sm"
+              variant="light"
+              radius="xl"
+              loading={isPhotoProcessing}
+              leftSection={<IconCameraPlus size={16} />}
+              onClick={(event) => {
+                event.stopPropagation();
+                onAddFirstPhoto();
+              }}
+              styles={{
+                root: {
+                  height: 44,
+                  paddingInline: 16,
+                  border: "1px solid color-mix(in srgb, var(--color-brand-accent) 45%, var(--glass-border))",
+                  background:
+                    "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
+                  color: "var(--cafe-hero-emphasis-color)",
+                  fontWeight: 700,
+                  boxShadow: "var(--glass-shadow)",
+                },
+              }}
+            >
+              Добавить первое фото
+            </Button>
+          )}
         </Box>
       )}
 
