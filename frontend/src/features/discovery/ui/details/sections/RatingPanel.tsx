@@ -22,6 +22,8 @@ type RatingPanelProps = {
   diagnosticsTrust: number;
   diagnosticsBase: number;
   diagnosticsTopReviews: CafeRatingDiagnostics["reviews"];
+  aiSummaryTriggerLoading: boolean;
+  onTriggerAISummary: () => void;
 };
 
 export default function RatingPanel({
@@ -40,6 +42,8 @@ export default function RatingPanel({
   diagnosticsTrust,
   diagnosticsBase,
   diagnosticsTopReviews,
+  aiSummaryTriggerLoading,
+  onTriggerAISummary,
 }: RatingPanelProps) {
   const statChipStyles = {
     root: {
@@ -107,6 +111,8 @@ export default function RatingPanel({
           trustValue={diagnosticsTrust}
           baseValue={diagnosticsBase}
           topReviews={diagnosticsTopReviews}
+          onTriggerAISummary={onTriggerAISummary}
+          aiSummaryTriggerLoading={aiSummaryTriggerLoading}
         />
       )}
       {bestReview && bestReview.id && (

@@ -18,6 +18,7 @@ type Service struct {
 	mediaService  *media.Service
 	mediaCfg      config.MediaConfig
 	versioning    formulaVersioning
+	aiSummaryCfg  aiSummaryConfig
 }
 
 func NewService(repository *Repository) *Service {
@@ -26,6 +27,7 @@ func NewService(repository *Repository) *Service {
 		createLimiter: auth.NewRateLimiter(6, 10*time.Minute),
 		updateLimiter: auth.NewRateLimiter(20, 10*time.Minute),
 		versioning:    loadFormulaVersioningFromEnv(),
+		aiSummaryCfg:  loadAISummaryConfigFromEnv(),
 	}
 }
 

@@ -15,6 +15,7 @@ type UseCafeDetailsDataParams = {
   cafe: Cafe | null;
   canViewAdminDiagnostics: boolean;
   photosRefreshToken: number;
+  ratingRefreshToken: number;
 };
 
 export function filterPhotosByKind(
@@ -30,6 +31,7 @@ export function useCafeDetailsData({
   cafe,
   canViewAdminDiagnostics,
   photosRefreshToken,
+  ratingRefreshToken,
 }: UseCafeDetailsDataParams) {
   const lastPhotosRefreshTokenRef = useRef(0);
   const [cafePhotos, setCafePhotos] = useState<CafePhoto[]>(
@@ -112,7 +114,7 @@ export function useCafeDetailsData({
     return () => {
       cancelled = true;
     };
-  }, [cafe?.id, opened]);
+  }, [cafe?.id, opened, ratingRefreshToken]);
 
   useEffect(() => {
     if (!opened || !cafe?.id || !canViewAdminDiagnostics) return;
@@ -146,7 +148,7 @@ export function useCafeDetailsData({
     return () => {
       cancelled = true;
     };
-  }, [cafe?.id, canViewAdminDiagnostics, opened]);
+  }, [cafe?.id, canViewAdminDiagnostics, opened, ratingRefreshToken]);
 
   const ratingSnapshot = cafe?.id ? (ratingSnapshotByCafeId[cafe.id] ?? null) : null;
   const ratingError = cafe?.id ? (ratingErrorByCafeId[cafe.id] ?? null) : null;

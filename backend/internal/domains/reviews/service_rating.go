@@ -125,6 +125,10 @@ type cafeSemanticTag struct {
 	Source       string  `json:"source"`
 }
 
+type ratingRecalculateOptions struct {
+	ForceAISummary bool
+}
+
 func (s *Service) GetCafeRatingSnapshot(ctx context.Context, cafeID string) (map[string]interface{}, error) {
 	snapshot, err := s.loadCafeRatingSnapshot(ctx, cafeID)
 	if err == nil {
@@ -140,7 +144,27 @@ func (s *Service) GetCafeRatingSnapshot(ctx context.Context, cafeID string) (map
 	return s.loadCafeRatingSnapshot(ctx, cafeID)
 }
 
+func (s *Service) ForceRecalculateCafeRatingSnapshot(
+	ctx context.Context,
+	cafeID string,
+) (map[string]interface{}, error) {
+	if err := s.recalculateCafeRatingSnapshotWithOptions(ctx, cafeID, ratingRecalculateOptions{
+		ForceAISummary: true,
+	}); err != nil {
+		return nil, err
+	}
+	return s.loadCafeRatingSnapshot(ctx, cafeID)
+}
+
 func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID string) error {
+	return s.recalculateCafeRatingSnapshotWithOptions(ctx, cafeID, ratingRecalculateOptions{})
+}
+
+func (s *Service) recalculateCafeRatingSnapshotWithOptions(
+	ctx context.Context,
+	cafeID string,
+	options ratingRecalculateOptions,
+) error {
 	type reviewInput struct {
 		ReviewID         string
 		AuthorUserID     string
@@ -197,6 +221,16 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		return err
 	}
 
+	previousSnapshot, previousSnapshotErr := s.loadCafeRatingSnapshot(ctx, cafeID)
+	previousAIState := extractAISummaryState(previousSnapshot, previousSnapshotErr)
+	nowUTC := time.Now().UTC()
+	shouldAttemptAI, aiAttemptReason, nextAllowedAt := decideAISummaryAttempt(
+		s.aiSummaryCfg,
+		previousAIState,
+		options.ForceAISummary,
+		nowUTC,
+	)
+
 	globalMean, err := s.globalMeanRating(ctx)
 	if err != nil {
 		return err
@@ -205,21 +239,39 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 	qualityFormulaVersion := s.versioning.QualityFormula
 
 	if len(reviews) == 0 {
+		aiStatus := "skipped"
+		aiReason := "no_reviews"
+		if options.ForceAISummary {
+			aiReason = "no_reviews_manual"
+		}
+		aiSummaryPayload := map[string]interface{}{
+			"enabled": s.aiSummaryCfg.Enabled,
+			"status":  aiStatus,
+			"reason":  aiReason,
+		}
+		if !nextAllowedAt.IsZero() {
+			aiSummaryPayload["next_allowed_at"] = nextAllowedAt.UTC().Format(time.RFC3339)
+		}
+		if !previousAIState.GeneratedAt.IsZero() {
+			aiSummaryPayload["last_generated_at"] = previousAIState.GeneratedAt.UTC().Format(time.RFC3339)
+		}
 		components := map[string]interface{}{
-			"global_mean":         roundFloat(globalMean, 4),
-			"reason":              "no_reviews",
-			"bayesian_m":          ratingBayesianM,
-			"trust_coeff_a":       ratingTrustCoeffVerifiedShare,
-			"trust_coeff_b":       ratingTrustCoeffAuthorRepNorm,
-			"trust_coeff_c":       ratingTrustCoeffFraudRisk,
-			"verified_share":      0.0,
-			"author_rep_avg_norm": 0.0,
-			"trust":               1.0,
-			"best_review":         nil,
-			"descriptive_tags":    []cafeSemanticTag{},
-			"specific_tags":       []cafeSemanticTag{},
-			"rating_formula":      ratingFormulaVersion,
-			"quality_formula":     qualityFormulaVersion,
+			"global_mean":             roundFloat(globalMean, 4),
+			"reason":                  "no_reviews",
+			"bayesian_m":              ratingBayesianM,
+			"trust_coeff_a":           ratingTrustCoeffVerifiedShare,
+			"trust_coeff_b":           ratingTrustCoeffAuthorRepNorm,
+			"trust_coeff_c":           ratingTrustCoeffFraudRisk,
+			"verified_share":          0.0,
+			"author_rep_avg_norm":     0.0,
+			"trust":                   1.0,
+			"best_review":             nil,
+			"descriptive_tags":        []cafeSemanticTag{},
+			"descriptive_tags_source": "rules_v1",
+			"specific_tags":           []cafeSemanticTag{},
+			"ai_summary":              aiSummaryPayload,
+			"rating_formula":          ratingFormulaVersion,
+			"quality_formula":         qualityFormulaVersion,
 		}
 		for key, value := range s.versioningSnapshot() {
 			components[key] = value
@@ -247,6 +299,7 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		confirmedReports     int
 		bestReview           *bestReviewCandidate
 	)
+	aiSignals := make([]aiReviewSignal, 0, len(reviews))
 	specificTagStats := map[string]*cafeSemanticTag{}
 
 	for _, item := range reviews {
@@ -278,6 +331,15 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		for _, tasteTag := range item.TasteTags {
 			appendSpecificTagSignal(specificTagStats, "taste:"+tasteTag, tasteTag, "taste", tagWeight)
 		}
+		aiSignals = append(aiSignals, aiReviewSignal{
+			ReviewID:      item.ReviewID,
+			Rating:        item.Rating,
+			Summary:       item.Summary,
+			TasteTags:     item.TasteTags,
+			HelpfulScore:  item.HelpfulScore,
+			VisitVerified: item.VisitVerified,
+			CreatedAt:     item.CreatedAt,
+		})
 
 		sumRatings += item.Rating
 		sumAuthorRepNorm += clamp(authorRep/ratingAuthorRepNormMax, 0, 1)
@@ -310,6 +372,59 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 		verifiedShare,
 		fraudRisk,
 	)
+	descriptiveTagsSource := "rules_v1"
+	aiSummaryPayload := map[string]interface{}{
+		"enabled": s.aiSummaryCfg.Enabled,
+		"status":  "disabled",
+	}
+
+	if !s.aiSummaryCfg.Enabled {
+		aiSummaryPayload["reason"] = "disabled"
+	} else if !shouldAttemptAI {
+		if previousAIState.Reusable {
+			descriptiveTags = previousAIState.DescriptiveTags
+			descriptiveTagsSource = "timeweb_ai_v1"
+			aiSummaryPayload = cloneMap(previousAIState.Payload)
+			aiSummaryPayload["enabled"] = true
+			aiSummaryPayload["status"] = "cooldown"
+			aiSummaryPayload["reason"] = aiAttemptReason
+			if !nextAllowedAt.IsZero() {
+				aiSummaryPayload["next_allowed_at"] = nextAllowedAt.UTC().Format(time.RFC3339)
+			}
+		} else {
+			aiSummaryPayload["status"] = "fallback_rules"
+			aiSummaryPayload["reason"] = aiAttemptReason
+			if !nextAllowedAt.IsZero() {
+				aiSummaryPayload["next_allowed_at"] = nextAllowedAt.UTC().Format(time.RFC3339)
+			}
+		}
+	} else {
+		aiSummaryPayload["status"] = "fallback_rules"
+		aiSummaryPayload["reason"] = "ai_error"
+		aiSummaryResult, aiErr := s.generateAIReviewSummary(ctx, cafeID, aiSignals)
+		if aiErr == nil && aiSummaryResult != nil && len(aiSummaryResult.Tags) > 0 {
+			descriptiveTags = buildAIDescriptiveCafeTags(aiSummaryResult.Tags, reviewsCount)
+			descriptiveTagsSource = "timeweb_ai_v1"
+			aiSummaryPayload = map[string]interface{}{
+				"enabled":         true,
+				"status":          "ok",
+				"summary_short":   aiSummaryResult.SummaryShort,
+				"tags":            aiSummaryResult.Tags,
+				"used_reviews":    aiSummaryResult.UsedReviews,
+				"generated_at":    nowUTC.Format(time.RFC3339),
+				"cadence_hours":   int(aiSummaryCadence / time.Hour),
+				"next_allowed_at": nowUTC.Add(aiSummaryCadence).Format(time.RFC3339),
+				"force":           options.ForceAISummary,
+			}
+		} else if aiErr != nil {
+			aiSummaryPayload["reason"] = truncateText(aiErr.Error(), 140)
+			if previousAIState.Reusable {
+				descriptiveTags = previousAIState.DescriptiveTags
+				descriptiveTagsSource = "timeweb_ai_v1"
+				aiSummaryPayload["status"] = "fallback_previous"
+			}
+		}
+	}
 	specificTags := buildTopSpecificCafeTags(specificTagStats, 8)
 
 	// rating_v2 formula:
@@ -361,26 +476,28 @@ func (s *Service) recalculateCafeRatingSnapshot(ctx context.Context, cafeID stri
 	}
 
 	components := map[string]interface{}{
-		"global_mean":         roundFloat(globalMean, 4),
-		"ratings_mean":        roundFloat(ratingsMean, 4),
-		"bayesian_base":       roundFloat(base, 4),
-		"bayesian_m":          ratingBayesianM,
-		"verified_share":      roundFloat(verifiedShare, 4),
-		"author_rep_avg_norm": roundFloat(authorRepAvgNorm, 4),
-		"trust":               roundFloat(trust, 4),
-		"trust_coeff_a":       ratingTrustCoeffVerifiedShare,
-		"trust_coeff_b":       ratingTrustCoeffAuthorRepNorm,
-		"trust_coeff_c":       ratingTrustCoeffFraudRisk,
-		"fraud_risk":          roundFloat(fraudRisk, 4),
-		"flagged_reviews":     flaggedReviewsCount,
-		"confirmed_reports":   confirmedReports,
-		"rating_formula":      ratingFormulaVersion,
-		"quality_formula":     qualityFormulaVersion,
-		"verified_reviews":    verifiedReviewsCount,
-		"published_reviews":   reviewsCount,
-		"best_review":         bestReviewPayload,
-		"descriptive_tags":    descriptiveTags,
-		"specific_tags":       specificTags,
+		"global_mean":             roundFloat(globalMean, 4),
+		"ratings_mean":            roundFloat(ratingsMean, 4),
+		"bayesian_base":           roundFloat(base, 4),
+		"bayesian_m":              ratingBayesianM,
+		"verified_share":          roundFloat(verifiedShare, 4),
+		"author_rep_avg_norm":     roundFloat(authorRepAvgNorm, 4),
+		"trust":                   roundFloat(trust, 4),
+		"trust_coeff_a":           ratingTrustCoeffVerifiedShare,
+		"trust_coeff_b":           ratingTrustCoeffAuthorRepNorm,
+		"trust_coeff_c":           ratingTrustCoeffFraudRisk,
+		"fraud_risk":              roundFloat(fraudRisk, 4),
+		"flagged_reviews":         flaggedReviewsCount,
+		"confirmed_reports":       confirmedReports,
+		"rating_formula":          ratingFormulaVersion,
+		"quality_formula":         qualityFormulaVersion,
+		"verified_reviews":        verifiedReviewsCount,
+		"published_reviews":       reviewsCount,
+		"best_review":             bestReviewPayload,
+		"descriptive_tags":        descriptiveTags,
+		"descriptive_tags_source": descriptiveTagsSource,
+		"specific_tags":           specificTags,
+		"ai_summary":              aiSummaryPayload,
 	}
 	for key, value := range s.versioningSnapshot() {
 		components[key] = value

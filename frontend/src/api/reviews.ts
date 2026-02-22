@@ -96,8 +96,32 @@ export type CafeRatingDiagnostics = {
   fraud_risk: number;
   components: Record<string, unknown>;
   best_review: CafeRatingBestReview | null;
+  ai_summary: CafeAISummaryDiagnostics | null;
+  descriptive_tags_source: string;
   warnings: string[];
   reviews: CafeRatingDiagnosticsReview[];
+};
+
+export type CafeAISummaryDiagnostics = {
+  enabled: boolean;
+  status: string;
+  reason?: string;
+  summary_short?: string;
+  tags?: string[];
+  used_reviews?: number;
+  generated_at?: string;
+  next_allowed_at?: string;
+  last_generated_at?: string;
+  cadence_hours?: number;
+  force?: boolean;
+};
+
+export type TriggerCafeAISummaryResponse = {
+  cafe_id: string;
+  trigger: string;
+  descriptive_tags_source: string;
+  ai_summary: CafeAISummaryDiagnostics | null;
+  computed_at: string;
 };
 
 export type ReviewsVersioningStatus = {
@@ -434,6 +458,24 @@ function parseDiagnosticsReview(rawValue: unknown): CafeRatingDiagnosticsReview 
   };
 }
 
+function parseAISummaryDiagnostics(rawValue: unknown): CafeAISummaryDiagnostics | null {
+  const raw = asRecord(rawValue);
+  if (Object.keys(raw).length === 0) return null;
+  return {
+    enabled: Boolean(raw.enabled),
+    status: asString(raw.status, "unknown"),
+    reason: asString(raw.reason),
+    summary_short: asString(raw.summary_short),
+    tags: asStringArray(raw.tags),
+    used_reviews: asNumber(raw.used_reviews),
+    generated_at: asString(raw.generated_at),
+    next_allowed_at: asString(raw.next_allowed_at),
+    last_generated_at: asString(raw.last_generated_at),
+    cadence_hours: asNumber(raw.cadence_hours),
+    force: Boolean(raw.force),
+  };
+}
+
 function parseDLQEvent(rawValue: unknown): ReviewsDLQEvent {
   const raw = asRecord(rawValue);
   const payloadRaw = asRecord(raw.payload);
@@ -715,8 +757,26 @@ export async function getCafeRatingDiagnostics(
     fraud_risk: asNumber(raw.fraud_risk),
     components: asRecord(raw.components),
     best_review: parseBestReview(raw.best_review),
+    ai_summary: parseAISummaryDiagnostics(raw.ai_summary),
+    descriptive_tags_source: asString(raw.descriptive_tags_source, "rules_v1"),
     warnings: asStringArray(raw.warnings),
     reviews,
+  };
+}
+
+export async function triggerCafeAISummary(
+  cafeId: string,
+): Promise<TriggerCafeAISummaryResponse> {
+  const res = await http.post<unknown>(
+    `/api/admin/cafes/${encodeURIComponent(cafeId)}/rating-ai-summarize`,
+  );
+  const raw = asRecord(res.data);
+  return {
+    cafe_id: asString(raw.cafe_id, cafeId),
+    trigger: asString(raw.trigger, "admin_manual"),
+    descriptive_tags_source: asString(raw.descriptive_tags_source, "rules_v1"),
+    ai_summary: parseAISummaryDiagnostics(raw.ai_summary),
+    computed_at: asString(raw.computed_at),
   };
 }
 

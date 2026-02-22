@@ -11,6 +11,8 @@ type AdminDiagnosticsPanelProps = {
   trustValue: number;
   baseValue: number;
   topReviews: CafeRatingDiagnostics["reviews"];
+  onTriggerAISummary: () => void;
+  aiSummaryTriggerLoading: boolean;
 };
 
 export default function AdminDiagnosticsPanel({
@@ -22,7 +24,11 @@ export default function AdminDiagnosticsPanel({
   trustValue,
   baseValue,
   topReviews,
+  onTriggerAISummary,
+  aiSummaryTriggerLoading,
 }: AdminDiagnosticsPanelProps) {
+  const aiSummary = diagnostics?.ai_summary ?? null;
+
   return (
     <Paper
       withBorder
@@ -38,9 +44,19 @@ export default function AdminDiagnosticsPanel({
           <Text fw={600} size="sm">
             Admin-диагностика рейтинга
           </Text>
-          <Button variant="light" size="compact-xs" onClick={onToggleExpanded}>
-            {expanded ? "Скрыть" : "Показать"}
-          </Button>
+          <Group gap={6} wrap="nowrap">
+            <Button
+              variant="light"
+              size="compact-xs"
+              onClick={onTriggerAISummary}
+              loading={aiSummaryTriggerLoading}
+            >
+              Суммаризировать через AI
+            </Button>
+            <Button variant="light" size="compact-xs" onClick={onToggleExpanded}>
+              {expanded ? "Скрыть" : "Показать"}
+            </Button>
+          </Group>
         </Group>
 
         {loading && (
@@ -76,7 +92,36 @@ export default function AdminDiagnosticsPanel({
               <Badge size="xs" variant="light">
                 Base: {baseValue.toFixed(3)}
               </Badge>
+              <Badge size="xs" variant="light">
+                Tags source: {diagnostics.descriptive_tags_source || "rules_v1"}
+              </Badge>
+              <Badge
+                size="xs"
+                variant="light"
+                color={aiSummary?.status === "ok" ? "teal" : "orange"}
+              >
+                AI: {aiSummary?.status || "n/a"}
+              </Badge>
             </Group>
+
+            {aiSummary && (
+              <Stack gap={4}>
+                {aiSummary.summary_short ? (
+                  <Text size="xs" c="dimmed">
+                    AI summary: {aiSummary.summary_short}
+                  </Text>
+                ) : null}
+                {Array.isArray(aiSummary.tags) && aiSummary.tags.length > 0 ? (
+                  <Group gap={6} wrap="wrap">
+                    {aiSummary.tags.map((tag) => (
+                      <Badge key={`ai-tag-${tag}`} size="xs" variant="light">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </Group>
+                ) : null}
+              </Stack>
+            )}
 
             {diagnostics.warnings.length > 0 && (
               <Group gap={6} wrap="wrap">

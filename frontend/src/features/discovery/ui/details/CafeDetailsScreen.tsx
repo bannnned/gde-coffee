@@ -14,6 +14,7 @@ import {
   IconHeartFilled,
 } from "@tabler/icons-react";
 
+import { triggerCafeAISummary } from "../../../../api/reviews";
 import ReviewsSection from "./ReviewsSection";
 import { useCafeDetailsComputed } from "./hooks/useCafeDetailsComputed";
 import { useCafeDetailsData } from "./hooks/useCafeDetailsData";
@@ -96,6 +97,8 @@ export default function CafeDetailsScreen({
   const [aboutImageReady, setAboutImageReady] = useState(true);
   const [menuImageReady, setMenuImageReady] = useState(true);
   const [ratingDiagnosticsExpanded, setRatingDiagnosticsExpanded] = useState(false);
+  const [ratingRefreshToken, setRatingRefreshToken] = useState(0);
+  const [aiSummaryTriggerLoading, setAiSummaryTriggerLoading] = useState(false);
 
   const loadedAboutUrlsRef = useRef<Set<string>>(new Set());
   const loadedMenuUrlsRef = useRef<Set<string>>(new Set());
@@ -114,6 +117,7 @@ export default function CafeDetailsScreen({
     cafe,
     canViewAdminDiagnostics,
     photosRefreshToken,
+    ratingRefreshToken,
   });
 
   const {
@@ -153,6 +157,8 @@ export default function CafeDetailsScreen({
     setDescriptionError(null);
     setDescriptionHint(null);
     setRatingDiagnosticsExpanded(false);
+    setRatingRefreshToken(0);
+    setAiSummaryTriggerLoading(false);
     setAboutActiveIndex(0);
     setMenuActiveIndex(0);
     setViewerOpen(false);
@@ -306,6 +312,21 @@ export default function CafeDetailsScreen({
 
   const descriptionActionLabel = description ? "Редактировать описание" : "Добавить описание";
 
+  const handleAdminTriggerAISummary = async () => {
+    if (!canViewAdminDiagnostics || !cafe?.id) return;
+    setAiSummaryTriggerLoading(true);
+    try {
+      const response = await triggerCafeAISummary(cafe.id);
+      // Temporary observability requested by business: keep raw AI result in browser console.
+      console.log("[AI summary trigger]", response);
+    } catch (error: unknown) {
+      console.error("[AI summary trigger failed]", error);
+    } finally {
+      setAiSummaryTriggerLoading(false);
+      setRatingRefreshToken((value) => value + 1);
+    }
+  };
+
   const ratingPanel = (
     <RatingPanel
       ratingLabel={ratingLabel}
@@ -323,6 +344,8 @@ export default function CafeDetailsScreen({
       diagnosticsTrust={diagnosticsTrust}
       diagnosticsBase={diagnosticsBase}
       diagnosticsTopReviews={diagnosticsTopReviews}
+      aiSummaryTriggerLoading={aiSummaryTriggerLoading}
+      onTriggerAISummary={handleAdminTriggerAISummary}
     />
   );
 

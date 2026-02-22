@@ -222,6 +222,10 @@ func (s *Service) GetCafeRatingDiagnostics(ctx context.Context, cafeID string) (
 		"warnings":    warnings,
 		"reviews":     breakdown,
 	}
+	if snapshotComponents, ok := snapshot["components"].(map[string]interface{}); ok && snapshotComponents != nil {
+		response["ai_summary"] = snapshotComponents["ai_summary"]
+		response["descriptive_tags_source"] = snapshotComponents["descriptive_tags_source"]
+	}
 	s.appendVersionMetadata(response)
 	return response, nil
 }
