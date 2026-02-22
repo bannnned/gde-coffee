@@ -7,22 +7,20 @@ import {
 } from "./cafePhotoVariants";
 
 describe("buildCafePhotoSrcSet", () => {
-  it("builds srcset for optimized URLs", () => {
+  it("returns undefined while variants are disabled", () => {
     const srcSet = buildCafePhotoSrcSet(
       "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash.jpg",
       [640, 1024],
     );
-    expect(srcSet).toBe(
-      "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w640.jpg 640w, https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w1024.jpg 1024w",
-    );
+    expect(srcSet).toBeUndefined();
   });
 
-  it("keeps query params for variants", () => {
+  it("returns undefined for 320 when variants are disabled", () => {
     const srcSet = buildCafePhotoSrcSet(
       "https://img.gde-kofe.ru/cafes/1/cafe/optimized/a.jpg?v=1",
       [320],
     );
-    expect(srcSet).toBe("https://img.gde-kofe.ru/cafes/1/cafe/optimized/a.jpg?v=1 320w");
+    expect(srcSet).toBeUndefined();
   });
 
   it("returns undefined for non-optimized URLs", () => {
@@ -30,24 +28,22 @@ describe("buildCafePhotoSrcSet", () => {
     expect(srcSet).toBeUndefined();
   });
 
-  it("builds format srcset", () => {
+  it("returns undefined for format srcset while variants are disabled", () => {
     const srcSet = buildCafePhotoFormatSrcSet(
       "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash.jpg",
       [640, 1024],
       "avif",
     );
-    expect(srcSet).toBe(
-      "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w640.avif 640w, https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w1024.avif 1024w",
-    );
+    expect(srcSet).toBeUndefined();
   });
 
-  it("skips 320 format variants to avoid legacy 403s", () => {
+  it("returns undefined for webp format srcset while variants are disabled", () => {
     const srcSet = buildCafePhotoFormatSrcSet(
       "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash.jpg",
       [320, 640],
       "webp",
     );
-    expect(srcSet).toBe("https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w640.webp 640w");
+    expect(srcSet).toBeUndefined();
   });
 
   it("builds picture sources", () => {
@@ -56,8 +52,8 @@ describe("buildCafePhotoSrcSet", () => {
       [640],
     );
     expect(sources).toEqual({
-      fallbackSrcSet: "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w640.jpg 640w",
-      webpSrcSet: "https://img.gde-kofe.ru/cafes/1/cafe/optimized/1700_hash_w640.webp 640w",
+      fallbackSrcSet: undefined,
+      webpSrcSet: undefined,
       avifSrcSet: undefined,
     });
   });

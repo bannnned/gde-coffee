@@ -3,6 +3,8 @@ const SUPPORTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".avif"] as cons
 const SUPPORTED_FORMAT_VARIANTS = ["webp", "avif"] as const;
 const LEGACY_SAFE_BASE_WIDTH = 320;
 const FORMAT_VARIANT_MIN_WIDTH = 640;
+// Temporary hard-disable for environments where responsive variants are absent in storage.
+const ENABLE_CAFE_PHOTO_VARIANTS = false;
 
 function splitBaseAndQuery(rawUrl: string): { baseURL: string; querySuffix: string } {
   const trimmed = rawUrl.trim();
@@ -47,6 +49,9 @@ function buildFormatVariantURL(
 }
 
 export function buildCafePhotoSrcSet(rawURL: string | null | undefined, widths: number[]): string | undefined {
+  if (!ENABLE_CAFE_PHOTO_VARIANTS) {
+    return undefined;
+  }
   const value = (rawURL ?? "").trim();
   if (!value || !value.includes(OPTIMIZED_MARKER) || widths.length === 0) {
     return undefined;
@@ -76,6 +81,9 @@ export function buildCafePhotoFormatSrcSet(
   widths: number[],
   format: "webp" | "avif",
 ): string | undefined {
+  if (!ENABLE_CAFE_PHOTO_VARIANTS) {
+    return undefined;
+  }
   const value = (rawURL ?? "").trim();
   if (!value || !value.includes(OPTIMIZED_MARKER) || widths.length === 0) {
     return undefined;
@@ -111,8 +119,6 @@ export function buildCafePhotoPictureSources(
   return {
     fallbackSrcSet: buildCafePhotoSrcSet(rawURL, widths),
     webpSrcSet: buildCafePhotoFormatSrcSet(rawURL, widths, "webp"),
-    // AVIF variants are optional and often missing in fresh storage environments.
-    // Keep AVIF disabled by default to avoid noisy 403 requests.
     avifSrcSet: undefined,
   };
 }
