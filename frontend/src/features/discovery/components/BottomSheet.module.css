@@ -66,7 +66,7 @@
   right: 0;
   top: 0;
   z-index: 3;
-  padding: var(--page-edge-padding);
+  padding: 32px;
   padding-bottom: 0;
   pointer-events: auto;
 }
@@ -89,24 +89,20 @@
   --list-fade-start: calc(var(--sheet-header-height, 0px) * 0.52);
   --list-fade-mid: calc(var(--sheet-header-height, 0px) * 0.68);
   --list-fade-end: calc(var(--sheet-header-height, 0px) + 8px);
-  -webkit-mask-image: linear-gradient(
-    180deg,
-    transparent 0,
-    transparent var(--list-fade-start),
-    rgba(0, 0, 0, 0.24) var(--list-fade-mid),
-    rgba(0, 0, 0, 0.72) calc(var(--list-fade-mid) + 16px),
-    #000 var(--list-fade-end),
-    #000 100%
-  );
-  mask-image: linear-gradient(
-    180deg,
-    transparent 0,
-    transparent var(--list-fade-start),
-    rgba(0, 0, 0, 0.24) var(--list-fade-mid),
-    rgba(0, 0, 0, 0.72) calc(var(--list-fade-mid) + 16px),
-    #000 var(--list-fade-end),
-    #000 100%
-  );
+  -webkit-mask-image: linear-gradient(180deg,
+      transparent 0,
+      transparent var(--list-fade-start),
+      rgba(0, 0, 0, 0.24) var(--list-fade-mid),
+      rgba(0, 0, 0, 0.72) calc(var(--list-fade-mid) + 16px),
+      #000 var(--list-fade-end),
+      #000 100%);
+  mask-image: linear-gradient(180deg,
+      transparent 0,
+      transparent var(--list-fade-start),
+      rgba(0, 0, 0, 0.24) var(--list-fade-mid),
+      rgba(0, 0, 0, 0.72) calc(var(--list-fade-mid) + 16px),
+      #000 var(--list-fade-end),
+      #000 100%);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%;

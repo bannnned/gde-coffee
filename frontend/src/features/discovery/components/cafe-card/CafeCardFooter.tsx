@@ -108,6 +108,7 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
           padding: "8px 10px",
+          marginBottom: 4,
         }}
       >
         <Group justify="space-between" align="flex-end" gap={10} wrap="nowrap">
