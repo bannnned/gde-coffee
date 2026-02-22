@@ -529,6 +529,10 @@ body,
   overscroll-behavior: none;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   overflow: hidden;
 }
@@ -688,4 +692,17 @@ button {
 #root {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+/* iOS Safari can auto-zoom on focus when effective input font-size is below 16px. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select,
+  .mantine-Input-input,
+  .mantine-Select-input,
+  .mantine-TagsInput-input,
+  .mantine-Textarea-input {
+    font-size: 16px !important;
+  }
 }
