@@ -10,6 +10,7 @@ import { formatReviewDate, parseReviewSummarySections } from "./reviewForm";
 const COLLAPSED_TEXT_LENGTH_THRESHOLD = 220;
 const COLLAPSED_PHOTO_PREVIEW_LIMIT = 3;
 const REVIEW_LARGE_TOTAL_CONTENT_THRESHOLD = 260;
+const REVIEWS_STALE_DAYS = 14;
 
 function resolveVisitDate(review: CafeReview): string {
   const withVisitDate = review as CafeReview & {
@@ -122,6 +123,20 @@ export function ReviewFeed({
     { value: "helpful", label: "Полезные" },
     { value: "verified", label: "С визитом" },
   ];
+  const staleReviewsNotice = useMemo(() => {
+    if (positionFilter !== "all") return "";
+    if (reviews.length === 0) return "";
+    let latestTimestamp = 0;
+    for (const review of reviews) {
+      const timestamp = new Date(review.created_at).getTime();
+      if (!Number.isFinite(timestamp)) continue;
+      if (timestamp > latestTimestamp) latestTimestamp = timestamp;
+    }
+    if (!latestTimestamp) return "";
+    const staleAfterMs = REVIEWS_STALE_DAYS * 24 * 60 * 60 * 1000;
+    if (Date.now() - latestTimestamp < staleAfterMs) return "";
+    return "Сюда давно не заходили. Исправьте это и оставьте свежий отзыв.";
+  }, [positionFilter, reviews]);
 
   return (
     <Box style={{ position: "relative" }}>
@@ -186,6 +201,18 @@ export function ReviewFeed({
             </Text>
           </Paper>
         )}
+        {!isLoading && !loadError && staleReviewsNotice ? (
+          <Paper
+            withBorder
+            radius="md"
+            p="sm"
+            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+          >
+            <Text size="sm" c="orange" fw={600}>
+              {staleReviewsNotice}
+            </Text>
+          </Paper>
+        ) : null}
 
         {!loadError &&
           reviews.map((review, index) => (

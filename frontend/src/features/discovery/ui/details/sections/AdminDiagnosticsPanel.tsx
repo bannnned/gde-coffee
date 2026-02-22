@@ -40,11 +40,11 @@ export default function AdminDiagnosticsPanel({
       }}
     >
       <Stack gap={8}>
-        <Group justify="space-between" align="center" wrap="nowrap">
-          <Text fw={600} size="sm">
+        <Group justify="space-between" align="flex-start" wrap="wrap" gap={8}>
+          <Text fw={600} size="sm" style={{ flex: "1 1 220px", minWidth: 0 }}>
             Admin-диагностика рейтинга
           </Text>
-          <Group gap={6} wrap="nowrap">
+          <Group gap={6} wrap="wrap" justify="flex-end" style={{ marginLeft: "auto" }}>
             <Button
               variant="light"
               size="compact-xs"
@@ -109,6 +109,11 @@ export default function AdminDiagnosticsPanel({
                 {aiSummary.summary_short ? (
                   <Text size="xs" c="dimmed">
                     AI summary: {aiSummary.summary_short}
+                  </Text>
+                ) : null}
+                {aiSummary.stale_notice ? (
+                  <Text size="xs" c="orange">
+                    {aiSummary.stale_notice}
                   </Text>
                 ) : null}
                 {Array.isArray(aiSummary.tags) && aiSummary.tags.length > 0 ? (

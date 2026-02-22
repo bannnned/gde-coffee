@@ -3,6 +3,8 @@ package reviews
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,7 +23,10 @@ const (
 	defaultAISummaryMinReviewCount = 3
 	defaultAIProxySource           = "gde-kofe-backend"
 	defaultAIModel                 = "gpt-4"
-	aiSummaryCadence               = 48 * time.Hour
+	aiSummaryReviewStep            = 5
+	aiSummaryStaleWindow           = 14 * 24 * time.Hour
+	aiSummaryPromptSummaryRunes    = 180
+	aiSummaryCompletionTokens      = 120
 )
 
 type aiSummaryConfig struct {
@@ -50,13 +55,21 @@ type aiSummaryResult struct {
 	SummaryShort string
 	Tags         []string
 	UsedReviews  int
+	InputHash    string
 }
 
 type aiSummaryState struct {
 	Reusable        bool
 	GeneratedAt     time.Time
+	GeneratedAtStep int
 	DescriptiveTags []cafeSemanticTag
 	Payload         map[string]interface{}
+}
+
+type aiSummaryPromptReview struct {
+	Rating        float64 `json:"rating"`
+	Summary       string  `json:"summary"`
+	VisitVerified bool    `json:"visit_verified"`
 }
 
 func loadAISummaryConfigFromEnv() aiSummaryConfig {
@@ -192,6 +205,64 @@ func selectTopAIReviews(input []aiReviewSignal, limit int) []aiReviewSignal {
 	return clean
 }
 
+func buildAISummaryPromptReviews(
+	reviews []aiReviewSignal,
+	cfg aiSummaryConfig,
+) ([]aiSummaryPromptReview, error) {
+	selected := selectTopAIReviews(reviews, cfg.MaxInputReviews)
+	if len(selected) < cfg.MinReviews {
+		return nil, fmt.Errorf("not enough reviews for ai summary")
+	}
+
+	promptItems := make([]aiSummaryPromptReview, 0, len(selected))
+	for _, item := range selected {
+		summary := truncateText(collapseWhitespace(item.Summary), aiSummaryPromptSummaryRunes)
+		if summary == "" {
+			continue
+		}
+		promptItems = append(promptItems, aiSummaryPromptReview{
+			Rating:        roundFloat(item.Rating, 2),
+			Summary:       summary,
+			VisitVerified: item.VisitVerified,
+		})
+	}
+	if len(promptItems) < cfg.MinReviews {
+		return nil, fmt.Errorf("not enough reviews for ai summary")
+	}
+	return promptItems, nil
+}
+
+func computeAISummaryInputHash(cafeID string, promptItems []aiSummaryPromptReview) (string, error) {
+	payloadRaw, err := json.Marshal(map[string]interface{}{
+		"cafe_id": cafeID,
+		"reviews": promptItems,
+	})
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(payloadRaw)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func (s *Service) calculateAISummaryInputHash(
+	cafeID string,
+	reviews []aiReviewSignal,
+) (string, int, error) {
+	cfg := s.aiSummaryCfg
+	if !cfg.Enabled {
+		return "", 0, fmt.Errorf("ai summary disabled")
+	}
+	promptItems, err := buildAISummaryPromptReviews(reviews, cfg)
+	if err != nil {
+		return "", 0, err
+	}
+	inputHash, err := computeAISummaryInputHash(cafeID, promptItems)
+	if err != nil {
+		return "", 0, err
+	}
+	return inputHash, len(promptItems), nil
+}
+
 func normalizeAITagLabels(input []string, limit int) []string {
 	if limit <= 0 {
 		return []string{}
@@ -246,22 +317,77 @@ func decideAISummaryAttempt(
 	cfg aiSummaryConfig,
 	previous aiSummaryState,
 	force bool,
-	now time.Time,
-) (bool, string, time.Time) {
+	reviewsCount int,
+) (bool, string, int) {
 	if !cfg.Enabled {
-		return false, "disabled", time.Time{}
+		return false, "disabled", 0
 	}
 	if force {
-		return true, "manual_force", time.Time{}
+		return true, "manual_force", 0
 	}
-	if previous.GeneratedAt.IsZero() {
-		return true, "never_generated", time.Time{}
+	if reviewsCount < aiSummaryReviewStep {
+		return false, "not_enough_reviews", aiSummaryReviewStep
 	}
-	nextAllowed := previous.GeneratedAt.Add(aiSummaryCadence)
-	if now.Before(nextAllowed) {
-		return false, "cooldown", nextAllowed
+
+	currentStep := reviewsCount / aiSummaryReviewStep
+	previousStep := previous.GeneratedAtStep / aiSummaryReviewStep
+	if previous.GeneratedAtStep <= 0 {
+		if previous.GeneratedAt.IsZero() {
+			return true, "threshold_reached", nextAISummaryStepThreshold(reviewsCount)
+		}
+		// Backward compatibility for snapshots generated before step-based metadata.
+		// Re-run once and persist step counters.
+		return true, "backfill_step_metadata", nextAISummaryStepThreshold(reviewsCount)
 	}
-	return true, "cadence_due", nextAllowed
+
+	if currentStep > previousStep {
+		return true, "threshold_reached", nextAISummaryStepThreshold(reviewsCount)
+	}
+
+	return false, "threshold_wait", (previousStep + 1) * aiSummaryReviewStep
+}
+
+func nextAISummaryStepThreshold(reviewsCount int) int {
+	if reviewsCount < aiSummaryReviewStep {
+		return aiSummaryReviewStep
+	}
+	return ((reviewsCount / aiSummaryReviewStep) + 1) * aiSummaryReviewStep
+}
+
+func buildAISummaryStaleNotice(reviews []aiReviewSignal, now time.Time) string {
+	if len(reviews) == 0 {
+		return ""
+	}
+	lastReviewAt := reviews[0].CreatedAt
+	for _, item := range reviews[1:] {
+		if item.CreatedAt.After(lastReviewAt) {
+			lastReviewAt = item.CreatedAt
+		}
+	}
+	if lastReviewAt.IsZero() {
+		return ""
+	}
+	if now.UTC().Sub(lastReviewAt.UTC()) < aiSummaryStaleWindow {
+		return ""
+	}
+	return "Сюда давно не заходили. Исправьте это и оставьте свежий отзыв."
+}
+
+func intFromAny(value interface{}) int {
+	switch cast := value.(type) {
+	case int:
+		return cast
+	case int32:
+		return int(cast)
+	case int64:
+		return int(cast)
+	case float64:
+		return int(cast)
+	case float32:
+		return int(cast)
+	default:
+		return 0
+	}
 }
 
 func extractAISummaryState(snapshot map[string]interface{}, snapshotErr error) aiSummaryState {
@@ -291,6 +417,7 @@ func extractAISummaryState(snapshot map[string]interface{}, snapshotErr error) a
 	return aiSummaryState{
 		Reusable:        reusable,
 		GeneratedAt:     generatedAt,
+		GeneratedAtStep: intFromAny(rawPayload["generated_reviews_count"]),
 		DescriptiveTags: descriptiveTags,
 		Payload:         payload,
 	}
@@ -345,31 +472,9 @@ func (s *Service) generateAIReviewSummary(
 		return nil, fmt.Errorf("ai summary disabled")
 	}
 
-	selected := selectTopAIReviews(reviews, cfg.MaxInputReviews)
-	if len(selected) < cfg.MinReviews {
-		return nil, fmt.Errorf("not enough reviews for ai summary")
-	}
-
-	type promptReview struct {
-		ID            string   `json:"id"`
-		Rating        float64  `json:"rating"`
-		Summary       string   `json:"summary"`
-		TasteTags     []string `json:"taste_tags,omitempty"`
-		HelpfulScore  float64  `json:"helpful_score"`
-		VisitVerified bool     `json:"visit_verified"`
-		CreatedAt     string   `json:"created_at"`
-	}
-	promptItems := make([]promptReview, 0, len(selected))
-	for _, item := range selected {
-		promptItems = append(promptItems, promptReview{
-			ID:            item.ReviewID,
-			Rating:        roundFloat(item.Rating, 2),
-			Summary:       truncateText(collapseWhitespace(item.Summary), 380),
-			TasteTags:     item.TasteTags,
-			HelpfulScore:  roundFloat(item.HelpfulScore, 3),
-			VisitVerified: item.VisitVerified,
-			CreatedAt:     item.CreatedAt.UTC().Format(time.RFC3339),
-		})
+	promptItems, err := buildAISummaryPromptReviews(reviews, cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	payloadRaw, err := json.Marshal(map[string]interface{}{
@@ -379,16 +484,16 @@ func (s *Service) generateAIReviewSummary(
 	if err != nil {
 		return nil, err
 	}
+	inputHash, err := computeAISummaryInputHash(cafeID, promptItems)
+	if err != nil {
+		return nil, err
+	}
 
-	systemPrompt := "Ты аналитик отзывов о кофейнях. Верни только JSON."
-	userPrompt := "Сделай краткую выжимку отзывов.\n" +
-		"Требования:\n" +
-		"1) summary_short: 1-2 коротких предложения по-русски.\n" +
-		"2) descriptive_tags: 3-6 коротких тегов (1-3 слова), только про опыт в заведении.\n" +
-		"3) Не добавляй напитки/сорта/позиции меню в descriptive_tags.\n" +
-		"4) Теги в lowercase.\n" +
-		"5) Верни строго JSON формата: {\"summary_short\":\"...\",\"descriptive_tags\":[\"...\"]}\n\n" +
-		"Данные отзывов:\n" + string(payloadRaw)
+	systemPrompt := "Ты аналитик отзывов о кофейнях. Ответ строго JSON без пояснений."
+	userPrompt := "Верни JSON: {\"summary_short\":\"...\",\"descriptive_tags\":[\"...\"]}.\n" +
+		"Правила: summary_short 1-2 коротких предложения по-русски; descriptive_tags 3-6 тегов, lowercase, 1-3 слова; " +
+		"только про опыт в заведении, без напитков/меню.\n" +
+		"Отзывы:\n" + string(payloadRaw)
 
 	requestBody := map[string]interface{}{
 		"model": cfg.Model,
@@ -397,7 +502,7 @@ func (s *Service) generateAIReviewSummary(
 			{"role": "user", "content": userPrompt},
 		},
 		"temperature":           0.2,
-		"max_completion_tokens": 240,
+		"max_completion_tokens": aiSummaryCompletionTokens,
 		"response_format": map[string]string{
 			"type": "json_object",
 		},
@@ -478,7 +583,8 @@ func (s *Service) generateAIReviewSummary(
 	return &aiSummaryResult{
 		SummaryShort: summary,
 		Tags:         tags,
-		UsedReviews:  len(selected),
+		UsedReviews:  len(promptItems),
+		InputHash:    inputHash,
 	}, nil
 }
 

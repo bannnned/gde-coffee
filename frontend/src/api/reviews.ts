@@ -110,9 +110,10 @@ export type CafeAISummaryDiagnostics = {
   tags?: string[];
   used_reviews?: number;
   generated_at?: string;
-  next_allowed_at?: string;
+  generated_reviews_count?: number;
+  next_threshold_reviews?: number;
   last_generated_at?: string;
-  cadence_hours?: number;
+  stale_notice?: string;
   force?: boolean;
 };
 
@@ -469,9 +470,10 @@ function parseAISummaryDiagnostics(rawValue: unknown): CafeAISummaryDiagnostics 
     tags: asStringArray(raw.tags),
     used_reviews: asNumber(raw.used_reviews),
     generated_at: asString(raw.generated_at),
-    next_allowed_at: asString(raw.next_allowed_at),
+    generated_reviews_count: asNumber(raw.generated_reviews_count),
+    next_threshold_reviews: asNumber(raw.next_threshold_reviews),
     last_generated_at: asString(raw.last_generated_at),
-    cadence_hours: asNumber(raw.cadence_hours),
+    stale_notice: asString(raw.stale_notice),
     force: Boolean(raw.force),
   };
 }

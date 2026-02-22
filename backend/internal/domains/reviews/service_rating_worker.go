@@ -4,36 +4,74 @@ import (
 	"context"
 	"log"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 const sqlSelectAllCafeIDsForRatingRebuild = `select id::text
 from cafes
 order by id asc`
 
+const (
+	defaultRatingRebuildBatchSize             = 25
+	sqlSelectCafeIDsForRatingRebuildFromStart = `select id::text
+from cafes
+order by id asc
+limit $1`
+	sqlSelectCafeIDsForRatingRebuildAfterCursor = `select id::text
+from cafes
+where id > $1::uuid
+order by id asc
+limit $2`
+)
+
 func (s *Service) StartRatingRebuildWorker(ctx context.Context, interval time.Duration) {
 	if interval <= 0 {
 		interval = 15 * time.Minute
 	}
+	batchSize := parseIntWithFallback("REVIEWS_RATING_REBUILD_BATCH_SIZE", defaultRatingRebuildBatchSize)
+	if batchSize <= 0 {
+		batchSize = defaultRatingRebuildBatchSize
+	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	log.Printf("reviews rating rebuild worker started: interval=%s", interval)
+	log.Printf("reviews rating rebuild worker started: interval=%s batch=%d", interval, batchSize)
 	defer log.Printf("reviews rating rebuild worker stopped")
 
+	cursor := ""
 	rebuild := func() {
-		// Full rebuild keeps snapshots healthy even if some events were delayed.
-		runCtx, cancel := context.WithTimeout(ctx, 20*time.Minute)
+		// Batch rebuild keeps snapshots healthy without creating periodic load spikes.
+		runCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 		defer cancel()
-		processed, failed, err := s.rebuildAllCafeRatingSnapshots(runCtx)
+		processed, failed, nextCursor, wrapped, err := s.rebuildCafeRatingSnapshotsBatch(runCtx, batchSize, cursor)
 		if err != nil {
-			log.Printf("reviews rating rebuild failed: processed=%d failed=%d err=%v", processed, failed, err)
+			log.Printf(
+				"reviews rating rebuild failed: processed=%d failed=%d cursor=%q err=%v",
+				processed,
+				failed,
+				cursor,
+				err,
+			)
 			return
 		}
+		cursor = nextCursor
 		if failed > 0 {
-			log.Printf("reviews rating rebuild completed with errors: processed=%d failed=%d", processed, failed)
+			log.Printf(
+				"reviews rating rebuild completed with errors: processed=%d failed=%d cursor=%q wrapped=%t",
+				processed,
+				failed,
+				cursor,
+				wrapped,
+			)
 			return
 		}
-		log.Printf("reviews rating rebuild completed: processed=%d", processed)
+		log.Printf(
+			"reviews rating rebuild completed: processed=%d cursor=%q wrapped=%t",
+			processed,
+			cursor,
+			wrapped,
+		)
 	}
 
 	rebuild()
@@ -47,32 +85,90 @@ func (s *Service) StartRatingRebuildWorker(ctx context.Context, interval time.Du
 	}
 }
 
-func (s *Service) rebuildAllCafeRatingSnapshots(ctx context.Context) (int, int, error) {
-	rows, err := s.repository.Pool().Query(ctx, sqlSelectAllCafeIDsForRatingRebuild)
+func (s *Service) fetchCafeIDsForRatingRebuildBatch(
+	ctx context.Context,
+	cursor string,
+	limit int,
+) ([]string, error) {
+	if limit <= 0 {
+		limit = defaultRatingRebuildBatchSize
+	}
+
+	var (
+		rows pgx.Rows
+		err  error
+	)
+	if cursor == "" {
+		rows, err = s.repository.Pool().Query(ctx, sqlSelectCafeIDsForRatingRebuildFromStart, limit)
+	} else {
+		rows, err = s.repository.Pool().Query(ctx, sqlSelectCafeIDsForRatingRebuildAfterCursor, cursor, limit)
+	}
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	defer rows.Close()
 
-	processed := 0
-	failed := 0
+	ids := make([]string, 0, limit)
 	for rows.Next() {
 		var cafeID string
 		if err := rows.Scan(&cafeID); err != nil {
-			return processed, failed, err
+			return nil, err
 		}
-		processed++
-
-		cafeCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
-		err := s.recalculateCafeRatingSnapshot(cafeCtx, cafeID)
-		cancel()
-		if err != nil {
-			failed++
-			log.Printf("reviews rating rebuild: cafe_id=%s err=%v", cafeID, err)
-		}
+		ids = append(ids, cafeID)
 	}
 	if err := rows.Err(); err != nil {
-		return processed, failed, err
+		return nil, err
 	}
-	return processed, failed, nil
+	return ids, nil
+}
+
+func (s *Service) rebuildCafeRatingSnapshotsBatch(
+	ctx context.Context,
+	limit int,
+	cursor string,
+) (processed int, failed int, nextCursor string, wrapped bool, err error) {
+	if limit <= 0 {
+		limit = defaultRatingRebuildBatchSize
+	}
+
+	ids, err := s.fetchCafeIDsForRatingRebuildBatch(ctx, cursor, limit)
+	if err != nil {
+		return 0, 0, cursor, false, err
+	}
+
+	usedCursor := cursor != ""
+	if len(ids) == 0 && usedCursor {
+		ids, err = s.fetchCafeIDsForRatingRebuildBatch(ctx, "", limit)
+		if err != nil {
+			return 0, 0, cursor, true, err
+		}
+		usedCursor = false
+		wrapped = true
+	}
+
+	processed = 0
+	failed = 0
+	nextCursor = cursor
+	for _, cafeID := range ids {
+		processed++
+		cafeCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
+		rebuildErr := s.recalculateCafeRatingSnapshot(cafeCtx, cafeID)
+		cancel()
+		if rebuildErr != nil {
+			failed++
+			log.Printf("reviews rating rebuild: cafe_id=%s err=%v", cafeID, rebuildErr)
+		}
+		nextCursor = cafeID
+	}
+
+	if processed == 0 {
+		nextCursor = ""
+		return processed, failed, nextCursor, wrapped, nil
+	}
+
+	if usedCursor && processed < limit {
+		nextCursor = ""
+	}
+
+	return processed, failed, nextCursor, wrapped, nil
 }

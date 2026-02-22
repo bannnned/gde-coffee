@@ -224,12 +224,6 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 	previousSnapshot, previousSnapshotErr := s.loadCafeRatingSnapshot(ctx, cafeID)
 	previousAIState := extractAISummaryState(previousSnapshot, previousSnapshotErr)
 	nowUTC := time.Now().UTC()
-	shouldAttemptAI, aiAttemptReason, nextAllowedAt := decideAISummaryAttempt(
-		s.aiSummaryCfg,
-		previousAIState,
-		options.ForceAISummary,
-		nowUTC,
-	)
 
 	globalMean, err := s.globalMeanRating(ctx)
 	if err != nil {
@@ -248,9 +242,6 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 			"enabled": s.aiSummaryCfg.Enabled,
 			"status":  aiStatus,
 			"reason":  aiReason,
-		}
-		if !nextAllowedAt.IsZero() {
-			aiSummaryPayload["next_allowed_at"] = nextAllowedAt.UTC().Format(time.RFC3339)
 		}
 		if !previousAIState.GeneratedAt.IsZero() {
 			aiSummaryPayload["last_generated_at"] = previousAIState.GeneratedAt.UTC().Format(time.RFC3339)
@@ -278,6 +269,13 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 		}
 		return s.saveCafeRatingSnapshot(ctx, cafeID, ratingFormulaVersion, 0, 0, 0, 0, components)
 	}
+
+	shouldAttemptAI, aiAttemptReason, nextThresholdReviews := decideAISummaryAttempt(
+		s.aiSummaryCfg,
+		previousAIState,
+		options.ForceAISummary,
+		len(reviews),
+	)
 
 	authorRepCache := map[string]float64{}
 	for _, item := range reviews {
@@ -386,44 +384,75 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 			descriptiveTagsSource = "timeweb_ai_v1"
 			aiSummaryPayload = cloneMap(previousAIState.Payload)
 			aiSummaryPayload["enabled"] = true
-			aiSummaryPayload["status"] = "cooldown"
+			aiSummaryPayload["status"] = "threshold_wait"
 			aiSummaryPayload["reason"] = aiAttemptReason
-			if !nextAllowedAt.IsZero() {
-				aiSummaryPayload["next_allowed_at"] = nextAllowedAt.UTC().Format(time.RFC3339)
+			if nextThresholdReviews > 0 {
+				aiSummaryPayload["next_threshold_reviews"] = nextThresholdReviews
 			}
 		} else {
 			aiSummaryPayload["status"] = "fallback_rules"
 			aiSummaryPayload["reason"] = aiAttemptReason
-			if !nextAllowedAt.IsZero() {
-				aiSummaryPayload["next_allowed_at"] = nextAllowedAt.UTC().Format(time.RFC3339)
+			if nextThresholdReviews > 0 {
+				aiSummaryPayload["next_threshold_reviews"] = nextThresholdReviews
 			}
 		}
 	} else {
 		aiSummaryPayload["status"] = "fallback_rules"
 		aiSummaryPayload["reason"] = "ai_error"
-		aiSummaryResult, aiErr := s.generateAIReviewSummary(ctx, cafeID, aiSignals)
-		if aiErr == nil && aiSummaryResult != nil && len(aiSummaryResult.Tags) > 0 {
-			descriptiveTags = buildAIDescriptiveCafeTags(aiSummaryResult.Tags, reviewsCount)
-			descriptiveTagsSource = "timeweb_ai_v1"
-			aiSummaryPayload = map[string]interface{}{
-				"enabled":         true,
-				"status":          "ok",
-				"summary_short":   aiSummaryResult.SummaryShort,
-				"tags":            aiSummaryResult.Tags,
-				"used_reviews":    aiSummaryResult.UsedReviews,
-				"generated_at":    nowUTC.Format(time.RFC3339),
-				"cadence_hours":   int(aiSummaryCadence / time.Hour),
-				"next_allowed_at": nowUTC.Add(aiSummaryCadence).Format(time.RFC3339),
-				"force":           options.ForceAISummary,
-			}
-		} else if aiErr != nil {
-			aiSummaryPayload["reason"] = truncateText(aiErr.Error(), 140)
-			if previousAIState.Reusable {
-				descriptiveTags = previousAIState.DescriptiveTags
-				descriptiveTagsSource = "timeweb_ai_v1"
-				aiSummaryPayload["status"] = "fallback_previous"
+		skipAIRequest := false
+		if !options.ForceAISummary {
+			inputHash, usedReviews, hashErr := s.calculateAISummaryInputHash(cafeID, aiSignals)
+			if hashErr != nil {
+				skipAIRequest = true
+				aiSummaryPayload["reason"] = truncateText(hashErr.Error(), 140)
+				if previousAIState.Reusable {
+					descriptiveTags = previousAIState.DescriptiveTags
+					descriptiveTagsSource = "timeweb_ai_v1"
+					aiSummaryPayload["status"] = "fallback_previous"
+				}
+			} else {
+				previousInputHash := strings.TrimSpace(toStringSafe(previousAIState.Payload["input_hash"]))
+				if previousAIState.Reusable && previousInputHash != "" && previousInputHash == inputHash {
+					skipAIRequest = true
+					descriptiveTags = previousAIState.DescriptiveTags
+					descriptiveTagsSource = "timeweb_ai_v1"
+					aiSummaryPayload = cloneMap(previousAIState.Payload)
+					aiSummaryPayload["enabled"] = true
+					aiSummaryPayload["status"] = "input_unchanged"
+					aiSummaryPayload["reason"] = "cache_hit"
+					aiSummaryPayload["used_reviews"] = usedReviews
+				}
 			}
 		}
+		if !skipAIRequest {
+			aiSummaryResult, aiErr := s.generateAIReviewSummary(ctx, cafeID, aiSignals)
+			if aiErr == nil && aiSummaryResult != nil && len(aiSummaryResult.Tags) > 0 {
+				descriptiveTags = buildAIDescriptiveCafeTags(aiSummaryResult.Tags, reviewsCount)
+				descriptiveTagsSource = "timeweb_ai_v1"
+				aiSummaryPayload = map[string]interface{}{
+					"enabled":                 true,
+					"status":                  "ok",
+					"summary_short":           aiSummaryResult.SummaryShort,
+					"tags":                    aiSummaryResult.Tags,
+					"used_reviews":            aiSummaryResult.UsedReviews,
+					"input_hash":              aiSummaryResult.InputHash,
+					"generated_at":            nowUTC.Format(time.RFC3339),
+					"generated_reviews_count": reviewsCount,
+					"next_threshold_reviews":  nextAISummaryStepThreshold(reviewsCount),
+					"force":                   options.ForceAISummary,
+				}
+			} else if aiErr != nil {
+				aiSummaryPayload["reason"] = truncateText(aiErr.Error(), 140)
+				if previousAIState.Reusable {
+					descriptiveTags = previousAIState.DescriptiveTags
+					descriptiveTagsSource = "timeweb_ai_v1"
+					aiSummaryPayload["status"] = "fallback_previous"
+				}
+			}
+		}
+	}
+	if staleNotice := buildAISummaryStaleNotice(aiSignals, nowUTC); staleNotice != "" {
+		aiSummaryPayload["stale_notice"] = staleNotice
 	}
 	specificTags := buildTopSpecificCafeTags(specificTagStats, 8)
 
