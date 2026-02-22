@@ -3,10 +3,7 @@
   | "power"
   | "quiet"
   | "toilet"
-  | "laptop"
-  | "robusta"
-  | "arabica"
-  | "vortex";
+  | "laptop";
 
 export type Cafe = {
   id: string;

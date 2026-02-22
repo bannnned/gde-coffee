@@ -3,10 +3,7 @@ export type Amenity =
   | "power"
   | "quiet"
   | "toilet"
-  | "laptop"
-  | "robusta"
-  | "arabica"
-  | "vortex";
+  | "laptop";
 
 export type CafePhotoKind = "cafe" | "menu";
 

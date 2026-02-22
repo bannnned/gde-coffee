@@ -8,12 +8,12 @@ import (
 )
 
 func TestNormalizeAmenities(t *testing.T) {
-	input := []string{" WiFi ", "wifi", "  outlets", "OUTLETS", "", "  "}
+	input := []string{" WiFi ", "wifi", "  power", "POWER", "", "  "}
 	got := normalizeAmenities(input)
 	if len(got) != 2 {
 		t.Fatalf("expected 2 unique amenities, got %d: %v", len(got), got)
 	}
-	if got[0] != "wifi" || got[1] != "outlets" {
+	if got[0] != "wifi" || got[1] != "power" {
 		t.Fatalf("unexpected normalized amenities: %v", got)
 	}
 }

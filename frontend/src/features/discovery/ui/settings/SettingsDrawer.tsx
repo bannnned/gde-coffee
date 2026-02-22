@@ -1,8 +1,8 @@
 import {
+  ActionIcon,
   Chip,
   Drawer,
   Group,
-  MultiSelect,
   Select,
   Stack,
   Text,
@@ -10,10 +10,10 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { useMemo, useState } from "react";
 import { IconMapPin, IconPlus } from "@tabler/icons-react";
 
-import type { Amenity } from "../../../../entities/cafe/model/types";
-import { AMENITY_LABELS, DISCOVERY_UI_TEXT } from "../../constants";
+import { DISCOVERY_UI_TEXT } from "../../constants";
 import {
   createDiscoveryAmenityChipLabelStyles,
   getDiscoveryGlassButtonStyles,
@@ -31,8 +31,6 @@ type SettingsDrawerProps = {
   radiusM: number;
   onRadiusChange: (value: number) => void;
   isRadiusLocked?: boolean;
-  selectedAmenities: Amenity[];
-  onChangeAmenities: (next: Amenity[]) => void;
   locationLabel: string;
   locationOptions: LocationOption[];
   selectedLocationId: string;
@@ -40,6 +38,7 @@ type SettingsDrawerProps = {
   onOpenMapPicker: () => void;
   highlightLocationBlock?: boolean;
   onSuggestCafe?: () => void;
+  popularTags: string[];
   topTags: string[];
   topTagsOptions: string[];
   topTagsQuery: string;
@@ -62,8 +61,6 @@ export default function SettingsDrawer({
   radiusM,
   onRadiusChange,
   isRadiusLocked = false,
-  selectedAmenities,
-  onChangeAmenities,
   locationLabel,
   locationOptions,
   selectedLocationId,
@@ -71,6 +68,7 @@ export default function SettingsDrawer({
   onOpenMapPicker,
   highlightLocationBlock = false,
   onSuggestCafe,
+  popularTags,
   topTags,
   topTagsOptions,
   topTagsQuery,
@@ -86,6 +84,8 @@ export default function SettingsDrawer({
 }: SettingsDrawerProps) {
   const theme = useMantineTheme();
   const isCoarsePointer = useMediaQuery("(pointer: coarse)") ?? false;
+  const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
+  const [pendingTagToAdd, setPendingTagToAdd] = useState<string | null>(null);
 
   const drawerStyles = {
     content: {
@@ -115,7 +115,61 @@ export default function SettingsDrawer({
       backgroundColor: "var(--color-surface-overlay-strong)",
     },
   } as const;
-  const amenityChipLabelStyles = createDiscoveryAmenityChipLabelStyles(theme.fontSizes.xs);
+  const tagChipLabelStyles = createDiscoveryAmenityChipLabelStyles(theme.fontSizes.xs);
+  const popularTopTags = useMemo(() => {
+    const merged = [...topTagsOptions, ...popularTags];
+    const unique: string[] = [];
+    const seen = new Set<string>();
+    for (const raw of merged) {
+      const value = raw.trim();
+      if (!value) continue;
+      const key = value.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(value);
+      if (unique.length >= 5) break;
+    }
+    return unique;
+  }, [popularTags, topTagsOptions]);
+
+  const normalizedSelectedTags = useMemo(
+    () => topTags.map((tag) => tag.trim()).filter((tag) => tag !== ""),
+    [topTags],
+  );
+
+  const hasTagSelected = (tag: string) => {
+    const key = tag.trim().toLowerCase();
+    return normalizedSelectedTags.some((value) => value.toLowerCase() === key);
+  };
+
+  const canEditTags = isAuthed && !topTagsLoading && !topTagsSaving;
+
+  const toggleTag = (tag: string) => {
+    if (!canEditTags) return;
+    const value = tag.trim();
+    if (!value) return;
+    if (hasTagSelected(value)) {
+      onTopTagsChange(
+        normalizedSelectedTags.filter((item) => item.toLowerCase() !== value.toLowerCase()),
+      );
+      return;
+    }
+    if (normalizedSelectedTags.length >= 12) return;
+    onTopTagsChange([...normalizedSelectedTags, value]);
+  };
+
+  const handleAddPendingTag = () => {
+    if (!canEditTags) return;
+    const value = (pendingTagToAdd ?? "").trim();
+    if (!value) return;
+    if (hasTagSelected(value) || normalizedSelectedTags.length >= 12) {
+      setPendingTagToAdd(null);
+      return;
+    }
+    onTopTagsChange([...normalizedSelectedTags, value]);
+    setPendingTagToAdd(null);
+    onTopTagsQueryChange("");
+  };
 
   return (
     <Drawer
@@ -186,70 +240,127 @@ export default function SettingsDrawer({
         </Stack>
 
         <Stack gap="xs">
-          <Text>{DISCOVERY_UI_TEXT.filtersTitle}</Text>
-          <Chip.Group
-            multiple
-            value={selectedAmenities}
-            onChange={(v) => onChangeAmenities(v as Amenity[])}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 4,
-                alignItems: "center",
+          <Group justify="space-between" align="center">
+            <Text>Теги на главной</Text>
+            <ActionIcon
+              variant="transparent"
+              size={34}
+              aria-label="Добавить тег"
+              styles={{
+                root: {
+                  borderRadius: 999,
+                  border: "1px solid var(--glass-border)",
+                  background: "var(--glass-bg-soft)",
+                },
               }}
+              onClick={() => {
+                if (!isAuthed) return;
+                setIsTagPickerOpen((prev) => !prev);
+              }}
+              disabled={!isAuthed}
             >
-              {(Object.keys(AMENITY_LABELS) as Amenity[]).map((a) => {
-                const isChecked = selectedAmenities.includes(a);
+              <IconPlus size={16} />
+            </ActionIcon>
+          </Group>
+          <Text size="sm" c="dimmed">
+            Топ‑5 популярных тегов рядом
+          </Text>
+          <Group gap={6} wrap="wrap">
+            {popularTopTags.length > 0 ? (
+              popularTopTags.map((tag) => {
+                const isChecked = hasTagSelected(tag);
                 return (
                   <Chip
-                    key={a}
-                    value={a}
+                    key={tag}
+                    checked={isChecked}
+                    onChange={() => toggleTag(tag)}
                     size="xs"
                     radius="xl"
                     variant="filled"
                     icon={null}
+                    disabled={!canEditTags}
                     styles={{
                       iconWrapper: { display: "none" },
                       label: {
-                        ...amenityChipLabelStyles.base,
-                        ...(isChecked ? amenityChipLabelStyles.checked : null),
+                        ...tagChipLabelStyles.base,
+                        ...(isChecked ? tagChipLabelStyles.checked : null),
                       },
                     }}
                   >
-                    {AMENITY_LABELS[a]}
+                    {tag}
                   </Chip>
                 );
-              })}
-            </div>
-          </Chip.Group>
-        </Stack>
-
-        <Stack gap="xs">
-          <Text>Теги на главной</Text>
+              })
+            ) : (
+              <Text size="sm" c="dimmed">
+                Пока нет популярных тегов в этой области.
+              </Text>
+            )}
+          </Group>
           {!isAuthed ? (
             <Text size="sm" c="dimmed">
               Войдите в аккаунт, чтобы выбрать любимые теги.
             </Text>
           ) : (
             <>
-              <MultiSelect
-                data={topTagsOptions.map((tag) => ({ value: tag, label: tag }))}
-                value={topTags}
-                searchable
-                maxValues={12}
-                clearable
-                disabled={topTagsLoading || topTagsSaving}
-                placeholder="Начните вводить тег"
-                nothingFoundMessage="Тег не найден"
-                searchValue={topTagsQuery}
-                onSearchChange={onTopTagsQueryChange}
-                onChange={onTopTagsChange}
-                comboboxProps={{ withinPortal: false }}
-                rightSection={topTagsOptionsLoading ? <Text size="xs">...</Text> : null}
-                styles={discoveryGlassSelectStyles}
-              />
+              {isTagPickerOpen && (
+                <Stack gap={6}>
+                  <Group grow align="flex-end">
+                    <Select
+                      data={topTagsOptions.map((tag) => ({ value: tag, label: tag }))}
+                      value={pendingTagToAdd}
+                      searchable
+                      clearable
+                      placeholder="Найти существующий тег"
+                      nothingFoundMessage="Тег не найден"
+                      searchValue={topTagsQuery}
+                      onSearchChange={onTopTagsQueryChange}
+                      onChange={setPendingTagToAdd}
+                      comboboxProps={{ withinPortal: false }}
+                      rightSection={topTagsOptionsLoading ? <Text size="xs">...</Text> : null}
+                      styles={discoveryGlassSelectStyles}
+                      disabled={!canEditTags}
+                    />
+                    <Button
+                      variant="light"
+                      onClick={handleAddPendingTag}
+                      disabled={!pendingTagToAdd || !canEditTags}
+                      styles={getDiscoveryGlassButtonStyles(Boolean(pendingTagToAdd))}
+                    >
+                      Добавить
+                    </Button>
+                  </Group>
+                </Stack>
+              )}
+              <Text size="sm" c="dimmed">
+                Выбрано: {normalizedSelectedTags.length}/12
+              </Text>
+              <Group gap={6} wrap="wrap">
+                {normalizedSelectedTags.length > 0 ? (
+                  normalizedSelectedTags.map((tag) => (
+                    <Chip
+                      key={tag}
+                      checked
+                      onChange={() => toggleTag(tag)}
+                      size="xs"
+                      radius="xl"
+                      variant="filled"
+                      icon={null}
+                      disabled={!canEditTags}
+                      styles={{
+                        iconWrapper: { display: "none" },
+                        label: tagChipLabelStyles.checked,
+                      }}
+                    >
+                      {tag}
+                    </Chip>
+                  ))
+                ) : (
+                  <Text size="sm" c="dimmed">
+                    Добавьте теги через кнопку +
+                  </Text>
+                )}
+              </Group>
               <Button
                 variant="light"
                 onClick={onSaveTopTags}

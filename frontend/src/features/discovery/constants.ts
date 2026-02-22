@@ -10,9 +10,6 @@ export const DEFAULT_AMENITIES: Amenity[] = [];
 
 export const AMENITY_LABELS: Record<Amenity, string> = {
   wifi: "Wi-Fi",
-  robusta: "Робуста",
-  arabica: "Арабика",
-  vortex: "воронка",
   power: "Розетки",
   quiet: "Тихо",
   toilet: "Туалет",

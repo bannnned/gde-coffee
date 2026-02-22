@@ -24,43 +24,10 @@ func NewService(repository repository) *Service {
 func (s *Service) GetDiscoveryDescriptiveTags(
 	ctx context.Context,
 	scope GeoScope,
-	userID *string,
+	_ *string,
 	limit int,
 ) (DiscoveryResponse, error) {
 	limit = normalizeLimit(limit, DefaultLimit, MaxLimit)
-
-	if userID != nil {
-		safeUserID := strings.TrimSpace(*userID)
-		if safeUserID != "" {
-			preferences, err := s.repository.ListUserPreferences(ctx, safeUserID, CategoryDescriptive, MaxPreferenceTags)
-			if err != nil {
-				return DiscoveryResponse{}, err
-			}
-			if len(preferences) > 0 {
-				items := make([]DiscoveryTag, 0, min(limit, len(preferences)))
-				for _, label := range preferences {
-					if len(items) >= limit {
-						break
-					}
-					label = strings.TrimSpace(label)
-					if label == "" {
-						continue
-					}
-					items = append(items, DiscoveryTag{
-						Label:    label,
-						Category: CategoryDescriptive,
-						Score:    1,
-					})
-				}
-				if len(items) > 0 {
-					return DiscoveryResponse{
-						Source: "user_favorites",
-						Tags:   items,
-					}, nil
-				}
-			}
-		}
-	}
 
 	popular, err := s.repository.ListPopularDescriptiveTags(ctx, scope, limit)
 	if err != nil {

@@ -1026,8 +1026,8 @@ func normalizeAmenities(raw []string) []string {
 	out := make([]string, 0, len(raw))
 	seen := make(map[string]struct{}, len(raw))
 	for _, item := range raw {
-		val := strings.ToLower(strings.TrimSpace(item))
-		if val == "" {
+		val, ok := validation.NormalizeAmenity(item)
+		if !ok {
 			continue
 		}
 		if _, ok := seen[val]; ok {

@@ -226,8 +226,6 @@ export default function DiscoveryScreen() {
         radiusM={radiusM}
         onRadiusChange={setRadiusM}
         isRadiusLocked={isCityOnlyMode}
-        selectedAmenities={selectedAmenities}
-        onChangeAmenities={setSelectedAmenities}
         locationLabel={locationLabel}
         locationOptions={locationOptions}
         selectedLocationId={selectedLocationId}
@@ -235,6 +233,7 @@ export default function DiscoveryScreen() {
         onOpenMapPicker={handleStartManualPick}
         highlightLocationBlock={needsLocationChoice}
         onSuggestCafe={handleOpenCafeProposal}
+        popularTags={topDescriptiveTags}
         topTags={favoriteDescriptiveTagsDraft}
         topTagsOptions={tagOptions}
         topTagsQuery={tagOptionsQuery}

@@ -32,7 +32,7 @@ const sampleJSON = `[
     "latitude": 59.9343,
     "longitude": 30.3351,
     "description": "Specialty coffee and cozy interior.",
-    "amenities": ["wifi", "power", "desserts"]
+    "amenities": ["wifi", "power", "toilet"]
   }
 ]`;
 

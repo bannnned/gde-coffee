@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	"backend/internal/shared/validation"
 )
 
 type normalizedCafeImportItem struct {
@@ -164,8 +166,8 @@ func normalizeAmenityList(raw []string) []string {
 	out := make([]string, 0, len(raw))
 	seen := make(map[string]struct{}, len(raw))
 	for _, item := range raw {
-		value := strings.ToLower(strings.TrimSpace(item))
-		if value == "" {
+		value, ok := validation.NormalizeAmenity(item)
+		if !ok {
 			continue
 		}
 		if _, ok := seen[value]; ok {
