@@ -126,6 +126,7 @@ export default function MenuSection({
               styles={{
                 root: {
                   height: 44,
+                  marginTop: 4,
                   paddingInline: 16,
                   border: "1px solid color-mix(in srgb, var(--color-brand-accent) 45%, var(--glass-border))",
                   background:
