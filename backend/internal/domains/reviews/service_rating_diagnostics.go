@@ -19,6 +19,7 @@ type ratingDiagnosticsReviewInput struct {
 	Rating           float64
 	Summary          string
 	DrinkID          string
+	TasteTags        []string
 	TagsCount        int
 	SummaryLength    int
 	PhotoCount       int
@@ -251,17 +252,18 @@ func (s *Service) loadRatingDiagnosticsInputs(
 	out := make([]ratingDiagnosticsReviewInput, 0, minInt(32, limit))
 	for rows.Next() {
 		var item ratingDiagnosticsReviewInput
-		if err := rows.Scan(
-			&item.ReviewID,
-			&item.AuthorUserID,
-			&item.AuthorName,
-			&item.Rating,
-			&item.Summary,
-			&item.DrinkID,
-			&item.TagsCount,
-			&item.SummaryLength,
-			&item.PhotoCount,
-			&item.VisitConfidence,
+			if err := rows.Scan(
+				&item.ReviewID,
+				&item.AuthorUserID,
+				&item.AuthorName,
+				&item.Rating,
+				&item.Summary,
+				&item.DrinkID,
+				&item.TasteTags,
+				&item.TagsCount,
+				&item.SummaryLength,
+				&item.PhotoCount,
+				&item.VisitConfidence,
 			&item.VisitVerified,
 			&item.ConfirmedReports,
 			&item.HelpfulScore,
