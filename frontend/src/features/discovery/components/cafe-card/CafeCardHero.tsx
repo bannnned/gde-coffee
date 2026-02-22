@@ -49,6 +49,7 @@ export default function CafeCardHero({
   children,
 }: CafeCardHeroProps) {
   const HERO_HEIGHT_PX = 172;
+  const EMPTY_STATE_RESERVED_BOTTOM_PX = 86;
   const photoSources = buildCafePhotoPictureSources(activePhotoURL, [640, 1024, 1536]);
   const photoSizes = "(max-width: 768px) 100vw, 560px";
   const INDICATOR_SEGMENT_WIDTH = 18;
@@ -164,7 +165,10 @@ export default function CafeCardHero({
         <Box
           style={{
             position: "absolute",
-            inset: 0,
+            left: 0,
+            right: 0,
+            top: 6,
+            bottom: EMPTY_STATE_RESERVED_BOTTOM_PX,
             zIndex: 1,
             display: "grid",
             placeItems: "center",
@@ -194,13 +198,10 @@ export default function CafeCardHero({
                   radius={12}
                   animate
                   visible
-                  style={{ width: "100%", height: 68 }}
+                  style={{ width: "100%", height: 36 }}
                 />
                 <Text size="sm" fw={600} ta="center">
                   Обрабатываем фото...
-                </Text>
-                <Text size="xs" c="dimmed" ta="center">
-                  Фото появится после обработки и модерации.
                 </Text>
               </>
             ) : (
