@@ -13,6 +13,10 @@ const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const USER_ICON_ID = "user-pin";
 const CAFE_ICON_ID = "cafe-cup";
 const MARKER_FALLBACK = { user: "#FFFFF0", cafe: "#457E73" };
+const CAFE_CLUSTER_RADIUS_PX = 56;
+const CAFE_CLUSTER_MAX_ZOOM = 13;
+const CAFE_CLUSTER_LAYER_ID = "cafes-clusters";
+const CAFE_CLUSTER_COUNT_LAYER_ID = "cafes-cluster-count";
 const NON_FATAL_STYLE_MESSAGES = [
   "Expected value to be of type number, but found null instead.",
 ];
@@ -103,6 +107,9 @@ function addSources(map: MLMap, geojson: GeoJSON.FeatureCollection) {
     map.addSource("cafes", {
       type: "geojson",
       data: geojson,
+      cluster: true,
+      clusterRadius: CAFE_CLUSTER_RADIUS_PX,
+      clusterMaxZoom: CAFE_CLUSTER_MAX_ZOOM,
     });
   }
 }
@@ -110,6 +117,59 @@ function addSources(map: MLMap, geojson: GeoJSON.FeatureCollection) {
 function addLayers(map: MLMap, selectedCafeId: string | null) {
   const hasUserIcon = map.hasImage(USER_ICON_ID);
   const hasCafeIcon = map.hasImage(CAFE_ICON_ID);
+  const unclusteredFilter = ["!", ["has", "point_count"]] as const;
+
+  if (!map.getLayer(CAFE_CLUSTER_LAYER_ID)) {
+    map.addLayer({
+      id: CAFE_CLUSTER_LAYER_ID,
+      type: "circle",
+      source: "cafes",
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-color": [
+          "step",
+          ["get", "point_count"],
+          "#ff6a3a",
+          10,
+          "#ff4e1f",
+          30,
+          "#e63f14",
+        ],
+        "circle-radius": [
+          "step",
+          ["get", "point_count"],
+          16,
+          10,
+          21,
+          30,
+          26,
+        ],
+        "circle-opacity": 0.92,
+        "circle-stroke-color": "rgba(255,255,255,0.86)",
+        "circle-stroke-width": 1.5,
+      },
+    });
+  }
+
+  if (!map.getLayer(CAFE_CLUSTER_COUNT_LAYER_ID)) {
+    map.addLayer({
+      id: CAFE_CLUSTER_COUNT_LAYER_ID,
+      type: "symbol",
+      source: "cafes",
+      filter: ["has", "point_count"],
+      layout: {
+        "text-field": ["get", "point_count_abbreviated"],
+        "text-size": 12,
+        "text-font": ["Noto Sans Bold", "Open Sans Bold"],
+        "text-allow-overlap": true,
+      },
+      paint: {
+        "text-color": "#fff",
+        "text-halo-color": "rgba(0,0,0,0.2)",
+        "text-halo-width": 0.8,
+      },
+    });
+  }
 
   if (!map.getLayer("cafes-layer")) {
     if (hasCafeIcon) {
@@ -117,6 +177,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         id: "cafes-layer",
         type: "symbol",
         source: "cafes",
+        filter: unclusteredFilter,
         layout: {
           "icon-image": CAFE_ICON_ID,
           "icon-size": 0.1,
@@ -130,6 +191,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         id: "cafes-layer",
         type: "circle",
         source: "cafes",
+        filter: unclusteredFilter,
         paint: {
           "circle-radius": 6,
           "circle-color": MARKER_FALLBACK.cafe,
@@ -146,6 +208,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
       id: "cafes-labels",
       type: "symbol",
       source: "cafes",
+      filter: unclusteredFilter,
       minzoom: 14,
       layout: {
         "text-field": ["get", "name"],
@@ -172,7 +235,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         id: "cafes-selected",
         type: "symbol",
         source: "cafes",
-        filter: ["==", ["get", "id"], selectedCafeId ?? ""],
+        filter: ["all", unclusteredFilter, ["==", ["get", "id"], selectedCafeId ?? ""]],
         layout: {
           "icon-image": CAFE_ICON_ID,
           "icon-size": 0.12,
@@ -186,7 +249,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         id: "cafes-selected",
         type: "circle",
         source: "cafes",
-        filter: ["==", ["get", "id"], selectedCafeId ?? ""],
+        filter: ["all", unclusteredFilter, ["==", ["get", "id"], selectedCafeId ?? ""]],
         paint: {
           "circle-radius": 9,
           "circle-color": MARKER_FALLBACK.cafe,
@@ -230,6 +293,8 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
 }
 
 function rebuildLayers(map: MLMap, selectedCafeId: string | null) {
+  if (map.getLayer(CAFE_CLUSTER_COUNT_LAYER_ID)) map.removeLayer(CAFE_CLUSTER_COUNT_LAYER_ID);
+  if (map.getLayer(CAFE_CLUSTER_LAYER_ID)) map.removeLayer(CAFE_CLUSTER_LAYER_ID);
   if (map.getLayer("cafes-layer")) map.removeLayer("cafes-layer");
   if (map.getLayer("cafes-labels")) map.removeLayer("cafes-labels");
   if (map.getLayer("cafes-selected")) map.removeLayer("cafes-selected");
@@ -266,8 +331,46 @@ function updateCafes(map: MLMap, geojson: GeoJSON.FeatureCollection) {
 
 function updateSelected(map: MLMap, selectedCafeId?: string | null) {
   if (map.getLayer("cafes-selected")) {
-    map.setFilter("cafes-selected", ["==", ["get", "id"], selectedCafeId ?? ""]);
+    map.setFilter("cafes-selected", [
+      "all",
+      ["!", ["has", "point_count"]],
+      ["==", ["get", "id"], selectedCafeId ?? ""],
+    ]);
   }
+}
+
+async function expandClusterOnClick(
+  map: MLMap,
+  feature: GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>,
+) {
+  const clusterId = asFiniteNumber(feature.properties?.cluster_id);
+  if (clusterId == null) return;
+  if (feature.geometry.type !== "Point") return;
+
+  const source = getGeoJsonSource(map, "cafes") as GeoJSONSource & {
+    getClusterExpansionZoom?: (
+      clusterId: number,
+      callback: (error: Error | null, zoom: number) => void,
+    ) => void;
+  };
+  if (!source || typeof source.getClusterExpansionZoom !== "function") return;
+
+  const expansionZoom = await new Promise<number>((resolve, reject) => {
+    source.getClusterExpansionZoom?.(clusterId, (error, zoom) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(zoom);
+    });
+  });
+
+  const currentZoom = map.getZoom();
+  map.easeTo({
+    center: feature.geometry.coordinates as [number, number],
+    zoom: Math.max(expansionZoom, currentZoom + 1),
+    duration: 260,
+  });
 }
 
 export default function Map({
@@ -379,6 +482,15 @@ export default function Map({
       if (id && onCafeSelectRef.current) onCafeSelectRef.current(id);
     };
 
+    const handleClusterClick = (e: maplibregl.MapLayerMouseEvent) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      if ("stopPropagation" in e.originalEvent) {
+        e.originalEvent.stopPropagation();
+      }
+      void expandClusterOnClick(map, f);
+    };
+
     const handleMapClick = (e: maplibregl.MapMouseEvent) => {
       if (!onMapClickRef.current) return;
       onMapClickRef.current([e.lngLat.lng, e.lngLat.lat]);
@@ -431,9 +543,14 @@ export default function Map({
       }
       setIsMapReady(true);
 
-      map.on("click", "cafes-layer", handleClick);
-      map.on("mouseenter", "cafes-layer", handleMouseEnter);
-      map.on("mouseleave", "cafes-layer", handleMouseLeave);
+      if (!disableCafeClick) {
+        map.on("click", "cafes-layer", handleClick);
+        map.on("click", CAFE_CLUSTER_LAYER_ID, handleClusterClick);
+        map.on("mouseenter", "cafes-layer", handleMouseEnter);
+        map.on("mouseleave", "cafes-layer", handleMouseLeave);
+        map.on("mouseenter", CAFE_CLUSTER_LAYER_ID, handleMouseEnter);
+        map.on("mouseleave", CAFE_CLUSTER_LAYER_ID, handleMouseLeave);
+      }
 
       const [userLoaded, cafeLoaded] = await Promise.all([
         loadImage(map, USER_ICON_ID, pinUrl),
@@ -461,8 +578,11 @@ export default function Map({
       map.off("error", handleError);
       if (!disableCafeClick) {
         map.off("click", "cafes-layer", handleClick);
+        map.off("click", CAFE_CLUSTER_LAYER_ID, handleClusterClick);
         map.off("mouseenter", "cafes-layer", handleMouseEnter);
         map.off("mouseleave", "cafes-layer", handleMouseLeave);
+        map.off("mouseenter", CAFE_CLUSTER_LAYER_ID, handleMouseEnter);
+        map.off("mouseleave", CAFE_CLUSTER_LAYER_ID, handleMouseLeave);
       }
       map.remove();
       mapRef.current = null;
