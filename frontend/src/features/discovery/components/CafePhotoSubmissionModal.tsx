@@ -416,7 +416,7 @@ export default function CafePhotoSubmissionModal({
             left: 0,
             right: 0,
             bottom: 0,
-            padding: "12px 16px calc(12px + env(safe-area-inset-bottom))",
+            padding: "12px 16px calc(12px + var(--safe-bottom))",
             borderTop: "1px solid var(--border)",
             background: "var(--surface)",
           }}

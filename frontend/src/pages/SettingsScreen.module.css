@@ -4,8 +4,8 @@
   display: flex;
   justify-content: center;
   padding-inline: var(--page-edge-padding);
-  padding-top: calc(var(--page-edge-padding) + env(safe-area-inset-top));
-  padding-bottom: calc(var(--page-edge-padding) + env(safe-area-inset-bottom));
+  padding-top: calc(var(--page-edge-padding) + var(--safe-top));
+  padding-bottom: calc(var(--page-edge-padding) + var(--safe-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;

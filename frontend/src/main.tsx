@@ -20,6 +20,34 @@ import {
   type PaletteName,
 } from './theme/palettes'
 
+function syncViewportInsetsCSSVars() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  const root = document.documentElement
+  const vv = window.visualViewport
+  const top = vv ? Math.max(0, vv.offsetTop) : 0
+  const bottom = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0
+  root.style.setProperty('--vv-offset-top', `${Math.round(top)}px`)
+  root.style.setProperty('--vv-offset-bottom', `${Math.round(bottom)}px`)
+}
+
+function bindViewportInsetsSync() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  let raf = 0
+  const scheduleSync = () => {
+    if (raf) cancelAnimationFrame(raf)
+    raf = window.requestAnimationFrame(() => {
+      raf = 0
+      syncViewportInsetsCSSVars()
+    })
+  }
+
+  scheduleSync()
+  window.addEventListener('resize', scheduleSync, { passive: true })
+  window.addEventListener('orientationchange', scheduleSync)
+  window.visualViewport?.addEventListener('resize', scheduleSync)
+  window.visualViewport?.addEventListener('scroll', scheduleSync)
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -108,6 +136,8 @@ if (document.readyState === 'complete') {
 } else {
   window.addEventListener('load', hideSplash, { once: true })
 }
+
+bindViewportInsetsSync()
 
 if ('serviceWorker' in navigator) {
   window.addEventListener(

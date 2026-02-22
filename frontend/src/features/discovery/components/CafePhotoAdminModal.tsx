@@ -337,7 +337,7 @@ export default function CafePhotoAdminModal({
           borderBottom: "1px solid var(--border)",
         },
         body: {
-          paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+          paddingBottom: "calc(12px + var(--safe-bottom))",
           display: "flex",
           flexDirection: "column",
           minHeight: 0,
@@ -601,7 +601,7 @@ export default function CafePhotoAdminModal({
           bottom: 0,
           marginTop: "auto",
           marginInline: -16,
-          padding: "12px 16px calc(12px + env(safe-area-inset-bottom))",
+          padding: "12px 16px calc(12px + var(--safe-bottom))",
           borderTop: "1px solid var(--border)",
           background: "var(--surface)",
           zIndex: 2,

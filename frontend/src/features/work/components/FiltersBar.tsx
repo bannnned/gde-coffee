@@ -180,7 +180,7 @@ export default function FiltersBar({
       right={0}
       px="sm"
       pb="sm"
-      pt="calc(env(safe-area-inset-top) + var(--mantine-spacing-sm))"
+      pt="calc(var(--safe-top) + var(--mantine-spacing-sm))"
       className={classes.root}
       data-ui="filters-bar"
     >

@@ -113,6 +113,12 @@
   --cafe-hero-indicator-idle: var(--color-cafe-hero-indicator-idle);
   --sheet-height: 240px;
   --page-edge-padding: clamp(12px, 3.2vw, 20px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --vv-offset-top: 0px;
+  --vv-offset-bottom: 0px;
+  --safe-top: max(var(--safe-area-top), var(--vv-offset-top));
+  --safe-bottom: max(var(--safe-area-bottom), var(--vv-offset-bottom));
 }
 
 :root[data-mantine-color-scheme='dark'] {
@@ -540,6 +546,7 @@ body {
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100svh;
   min-height: 100dvh;
   background:
     radial-gradient(circle at top left, var(--bg-accent-1), transparent 45%),
@@ -691,6 +698,7 @@ button {
 
 #root {
   min-height: 100vh;
+  min-height: 100svh;
   min-height: 100dvh;
 }
 

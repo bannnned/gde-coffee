@@ -31,7 +31,6 @@ type FiltersBarProps = {
 
 export default function FiltersBar({
   topTags = [],
-  topTagsSource = "city_popular",
   topTagsLoading = false,
   favoritesOnly = false,
   onToggleFavorites,
@@ -87,7 +86,7 @@ export default function FiltersBar({
       right={0}
       px="sm"
       pb="sm"
-      pt="calc(env(safe-area-inset-top) + var(--mantine-spacing-sm))"
+      pt="calc(var(--safe-top) + var(--mantine-spacing-sm))"
       className={classes.root}
       data-ui="filters-bar"
     >
@@ -177,7 +176,7 @@ export default function FiltersBar({
       {(topTagsLoading || hasTopTags) && (
         <Box mt={6} className={classes.topTagsRow}>
           <Text size="xs" className={classes.topTagsTitle}>
-            {topTagsSource === "user_favorites" ? "Ваши теги" : "Популярные теги"}
+            Теги
           </Text>
           <div className={classes.topTagsScroller}>
             {topTagsLoading && !hasTopTags ? (

@@ -222,7 +222,7 @@ export default function CafeDetailsScreen({
     },
     body: {
       padding: "var(--page-edge-padding)",
-      paddingBottom: "calc(var(--page-edge-padding) + env(safe-area-inset-bottom))",
+      paddingBottom: "calc(var(--page-edge-padding) + var(--safe-bottom))",
     },
     overlay: {
       backdropFilter: "blur(4px)",
