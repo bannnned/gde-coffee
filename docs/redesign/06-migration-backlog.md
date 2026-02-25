@@ -62,7 +62,7 @@
 - Артефакт: fixed discovery viewport height в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/DiscoveryScreen.tsx`
 - Артефакт: global viewport vars и hardening стилей в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/index.css`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/main.tsx`
 
-### [ ] W1-BL-010 · Redesign верхней панели Discovery (P0, status: todo)
+### [x] W1-BL-010 · Redesign верхней панели Discovery (P0, status: done)
 - Цель: собрать компактную иерархичную шапку с очевидными primary/secondary действиями.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.tsx`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.module.css`
@@ -70,6 +70,8 @@
 - AC: структура “профиль/избранное/настройки/теги” читается за 1 взгляд.
 - AC: верхние теги не перегружают шапку и не ломают ширины на мобильном.
 - AC: переходы в `/profile` и `/settings` сохраняют `backgroundLocation`.
+- Артефакт: новая header-shell структура и layout-метрики в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.tsx`
+- Артефакт: полный рефакторинг стилей верхней панели в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.module.css`
 
 ### [ ] W1-BL-011 · Полировка верхних тегов и auth-гейтинга (P0, status: todo)
 - Цель: сделать поведение тегов предсказуемым для гостя и авторизованного пользователя.

@@ -3,7 +3,6 @@ import {
   Badge,
   Box,
   Button,
-  Group,
   Text,
   UnstyledButton,
 } from "@mantine/core";
@@ -31,6 +30,7 @@ type FiltersBarProps = {
 
 export default function FiltersBar({
   topTags = [],
+  topTagsSource = "city_popular",
   topTagsLoading = false,
   favoritesOnly = false,
   onToggleFavorites,
@@ -67,11 +67,17 @@ export default function FiltersBar({
     const observer = new ResizeObserver(update);
     observer.observe(node);
     window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    window.addEventListener("pageshow", update);
+    window.addEventListener("focus", update);
     window.visualViewport?.addEventListener("resize", update);
     window.visualViewport?.addEventListener("scroll", update);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+      window.removeEventListener("pageshow", update);
+      window.removeEventListener("focus", update);
       window.visualViewport?.removeEventListener("resize", update);
       window.visualViewport?.removeEventListener("scroll", update);
       setFiltersBarHeight(0);
@@ -84,113 +90,111 @@ export default function FiltersBar({
       top={0}
       left={0}
       right={0}
-      px="sm"
-      pb="sm"
-      pt="calc(var(--safe-top) + var(--mantine-spacing-sm))"
       className={classes.root}
       data-ui="filters-bar"
     >
-      <Group
-        justify="space-between"
-        className={classes.header}
+      <div
+        className={classes.headerShell}
         data-ui="filters-bar-header"
         ref={headerRef}
       >
-        {user ? (
-          <UnstyledButton
-            className={classes.userBadge}
-            aria-label="Open profile"
-            type="button"
-            onClick={() => {
-              const overlayBackgroundLocation = {
-                pathname: location.pathname,
-                search: location.search,
-                hash: location.hash,
-                state: null,
-                key: location.key,
-              };
-              void navigate("/profile", {
-                state: { backgroundLocation: overlayBackgroundLocation },
-              });
-            }}
-            title={userLabel}
-          >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={userLabel || "User"}
-                className={classes.userAvatar}
-                loading="lazy"
-              />
-            ) : (
-              <Text fw={700}>
-                {(userLabel || "?")
-                  .trim()
-                  .charAt(0)
-                  .toUpperCase()}
-              </Text>
-            )}
-          </UnstyledButton>
-        ) : (
-          <Button
-            size="sm"
-            radius="lg"
-            variant="filled"
-            className={classes.loginButton}
-            leftSection={<IconLogin size={16} />}
-            onClick={() => openAuthModal("login")}
-            disabled={status === "loading"}
-          >
-            Войти
-          </Button>
-        )}
+        <div className={classes.headerMain}>
+          {user ? (
+            <UnstyledButton
+              className={`${classes.userBadge} ui-focus-ring`}
+              aria-label="Open profile"
+              type="button"
+              onClick={() => {
+                const overlayBackgroundLocation = {
+                  pathname: location.pathname,
+                  search: location.search,
+                  hash: location.hash,
+                  state: null,
+                  key: location.key,
+                };
+                void navigate("/profile", {
+                  state: { backgroundLocation: overlayBackgroundLocation },
+                });
+              }}
+              title={userLabel}
+            >
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={userLabel || "User"}
+                  className={classes.userAvatar}
+                  loading="lazy"
+                />
+              ) : (
+                <Text fw={700}>
+                  {(userLabel || "?")
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase()}
+                </Text>
+              )}
+            </UnstyledButton>
+          ) : (
+            <Button
+              size="sm"
+              radius="lg"
+              variant="filled"
+              className={`${classes.loginButton} ui-focus-ring`}
+              leftSection={<IconLogin size={16} />}
+              onClick={() => openAuthModal("login")}
+              disabled={status === "loading"}
+            >
+              Войти
+            </Button>
+          )}
 
-        <Group gap="xs">
-          {canToggleFavorites && (
+          <div className={classes.actionsRow}>
+            {canToggleFavorites && (
+              <ActionIcon
+                variant="transparent"
+                size={42}
+                className={`glass-action glass-action--square ${
+                  favoritesOnly ? classes.favoriteHeaderButtonActive : ""
+                }`}
+                aria-label="Избранные кофейни"
+                onClick={onToggleFavorites}
+              >
+                {favoritesOnly ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
+              </ActionIcon>
+            )}
             <ActionIcon
               variant="transparent"
               size={42}
               className={`glass-action glass-action--square ${
-                favoritesOnly ? classes.favoriteHeaderButtonActive : ""
+                highlightSettingsButton ? classes.attentionButton : ""
               }`}
-              aria-label="Избранные кофейни"
-              onClick={onToggleFavorites}
+              aria-label={DISCOVERY_UI_TEXT.settingsAria}
+              onClick={onOpenSettings}
             >
-              {favoritesOnly ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
+              <DISCOVERY_ICONS.settings size={18} />
             </ActionIcon>
-          )}
-          <ActionIcon
-            variant="transparent"
-            size={42}
-            className={`glass-action glass-action--square ${
-              highlightSettingsButton ? classes.attentionButton : ""
-            }`}
-            aria-label={DISCOVERY_UI_TEXT.settingsAria}
-            onClick={onOpenSettings}
-          >
-            <DISCOVERY_ICONS.settings size={18} />
-          </ActionIcon>
-        </Group>
-      </Group>
-
-      {(topTagsLoading || hasTopTags) && (
-        <Box mt={6} className={classes.topTagsRow}>
-          <div className={classes.topTagsScroller}>
-            {topTagsLoading && !hasTopTags ? (
-              <span className={classes.topTagSkeleton} />
-            ) : (
-              topTags.map((tag) => (
-                <span key={tag} className={classes.topTagChip}>
-                  {tag}
-                </span>
-              ))
-            )}
           </div>
-        </Box>
-      )}
+        </div>
+
+        {(topTagsLoading || hasTopTags) && (
+          <div className={classes.topTagsRow} data-source={topTagsSource}>
+            <div className={classes.topTagsScroller}>
+              {topTagsLoading && !hasTopTags ? (
+                <span className={classes.topTagSkeleton} />
+              ) : (
+                topTags.map((tag) => (
+                  <span key={tag} className={classes.topTagChip}>
+                    {tag}
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {showFetchingBadge && (
-        <Box mt="xs" className={classes.fetchRow}>
+        <div className={classes.fetchRow}>
           <Badge
             className={classes.fetchBadge}
             variant="filled"
@@ -205,7 +209,7 @@ export default function FiltersBar({
           >
             {DISCOVERY_UI_TEXT.fetching}
           </Badge>
-        </Box>
+        </div>
       )}
     </Box>
   );
