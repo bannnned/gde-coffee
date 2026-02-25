@@ -175,9 +175,6 @@ export default function FiltersBar({
 
       {(topTagsLoading || hasTopTags) && (
         <Box mt={6} className={classes.topTagsRow}>
-          <Text size="xs" className={classes.topTagsTitle}>
-            Теги
-          </Text>
           <div className={classes.topTagsScroller}>
             {topTagsLoading && !hasTopTags ? (
               <span className={classes.topTagSkeleton} />
