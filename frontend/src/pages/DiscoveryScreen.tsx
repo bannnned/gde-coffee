@@ -104,6 +104,7 @@ export default function DiscoveryScreen() {
     setTagOptionsQuery,
     handleFavoriteTagsDraftChange,
     handleSaveFavoriteTags,
+    handleRequireTagsAuth,
     open2gisRoute,
     openYandexRoute,
     radiusM,
@@ -245,6 +246,7 @@ export default function DiscoveryScreen() {
         topTagsError={favoriteTagsError}
         topTagsDirty={isFavoriteTagsDirty}
         isAuthed={isAuthed}
+        onRequireAuthForTags={handleRequireTagsAuth}
         onTopTagsChange={handleFavoriteTagsDraftChange}
         onTopTagsQueryChange={setTagOptionsQuery}
         onSaveTopTags={handleSaveFavoriteTags}

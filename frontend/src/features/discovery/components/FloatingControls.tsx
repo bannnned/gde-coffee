@@ -14,15 +14,24 @@ export default function FloatingControls({
   isLocating,
   highlight = false,
 }: FloatingControlsProps) {
+  const buttonClassName = [
+    "glass-action",
+    "glass-action--square",
+    classes.button,
+    highlight ? "glass-action--active" : "",
+    highlight ? classes.attentionButton : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <Box pos="absolute" className={`floating-controls ${classes.wrapper}`}>
       <ActionIcon
         size={42}
         variant="transparent"
-        className={`glass-action glass-action--square ${
-          highlight ? classes.attentionButton : ""
-        }`}
+        className={buttonClassName}
         aria-label={DISCOVERY_UI_TEXT.locateAria}
+        aria-busy={isLocating ? "true" : undefined}
         onClick={onLocate}
         loading={isLocating}
         disabled={isLocating}

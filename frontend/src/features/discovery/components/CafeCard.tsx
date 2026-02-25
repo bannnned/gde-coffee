@@ -44,10 +44,12 @@ export default function CafeCard({
   } = useCafeCardPhotos(cafe);
 
   const cardStyles = {
-    zIndex: 1,
+    position: "relative",
+    zIndex: 2,
     background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
     border: "1px solid var(--glass-border)",
-    boxShadow: "var(--shadow)",
+    boxShadow:
+      "0 16px 32px color-mix(in srgb, var(--color-surface-overlay-strong) 34%, transparent), var(--shadow)",
     backdropFilter: "blur(18px) saturate(160%)",
     WebkitBackdropFilter: "blur(18px) saturate(160%)",
     overflow: "hidden",

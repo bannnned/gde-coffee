@@ -1,4 +1,5 @@
-import { Button, Stack } from "@mantine/core";
+import { Box, Group, Stack, Text, UnstyledButton } from "@mantine/core";
+import { IconMapPin } from "@tabler/icons-react";
 import type { MutableRefObject } from "react";
 
 import type { Cafe } from "../../../entities/cafe/model/types";
@@ -23,27 +24,35 @@ export default function CafeList({
   itemRefs,
   showDistance = true,
 }: CafeListProps) {
+  const loadingSkeleton = [
+    { name: "48%", meta: "16%" },
+    { name: "62%", meta: "20%" },
+    { name: "54%", meta: "14%" },
+    { name: "68%", meta: "22%" },
+    { name: "44%", meta: "18%" },
+  ];
+
   if (isLoading) {
     return (
       <Stack
-        gap="xs"
+        gap="sm"
         className={classes.loadingList}
         role="status"
         aria-live="polite"
+        aria-busy="true"
         aria-label={DISCOVERY_UI_TEXT.loading}
       >
-        {[
-          { name: "48%", meta: "16%" },
-          { name: "62%", meta: "20%" },
-          { name: "54%", meta: "14%" },
-          { name: "68%", meta: "22%" },
-          { name: "44%", meta: "18%" },
-        ].map((item, idx) => (
+        {loadingSkeleton.map((item, idx) => (
           <div key={idx} className={classes.loadingItem}>
             <div className={classes.loadingShine} />
             <div className={classes.loadingContent}>
               <span className={classes.loadingLine} style={{ width: item.name }} />
-              <span className={classes.loadingLine} style={{ width: item.meta }} />
+              {showDistance && (
+                <span
+                  className={`${classes.loadingLine} ${classes.loadingDistance}`}
+                  style={{ width: item.meta }}
+                />
+              )}
             </div>
           </div>
         ))}
@@ -56,44 +65,50 @@ export default function CafeList({
   }
 
   return (
-    <Stack gap="xs">
-      {cafes.map((c) => (
-        <Button
-          key={c.id}
-          ref={(el) => {
-            itemRefs.current[c.id] = el;
-          }}
-          onClick={() => onSelectCafe(c.id)}
-          variant={c.id === selectedCafeId ? "filled" : "default"}
-          size="sm"
-          fullWidth
-          radius={22}
-          styles={{
-            root: {
-              justifyContent: "flex-start",
-            },
-            inner: {
-              justifyContent: "flex-start",
-            },
-            label: {
-              width: "100%",
-              textAlign: "left",
-            },
-          }}
-        >
-          <span>
-            {c.name}
-            {showDistance && (
-              <>
-                {" "}
-                <span style={{ opacity: 0.7 }}>
-                  — {formatDistance(c.distance_m)}
+    <Stack gap="sm" className={classes.list}>
+      {cafes.map((c) => {
+        const isSelected = c.id === selectedCafeId;
+        return (
+          <UnstyledButton
+            key={c.id}
+            ref={(el) => {
+              itemRefs.current[c.id] = el;
+            }}
+            className={classes.item}
+            data-selected={isSelected ? "true" : "false"}
+            type="button"
+            onClick={() => onSelectCafe(c.id)}
+            aria-pressed={isSelected}
+            aria-current={isSelected ? "true" : undefined}
+          >
+            <Group
+              justify="space-between"
+              align="center"
+              gap="xs"
+              wrap="nowrap"
+              className={classes.itemInner}
+            >
+              <Box className={classes.itemMain}>
+                <Text
+                  fw={isSelected ? 700 : 600}
+                  size="sm"
+                  className={classes.itemTitle}
+                  lineClamp={1}
+                  title={c.name}
+                >
+                  {c.name}
+                </Text>
+              </Box>
+              {showDistance && (
+                <span className={classes.distancePill}>
+                  <IconMapPin size={12} />
+                  {formatDistance(c.distance_m)}
                 </span>
-              </>
-            )}
-          </span>
-        </Button>
-      ))}
+              )}
+            </Group>
+          </UnstyledButton>
+        );
+      })}
     </Stack>
   );
 }

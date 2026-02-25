@@ -1,4 +1,4 @@
-# Этап 0: Migration Backlog (Wave 1)
+# Этап 0: Migration Backlog (Wave 1 + Stack Transition)
 
 Документ переводит спецификации Wave 1 в рабочие задачи разработки.
 
@@ -10,6 +10,7 @@
 - `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/03-definition-of-done.md`
 - `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/screens/discovery.md`
 - `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/screens/discovery-settings.md`
+- `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/08-ui-stack-migration.md`
 
 ## 1. Как пользоваться backlog
 
@@ -73,15 +74,18 @@
 - Артефакт: новая header-shell структура и layout-метрики в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.tsx`
 - Артефакт: полный рефакторинг стилей верхней панели в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.module.css`
 
-### [ ] W1-BL-011 · Полировка верхних тегов и auth-гейтинга (P0, status: todo)
+### [x] W1-BL-011 · Полировка верхних тегов и auth-гейтинга (P0, status: done)
 - Цель: сделать поведение тегов предсказуемым для гостя и авторизованного пользователя.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.tsx`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
 - Depends on: `W1-BL-010`
 - AC: неавторизованный пользователь видит понятное ограничение без “мертвых” действий.
 - AC: выбранные пользователем теги не конфликтуют с популярными тегами.
+- Артефакт: login-CTA для guest и auth-trigger в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
+- Артефакт: исключение конфликтов popular vs selected tags в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
+- Артефакт: нормализация/дедуп top tags в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/hooks/useDiscoveryPageController.ts`
 
-### [ ] W1-BL-020 · BottomSheet shell и state-модель (P0, status: todo)
+### [x] W1-BL-020 · BottomSheet shell и state-модель (P0, status: done)
 - Цель: стабилизировать и упростить поведение `peek/mid/expanded` без дергания UI.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/BottomSheet.tsx`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/BottomSheet.module.css`
@@ -89,8 +93,10 @@
 - AC: переключение состояний листа предсказуемо на touch/mouse.
 - AC: лист не скрывается “слишком рано” при drag вниз.
 - AC: horizontal swipe в фото/контенте не ломает drag листа.
+- Артефакт: новая snap-логика с гистерезисом и deep-pull threshold в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/BottomSheet.tsx`
+- Артефакт: shell-hardening (safe-bottom, transitions, drag-surface polish) в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/BottomSheet.module.css`
 
-### [ ] W1-BL-021 · Header-контент листа и визуальная слоистость (P0, status: todo)
+### [x] W1-BL-021 · Header-контент листа и визуальная слоистость (P0, status: done)
 - Цель: убрать визуальные артефакты “обрезания” карточек за выбранной кофейней.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/BottomSheet.module.css`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeCard.tsx`
@@ -99,8 +105,10 @@
 - AC: выбранная карточка читается как слой над списком.
 - AC: элементы списка под карточкой исчезают плавно по заданной зоне fade.
 - AC: нет заметного clipping по краям карточек при скролле.
+- Артефакт: overlay-fade зоны под выбранной карточкой и выравнивание листа в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/BottomSheet.module.css`
+- Артефакт: усиление layer/elevation выбранной карточки в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeCard.tsx`
 
-### [ ] W1-BL-030 · Редизайн списка кофеен и состояний загрузки (P0, status: todo)
+### [x] W1-BL-030 · Редизайн списка кофеен и состояний загрузки (P0, status: done)
 - Цель: унифицировать стиль списка, скелетонов и empty/error в рамках Wave 1.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeList.tsx`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeList.module.css`
@@ -109,8 +117,11 @@
 - AC: loading-state визуально соответствует новому стилю и не дергает layout.
 - AC: empty/error-state дает понятный следующий шаг (retry/гео/город).
 - AC: отступы и ширина списка согласованы с выбранной карточкой.
+- Артефакт: новый style-system для list items + skeleton в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeList.tsx`
+- Артефакт: визуальные токены и состояния списка в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeList.module.css`
+- Артефакт: переработанный empty/error/no-geo card в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/EmptyStateCard.tsx`
 
-### [ ] W1-BL-031 · Floating controls и map-overlays (P1, status: todo)
+### [x] W1-BL-031 · Floating controls и map-overlays (P1, status: done)
 - Цель: согласовать кнопки карты с новым UI и устранить шум map-контролов.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FloatingControls.tsx`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FloatingControls.module.css`
@@ -118,6 +129,9 @@
 - Depends on: `W1-BL-030`
 - AC: floating-кнопки визуально и размерно согласованы с шапкой/листом.
 - AC: служебные map-контролы не засоряют интерфейс и не перекрывают действия.
+- Артефакт: синхронизация locate-control с glass-state/active-state в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FloatingControls.tsx`
+- Артефакт: позиционирование и desktop-alignment floating control в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FloatingControls.module.css`
+- Артефакт: suppression встроенных MapLibre control-container + выравнивание zoom controls в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/index.css`
 
 ### [ ] W1-BL-040 · Redesign Settings Drawer IA (P0, status: todo)
 - Цель: перестроить настройки в последовательный flow “место -> фильтрация -> контент”.
@@ -177,3 +191,58 @@
 - `настройки -> радиус/теги -> обновление выдачи`.
 3. iOS Safari/PWA не имеет критичных визуальных багов по safe-area и drag.
 4. Wave 1 проходит общий DoD из `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/03-definition-of-done.md`.
+
+## 6. Stack Transition Gate и Critical Path
+
+Запуск трека `STK-BL-*` разрешен только после:
+1. `W1-BL-050` = `done`.
+2. `W1-BL-052` = `done`.
+
+Critical path stack-transition:
+1. `STK-BL-001` -> 2. `STK-BL-002` -> 3. `STK-BL-003` -> 4. `STK-BL-010` -> 5. `STK-BL-020`
+
+## 7. Backlog задач: Stack Transition (`Tailwind + shadcn/ui`)
+
+### [ ] STK-BL-001 · Tailwind bootstrap и token bridge (P0, status: todo)
+- Цель: подключить `Tailwind` без поломки текущего UI.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/` (configs + entry CSS).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/index.css`.
+- Depends on: `W1-BL-052`.
+- AC: `Tailwind` работает в проекте, сборка и typecheck зеленые.
+- AC: базовые design tokens проброшены в новый слой утилит.
+- AC: существующий экран Discovery визуально не деградировал после bootstrap.
+
+### [ ] STK-BL-002 · shadcn/ui infrastructure и базовые примитивы (P0, status: todo)
+- Цель: завести реальную инфраструктуру `shadcn/ui`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/*`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/lib/*` (утилиты классов и shared helpers).
+- Depends on: `STK-BL-001`.
+- AC: доступны базовые примитивы (`Button`, `Input`, `Select`/`Popover`, `Sheet`, `Badge`).
+- AC: темизация и радиусы согласованы с текущими токенами продукта.
+- AC: режим светлой/темной темы сохраняет читаемость и контраст.
+
+### [ ] STK-BL-003 · Coexistence-правила Mantine + shadcn (P0, status: todo)
+- Цель: формализовать переходный режим, чтобы не получить хаос из двух UI-систем.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/08-ui-stack-migration.md`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/` (точки интеграции и адаптеры).
+- Depends on: `STK-BL-002`.
+- AC: зафиксированы правила “что новое делаем на shadcn, что временно остается на Mantine”.
+- AC: нет дублирующих компонентных контрактов без явной причины.
+- AC: типовые UI-контейнеры (модалка/лист/форма) имеют утвержденный путь миграции.
+
+### [ ] STK-BL-010 · Пилотная миграция: Discovery Settings на новом стеке (P0, status: todo)
+- Цель: проверить подход на реальном критичном сценарии.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`.
+- Depends on: `STK-BL-003`.
+- AC: `SettingsDrawer` переведен на новый стек без потери UX-функций.
+- AC: сценарии радиуса/города/тегов проходят без регрессий.
+- AC: консоль без критичных ошибок, typecheck/build проходят.
+
+### [ ] STK-BL-020 · План масштабирования на Wave 2/3 и deprecation legacy UI (P1, status: todo)
+- Цель: зафиксировать управляемый массовый перенос экранов.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/02-scope-wave1.md`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/08-ui-stack-migration.md`.
+- Depends on: `STK-BL-010`.
+- AC: определен порядок миграции экранов Wave 2/3 на новом стеке.
+- AC: есть явные критерии отключения legacy Mantine-слоя.
+- AC: исключены “подвешенные” зоны со смешанными и неунифицированными паттернами.

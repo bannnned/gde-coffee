@@ -35,6 +35,21 @@ function normalizeTagList(raw: string[]): string[] {
   return result;
 }
 
+function normalizeDisplayTopTags(raw: string[], limit = 8): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of raw) {
+    const label = value.trim();
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(label);
+    if (result.length >= limit) break;
+  }
+  return result;
+}
+
 const LEGACY_MAIN_TAG_PATTERNS = [
   /\bwifi\b/u,
   /\bwi[\s-]?fi\b/u,
@@ -209,12 +224,13 @@ export default function useDiscoveryPageController() {
         radius_m: location.effectiveRadiusM,
         limit: 8,
       });
-      setTopDescriptiveTags(
+      setTopDescriptiveTags(normalizeDisplayTopTags(
         response.tags
           .map((item) => item.label)
           .filter(Boolean)
           .filter((tag) => !isLegacyMainTag(tag)),
-      );
+        8,
+      ));
       setTopDescriptiveTagsSource(response.source || "city_popular");
     } catch {
       setTopDescriptiveTags([]);
@@ -353,6 +369,10 @@ export default function useDiscoveryPageController() {
   const isFavoriteTagsDirty =
     favoriteDescriptiveTags.length !== favoriteDescriptiveTagsDraft.length ||
     favoriteDescriptiveTags.some((value, index) => value !== favoriteDescriptiveTagsDraft[index]);
+
+  const handleRequireTagsAuth = () => {
+    openAuthModal("login");
+  };
 
   const emptyState = cafesQuery.isError
     ? "error"
@@ -615,6 +635,7 @@ export default function useDiscoveryPageController() {
     setTagOptionsQuery,
     handleFavoriteTagsDraftChange,
     handleSaveFavoriteTags,
+    handleRequireTagsAuth,
     open2gisRoute,
     openYandexRoute,
     radiusM,

@@ -19,6 +19,14 @@
 - Визуальный ориентир: [shadcn/ui](https://ui.shadcn.com/).
 - UX-подход: принципы книги `Practical UI`.
 
+## Технический вектор UI-стека
+1. В Wave 1 допускается реализация на текущем стеке (`Mantine + tokenized CSS`) для стабилизации UX.
+2. После завершения Wave 1 по DoD запускается отдельный техэтап миграции на `Tailwind + shadcn/ui`.
+3. Миграция выполняется итеративно, без big-bang переписывания всего UI за один шаг.
+4. Подробный план и gate перехода зафиксированы в:
+   - `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/08-ui-stack-migration.md`
+   - `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/06-migration-backlog.md`
+
 ## Обязательные ограничения
 - Не ухудшать текущую работоспособность ключевых пользовательских сценариев.
 - Не ломать критичные системные зоны:

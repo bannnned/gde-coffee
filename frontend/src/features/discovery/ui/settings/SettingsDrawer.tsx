@@ -47,6 +47,7 @@ type SettingsDrawerProps = {
   topTagsError?: string | null;
   topTagsDirty?: boolean;
   isAuthed: boolean;
+  onRequireAuthForTags?: () => void;
   onTopTagsChange: (next: string[]) => void;
   onTopTagsQueryChange: (value: string) => void;
   onSaveTopTags: () => void;
@@ -76,6 +77,7 @@ export default function SettingsDrawer({
   topTagsError = null,
   topTagsDirty = false,
   isAuthed,
+  onRequireAuthForTags,
   onTopTagsChange,
   onTopTagsQueryChange,
   onSaveTopTags,
@@ -114,26 +116,41 @@ export default function SettingsDrawer({
     },
   } as const;
   const tagChipLabelStyles = createDiscoveryAmenityChipLabelStyles(theme.fontSizes.xs);
-  const popularTopTags = useMemo(() => {
-    const merged = [...topTagsOptions, ...popularTags];
+  const normalizedSelectedTags = useMemo(() => {
     const unique: string[] = [];
     const seen = new Set<string>();
-    for (const raw of merged) {
+    for (const raw of topTags) {
       const value = raw.trim();
       if (!value) continue;
       const key = value.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
       unique.push(value);
+      if (unique.length >= 12) break;
+    }
+    return unique;
+  }, [topTags]);
+
+  const selectedSet = useMemo(
+    () => new Set(normalizedSelectedTags.map((tag) => tag.toLowerCase())),
+    [normalizedSelectedTags],
+  );
+
+  const popularTopTags = useMemo(() => {
+    const merged = [...popularTags, ...topTagsOptions];
+    const unique: string[] = [];
+    const seen = new Set<string>();
+    for (const raw of merged) {
+      const value = raw.trim();
+      if (!value) continue;
+      const key = value.toLowerCase();
+      if (seen.has(key) || selectedSet.has(key)) continue;
+      seen.add(key);
+      unique.push(value);
       if (unique.length >= 5) break;
     }
     return unique;
-  }, [popularTags, topTagsOptions]);
-
-  const normalizedSelectedTags = useMemo(
-    () => topTags.map((tag) => tag.trim()).filter((tag) => tag !== ""),
-    [topTags],
-  );
+  }, [popularTags, selectedSet, topTagsOptions]);
 
   const hasTagSelected = (tag: string) => {
     const key = tag.trim().toLowerCase();
@@ -252,10 +269,12 @@ export default function SettingsDrawer({
                 },
               }}
               onClick={() => {
-                if (!isAuthed) return;
+                if (!isAuthed) {
+                  onRequireAuthForTags?.();
+                  return;
+                }
                 setIsTagPickerOpen((prev) => !prev);
               }}
-              disabled={!isAuthed}
             >
               <IconPlus size={16} />
             </ActionIcon>
@@ -271,12 +290,18 @@ export default function SettingsDrawer({
                   <Chip
                     key={tag}
                     checked={isChecked}
-                    onChange={() => toggleTag(tag)}
+                    onChange={() => {
+                      if (!isAuthed) {
+                        onRequireAuthForTags?.();
+                        return;
+                      }
+                      toggleTag(tag);
+                    }}
                     size="xs"
                     radius="xl"
                     variant="filled"
                     icon={null}
-                    disabled={!canEditTags}
+                    disabled={isAuthed ? !canEditTags : false}
                     styles={{
                       iconWrapper: { display: "none" },
                       label: {
@@ -296,9 +321,18 @@ export default function SettingsDrawer({
             )}
           </Group>
           {!isAuthed ? (
-            <Text size="sm" c="dimmed">
-              Войдите в аккаунт, чтобы выбрать любимые теги.
-            </Text>
+            <Stack gap={6}>
+              <Text size="sm" c="dimmed">
+                Войдите в аккаунт, чтобы выбрать любимые теги.
+              </Text>
+              <Button
+                variant="light"
+                onClick={() => onRequireAuthForTags?.()}
+                styles={getDiscoveryGlassButtonStyles(true)}
+              >
+                Войти и настроить теги
+              </Button>
+            </Stack>
           ) : (
             <>
               {isTagPickerOpen && (

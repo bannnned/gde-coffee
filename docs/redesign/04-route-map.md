@@ -77,3 +77,12 @@ flowchart TD
 1. Базовые переходы из раздела 3 работают.
 2. Overlay-поведение из раздела 2 не сломано.
 3. In-screen панели Discovery из раздела 4 открываются/закрываются без потери состояния.
+
+## 7. Порядок этапов редизайна
+1. Сначала закрываем Wave 1 (`W1-BL-*`) по backlog:
+   - `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/06-migration-backlog.md`
+2. После закрытия `W1-BL-050` и `W1-BL-052` включается техэтап миграции UI-стека (`STK-BL-*`).
+3. Только после платформенного перехода (`Tailwind + shadcn/ui`) масштабируем редизайн на следующие волны экранов.
+
+Детальный план платформенного перехода:
+- `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/08-ui-stack-migration.md`

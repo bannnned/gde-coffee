@@ -1,15 +1,136 @@
+.list {
+  width: 100%;
+}
+
+.item {
+  position: relative;
+  width: 100%;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--glass-grad-1) 94%, transparent),
+      color-mix(in srgb, var(--glass-grad-2) 90%, transparent)
+    );
+  box-shadow:
+    0 8px 18px color-mix(in srgb, var(--color-surface-overlay-soft) 58%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-border) 84%, transparent);
+  color: var(--text);
+  overflow: hidden;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    background var(--duration-base) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.14),
+    rgba(255, 255, 255, 0.02) 44%,
+    rgba(255, 255, 255, 0.14)
+  );
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-standard);
+}
+
+.item:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 24px color-mix(in srgb, var(--color-surface-overlay-soft) 70%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-border) 90%, transparent);
+}
+
+.item:hover::before {
+  opacity: 1;
+}
+
+.item:active {
+  transform: translateY(0);
+}
+
+.item:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+.item[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--color-brand-accent) 58%, var(--glass-border));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-brand-accent) 92%, #ff5d31),
+      color-mix(in srgb, var(--color-brand-accent-strong) 94%, #ef4418)
+    );
+  color: var(--color-on-accent);
+  box-shadow:
+    0 14px 26px color-mix(in srgb, var(--color-brand-accent-soft) 52%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 42%, transparent);
+}
+
+.itemInner {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 var(--space-4);
+}
+
+.itemMain {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.itemTitle {
+  color: inherit;
+  letter-spacing: 0.01em;
+}
+
+.distancePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  color: color-mix(in srgb, var(--muted) 80%, var(--text));
+  white-space: nowrap;
+}
+
+.item[data-selected="true"] .distancePill {
+  border-color: color-mix(in srgb, #ffffff 56%, transparent);
+  background: color-mix(in srgb, #ffffff 18%, transparent);
+  color: color-mix(in srgb, #ffffff 96%, transparent);
+}
+
 .loadingList {
   width: 100%;
 }
 
 .loadingItem {
   position: relative;
-  height: 42px;
+  min-height: 50px;
   border-radius: 22px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--glass-grad-1), var(--glass-grad-2));
-  box-shadow: 0 6px 16px rgba(31, 26, 23, 0.08);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--glass-grad-1) 92%, transparent),
+      color-mix(in srgb, var(--glass-grad-2) 86%, transparent)
+    );
+  box-shadow:
+    0 8px 18px color-mix(in srgb, var(--color-surface-overlay-soft) 60%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-border) 84%, transparent);
 }
 
 .loadingShine {
@@ -18,22 +139,24 @@
   transform: translateX(-120%);
   background: linear-gradient(
     104deg,
-    rgba(255, 255, 255, 0) 24%,
-    rgba(255, 255, 255, 0.34) 46%,
-    rgba(255, 255, 255, 0.12) 56%,
-    rgba(255, 255, 255, 0) 76%
+    rgba(255, 255, 255, 0) 22%,
+    rgba(255, 255, 255, 0.32) 46%,
+    rgba(255, 255, 255, 0.1) 58%,
+    rgba(255, 255, 255, 0) 78%
   );
-  animation: cafe-list-skeleton-shine 1.25s ease-in-out infinite;
+  animation: cafe-list-skeleton-shine 1.3s ease-in-out infinite;
 }
 
 .loadingContent {
   position: relative;
   z-index: 1;
   height: 100%;
+  min-height: 50px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
+  padding: 0 var(--space-4);
+  gap: var(--space-3);
 }
 
 .loadingLine {
@@ -42,9 +165,13 @@
   border-radius: 999px;
   background: linear-gradient(
     90deg,
-    rgba(255, 78, 31, 0.14),
-    rgba(255, 78, 31, 0.22)
+    color-mix(in srgb, var(--color-brand-accent-soft) 74%, transparent),
+    color-mix(in srgb, var(--color-brand-accent) 36%, transparent)
   );
+}
+
+.loadingDistance {
+  max-width: 68px;
 }
 
 @keyframes cafe-list-skeleton-shine {
@@ -56,24 +183,35 @@
   }
 }
 
+:global(:root[data-mantine-color-scheme='dark']) .item {
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-border) 58%, transparent);
+}
+
+:global(:root[data-mantine-color-scheme='dark']) .item[data-selected="true"] {
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 34%, transparent);
+}
+
+:global(:root[data-mantine-color-scheme='dark']) .distancePill {
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+  border-color: color-mix(in srgb, var(--border) 86%, transparent);
+}
+
 :global(:root[data-mantine-color-scheme='dark']) .loadingItem {
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-border) 52%, transparent);
 }
 
 :global(:root[data-mantine-color-scheme='dark']) .loadingShine {
   background: linear-gradient(
     104deg,
-    rgba(255, 248, 242, 0) 22%,
-    rgba(255, 248, 242, 0.2) 46%,
+    rgba(255, 248, 242, 0) 20%,
+    rgba(255, 248, 242, 0.22) 46%,
     rgba(255, 248, 242, 0.08) 58%,
-    rgba(255, 248, 242, 0) 76%
-  );
-}
-
-:global(:root[data-mantine-color-scheme='dark']) .loadingLine {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 107, 58, 0.24),
-    rgba(255, 138, 95, 0.3)
+    rgba(255, 248, 242, 0) 78%
   );
 }

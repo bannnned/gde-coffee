@@ -28,7 +28,8 @@ type BottomSheetProps = PropsWithChildren<{
 
 type SheetState = "peek" | "mid" | "expanded";
 
-const SWIPE_VELOCITY = 900;
+const SWIPE_VELOCITY = 1100;
+const SWIPE_VELOCITY_STRONG = 1700;
 const PEEK_HEIGHT_PX = 64;
 const SHEET_PADDING_PX = 8;
 const MID_SINGLE_CAFE_EXTRA_PX = 26;
@@ -150,14 +151,59 @@ export default function BottomSheet({
     setLayoutSheetState(effectiveSheetState);
   }, [effectiveSheetState, setLayoutSheetState]);
 
-  const pickClosest = (value: number) => {
-    const points = disableMidState
-      ? [heights.expanded, heights.peek]
-      : [heights.expanded, heights.mid, heights.peek];
-    return points.reduce((prev, point) =>
-      Math.abs(point - value) < Math.abs(prev - value) ? point : prev,
-    );
-  };
+  const resolveSnapState = useCallback(
+    (projected: number, startState: SheetState, velocityY: number): SheetState => {
+      if (disableMidState) {
+        const deepPullZone = Math.max(
+          56,
+          Math.min(108, Math.round((heights.expanded - heights.peek) * 0.24)),
+        );
+        const peekSnapThreshold = heights.peek + deepPullZone;
+        if (velocityY > SWIPE_VELOCITY_STRONG) {
+          return "peek";
+        }
+        if (velocityY < -SWIPE_VELOCITY_STRONG) {
+          return "expanded";
+        }
+        return projected <= peekSnapThreshold ? "peek" : "expanded";
+      }
+
+      const peekBand = Math.max(
+        42,
+        Math.min(92, Math.round((heights.mid - heights.peek) * 0.48)),
+      );
+      const expandedBand = Math.max(
+        40,
+        Math.min(86, Math.round((heights.expanded - heights.mid) * 0.3)),
+      );
+      const toPeekThreshold = heights.peek + peekBand;
+      const toExpandedThreshold = heights.mid + expandedBand;
+
+      if (velocityY > SWIPE_VELOCITY_STRONG) {
+        return startState === "expanded" ? "mid" : "peek";
+      }
+      if (velocityY < -SWIPE_VELOCITY_STRONG) {
+        return startState === "peek" ? "mid" : "expanded";
+      }
+
+      if (startState === "expanded") {
+        if (projected <= toPeekThreshold - 20) return "peek";
+        if (projected <= heights.mid - 14) return "mid";
+        return "expanded";
+      }
+
+      if (startState === "peek") {
+        if (projected >= toExpandedThreshold + 22) return "expanded";
+        if (projected >= heights.mid - 10) return "mid";
+        return "peek";
+      }
+
+      if (projected <= toPeekThreshold) return "peek";
+      if (projected >= toExpandedThreshold) return "expanded";
+      return "mid";
+    },
+    [disableMidState, heights.expanded, heights.mid, heights.peek],
+  );
 
   const handleHeaderPointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
@@ -171,6 +217,7 @@ export default function BottomSheet({
     const startX = event.clientX;
     const startY = event.clientY;
     const startHeight = height.get();
+    const startSheetState = effectiveSheetState;
     const pointerId = event.pointerId;
     const pointerHost = event.currentTarget;
     if (pointerHost.setPointerCapture) {
@@ -228,27 +275,7 @@ export default function BottomSheet({
           Math.abs(velocityY) > SWIPE_VELOCITY
             ? current - velocityY * 0.2
             : current - offsetY * 0.2;
-        if (disableMidState) {
-          // In single-cafe mode don't collapse too eagerly: require a deep pull.
-          const peekSnapThreshold = heights.peek + Math.max(
-            34,
-            Math.min(72, Math.round((heights.expanded - heights.peek) * 0.16)),
-          );
-          if (projected <= peekSnapThreshold) {
-            setSheetState("peek");
-          } else {
-            setSheetState("expanded");
-          }
-        } else {
-          const snap = pickClosest(projected);
-          if (snap === heights.peek) {
-            setSheetState("peek");
-          } else if (snap === heights.expanded) {
-            setSheetState("expanded");
-          } else {
-            setSheetState("mid");
-          }
-        }
+        setSheetState(resolveSnapState(projected, startSheetState, velocityY));
       }
       cleanup();
     };
@@ -278,7 +305,6 @@ export default function BottomSheet({
       bottom={0}
       left={0}
       right={0}
-      pb="sm"
       className={classes.wrapper}
     >
       <MotionPaper

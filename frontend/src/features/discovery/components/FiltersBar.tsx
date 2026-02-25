@@ -54,7 +54,21 @@ export default function FiltersBar({
       "";
     return value;
   }, [user]);
-  const hasTopTags = topTags.length > 0;
+  const normalizedTopTags = useMemo(() => {
+    const seen = new Set<string>();
+    const normalized: string[] = [];
+    for (const raw of topTags) {
+      const value = raw.trim();
+      if (!value) continue;
+      const key = value.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      normalized.push(value);
+      if (normalized.length >= 8) break;
+    }
+    return normalized;
+  }, [topTags]);
+  const hasTopTags = normalizedTopTags.length > 0;
 
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -182,7 +196,7 @@ export default function FiltersBar({
               {topTagsLoading && !hasTopTags ? (
                 <span className={classes.topTagSkeleton} />
               ) : (
-                topTags.map((tag) => (
+                normalizedTopTags.map((tag) => (
                   <span key={tag} className={classes.topTagChip}>
                     {tag}
                   </span>
