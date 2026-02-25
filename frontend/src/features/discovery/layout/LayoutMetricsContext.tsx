@@ -15,6 +15,8 @@ type LayoutMetricsValue = {
   sheetHeight: number;
   filtersBarHeight: number;
   safeViewportHeight: number;
+  safeViewportWidth: number;
+  visualViewportScale: number;
   sheetState: SheetState;
   setSheetHeight: (value: number) => void;
   setFiltersBarHeight: (value: number) => void;
@@ -23,35 +25,137 @@ type LayoutMetricsValue = {
 
 const LayoutMetricsContext = createContext<LayoutMetricsValue | null>(null);
 
-const readViewportHeight = () =>
-  window.visualViewport?.height ?? window.innerHeight;
+type ViewportSnapshot = {
+  height: number;
+  width: number;
+  offsetTop: number;
+  offsetBottom: number;
+  scale: number;
+};
+
+const readViewportSnapshot = (): ViewportSnapshot => {
+  if (typeof window === "undefined") {
+    return {
+      height: 0,
+      width: 0,
+      offsetTop: 0,
+      offsetBottom: 0,
+      scale: 1,
+    };
+  }
+
+  const vv = window.visualViewport;
+  const height = Math.max(0, vv?.height ?? window.innerHeight);
+  const width = Math.max(0, vv?.width ?? window.innerWidth);
+  const offsetTop = Math.max(0, vv?.offsetTop ?? 0);
+  const offsetBottom = Math.max(
+    0,
+    vv ? window.innerHeight - vv.height - vv.offsetTop : 0,
+  );
+  const scaleRaw = vv?.scale ?? 1;
+  const scale = Number.isFinite(scaleRaw) && scaleRaw > 0 ? scaleRaw : 1;
+  return {
+    height,
+    width,
+    offsetTop,
+    offsetBottom,
+    scale,
+  };
+};
+
+const px = (value: number) => `${Math.max(0, Math.round(value))}px`;
+
+const setRootVar = (name: string, value: string) => {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (root.style.getPropertyValue(name) === value) return;
+  root.style.setProperty(name, value);
+};
 
 export function LayoutMetricsProvider({ children }: PropsWithChildren) {
+  const initialViewport = readViewportSnapshot();
   const [sheetHeight, setSheetHeightState] = useState(240);
   const [filtersBarHeight, setFiltersBarHeightState] = useState(0);
   const [sheetState, setSheetState] = useState<SheetState>("mid");
   const [safeViewportHeight, setSafeViewportHeight] = useState(() =>
-    Math.max(0, readViewportHeight()),
+    Math.max(0, initialViewport.height),
+  );
+  const [safeViewportWidth, setSafeViewportWidth] = useState(() =>
+    Math.max(0, initialViewport.width),
+  );
+  const [visualViewportScale, setVisualViewportScale] = useState(() =>
+    Math.max(0.5, Math.min(4, initialViewport.scale)),
   );
   const sheetHeightRef = useRef(sheetHeight);
   const filtersBarHeightRef = useRef(filtersBarHeight);
+  const viewportHeightRef = useRef(safeViewportHeight);
+  const viewportWidthRef = useRef(safeViewportWidth);
+  const viewportScaleRef = useRef(visualViewportScale);
 
   useLayoutEffect(() => {
-    const update = () => {
-      setSafeViewportHeight(Math.max(0, readViewportHeight()));
+    let raf: number | null = null;
+
+    const apply = (next: ViewportSnapshot) => {
+      const nextHeight = Math.max(0, Math.round(next.height));
+      const nextWidth = Math.max(0, Math.round(next.width));
+      const nextScale = Math.max(0.5, Math.min(4, next.scale));
+
+      if (Math.abs(viewportHeightRef.current - nextHeight) >= 1) {
+        viewportHeightRef.current = nextHeight;
+        setSafeViewportHeight(nextHeight);
+      }
+      if (Math.abs(viewportWidthRef.current - nextWidth) >= 1) {
+        viewportWidthRef.current = nextWidth;
+        setSafeViewportWidth(nextWidth);
+      }
+      if (Math.abs(viewportScaleRef.current - nextScale) >= 0.01) {
+        viewportScaleRef.current = nextScale;
+        setVisualViewportScale(nextScale);
+      }
+
+      setRootVar("--app-vh", px(nextHeight));
+      setRootVar("--app-vw", px(nextWidth));
+      setRootVar("--vv-offset-top", px(next.offsetTop));
+      setRootVar("--vv-offset-bottom", px(next.offsetBottom));
+      setRootVar("--vv-scale", nextScale.toFixed(3));
     };
-    update();
-    window.addEventListener("resize", update);
-    window.addEventListener("orientationchange", update);
-    window.addEventListener("pageshow", update);
-    window.visualViewport?.addEventListener("resize", update);
-    window.visualViewport?.addEventListener("scroll", update);
+
+    const scheduleUpdate = () => {
+      if (raf != null) {
+        cancelAnimationFrame(raf);
+      }
+      raf = window.requestAnimationFrame(() => {
+        raf = null;
+        apply(readViewportSnapshot());
+      });
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        scheduleUpdate();
+      }
+    };
+
+    scheduleUpdate();
+    window.addEventListener("resize", scheduleUpdate, { passive: true });
+    window.addEventListener("orientationchange", scheduleUpdate);
+    window.addEventListener("pageshow", scheduleUpdate);
+    window.addEventListener("focus", scheduleUpdate);
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.visualViewport?.addEventListener("resize", scheduleUpdate);
+    window.visualViewport?.addEventListener("scroll", scheduleUpdate);
+
     return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("orientationchange", update);
-      window.removeEventListener("pageshow", update);
-      window.visualViewport?.removeEventListener("resize", update);
-      window.visualViewport?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("orientationchange", scheduleUpdate);
+      window.removeEventListener("pageshow", scheduleUpdate);
+      window.removeEventListener("focus", scheduleUpdate);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.visualViewport?.removeEventListener("resize", scheduleUpdate);
+      window.visualViewport?.removeEventListener("scroll", scheduleUpdate);
+      if (raf != null) {
+        cancelAnimationFrame(raf);
+      }
     };
   }, []);
 
@@ -74,6 +178,8 @@ export function LayoutMetricsProvider({ children }: PropsWithChildren) {
       sheetHeight,
       filtersBarHeight,
       safeViewportHeight,
+      safeViewportWidth,
+      visualViewportScale,
       sheetState,
       setSheetHeight,
       setFiltersBarHeight,
@@ -82,8 +188,10 @@ export function LayoutMetricsProvider({ children }: PropsWithChildren) {
     [
       filtersBarHeight,
       safeViewportHeight,
+      safeViewportWidth,
       sheetHeight,
       sheetState,
+      visualViewportScale,
       setFiltersBarHeight,
       setSheetHeight,
     ],

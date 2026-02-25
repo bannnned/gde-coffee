@@ -40,15 +40,17 @@
 - AC: известные текущие баги отделены от новых регрессий.
 - Артефакт: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/07-wave1-baseline-smoke.md`
 
-### [ ] W1-BL-002 · UI foundation для Wave 1 (P0, status: todo)
+### [x] W1-BL-002 · UI foundation для Wave 1 (P0, status: done)
 - Цель: утвердить единые визуальные примитивы (spacing, radius, elevation, states) под shadcn-like стиль.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/index.css`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/App.css`
 - Depends on: `W1-BL-001`
 - AC: определены и применимы системные токены для главного экрана.
 - AC: нет точечных “магических” отступов/радиусов без системной переменной.
+- Артефакт: foundation tokens и utility-классы в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/index.css`
+- Артефакт: перевод базовых app-стилей на токены в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/App.css`
 
-### [ ] W1-BL-003 · Safe-area и viewport hardening (P0, status: todo)
+### [x] W1-BL-003 · Safe-area и viewport hardening (P0, status: done)
 - Цель: стабилизировать поведение на iOS Safari/PWA и убрать уезды шапки/контента.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/layout/LayoutMetricsContext.tsx`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/DiscoveryScreen.tsx`
@@ -56,6 +58,9 @@
 - Depends on: `W1-BL-002`
 - AC: header не уезжает под системные зоны.
 - AC: при изменении viewport (скролл, клавиатура, смена ориентации) layout остается стабильным.
+- Артефакт: robust viewport snapshot + CSS vars sync в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/layout/LayoutMetricsContext.tsx`
+- Артефакт: fixed discovery viewport height в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/DiscoveryScreen.tsx`
+- Артефакт: global viewport vars и hardening стилей в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/index.css`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/main.tsx`
 
 ### [ ] W1-BL-010 · Redesign верхней панели Discovery (P0, status: todo)
 - Цель: собрать компактную иерархичную шапку с очевидными primary/secondary действиями.

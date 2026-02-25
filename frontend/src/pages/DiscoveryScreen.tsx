@@ -10,6 +10,7 @@ import EmptyStateCard from "../features/discovery/components/EmptyStateCard";
 import FiltersBar from "../features/discovery/components/FiltersBar";
 import FloatingControls from "../features/discovery/components/FloatingControls";
 import useDiscoveryPageController from "../features/discovery/hooks/useDiscoveryPageController";
+import { useLayoutMetrics } from "../features/discovery/layout/LayoutMetricsContext";
 import ManualPickOverlay from "../features/discovery/ui/map/ManualPickOverlay";
 import SettingsDrawer from "../features/discovery/ui/settings/SettingsDrawer";
 import DiscoveryLocationChoiceHeader from "../features/discovery/ui/sheet/DiscoveryLocationChoiceHeader";
@@ -23,6 +24,7 @@ const CafePhotoSubmissionModal = lazy(
 const CafeProposalModal = lazy(() => import("../features/discovery/ui/modals/CafeProposalModal"));
 
 export default function DiscoveryScreen() {
+  const { safeViewportHeight, visualViewportScale } = useLayoutMetrics();
   const {
     sheetRef,
     sheetHeight,
@@ -107,14 +109,19 @@ export default function DiscoveryScreen() {
     radiusM,
     resetFilters,
   } = useDiscoveryPageController();
+  const discoveryViewportHeight = Math.max(1, Math.round(safeViewportHeight));
 
   return (
     <Box
       pos="relative"
-      h="100dvh"
+      h={`${discoveryViewportHeight}px`}
       w="100%"
       data-sheet-state={sheetState}
-      style={{ ["--sheet-height" as string]: `${sheetHeight}px` }}
+      data-vv-scale={visualViewportScale.toFixed(3)}
+      style={{
+        ["--sheet-height" as string]: `${sheetHeight}px`,
+        overflow: "hidden",
+      }}
     >
       <Box pos="absolute" inset={0}>
         <Map

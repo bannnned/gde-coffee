@@ -24,8 +24,15 @@ function syncViewportInsetsCSSVars() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
   const root = document.documentElement
   const vv = window.visualViewport
+  const vh = vv ? Math.max(0, vv.height) : window.innerHeight
+  const vw = vv ? Math.max(0, vv.width) : window.innerWidth
+  const scaleRaw = vv?.scale ?? 1
+  const scale = Number.isFinite(scaleRaw) && scaleRaw > 0 ? scaleRaw : 1
   const top = vv ? Math.max(0, vv.offsetTop) : 0
   const bottom = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0
+  root.style.setProperty('--app-vh', `${Math.round(vh)}px`)
+  root.style.setProperty('--app-vw', `${Math.round(vw)}px`)
+  root.style.setProperty('--vv-scale', scale.toFixed(3))
   root.style.setProperty('--vv-offset-top', `${Math.round(top)}px`)
   root.style.setProperty('--vv-offset-bottom', `${Math.round(bottom)}px`)
 }
@@ -41,9 +48,18 @@ function bindViewportInsetsSync() {
     })
   }
 
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      scheduleSync()
+    }
+  }
+
   scheduleSync()
   window.addEventListener('resize', scheduleSync, { passive: true })
   window.addEventListener('orientationchange', scheduleSync)
+  window.addEventListener('pageshow', scheduleSync)
+  window.addEventListener('focus', scheduleSync)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   window.visualViewport?.addEventListener('resize', scheduleSync)
   window.visualViewport?.addEventListener('scroll', scheduleSync)
 }
