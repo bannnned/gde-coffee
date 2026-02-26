@@ -1,13 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ActionIcon,
   Box,
-  Group,
-  Modal,
-  Paper,
-  SegmentedControl,
-  Stack,
-  Text,
 } from "@mantine/core";
 import {
   IconHeart,
@@ -15,6 +8,7 @@ import {
 } from "@tabler/icons-react";
 
 import { triggerCafeAISummary } from "../../../../api/reviews";
+import { Button } from "../../../../components/ui";
 import ReviewsSection from "./ReviewsSection";
 import { useCafeDetailsComputed } from "./hooks/useCafeDetailsComputed";
 import { useCafeDetailsData } from "./hooks/useCafeDetailsData";
@@ -25,6 +19,8 @@ import RatingPanel from "./sections/RatingPanel";
 import PhotoLightboxModal from "../../../../components/PhotoLightboxModal";
 import type { Cafe, CafePhotoKind } from "../../../../entities/cafe/model/types";
 import { extractApiErrorMessage } from "../../../../utils/apiError";
+import { cn } from "../../../../lib/utils";
+import { AppModal } from "../../../../ui/bridge";
 
 type CafeDetailsScreenProps = {
   opened: boolean;
@@ -203,33 +199,6 @@ export default function CafeDetailsScreen({
 
   if (!cafe) return null;
 
-  const modalStyles = {
-    content: {
-      background: "var(--glass-bg)",
-      border: "1px solid var(--glass-border)",
-      boxShadow: "var(--shadow)",
-      backdropFilter: "blur(18px) saturate(160%)",
-      WebkitBackdropFilter: "blur(18px) saturate(160%)",
-    },
-    header: {
-      background: "var(--surface)",
-      borderBottom: "1px solid var(--border)",
-    },
-    title: {
-      fontWeight: 700,
-      width: "100%",
-      paddingRight: 8,
-    },
-    body: {
-      padding: "var(--page-edge-padding)",
-      paddingBottom: "calc(var(--page-edge-padding) + var(--safe-bottom))",
-    },
-    overlay: {
-      backdropFilter: "blur(4px)",
-      backgroundColor: "var(--color-surface-overlay-strong)",
-    },
-  } as const;
-
   const cardStyles = {
     background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
     border: "1px solid var(--glass-border)",
@@ -237,6 +206,7 @@ export default function CafeDetailsScreen({
     backdropFilter: "blur(18px) saturate(160%)",
     WebkitBackdropFilter: "blur(18px) saturate(160%)",
     overflow: "hidden",
+    borderRadius: "var(--radius-lg)",
   } as const;
 
   const badgeStyles = {
@@ -350,162 +320,135 @@ export default function CafeDetailsScreen({
   );
 
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
+    <AppModal
+      open={opened}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
       fullScreen
-      withCloseButton
+      closeButton
+      implementation="radix"
       title={
-        <Group justify="space-between" align="center" wrap="nowrap">
-          <Text fw={700} lineClamp={1}>
-            {cafe.name}
-          </Text>
-          <ActionIcon
-            variant="default"
-            size="lg"
-            radius="xl"
+        <div className="flex min-w-0 items-center justify-between gap-2 pr-2">
+          <p className="truncate text-base font-semibold text-[var(--text)]">{cafe.name}</p>
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
             aria-label="Добавить в избранное"
             onClick={onToggleFavorite}
-            disabled={!onToggleFavorite}
-            loading={favoriteLoading}
-            style={{
-              border: "1px solid var(--glass-border)",
-              background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-              boxShadow: "var(--shadow)",
-              backdropFilter: "blur(14px) saturate(140%)",
-              WebkitBackdropFilter: "blur(14px) saturate(140%)",
-              flexShrink: 0,
-              color: isFavorite ? "var(--color-brand-accent)" : "var(--text)",
-            }}
+            disabled={!onToggleFavorite || favoriteLoading}
+            className={cn(
+              "h-10 w-10 rounded-full border-glass-border bg-glass shadow-glass",
+              isFavorite ? "text-[var(--color-brand-accent)]" : "text-[var(--text)]",
+            )}
           >
             {isFavorite ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
-          </ActionIcon>
-        </Group>
+          </Button>
+        </div>
       }
-      styles={modalStyles}
+      contentClassName="bg-glass border border-glass-border shadow-[var(--shadow)] backdrop-blur-[18px] backdrop-saturate-[160%]"
+      bodyClassName="px-[var(--page-edge-padding)] pb-[calc(var(--page-edge-padding)+var(--safe-bottom))]"
     >
-      <Paper withBorder radius="lg" p={0} style={cardStyles}>
-        <Stack gap={0}>
-          <Box
-            pt="md"
-            pb="xs"
-            style={{ paddingInline: "var(--page-edge-padding)" }}
-          >
-            <SegmentedControl
-              fullWidth
-              transitionDuration={0}
-              data={DETAILS_SECTION_CONTROL_DATA}
-              value={section}
-              onChange={(value) => setSection(value as DetailsSection)}
-              styles={{
-                root: {
-                  background: "transparent",
-                  border: "none",
-                  boxShadow: "none",
-                  padding: 0,
-                  overflow: "visible",
-                },
-                control: {
-                  border: "none",
-                  "&::before": {
-                    display: "none",
-                  },
-                },
-                indicator: {
-                  background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-                  border: "1px solid var(--glass-border)",
-                  borderRadius: 14,
-                  boxShadow: "var(--glass-shadow)",
-                  backdropFilter: "blur(12px) saturate(140%)",
-                  WebkitBackdropFilter: "blur(12px) saturate(140%)",
-                },
-                label: {
-                  color: "var(--text)",
-                  fontWeight: 600,
-                  borderRadius: 14,
-                  padding: "10px 8px",
-                  transition: "color 120ms ease",
-                },
-              }}
+      <div style={cardStyles}>
+        <div className="px-[var(--page-edge-padding)] pb-2 pt-4">
+          <div className="grid grid-cols-3 gap-1 rounded-[14px] border border-[var(--glass-border)] bg-[var(--surface)] p-1">
+            {DETAILS_SECTION_CONTROL_DATA.map((item) => {
+              const active = section === item.value;
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setSection(item.value)}
+                  className={cn(
+                    "rounded-[12px] border px-2 py-2 text-sm font-semibold transition ui-interactive",
+                    active
+                      ? "border-[var(--glass-border)] bg-[linear-gradient(135deg,var(--glass-grad-1),var(--glass-grad-2))] text-[var(--text)] shadow-[var(--glass-shadow)]"
+                      : "border-transparent bg-transparent text-[var(--text)]/82 hover:bg-[var(--card)]",
+                  )}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {section === "about" && (
+          <AboutSection
+            cafe={cafe}
+            aboutMainPhoto={aboutMainPhoto}
+            aboutPhotoItems={aboutPhotoItems}
+            aboutActiveIndex={aboutActiveIndex}
+            aboutImageReady={aboutImageReady}
+            isPhotoProcessing={isCafePhotoProcessing}
+            onOpenViewer={() => openViewer("cafe", aboutActiveIndex)}
+            onAboutMainPhotoLoad={(src) => {
+              if (src) {
+                loadedAboutUrlsRef.current.add(src);
+              }
+              setAboutImageReady(true);
+            }}
+            onAboutMainPhotoError={() => setAboutImageReady(true)}
+            onSelectAboutPhoto={setAboutActiveIndex}
+            ratingPanel={ratingPanel}
+            showDistance={showDistance}
+            showRoutes={showRoutes}
+            onOpen2gis={onOpen2gis}
+            onOpenYandex={onOpenYandex}
+            descriptionEditing={descriptionEditing}
+            description={description}
+            descriptionDraft={descriptionDraft}
+            descriptionSaving={descriptionSaving}
+            descriptionError={descriptionError}
+            descriptionHint={descriptionHint}
+            descriptionActionLabel={descriptionActionLabel}
+            canManageDirectly={canManageDirectly}
+            onDescriptionDraftChange={setDescriptionDraft}
+            onStartDescription={handleStartDescription}
+            onCancelDescription={handleCancelDescription}
+            onSaveDescription={() => {
+              void handleSaveDescription();
+            }}
+            onManagePhotos={onManagePhotos}
+            canSaveDescription={Boolean(onSaveDescription)}
+            badgeStyles={badgeStyles}
+          />
+        )}
+
+        {section === "menu" && (
+          <MenuSection
+            cafe={cafe}
+            menuMainPhoto={menuMainPhoto}
+            menuPhotoItems={menuPhotoItems}
+            specificTags={specificTags}
+            menuActiveIndex={menuActiveIndex}
+            menuImageReady={menuImageReady}
+            isPhotoProcessing={isMenuPhotoProcessing}
+            onOpenViewer={() => openViewer("menu", menuActiveIndex)}
+            onMenuMainPhotoLoad={(src) => {
+              if (src) {
+                loadedMenuUrlsRef.current.add(src);
+              }
+              setMenuImageReady(true);
+            }}
+            onMenuMainPhotoError={() => setMenuImageReady(true)}
+            onSelectMenuPhoto={setMenuActiveIndex}
+            onManagePhotos={onManagePhotos}
+          />
+        )}
+
+        {section === "reviews" && (
+          <Box pb="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
+            <ReviewsSection
+              cafeId={cafe.id}
+              opened={opened}
+              journeyID={journeyID}
+              onReviewSaved={onReviewSaved}
             />
           </Box>
-
-          {section === "about" && (
-            <AboutSection
-              cafe={cafe}
-              aboutMainPhoto={aboutMainPhoto}
-              aboutPhotoItems={aboutPhotoItems}
-              aboutActiveIndex={aboutActiveIndex}
-              aboutImageReady={aboutImageReady}
-              isPhotoProcessing={isCafePhotoProcessing}
-              onOpenViewer={() => openViewer("cafe", aboutActiveIndex)}
-              onAboutMainPhotoLoad={(src) => {
-                if (src) {
-                  loadedAboutUrlsRef.current.add(src);
-                }
-                setAboutImageReady(true);
-              }}
-              onAboutMainPhotoError={() => setAboutImageReady(true)}
-              onSelectAboutPhoto={setAboutActiveIndex}
-              ratingPanel={ratingPanel}
-              showDistance={showDistance}
-              showRoutes={showRoutes}
-              onOpen2gis={onOpen2gis}
-              onOpenYandex={onOpenYandex}
-              descriptionEditing={descriptionEditing}
-              description={description}
-              descriptionDraft={descriptionDraft}
-              descriptionSaving={descriptionSaving}
-              descriptionError={descriptionError}
-              descriptionHint={descriptionHint}
-              descriptionActionLabel={descriptionActionLabel}
-              canManageDirectly={canManageDirectly}
-              onDescriptionDraftChange={setDescriptionDraft}
-              onStartDescription={handleStartDescription}
-              onCancelDescription={handleCancelDescription}
-              onSaveDescription={() => {
-                void handleSaveDescription();
-              }}
-              onManagePhotos={onManagePhotos}
-              canSaveDescription={Boolean(onSaveDescription)}
-              badgeStyles={badgeStyles}
-            />
-          )}
-
-          {section === "menu" && (
-            <MenuSection
-              cafe={cafe}
-              menuMainPhoto={menuMainPhoto}
-              menuPhotoItems={menuPhotoItems}
-              specificTags={specificTags}
-              menuActiveIndex={menuActiveIndex}
-              menuImageReady={menuImageReady}
-              isPhotoProcessing={isMenuPhotoProcessing}
-              onOpenViewer={() => openViewer("menu", menuActiveIndex)}
-              onMenuMainPhotoLoad={(src) => {
-                if (src) {
-                  loadedMenuUrlsRef.current.add(src);
-                }
-                setMenuImageReady(true);
-              }}
-              onMenuMainPhotoError={() => setMenuImageReady(true)}
-              onSelectMenuPhoto={setMenuActiveIndex}
-              onManagePhotos={onManagePhotos}
-            />
-          )}
-
-          {section === "reviews" && (
-            <Box pb="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
-              <ReviewsSection
-                cafeId={cafe.id}
-                opened={opened}
-                journeyID={journeyID}
-                onReviewSaved={onReviewSaved}
-              />
-            </Box>
-          )}
-        </Stack>
-      </Paper>
+        )}
+      </div>
 
       <PhotoLightboxModal
         opened={viewerOpen}
@@ -519,6 +462,6 @@ export default function CafeDetailsScreen({
         index={viewerIndex}
         onIndexChange={setViewerIndex}
       />
-    </Modal>
+    </AppModal>
   );
 }

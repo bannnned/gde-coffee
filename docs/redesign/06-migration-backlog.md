@@ -274,3 +274,16 @@ Critical path stack-transition:
 - AC: исключены “подвешенные” зоны со смешанными и неунифицированными паттернами.
 - Артефакт: порядок миграции Wave 2/3 и exit-критерии волн добавлены в `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/02-scope-wave1.md`.
 - Артефакт: formal deprecation plan для Mantine (Stage A-D) и правила масштабирования добавлены в `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/08-ui-stack-migration.md`.
+
+## 8. Wave 2 Execution Queue (New UI)
+
+### [ ] W2-A · Cafe details shell/layout/tabs/top-actions migration (P0, status: review)
+- Цель: перенести shell карточки кофейни на новый UI-слой без изменения бизнес-логики вкладок.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/CafeDetailsScreen.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx`.
+- AC: контейнер деталки использует bridge-контракт нового слоя.
+- AC: top-actions и tabs не зависят от Mantine SegmentedControl/Modal.
+- AC: about/menu/reviews сценарии и открытие lightbox работают без регрессий.
+- Артефакт: `CafeDetailsScreen` переведен на `AppModal` + new-ui tabs/actions в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/CafeDetailsScreen.tsx`.
+- Артефакт: `AppModal` bridge расширен для full-screen radix-модели в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx`.
+- Проверка: `npm test`, `npm run typecheck`, `npm run build` — pass.

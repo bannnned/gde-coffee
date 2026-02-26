@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { Drawer as MantineDrawer, Modal as MantineModal } from "@mantine/core";
+import { IconX } from "@tabler/icons-react";
 
 import {
+  SheetClose,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -21,6 +23,9 @@ type AppModalProps = {
   fullScreen?: boolean;
   closeButton?: boolean;
   implementation?: BridgeEngine;
+  contentClassName?: string;
+  bodyClassName?: string;
+  titleClassName?: string;
 };
 
 export function AppModal({
@@ -32,6 +37,9 @@ export function AppModal({
   fullScreen = false,
   closeButton = true,
   implementation = "mantine",
+  contentClassName,
+  bodyClassName,
+  titleClassName,
 }: AppModalProps) {
   // Dialog primitive is still Mantine-backed until STK-BL-010 migration
   // of feature overlays starts. Interface is stabilized here.
@@ -40,13 +48,42 @@ export function AppModal({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
-          className="h-[100dvh] max-h-[100dvh] w-full rounded-none border-0 p-0"
+          className={cn(
+            "w-full rounded-none border-0 p-0",
+            fullScreen
+              ? "h-[100dvh] max-h-[100dvh]"
+              : "h-auto max-h-[86dvh]",
+            contentClassName,
+          )}
         >
           <SheetHeader className="border-b border-border px-4 py-3">
-            {title ? <SheetTitle>{title}</SheetTitle> : null}
+            <div className="flex items-center justify-between gap-2">
+              {title ? (
+                <SheetTitle className={cn("min-w-0 flex-1", titleClassName)}>{title}</SheetTitle>
+              ) : (
+                <span />
+              )}
+              {closeButton ? (
+                <SheetClose
+                  aria-label="Закрыть"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-text transition ui-interactive ui-focus-ring"
+                >
+                  <IconX size={16} />
+                </SheetClose>
+              ) : null}
+            </div>
             <SheetDescription className="sr-only">Dialog content</SheetDescription>
           </SheetHeader>
-          <div className="h-[calc(100dvh-58px)] overflow-auto">{children}</div>
+          <div
+            className={cn(
+              fullScreen
+                ? "h-[calc(100dvh-58px)] overflow-auto"
+                : "max-h-[calc(86dvh-58px)] overflow-auto",
+              bodyClassName,
+            )}
+          >
+            {children}
+          </div>
         </SheetContent>
       </Sheet>
     );
