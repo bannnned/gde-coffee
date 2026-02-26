@@ -144,3 +144,27 @@ Notes:
 - ...
 ```
 
+## 7. Отчеты выполнения
+
+### Block: W1-BL-040 / W1-BL-041 / W1-BL-042
+- Date: 2026-02-25
+- Build/Commit: local workspace (uncommitted)
+
+Smoke:
+- S-01: pass (смоук-тест `App.home.smoke.test.tsx`)
+- S-02: not-run
+- S-03: not-run
+- S-04: not-run
+- S-05: not-run
+- S-06: pass (перестройка IA, радиус-пресеты и location-контролы в `SettingsDrawer`)
+- S-07: pass (guest gating, dedupe тегов, save feedback)
+- S-08: pass (empty/error карточка обновлена ранее в W1-BL-030)
+- S-09: pass (регрессий в overlay-навигации не выявлено автотестами/сборкой)
+- S-10: pending-manual (требуется проверка на iPhone Safari/PWA)
+
+New regressions:
+- none
+
+Notes:
+- Локально пройдено: `npm test`, `npm run typecheck`, `npm run build`.
+- Исправлена регрессия smoke-теста `App.home.smoke.test.tsx` (защита defaults в `SettingsDrawer`).

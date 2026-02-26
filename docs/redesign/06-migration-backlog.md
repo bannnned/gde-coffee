@@ -133,15 +133,16 @@
 - Артефакт: позиционирование и desktop-alignment floating control в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FloatingControls.module.css`
 - Артефакт: suppression встроенных MapLibre control-container + выравнивание zoom controls в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/index.css`
 
-### [ ] W1-BL-040 · Redesign Settings Drawer IA (P0, status: todo)
+### [x] W1-BL-040 · Redesign Settings Drawer IA (P0, status: done)
 - Цель: перестроить настройки в последовательный flow “место -> фильтрация -> контент”.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
 - Depends on: `W1-BL-011`
 - AC: пользователь за <=2 шага находит место, радиус, теги.
 - AC: группировка блоков соответствует спецификации `discovery-settings.md`.
 - AC: отсутствуют прозрачные/некликабельные контролы.
+- Артефакт: IA-перестройка блоков `1) место -> 2) фильтрация -> 3) контент` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
 
-### [ ] W1-BL-041 · Redesign Settings Drawer controls (P0, status: todo)
+### [x] W1-BL-041 · Redesign Settings Drawer controls (P0, status: done)
 - Цель: единый современный стиль `Select/Chip/Button/Radius presets` внутри Drawer.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/styles/glass.ts`
@@ -149,16 +150,20 @@
 - AC: радиус по умолчанию `5 км` и управление радиусом работает на мобильных.
 - AC: select/чипы читаемы, контрастны, без визуальных сбоев в светлой/темной теме.
 - AC: сценарий “гео недоступно -> выбрать город” работает без тупиков.
+- Артефакт: унифицированные стили `Select/ActionIcon/Radius presets/Button` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/styles/glass.ts`
+- Артефакт: применение unified controls в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
 
-### [ ] W1-BL-042 · Tag picker и top-tags UX (P0, status: todo)
+### [x] W1-BL-042 · Tag picker и top-tags UX (P0, status: done)
 - Цель: сделать flow выбора тегов простым и устойчивым.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
 - Depends on: `W1-BL-041`
 - AC: исключены дубликаты тегов в UI и отправке.
 - AC: поиск существующего тега работает, несуществующий тег не добавляется.
 - AC: сохранение дает понятное состояние `saving/success/error`.
+- Артефакт: дедуп выбранных/доступных тегов + защита add-only-existing в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
+- Артефакт: feedback `сохранение -> сохранено/ошибка` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
 
-### [ ] W1-BL-050 · Интеграция сценариев и ручной smoke-pack (P0, status: todo)
+### [ ] W1-BL-050 · Интеграция сценариев и ручной smoke-pack (P0, status: review)
 - Цель: подтвердить целостность Wave 1 end-to-end.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/03-definition-of-done.md`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/01a-practical-ui-rubric.md`
@@ -166,6 +171,9 @@
 - AC: пройдены ключевые сценарии Discovery из `screens/discovery.md`.
 - AC: каждый измененный экран имеет rubric score >= 17/20.
 - AC: критичных ошибок в консоли и падений UI нет.
+- Артефакт: Wave 1 smoke-report snapshot в `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/07-wave1-baseline-smoke.md`
+- Артефакт: rubric snapshot `19/20` в `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/01a-practical-ui-rubric.md`
+- Note: требуется ручной `S-10` (iPhone Safari/PWA) для финального перевода в `done`.
 
 ### [ ] W1-BL-051 · Метрики и событиевая консистентность (P1, status: todo)
 - Цель: убедиться, что UX-редизайн не ломает продуктовые события.
