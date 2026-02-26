@@ -9,6 +9,12 @@
     transform var(--duration-fast) var(--ease-standard);
 }
 
+.hidden {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+
 .button {
   border-radius: var(--radius-md);
   box-shadow:

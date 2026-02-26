@@ -616,8 +616,7 @@
   );
 }
 
-[data-sheet-state='expanded'] .map-zoom-controls,
-[data-sheet-state='expanded'] .floating-controls {
+.map-zoom-controls--hidden {
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;

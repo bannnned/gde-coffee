@@ -30,7 +30,7 @@ type SheetState = "peek" | "mid" | "expanded";
 
 const SWIPE_VELOCITY = 1100;
 const SWIPE_VELOCITY_STRONG = 1700;
-const PEEK_HEIGHT_PX = 64;
+const PEEK_HEIGHT_PX = 56;
 const SHEET_PADDING_PX = 8;
 const MID_SINGLE_CAFE_EXTRA_PX = 26;
 

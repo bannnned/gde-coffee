@@ -1,5 +1,5 @@
 import { Box } from "@mantine/core";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 
 import Map from "../components/Map";
 import { DISCOVERY_UI_TEXT } from "../features/discovery/constants";
@@ -111,6 +111,64 @@ export default function DiscoveryScreen() {
     resetFilters,
   } = useDiscoveryPageController();
   const discoveryViewportHeight = Math.max(1, Math.round(safeViewportHeight));
+  const controlsAvailablePx = Math.max(
+    0,
+    discoveryViewportHeight - sheetHeight - filtersBarHeight - 12,
+  );
+  const controlsHidden = controlsAvailablePx < 110;
+  const detailsOpenRef = useRef(detailsOpen);
+  const detailsHistoryActiveRef = useRef(false);
+  const suppressDetailsPopRef = useRef(false);
+
+  useEffect(() => {
+    detailsOpenRef.current = detailsOpen;
+  }, [detailsOpen]);
+
+  useEffect(() => {
+    if (!detailsOpen) return;
+    if (detailsHistoryActiveRef.current) return;
+    try {
+      window.history.pushState(
+        {
+          ...(window.history.state ?? {}),
+          __gdeCoffeeDetails: true,
+        },
+        "",
+      );
+      detailsHistoryActiveRef.current = true;
+    } catch {
+      detailsHistoryActiveRef.current = false;
+    }
+  }, [detailsOpen]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (suppressDetailsPopRef.current) {
+        suppressDetailsPopRef.current = false;
+        detailsHistoryActiveRef.current = false;
+        return;
+      }
+      if (detailsHistoryActiveRef.current && detailsOpenRef.current) {
+        detailsHistoryActiveRef.current = false;
+        setDetailsOpen(false);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [setDetailsOpen]);
+
+  const handleCloseDetails = () => {
+    if (!detailsOpenRef.current) return;
+    if (detailsHistoryActiveRef.current) {
+      suppressDetailsPopRef.current = true;
+      setDetailsOpen(false);
+      window.history.back();
+      return;
+    }
+    setDetailsOpen(false);
+  };
 
   useEffect(() => {
     const userAgent = navigator.userAgent || "";
@@ -179,6 +237,7 @@ export default function DiscoveryScreen() {
           zoom={13}
           cafes={visibleCafes}
           filtersBarHeight={filtersBarHeight}
+          controlsHidden={controlsHidden}
           userLocation={isCityOnlyMode || manualPickMode ? null : userCenter}
           selectedCafeId={selectedCafeId}
           focusLngLat={manualPickMode ? null : focusLngLat}
@@ -215,6 +274,7 @@ export default function DiscoveryScreen() {
         onLocate={handleLocateMe}
         isLocating={isLocating}
         highlight={needsLocationChoice}
+        hidden={controlsHidden}
       />
 
       <BottomSheet
@@ -309,7 +369,7 @@ export default function DiscoveryScreen() {
             journeyID={selectedCafeJourneyID}
             photosRefreshToken={photosRefreshToken}
             onReviewSaved={handleReviewSaved}
-            onClose={() => setDetailsOpen(false)}
+            onClose={handleCloseDetails}
             isCafePhotoProcessing={selectedCafePhotoProcessing}
             isMenuPhotoProcessing={selectedMenuPhotoProcessing}
             showDistance={!isCityOnlyMode}

@@ -9,9 +9,36 @@ import type { Cafe } from "../types";
 import pinUrl from "../assets/pin.png";
 import cupUrl from "../assets/cup.png";
 
-const MAP_STYLE_URL =
-  (import.meta.env.VITE_MAP_STYLE_URL as string | undefined)?.trim() ||
-  "https://demotiles.maplibre.org/style.json";
+const MAP_STYLE_URL_RAW =
+  (import.meta.env.VITE_MAP_STYLE_URL as string | undefined)?.trim() || "";
+const MAP_STYLE_URL = /tiles\.openfreemap\.org/i.test(MAP_STYLE_URL_RAW)
+  ? ""
+  : MAP_STYLE_URL_RAW;
+
+function createFallbackMapStyle() {
+  return {
+    version: 8,
+    sources: {
+      osm: {
+        type: "raster",
+        tiles: [
+          "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        ],
+        tileSize: 256,
+        attribution: "© OpenStreetMap contributors",
+      },
+    },
+    layers: [
+      {
+        id: "osm-raster",
+        type: "raster",
+        source: "osm",
+      },
+    ],
+  } as const;
+}
 const USER_ICON_ID = "user-pin";
 const CAFE_ICON_ID = "cafe-cup";
 const MARKER_FALLBACK = { user: "#FFFFF0", cafe: "#457E73" };
@@ -37,6 +64,7 @@ type Props = {
   userLocation?: [number, number] | null;
   focusLngLat?: [number, number] | null;
   filtersBarHeight?: number;
+  controlsHidden?: boolean;
 };
 
 const FOCUS_EPS = 1e-6;
@@ -389,6 +417,7 @@ export default function Map({
   focusLngLat,
   centerProbeOffsetY = 0,
   filtersBarHeight = 0,
+  controlsHidden = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
@@ -471,7 +500,7 @@ export default function Map({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: MAP_STYLE_URL,
+      style: MAP_STYLE_URL || createFallbackMapStyle(),
       center,
       zoom,
       attributionControl: false,
@@ -730,7 +759,9 @@ export default function Map({
         className="map-shell"
         style={{ width: "100%", height: "100%" }}
       />
-      <div className="map-zoom-controls">
+      <div
+        className={`map-zoom-controls ${controlsHidden ? "map-zoom-controls--hidden" : ""}`}
+      >
         <button
           type="button"
           className="map-zoom-button"

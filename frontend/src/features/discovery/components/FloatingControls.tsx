@@ -7,12 +7,14 @@ type FloatingControlsProps = {
   onLocate: () => void;
   isLocating?: boolean;
   highlight?: boolean;
+  hidden?: boolean;
 };
 
 export default function FloatingControls({
   onLocate,
   isLocating,
   highlight = false,
+  hidden = false,
 }: FloatingControlsProps) {
   const buttonClassName = [
     "glass-action",
@@ -25,7 +27,10 @@ export default function FloatingControls({
     .join(" ");
 
   return (
-    <Box pos="absolute" className={`floating-controls ${classes.wrapper}`}>
+    <Box
+      pos="absolute"
+      className={`floating-controls ${classes.wrapper} ${hidden ? classes.hidden : ""}`}
+    >
       <ActionIcon
         size={42}
         variant="transparent"
