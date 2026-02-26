@@ -163,7 +163,7 @@
 - Артефакт: дедуп выбранных/доступных тегов + защита add-only-existing в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
 - Артефакт: feedback `сохранение -> сохранено/ошибка` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`
 
-### [ ] W1-BL-050 · Интеграция сценариев и ручной smoke-pack (P0, status: review)
+### [x] W1-BL-050 · Интеграция сценариев и ручной smoke-pack (P0, status: done)
 - Цель: подтвердить целостность Wave 1 end-to-end.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/03-definition-of-done.md`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/01a-practical-ui-rubric.md`
@@ -173,7 +173,7 @@
 - AC: критичных ошибок в консоли и падений UI нет.
 - Артефакт: Wave 1 smoke-report snapshot в `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/07-wave1-baseline-smoke.md`
 - Артефакт: rubric snapshot `19/20` в `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/01a-practical-ui-rubric.md`
-- Note: требуется ручной `S-10` (iPhone Safari/PWA) для финального перевода в `done`.
+- Note: ручной `S-10` (iPhone Safari/PWA) закрыт в продуктовой проверке.
 
 ### [x] W1-BL-051 · Метрики и событиевая консистентность (P1, status: done)
 - Цель: убедиться, что UX-редизайн не ломает продуктовые события.
@@ -185,7 +185,7 @@
 - Артефакт: metrics-тесты контроллера Discovery в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/hooks/useDiscoveryPageController.metrics.test.tsx`
 - Артефакт: подтверждение test-pack `32/32` в локальном прогоне `vitest`.
 
-### [ ] W1-BL-052 · Typecheck, build, release notes Wave 1 (P0, status: review)
+### [x] W1-BL-052 · Typecheck, build, release notes Wave 1 (P0, status: done)
 - Цель: закрыть инженерный контур и зафиксировать результат.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/`
 - Depends on: `W1-BL-050`
@@ -193,7 +193,7 @@
 - AC: документация Wave 1 обновлена после фактических изменений.
 - AC: зафиксирован список открытых рисков перед стартом Wave 2.
 - Артефакт: локальные прогоны `npm test`, `npm run typecheck`, `npm run build` — pass.
-- Note: финальный `done` после закрытия `W1-BL-050` (ручной `S-10` на iPhone Safari/PWA).
+- Note: закрыто после ручного `S-10` и актуализации release-снимка Wave 1.
 
 ## 5. Exit criteria для перехода к Wave 2
 
@@ -215,7 +215,7 @@ Critical path stack-transition:
 
 ## 7. Backlog задач: Stack Transition (`Tailwind + shadcn/ui`)
 
-### [ ] STK-BL-001 · Tailwind bootstrap и token bridge (P0, status: todo)
+### [x] STK-BL-001 · Tailwind bootstrap и token bridge (P0, status: done)
 - Цель: подключить `Tailwind` без поломки текущего UI.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/` (configs + entry CSS).
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/index.css`.
@@ -223,8 +223,11 @@ Critical path stack-transition:
 - AC: `Tailwind` работает в проекте, сборка и typecheck зеленые.
 - AC: базовые design tokens проброшены в новый слой утилит.
 - AC: существующий экран Discovery визуально не деградировал после bootstrap.
+- Артефакт: подключен Tailwind Vite plugin в `/Users/a1/Desktop/Prog/gde-coffee/frontend/vite.config.ts`.
+- Артефакт: добавлен token bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/styles/tailwind-bridge.css`.
+- Артефакт: Tailwind theme/utilities импортированы в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/index.css` без preflight-reset.
 
-### [ ] STK-BL-002 · shadcn/ui infrastructure и базовые примитивы (P0, status: todo)
+### [x] STK-BL-002 · shadcn/ui infrastructure и базовые примитивы (P0, status: done)
 - Цель: завести реальную инфраструктуру `shadcn/ui`.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/*`.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/lib/*` (утилиты классов и shared helpers).
@@ -232,8 +235,11 @@ Critical path stack-transition:
 - AC: доступны базовые примитивы (`Button`, `Input`, `Select`/`Popover`, `Sheet`, `Badge`).
 - AC: темизация и радиусы согласованы с текущими токенами продукта.
 - AC: режим светлой/темной темы сохраняет читаемость и контраст.
+- Артефакт: добавлен `cn()` helper в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/lib/utils.ts`.
+- Артефакт: добавлены базовые UI-примитивы в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/` (`button.tsx`, `input.tsx`, `badge.tsx`, `sheet.tsx`, `popover.tsx`).
+- Артефакт: re-export layer в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/index.ts`.
 
-### [ ] STK-BL-003 · Coexistence-правила Mantine + shadcn (P0, status: todo)
+### [x] STK-BL-003 · Coexistence-правила Mantine + shadcn (P0, status: done)
 - Цель: формализовать переходный режим, чтобы не получить хаос из двух UI-систем.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/08-ui-stack-migration.md`.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/` (точки интеграции и адаптеры).
@@ -241,16 +247,24 @@ Critical path stack-transition:
 - AC: зафиксированы правила “что новое делаем на shadcn, что временно остается на Mantine”.
 - AC: нет дублирующих компонентных контрактов без явной причины.
 - AC: типовые UI-контейнеры (модалка/лист/форма) имеют утвержденный путь миграции.
+- Артефакт: правила coexistence и migration-path добавлены в `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/08-ui-stack-migration.md` (раздел 7).
+- Артефакт: bridge-контракты контейнеров и форм добавлены в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/form.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/index.ts`.
+- Артефакт: guardrail для `src/components/ui/*` добавлен в `/Users/a1/Desktop/Prog/gde-coffee/frontend/eslint.config.js` (`no-restricted-imports` для `@mantine/core`).
 
-### [ ] STK-BL-010 · Пилотная миграция: Discovery Settings на новом стеке (P0, status: todo)
+### [x] STK-BL-010 · Пилотная миграция: Discovery Settings на новом стеке (P0, status: done)
 - Цель: проверить подход на реальном критичном сценарии.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`.
 - Depends on: `STK-BL-003`.
 - AC: `SettingsDrawer` переведен на новый стек без потери UX-функций.
 - AC: сценарии радиуса/города/тегов проходят без регрессий.
 - AC: консоль без критичных ошибок, typecheck/build проходят.
+- Прогресс: контейнер `SettingsDrawer` переведен на bridge + Radix sheet; actions/chips/form-layout в `SettingsDrawer` переведены на новый UI-слой.
+- Артефакт: bridge-container migration и UI-controls migration в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx` через `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/form.tsx`.
+- Артефакт: селекты экрана переведены на bridge-контракт `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/select.tsx`.
+- Примечание: `Select` пока остается Mantine как legacy-control переходного этапа (по правилам `STK-BL-003`).
+- Проверка: `npm test`, `npm run typecheck`, `npm run build` — pass.
 
-### [ ] STK-BL-020 · План масштабирования на Wave 2/3 и deprecation legacy UI (P1, status: todo)
+### [x] STK-BL-020 · План масштабирования на Wave 2/3 и deprecation legacy UI (P1, status: done)
 - Цель: зафиксировать управляемый массовый перенос экранов.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/02-scope-wave1.md`.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/08-ui-stack-migration.md`.
@@ -258,3 +272,5 @@ Critical path stack-transition:
 - AC: определен порядок миграции экранов Wave 2/3 на новом стеке.
 - AC: есть явные критерии отключения legacy Mantine-слоя.
 - AC: исключены “подвешенные” зоны со смешанными и неунифицированными паттернами.
+- Артефакт: порядок миграции Wave 2/3 и exit-критерии волн добавлены в `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/02-scope-wave1.md`.
+- Артефакт: formal deprecation plan для Mantine (Stage A-D) и правила масштабирования добавлены в `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/08-ui-stack-migration.md`.

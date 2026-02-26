@@ -50,4 +50,21 @@ export default tseslint.config(
       "prefer-const": "warn",
     },
   },
+  {
+    files: ["src/components/ui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@mantine/core",
+              message:
+                "Do not import Mantine inside src/components/ui. Use Radix + Tailwind primitives in this layer.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 );

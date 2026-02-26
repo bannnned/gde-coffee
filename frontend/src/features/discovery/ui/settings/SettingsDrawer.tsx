@@ -1,24 +1,12 @@
-import {
-  ActionIcon,
-  Chip,
-  Drawer,
-  Group,
-  Select,
-  Stack,
-  Text,
-  Button,
-  useMantineTheme,
-} from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IconMapPin, IconPlus } from "@tabler/icons-react";
 
+import { Button } from "../../../../components/ui";
+import { cn } from "../../../../lib/utils";
 import { DISCOVERY_UI_TEXT } from "../../constants";
+import { AppSelect, AppSheet, FormActions, FormField } from "../../../../ui/bridge";
 import {
-  createDiscoveryAmenityChipLabelStyles,
-  discoveryGlassActionIconStyles,
-  getDiscoveryGlassButtonStyles,
-  getDiscoveryRadiusPresetButtonStyles,
   discoveryGlassSelectStyles,
 } from "../styles/glass";
 
@@ -90,42 +78,11 @@ export default function SettingsDrawer({
   onTopTagsQueryChange,
   onSaveTopTags,
 }: SettingsDrawerProps) {
-  const theme = useMantineTheme();
   const isCoarsePointer = useMediaQuery("(pointer: coarse)") ?? false;
   const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
   const [pendingTagToAdd, setPendingTagToAdd] = useState<string | null>(null);
   const [tagSaveFeedback, setTagSaveFeedback] = useState<string | null>(null);
   const prevTopTagsSavingRef = useRef(topTagsSaving);
-
-  const drawerStyles = {
-    content: {
-      background: "var(--glass-bg)",
-      backdropFilter: "blur(18px) saturate(180%)",
-      WebkitBackdropFilter: "blur(18px) saturate(180%)",
-      borderRadius: 0,
-      height: "100dvh",
-      maxHeight: "100dvh",
-      border: "1px solid var(--glass-border)",
-      boxShadow: "var(--shadow)",
-    },
-    header: {
-      position: "sticky",
-      top: 0,
-      zIndex: 8,
-      background: "color-mix(in srgb, var(--glass-bg) 88%, transparent)",
-      backdropFilter: "blur(20px) saturate(170%)",
-      WebkitBackdropFilter: "blur(20px) saturate(170%)",
-      borderBottom: "1px solid var(--glass-border)",
-    },
-    body: {
-      paddingTop: theme.spacing.sm,
-    },
-    overlay: {
-      backdropFilter: "blur(10px)",
-      backgroundColor: "var(--color-surface-overlay-strong)",
-    },
-  } as const;
-  const tagChipLabelStyles = createDiscoveryAmenityChipLabelStyles(theme.fontSizes.xs);
   const normalizedSelectedTags = useMemo(() => {
     const unique: string[] = [];
     const seen = new Set<string>();
@@ -255,17 +212,19 @@ export default function SettingsDrawer({
   }, [topTagsDirty]);
 
   return (
-    <Drawer
-      opened={opened}
-      onClose={onClose}
-      position="right"
-      size="100%"
+    <AppSheet
+      open={opened}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
       title="Настройки"
-      styles={drawerStyles}
+      implementation="radix"
+      contentClassName="bg-glass border border-glass-border shadow-glass backdrop-blur-[18px] backdrop-saturate-[180%]"
+      bodyClassName="px-4 pt-4 pb-6"
     >
-      <Stack gap="md">
-        <Stack
-          gap="xs"
+      <div className="flex flex-col gap-4">
+        <div
+          className="flex flex-col gap-2"
           style={
             highlightLocationBlock
               ? {
@@ -279,149 +238,150 @@ export default function SettingsDrawer({
               : baseSectionStyles
           }
         >
-          <Group justify="space-between" align="flex-start" gap="xs">
-            <Text fw={700}>1. Где искать</Text>
-            <Text size="xs" c="dimmed" ta="right" lineClamp={2}>
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-semibold text-[var(--text)]">1. Где искать</p>
+            <p className="line-clamp-2 text-right text-xs text-[var(--muted)]">
               {locationLabel}
-            </Text>
-          </Group>
-          <Select
-            data={locationOptions.map((option) => ({
-              value: option.id,
-              label: option.label,
-            }))}
-            value={selectedLocationId || null}
-            placeholder="Выбрать город"
-            searchable={!isCoarsePointer}
-            nothingFoundMessage="Ничего не найдено"
-            onChange={(value) => {
-              if (!value) return;
-              onSelectLocation(value);
-            }}
-            comboboxProps={{ withinPortal: true, zIndex: 4300 }}
-            styles={discoveryGlassSelectStyles}
-          />
+            </p>
+          </div>
+          <FormField label="Город">
+            <AppSelect
+              data={locationOptions.map((option) => ({
+                value: option.id,
+                label: option.label,
+              }))}
+              value={selectedLocationId || null}
+              placeholder="Выбрать город"
+              searchable={!isCoarsePointer}
+              nothingFoundMessage="Ничего не найдено"
+              onChange={(value) => {
+                if (!value) return;
+                onSelectLocation(value);
+              }}
+              comboboxProps={{ withinPortal: true, zIndex: 4300 }}
+              styles={discoveryGlassSelectStyles}
+            />
+          </FormField>
           <Button
-            variant="light"
-            leftSection={<IconMapPin size={16} />}
+            type="button"
+            variant="secondary"
+            size="md"
+            className="justify-start gap-2 border-glass-border bg-glass text-text shadow-glass"
             onClick={onOpenMapPicker}
-            styles={getDiscoveryGlassButtonStyles(false)}
           >
-            Выбрать точку на карте
+            <IconMapPin size={16} />
+            <span>Выбрать точку на карте</span>
           </Button>
-        </Stack>
+        </div>
 
-        <Stack gap="sm" style={baseSectionStyles}>
-          <Text fw={700}>2. Фильтрация</Text>
+        <div className="flex flex-col gap-3" style={baseSectionStyles}>
+          <p className="text-sm font-semibold text-[var(--text)]">2. Фильтрация</p>
 
-          <Stack gap={6}>
-            <Text size="sm" fw={600}>
-              {DISCOVERY_UI_TEXT.radiusTitle}
-            </Text>
-            <Group gap="xs" wrap="wrap">
+          <FormField label={DISCOVERY_UI_TEXT.radiusTitle}>
+            <div className="flex flex-wrap gap-2">
               {RADIUS_OPTIONS.map((value) => (
                 <Button
                   key={value}
-                  variant="filled"
-                  size="xs"
-                  styles={getDiscoveryRadiusPresetButtonStyles(radiusM === value)}
+                  type="button"
+                  variant={radiusM === value ? "default" : "secondary"}
+                  size="sm"
+                  className={cn(
+                    "h-8 rounded-full px-3 text-xs",
+                    radiusM === value
+                      ? "border-[color:var(--color-brand-accent)]"
+                      : "border-[color:var(--border)] bg-[color:var(--surface)] text-[var(--text)]",
+                  )}
                   onClick={() => onRadiusChange(value)}
                 >
                   {formatRadiusLabel(value)}
                 </Button>
               ))}
-            </Group>
-          </Stack>
+            </div>
+          </FormField>
 
-          <Stack gap={6}>
-            <Group justify="space-between" align="center">
-              <Text size="sm" fw={600}>
-                Теги на главной
-              </Text>
-              <ActionIcon
-                variant="filled"
-                size={32}
-                aria-label="Добавить тег"
-                styles={discoveryGlassActionIconStyles}
-                onClick={() => {
-                  if (!isAuthed) {
-                    onRequireAuthForTags?.();
-                    return;
-                  }
-                  setIsTagPickerOpen((prev) => !prev);
-                }}
-              >
-                <IconPlus size={16} />
-              </ActionIcon>
-            </Group>
+          <div className="flex flex-col gap-2">
+            <FormField label="Теги на главной">
+              <FormActions className="justify-between">
+                <p className="text-xs text-[var(--muted)]">Популярные теги для вашего контекста</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  aria-label="Добавить тег"
+                  className="h-8 w-8 rounded-full border-glass-border bg-glass text-text shadow-glass"
+                  onClick={() => {
+                    if (!isAuthed) {
+                      onRequireAuthForTags?.();
+                      return;
+                    }
+                    setIsTagPickerOpen((prev) => !prev);
+                  }}
+                >
+                  <IconPlus size={16} />
+                </Button>
+              </FormActions>
+            </FormField>
 
             {topTagsLoading && (
-              <Text size="sm" c="dimmed">
+              <p className="text-sm text-[var(--muted)]">
                 Загружаем теги...
-              </Text>
+              </p>
             )}
 
-            <Text size="sm" c="dimmed">
-              Популярные теги для вашего контекста
-            </Text>
-            <Group gap={6} wrap="wrap">
+            <div className="flex flex-wrap gap-1.5">
               {popularTopTags.length > 0 ? (
                 popularTopTags.map((tag) => {
                   const isChecked = hasTagSelected(tag);
                   return (
-                    <Chip
+                    <button
                       key={tag}
-                      checked={isChecked}
-                      onChange={() => {
+                      type="button"
+                      onClick={() => {
                         if (!isAuthed) {
                           onRequireAuthForTags?.();
                           return;
                         }
                         toggleTag(tag);
                       }}
-                      size="xs"
-                      radius="xl"
-                      variant="filled"
-                      icon={null}
                       disabled={isAuthed ? !canEditTags : false}
-                      styles={{
-                        iconWrapper: { display: "none" },
-                        label: {
-                          ...tagChipLabelStyles.base,
-                          ...(isChecked ? tagChipLabelStyles.checked : null),
-                        },
-                      }}
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-xs font-medium transition ui-interactive",
+                        isChecked
+                          ? "border-[color:var(--color-brand-accent)] bg-[color:var(--color-brand-accent-soft)] text-[color:var(--text)]"
+                          : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text)] hover:bg-[color:var(--card)]",
+                      )}
                     >
                       {tag}
-                    </Chip>
+                    </button>
                   );
                 })
               ) : (
-                <Text size="sm" c="dimmed">
+                <p className="text-sm text-[var(--muted)]">
                   Пока нет популярных тегов в этой области.
-                </Text>
+                </p>
               )}
-            </Group>
+            </div>
 
             {!isAuthed ? (
-              <Stack gap={6}>
-                <Text size="sm" c="dimmed">
+              <div className="flex flex-col gap-1.5">
+                <p className="text-sm text-[var(--muted)]">
                   Войдите в аккаунт, чтобы выбрать любимые теги.
-                </Text>
+                </p>
                 <Button
-                  variant="light"
+                  type="button"
+                  variant="secondary"
                   onClick={() => onRequireAuthForTags?.()}
-                  styles={getDiscoveryGlassButtonStyles(true)}
+                  className="justify-start border-glass-border bg-glass text-text shadow-glass"
                 >
                   Войти и настроить теги
                 </Button>
-              </Stack>
+              </div>
             ) : (
               <>
                 {isTagPickerOpen && (
-                  <Stack gap={6}>
-                    <Group grow align="flex-end">
-                      <Select
+                  <div className="flex flex-col gap-1.5">
+                    <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+                      <AppSelect
                         data={normalizedTagOptions.map((tag) => ({ value: tag, label: tag }))}
                         value={pendingTagToAdd}
                         searchable
@@ -432,87 +392,82 @@ export default function SettingsDrawer({
                         onSearchChange={onTopTagsQueryChange}
                         onChange={setPendingTagToAdd}
                         comboboxProps={{ withinPortal: true, zIndex: 4300 }}
-                        rightSection={topTagsOptionsLoading ? <Text size="xs">...</Text> : null}
+                        rightSection={topTagsOptionsLoading ? <span style={{ fontSize: 12 }}>...</span> : null}
                         styles={discoveryGlassSelectStyles}
                         disabled={!canEditTags}
                       />
                       <Button
-                        variant="light"
+                        type="button"
+                        variant="secondary"
                         onClick={handleAddPendingTag}
                         disabled={!pendingTagToAdd || !canEditTags}
-                        styles={getDiscoveryGlassButtonStyles(Boolean(pendingTagToAdd))}
+                        className="border-glass-border bg-glass text-text shadow-glass"
                       >
                         Добавить
                       </Button>
-                    </Group>
-                  </Stack>
+                    </div>
+                  </div>
                 )}
-                <Text size="sm" c="dimmed">
+                <p className="text-sm text-[var(--muted)]">
                   Выбрано: {normalizedSelectedTags.length}/12
-                </Text>
-                <Group gap={6} wrap="wrap">
+                </p>
+                <div className="flex flex-wrap gap-1.5">
                   {normalizedSelectedTags.length > 0 ? (
                     normalizedSelectedTags.map((tag) => (
-                      <Chip
+                      <button
                         key={tag}
-                        checked
-                        onChange={() => toggleTag(tag)}
-                        size="xs"
-                        radius="xl"
-                        variant="filled"
-                        icon={null}
+                        type="button"
+                        onClick={() => toggleTag(tag)}
                         disabled={!canEditTags}
-                        styles={{
-                          iconWrapper: { display: "none" },
-                          label: tagChipLabelStyles.checked,
-                        }}
+                        className="rounded-full border border-[color:var(--color-brand-accent)] bg-[color:var(--color-brand-accent-soft)] px-2.5 py-1 text-xs font-medium text-[color:var(--text)] transition ui-interactive"
                       >
                         {tag}
-                      </Chip>
+                      </button>
                     ))
                   ) : (
-                    <Text size="sm" c="dimmed">
+                    <p className="text-sm text-[var(--muted)]">
                       Добавьте теги через кнопку +
-                    </Text>
+                    </p>
                   )}
-                </Group>
+                </div>
                 <Button
-                  variant="light"
+                  type="button"
+                  variant="secondary"
                   onClick={onSaveTopTags}
                   disabled={!topTagsDirty || topTagsSaving || topTagsLoading}
-                  loading={topTagsSaving}
-                  styles={getDiscoveryGlassButtonStyles(Boolean(topTagsDirty))}
+                  className="justify-start border-glass-border bg-glass text-text shadow-glass"
                 >
-                  Сохранить теги
+                  {topTagsSaving ? "Сохраняем..." : "Сохранить теги"}
                 </Button>
                 {tagSaveFeedback && !topTagsError && (
-                  <Text size="sm" c="teal">
+                  <p className="text-sm text-[var(--color-status-success)]">
                     {tagSaveFeedback}
-                  </Text>
+                  </p>
                 )}
                 {topTagsError && (
-                  <Text size="sm" c="red">
+                  <p className="text-sm text-[var(--color-status-error)]">
                     {topTagsError}
-                  </Text>
+                  </p>
                 )}
               </>
             )}
-          </Stack>
-        </Stack>
+          </div>
+        </div>
 
-        <Stack gap="xs" style={baseSectionStyles}>
-          <Text fw={700}>3. Контент</Text>
+        <div className="flex flex-col gap-2" style={baseSectionStyles}>
+          <p className="text-sm font-semibold text-[var(--text)]">3. Контент</p>
           <Button
-            variant="light"
-            leftSection={<IconPlus size={16} />}
+            type="button"
+            variant="secondary"
             onClick={onSuggestCafe}
             disabled={!onSuggestCafe}
-            styles={getDiscoveryGlassButtonStyles(false)}
+            className="justify-start gap-2 border-glass-border bg-glass text-text shadow-glass"
           >
-            Предложить кофейню
+            <IconPlus size={16} />
+            <span>Предложить кофейню</span>
           </Button>
-        </Stack>
-      </Stack>
-    </Drawer>
+        </div>
+      </div>
+    </AppSheet>
   );
 }

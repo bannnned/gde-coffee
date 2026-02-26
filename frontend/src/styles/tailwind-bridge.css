@@ -1,0 +1,33 @@
+@theme {
+  /* Typography */
+  --font-sans: var(--font-ui);
+  --font-display: var(--font-display);
+
+  /* Colors mapped to current product tokens */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--color-on-accent);
+  --color-glass: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+  --color-danger: var(--color-status-error);
+  --color-success: var(--color-status-success);
+  --color-warning: var(--color-status-warning);
+
+  /* Radius / shadow parity with existing CSS system */
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --shadow-glass: var(--shadow-2);
+  --shadow-surface: var(--shadow-1);
+
+  /* Keep Tailwind spacing step aligned with existing spacing scale */
+  --spacing: var(--space-1);
+}

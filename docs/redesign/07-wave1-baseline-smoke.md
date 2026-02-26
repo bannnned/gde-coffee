@@ -185,3 +185,21 @@ New regressions:
 Notes:
 - Добавлен тест `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/hooks/useDiscoveryPageController.metrics.test.tsx`.
 - Проверено: `event_type=cafe_card_open` без дублей, `route_click` с provider `2gis/yandex`.
+
+### Block: W1-BL-050 / W1-BL-052
+- Date: 2026-02-27
+- Build/Commit: local workspace (uncommitted)
+
+Smoke:
+- S-01: pass
+- S-04: pass
+- S-06: pass
+- S-09: pass
+- S-10: pass (ручная проверка Safari/PWA на iPhone закрыта продуктовым подтверждением)
+
+New regressions:
+- none
+
+Notes:
+- Acceptance gate Wave 1 закрыт.
+- Локально пройдено: `npm test`, `npm run typecheck`, `npm run build`.

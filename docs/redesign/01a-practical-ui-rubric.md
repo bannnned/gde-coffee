@@ -91,6 +91,6 @@ Reviewer: Codex (pre-merge self-check)
 10) Консистентность с системой: 2
 
 Итог: `19/20`  
-Решение: `accept (pending-manual iOS sanity)`  
+Решение: `accept`  
 Комментарии:
-- Единственный незакрытый пункт: ручная проверка `S-10` на физическом iPhone Safari/PWA.
+- Ручная проверка `S-10` на iPhone Safari/PWA закрыта продуктовым подтверждением.

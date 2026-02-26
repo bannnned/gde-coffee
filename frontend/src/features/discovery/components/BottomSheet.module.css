@@ -27,6 +27,24 @@
     background-color var(--duration-base) var(--ease-standard);
 }
 
+.sheet::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 2;
+  pointer-events: none;
+  height: max(76px, calc(var(--sheet-header-height, 0px) * 0.88));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--glass-bg) 99%, transparent) 0%,
+    color-mix(in srgb, var(--glass-bg) 95%, transparent) 42%,
+    color-mix(in srgb, var(--glass-bg) 68%, transparent) 68%,
+    transparent 100%
+  );
+}
+
 .grabber {
   width: 72px;
   height: 16px;
@@ -105,22 +123,7 @@
 }
 
 .list::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: max(56px, calc(var(--sheet-header-height, 0px) * 0.58));
-  pointer-events: none;
-  z-index: 2;
-  background:
-    radial-gradient(
-      130% 96% at 50% 0%,
-      color-mix(in srgb, var(--glass-bg) 98%, transparent) 0%,
-      color-mix(in srgb, var(--glass-bg) 84%, transparent) 40%,
-      color-mix(in srgb, var(--glass-bg) 42%, transparent) 70%,
-      transparent 100%
-    );
+  display: none;
 }
 
 .sheet[data-state="peek"] .list {
@@ -134,11 +137,6 @@
 .sheet:not([data-state="peek"]) .list {
   visibility: visible;
   transform: translateY(0);
-}
-
-.sheet[data-state="peek"] .list::before,
-.list[data-empty="true"]::before {
-  opacity: 0;
 }
 
 @media (min-width: 900px) {
