@@ -168,3 +168,20 @@ New regressions:
 Notes:
 - Локально пройдено: `npm test`, `npm run typecheck`, `npm run build`.
 - Исправлена регрессия smoke-теста `App.home.smoke.test.tsx` (защита defaults в `SettingsDrawer`).
+
+### Block: W1-BL-051
+- Date: 2026-02-25
+- Build/Commit: local workspace (uncommitted)
+
+Smoke:
+- S-01: pass (`App.home.smoke.test.tsx`)
+- S-03: pass (контроллерные тесты метрик для выбора кофейни и route-click)
+- S-05: pass (событие `cafe_card_open` не дублируется при повторном выборе)
+- S-09: pass (overlay-контекст не затронут изменениями)
+
+New regressions:
+- none
+
+Notes:
+- Добавлен тест `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/hooks/useDiscoveryPageController.metrics.test.tsx`.
+- Проверено: `event_type=cafe_card_open` без дублей, `route_click` с provider `2gis/yandex`.

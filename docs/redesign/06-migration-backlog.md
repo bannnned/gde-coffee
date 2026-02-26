@@ -175,21 +175,25 @@
 - Артефакт: rubric snapshot `19/20` в `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/01a-practical-ui-rubric.md`
 - Note: требуется ручной `S-10` (iPhone Safari/PWA) для финального перевода в `done`.
 
-### [ ] W1-BL-051 · Метрики и событиевая консистентность (P1, status: todo)
+### [x] W1-BL-051 · Метрики и событиевая консистентность (P1, status: done)
 - Цель: убедиться, что UX-редизайн не ломает продуктовые события.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/hooks/useDiscoveryPageController.ts`
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/DiscoveryScreen.tsx`
 - Depends on: `W1-BL-050`
 - AC: события `cafe_card_open`, `route_click`, `review_read`, `checkin_start`, `review_submit` не потеряны.
 - AC: нет дублей событий из-за нового UI-потока.
+- Артефакт: metrics-тесты контроллера Discovery в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/hooks/useDiscoveryPageController.metrics.test.tsx`
+- Артефакт: подтверждение test-pack `32/32` в локальном прогоне `vitest`.
 
-### [ ] W1-BL-052 · Typecheck, build, release notes Wave 1 (P0, status: todo)
+### [ ] W1-BL-052 · Typecheck, build, release notes Wave 1 (P0, status: review)
 - Цель: закрыть инженерный контур и зафиксировать результат.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/docs/redesign/`
 - Depends on: `W1-BL-050`
 - AC: `typecheck` и production build проходят.
 - AC: документация Wave 1 обновлена после фактических изменений.
 - AC: зафиксирован список открытых рисков перед стартом Wave 2.
+- Артефакт: локальные прогоны `npm test`, `npm run typecheck`, `npm run build` — pass.
+- Note: финальный `done` после закрытия `W1-BL-050` (ручной `S-10` на iPhone Safari/PWA).
 
 ## 5. Exit criteria для перехода к Wave 2
 
