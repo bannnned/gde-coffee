@@ -1,7 +1,7 @@
 .wrapper {
   pointer-events: auto;
   right: var(--page-edge-padding);
-  bottom: calc(var(--sheet-height, 240px) + var(--space-6));
+  bottom: calc(var(--sheet-height, 240px) + var(--space-8));
   z-index: 3;
   transition:
     bottom var(--duration-base) var(--ease-out),

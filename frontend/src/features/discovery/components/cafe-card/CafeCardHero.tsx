@@ -48,7 +48,7 @@ export default function CafeCardHero({
   badgeStyles,
   children,
 }: CafeCardHeroProps) {
-  const HERO_HEIGHT_PX = 172;
+  const HERO_HEIGHT = "clamp(132px, 28vh, 172px)";
   const EMPTY_STATE_RESERVED_BOTTOM_PX = 86;
   const photoSources = buildCafePhotoPictureSources(activePhotoURL, [640, 1024, 1536]);
   const photoSizes = "(max-width: 768px) 100vw, 560px";
@@ -65,8 +65,10 @@ export default function CafeCardHero({
       onTouchEnd={onTouchEnd}
       style={{
         position: "relative",
-        minHeight: HERO_HEIGHT_PX,
-        height: HERO_HEIGHT_PX,
+        minHeight: HERO_HEIGHT,
+        height: HERO_HEIGHT,
+        width: "100%",
+        maxWidth: "100%",
         touchAction: "pan-y",
         background:
           "radial-gradient(circle at 20% 20%, var(--bg-accent-1), transparent 45%), var(--surface)",
@@ -85,6 +87,8 @@ export default function CafeCardHero({
               style={{
                 position: "absolute",
                 inset: 0,
+                width: "100%",
+                maxWidth: "100%",
                 display: "block",
                 zIndex: 0,
               }}
@@ -107,6 +111,7 @@ export default function CafeCardHero({
                   position: "absolute",
                   inset: 0,
                   width: "100%",
+                  maxWidth: "100%",
                   height: "100%",
                   objectFit: "cover",
                   display: "block",
@@ -121,6 +126,8 @@ export default function CafeCardHero({
             style={{
               position: "absolute",
               inset: 0,
+              width: "100%",
+              maxWidth: "100%",
               display: "block",
               zIndex: 1,
             }}
@@ -142,6 +149,7 @@ export default function CafeCardHero({
                 position: "absolute",
                 inset: 0,
                 width: "100%",
+                maxWidth: "100%",
                 height: "100%",
                 objectFit: "cover",
                 display: "block",

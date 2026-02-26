@@ -298,7 +298,7 @@ export default function SettingsDrawer({
               if (!value) return;
               onSelectLocation(value);
             }}
-            comboboxProps={{ withinPortal: false }}
+            comboboxProps={{ withinPortal: true, zIndex: 4300 }}
             styles={discoveryGlassSelectStyles}
           />
           <Button
@@ -431,7 +431,7 @@ export default function SettingsDrawer({
                         searchValue={topTagsQuery}
                         onSearchChange={onTopTagsQueryChange}
                         onChange={setPendingTagToAdd}
-                        comboboxProps={{ withinPortal: false }}
+                        comboboxProps={{ withinPortal: true, zIndex: 4300 }}
                         rightSection={topTagsOptionsLoading ? <Text size="xs">...</Text> : null}
                         styles={discoveryGlassSelectStyles}
                         disabled={!canEditTags}

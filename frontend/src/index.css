@@ -482,7 +482,7 @@
 .map-zoom-controls {
   position: absolute;
   bottom: calc(
-    var(--sheet-height, 240px) + var(--space-6) + var(--control-height-md) + var(--space-3)
+    var(--sheet-height, 240px) + var(--space-8) + var(--control-height-md) + var(--space-3)
   );
   right: var(--page-edge-padding);
   display: flex;
