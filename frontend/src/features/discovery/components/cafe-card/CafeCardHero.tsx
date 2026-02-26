@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Group } from "@mantine/core";
+import { Badge, Box, Button, Group, Stack } from "@mantine/core";
 import { IconCameraPlus, IconRoute2 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ReactNode } from "react";

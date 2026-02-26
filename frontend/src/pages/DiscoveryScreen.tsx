@@ -1,5 +1,5 @@
 import { Box } from "@mantine/core";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 
 import Map from "../components/Map";
 import { DISCOVERY_UI_TEXT } from "../features/discovery/constants";
@@ -112,6 +112,55 @@ export default function DiscoveryScreen() {
   } = useDiscoveryPageController();
   const discoveryViewportHeight = Math.max(1, Math.round(safeViewportHeight));
 
+  useEffect(() => {
+    const userAgent = navigator.userAgent || "";
+    const platform = navigator.platform || "";
+    const isIOS =
+      /iPhone|iPad|iPod/i.test(userAgent) ||
+      (platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (!isIOS) return undefined;
+
+    const EDGE_GUARD_PX = 20;
+    let trackingFromEdge = false;
+    let startX = 0;
+    let startY = 0;
+
+    const onTouchStart = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (!touch) return;
+      trackingFromEdge = touch.clientX <= EDGE_GUARD_PX;
+      startX = touch.clientX;
+      startY = touch.clientY;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (!trackingFromEdge) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      const dx = touch.clientX - startX;
+      const dy = Math.abs(touch.clientY - startY);
+      if (dx > 8 && dx > dy) {
+        event.preventDefault();
+      }
+    };
+
+    const stopTracking = () => {
+      trackingFromEdge = false;
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", stopTracking, { passive: true });
+    window.addEventListener("touchcancel", stopTracking, { passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", stopTracking);
+      window.removeEventListener("touchcancel", stopTracking);
+    };
+  }, []);
+
   return (
     <Box
       pos="relative"
@@ -175,7 +224,7 @@ export default function DiscoveryScreen() {
         isListEmpty={manualPickMode || showFirstChoice || visibleCafes.length === 0}
         lockedState={manualPickMode ? "peek" : null}
         disableMidState={false}
-        hideHeaderContentInPeek={false}
+        hideHeaderContentInPeek
         header={
           showFirstChoice ? (
             <DiscoveryLocationChoiceHeader

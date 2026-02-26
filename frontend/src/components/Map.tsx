@@ -9,7 +9,9 @@ import type { Cafe } from "../types";
 import pinUrl from "../assets/pin.png";
 import cupUrl from "../assets/cup.png";
 
-const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+const MAP_STYLE_URL =
+  (import.meta.env.VITE_MAP_STYLE_URL as string | undefined)?.trim() ||
+  "https://demotiles.maplibre.org/style.json";
 const USER_ICON_ID = "user-pin";
 const CAFE_ICON_ID = "cafe-cup";
 const MARKER_FALLBACK = { user: "#FFFFF0", cafe: "#457E73" };

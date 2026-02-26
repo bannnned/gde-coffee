@@ -92,7 +92,11 @@
   padding: calc(var(--sheet-header-height, 0px) + var(--space-2)) var(--list-inline-padding) 14px;
   pointer-events: auto;
   touch-action: pan-y;
-  transition: opacity var(--duration-fast) var(--ease-standard);
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard),
+    padding-top var(--duration-fast) var(--ease-standard);
+  will-change: opacity, transform;
 }
 
 .list[data-empty="true"] {
@@ -121,8 +125,15 @@
 
 .sheet[data-state="peek"] .list {
   opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
   pointer-events: none;
   padding-top: 0;
+}
+
+.sheet:not([data-state="peek"]) .list {
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .sheet[data-state="peek"] .list::before,
