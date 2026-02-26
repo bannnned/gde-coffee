@@ -1,19 +1,4 @@
-import type { FormEvent, RefObject } from "react";
-import {
-  ActionIcon,
-  Badge,
-  Box,
-  Button,
-  Group,
-  Paper,
-  Popover,
-  Stack,
-  TagsInput,
-  Text,
-  TextInput,
-  Textarea,
-  UnstyledButton,
-} from "@mantine/core";
+import { useMemo, type FormEvent, type RefObject } from "react";
 import {
   IconHelpCircle,
   IconPhotoPlus,
@@ -24,11 +9,18 @@ import {
 } from "@tabler/icons-react";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
 
-import type { CafeReview } from "../../../../../api/reviews";
 import {
-  type FormPhoto,
-  type ReviewFormValues,
-} from "./reviewForm";
+  Badge,
+  Button,
+  Input,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../../../../../components/ui";
+import { cn } from "../../../../../lib/utils";
+import { AppTagsInput } from "../../../../../ui/bridge";
+import type { CafeReview } from "../../../../../api/reviews";
+import { type FormPhoto, type ReviewFormValues } from "./reviewForm";
 import type { ReviewQualityInsight } from "./useReviewsSectionController";
 
 type ReviewComposerCardProps = {
@@ -63,6 +55,29 @@ type ReviewComposerCardProps = {
   onVerifyCurrentVisit: () => void;
 };
 
+const glassInputStyle = {
+  borderRadius: 14,
+  border: "1px solid var(--glass-border)",
+  background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+  boxShadow: "var(--glass-shadow)",
+  backdropFilter: "blur(10px) saturate(130%)",
+  WebkitBackdropFilter: "blur(10px) saturate(130%)",
+} as const;
+
+const tagsInputStyles = {
+  input: glassInputStyle,
+  dropdown: {
+    borderRadius: 14,
+    border: "1px solid var(--glass-border)",
+    background: "var(--color-surface-card)",
+  },
+  pill: {
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+    color: "var(--text)",
+  },
+} as const;
+
 export function ReviewComposerCard({
   ownReview,
   ownReviewQualityInsight,
@@ -91,41 +106,34 @@ export function ReviewComposerCard({
   const submitLoading = isSubmitting || uploadingPhotos;
   const remainingPhotoSlots = Math.max(0, 8 - photos.length);
   const addPhotoTilesCount = Math.min(3, remainingPhotoSlots);
-
-  const roundedInputStyles = {
-    input: {
-      borderRadius: 14,
-      border: "1px solid var(--glass-border)",
-      background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-      boxShadow: "var(--glass-shadow)",
-      backdropFilter: "blur(10px) saturate(130%)",
-      WebkitBackdropFilter: "blur(10px) saturate(130%)",
-    },
-    label: {
-      fontWeight: 600,
-      marginBottom: 4,
-    },
-    description: {
-      color: "var(--muted)",
-    },
-  } as const;
+  const positionsError = errors.positionsInput?.message
+    ? String(errors.positionsInput.message)
+    : null;
+  const summaryError = errors.summary?.message ? String(errors.summary.message) : null;
+  const normalizedPositionInputData = useMemo(() => {
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const value of positionInputData) {
+      const trimmed = value.trim();
+      if (!trimmed || seen.has(trimmed)) continue;
+      seen.add(trimmed);
+      unique.push(trimmed);
+    }
+    return unique;
+  }, [positionInputData]);
 
   return (
-    <Paper
-      withBorder
-      radius="lg"
-      p="md"
+    <div
+      className="rounded-[18px] border border-[var(--glass-border)] p-4 shadow-[var(--glass-shadow)]"
       style={{
         background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-        border: "1px solid var(--glass-border)",
-        boxShadow: "var(--glass-shadow)",
       }}
     >
       <form onSubmit={onFormSubmit}>
-        <Stack gap="sm">
-          <Text fw={600} size="sm">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm font-semibold text-[var(--text)]">
             {ownReview ? "Редактировать отзыв" : "Оставить отзыв"}
-          </Text>
+          </p>
 
           <Controller
             control={control}
@@ -133,41 +141,38 @@ export function ReviewComposerCard({
             render={({ field }) => {
               const ratingValue = Number(field.value) || 0;
               return (
-                <Stack gap={6}>
-                  <Text size="sm" fw={600}>
-                    Оценка
-                  </Text>
-                  <Group gap={8} wrap="nowrap" grow>
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-sm font-semibold text-[var(--text)]">Оценка</p>
+                  <div className="grid grid-cols-5 gap-2">
                     {Array.from({ length: 5 }, (_, idx) => {
                       const starValue = idx + 1;
                       const isActive = starValue <= ratingValue;
                       return (
-                        <UnstyledButton
+                        <button
                           key={`rating-star-${starValue}`}
                           type="button"
                           aria-label={`Поставить ${starValue} из 5`}
                           onClick={() => field.onChange(String(starValue))}
+                          className={cn(
+                            "inline-flex h-10 items-center justify-center rounded-[14px] border ui-focus-ring ui-interactive",
+                            isActive
+                              ? "text-[var(--color-on-accent)]"
+                              : "text-[var(--muted)]",
+                          )}
                           style={{
-                            height: 42,
-                            borderRadius: 14,
-                            border: "1px solid var(--glass-border)",
+                            borderColor: "var(--glass-border)",
                             background: isActive
                               ? "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent) 70%, white), var(--color-brand-accent))"
                               : "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-                            color: isActive ? "var(--color-on-accent)" : "var(--muted)",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
                             boxShadow: "var(--glass-shadow)",
-                            transition: "transform 140ms ease, background 180ms ease, color 180ms ease",
                           }}
                         >
                           {isActive ? <IconStarFilled size={18} /> : <IconStar size={18} />}
-                        </UnstyledButton>
+                        </button>
                       );
                     })}
-                  </Group>
-                </Stack>
+                  </div>
+                </div>
               );
             }}
           />
@@ -176,42 +181,47 @@ export function ReviewComposerCard({
             control={control}
             name="positionsInput"
             render={({ field }) => (
-              <TagsInput
-                label="Напиток"
-                placeholder="Добавьте позиции: эспрессо, воронка v60, фильтр"
-                description="Можно выбрать из подсказок или добавить свой формат"
-                value={field.value}
-                data={positionInputData}
-                maxTags={8}
-                splitChars={[","]}
-                clearable
-                searchable
-                required
-                onSearchChange={onPositionsInputSearchChange}
-                onChange={(value) => field.onChange(value)}
-                nothingFoundMessage={drinksLoading ? "Ищем..." : "Ничего не найдено"}
-                error={errors.positionsInput?.message}
-                styles={roundedInputStyles}
-              />
+              <div className="flex flex-col gap-1.5">
+                <p className="text-sm font-semibold text-[var(--text)]">Напиток</p>
+                <p className="text-xs text-[var(--muted)]">
+                  Можно выбрать из подсказок или добавить свой формат
+                </p>
+                <AppTagsInput
+                  implementation="radix"
+                  placeholder="Добавьте позиции: эспрессо, воронка v60, фильтр"
+                  value={field.value}
+                  data={normalizedPositionInputData}
+                  maxTags={8}
+                  splitChars={[","]}
+                  clearable
+                  searchable
+                  required
+                  onSearchChange={onPositionsInputSearchChange}
+                  onChange={(value) => field.onChange(value)}
+                  nothingFoundMessage={drinksLoading ? "Ищем..." : "Ничего не найдено"}
+                  error={positionsError ?? undefined}
+                  styles={tagsInputStyles}
+                />
+              </div>
             )}
           />
 
-          <Text size="xs" c="dimmed">
-            Позиции: {positionsInput.length}/8.
-          </Text>
+          <p className="text-xs text-[var(--muted)]">Позиции: {positionsInput.length}/8.</p>
 
           <Controller
             control={control}
             name="tagsInput"
             render={({ field }) => (
-              <TextInput
-                label="Вкусовые теги"
-                description="Через запятую, до 10"
-                placeholder="кислинка, шоколад, орех"
-                value={field.value}
-                onChange={(event) => field.onChange(event.currentTarget.value)}
-                styles={roundedInputStyles}
-              />
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-semibold text-[var(--text)]">Вкусовые теги</span>
+                <span className="text-xs text-[var(--muted)]">Через запятую, до 10</span>
+                <Input
+                  value={field.value}
+                  onChange={(event) => field.onChange(event.currentTarget.value)}
+                  placeholder="кислинка, шоколад, орех"
+                  style={glassInputStyle}
+                />
+              </label>
             )}
           />
 
@@ -219,22 +229,17 @@ export function ReviewComposerCard({
             control={control}
             name="liked"
             render={({ field }) => (
-              <Textarea
-                label="Понравилось"
-                minRows={2}
-                maxRows={6}
-                value={field.value}
-                onChange={(event) => field.onChange(event.currentTarget.value)}
-                placeholder="Что получилось особенно хорошо"
-                styles={{
-                  ...roundedInputStyles,
-                  input: {
-                    ...roundedInputStyles.input,
-                    whiteSpace: "pre-wrap",
-                    minHeight: 78,
-                  },
-                }}
-              />
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-semibold text-[var(--text)]">Понравилось</span>
+                <textarea
+                  value={field.value}
+                  onChange={(event) => field.onChange(event.currentTarget.value)}
+                  placeholder="Что получилось особенно хорошо"
+                  rows={3}
+                  className="min-h-[78px] w-full resize-y rounded-[14px] border px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] ui-interactive ui-focus-ring"
+                  style={glassInputStyle}
+                />
+              </label>
             )}
           />
 
@@ -242,22 +247,17 @@ export function ReviewComposerCard({
             control={control}
             name="disliked"
             render={({ field }) => (
-              <Textarea
-                label="Не понравилось"
-                minRows={2}
-                maxRows={6}
-                value={field.value}
-                onChange={(event) => field.onChange(event.currentTarget.value)}
-                placeholder="Что бы вы улучшили"
-                styles={{
-                  ...roundedInputStyles,
-                  input: {
-                    ...roundedInputStyles.input,
-                    whiteSpace: "pre-wrap",
-                    minHeight: 78,
-                  },
-                }}
-              />
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-semibold text-[var(--text)]">Не понравилось</span>
+                <textarea
+                  value={field.value}
+                  onChange={(event) => field.onChange(event.currentTarget.value)}
+                  placeholder="Что бы вы улучшили"
+                  rows={3}
+                  className="min-h-[78px] w-full resize-y rounded-[14px] border px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] ui-interactive ui-focus-ring"
+                  style={glassInputStyle}
+                />
+              </label>
             )}
           />
 
@@ -265,90 +265,102 @@ export function ReviewComposerCard({
             control={control}
             name="summary"
             render={({ field }) => (
-              <Textarea
-                label="Короткий вывод"
-                minRows={3}
-                maxRows={7}
-                value={field.value}
-                onChange={(event) => field.onChange(event.currentTarget.value)}
-                placeholder="Для кого место и стоит ли вернуться"
-                styles={{
-                  ...roundedInputStyles,
-                  input: {
-                    ...roundedInputStyles.input,
-                    whiteSpace: "pre-wrap",
-                    minHeight: 98,
-                  },
-                }}
-                error={errors.summary?.message}
-              />
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-semibold text-[var(--text)]">Короткий вывод</span>
+                <textarea
+                  value={field.value}
+                  onChange={(event) => field.onChange(event.currentTarget.value)}
+                  placeholder="Для кого место и стоит ли вернуться"
+                  rows={4}
+                  className="min-h-[98px] w-full resize-y rounded-[14px] border px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] ui-interactive ui-focus-ring"
+                  style={glassInputStyle}
+                />
+                {summaryError ? <p className="text-xs text-danger">{summaryError}</p> : null}
+              </label>
             )}
           />
 
-          <Stack gap={6}>
-            <Group justify="space-between" align="center">
-              <Group gap={6} align="center">
-                <Text size="sm" fw={600}>
-                  Верификация визита
-                </Text>
-                <Popover width={240} position="bottom-start" withArrow shadow="md">
-                  <Popover.Target>
-                    <ActionIcon size="sm" radius="xl" variant="subtle" aria-label="Как работает верификация">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-semibold text-[var(--text)]">Верификация визита</p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Как работает верификация"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--muted)] ui-focus-ring ui-interactive"
+                    >
                       <IconHelpCircle size={15} />
-                    </ActionIcon>
-                  </Popover.Target>
-                  <Popover.Dropdown>
-                    <Text size="xs">
-                      Нажмите I&apos;m here в кофейне, подождите несколько минут и опубликуйте/обновите отзыв.
-                      Если check-in активен, можно отдельно нажать подтверждение.
-                    </Text>
-                  </Popover.Dropdown>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-60">
+                    <p className="text-xs text-[var(--text)]">
+                      Нажмите I&apos;m here в кофейне, подождите несколько минут и
+                      опубликуйте/обновите отзыв. Если check-in активен, можно отдельно
+                      нажать подтверждение.
+                    </p>
+                  </PopoverContent>
                 </Popover>
-              </Group>
-              {activeCheckIn && (
-                <Badge size="xs" variant="light" color="teal">
+              </div>
+              {activeCheckIn ? (
+                <Badge variant="secondary" className="text-[10px]">
                   check-in активен
                 </Badge>
-              )}
-            </Group>
-            <Group gap={8} wrap="wrap">
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
-                variant="light"
-                loading={checkInStarting}
+                variant="secondary"
+                className="rounded-full"
                 onClick={onStartCheckIn}
-                radius="xl"
+                disabled={checkInStarting}
               >
-                I&apos;m here
+                {checkInStarting ? (
+                  <>
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Запуск...
+                  </>
+                ) : (
+                  "I'm here"
+                )}
               </Button>
-              {ownReview && activeCheckIn && (
+              {ownReview && activeCheckIn ? (
                 <Button
                   type="button"
-                  variant="default"
-                  loading={verifyVisitPending}
+                  className="rounded-full"
                   onClick={onVerifyCurrentVisit}
-                  radius="xl"
+                  disabled={verifyVisitPending}
                 >
-                  Подтвердить визит
+                  {verifyVisitPending ? (
+                    <>
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Проверяем...
+                    </>
+                  ) : (
+                    "Подтвердить визит"
+                  )}
                 </Button>
-              )}
-            </Group>
-            {activeCheckIn && (
-              <Text size="xs" c="dimmed">
-                Дистанция: {activeCheckIn.distanceMeters}м. После выдержки времени опубликуйте отзыв: визит подтвердится автоматически.
-              </Text>
-            )}
-          </Stack>
+              ) : null}
+            </div>
 
-          <Stack gap="xs">
-            <Group justify="space-between" align="center">
-              <Text size="sm" fw={600}>
-                Фото отзыва
-              </Text>
-              <Badge variant="light">{photos.length}/8</Badge>
-            </Group>
+            {activeCheckIn ? (
+              <p className="text-xs text-[var(--muted)]">
+                Дистанция: {activeCheckIn.distanceMeters}м. После выдержки времени
+                опубликуйте отзыв: визит подтвердится автоматически.
+              </p>
+            ) : null}
+          </div>
 
-            <Box
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-[var(--text)]">Фото отзыва</p>
+              <Badge variant="secondary">{photos.length}/8</Badge>
+            </div>
+
+            <div
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
@@ -356,66 +368,47 @@ export function ReviewComposerCard({
               }}
             >
               {photos.map((photo) => (
-                <Box
+                <div
                   key={photo.id}
-                  style={{
-                    width: "100%",
-                    aspectRatio: "1 / 1",
-                    overflow: "hidden",
-                    borderRadius: 14,
-                    position: "relative",
-                    border: "1px solid var(--glass-border)",
-                    background: "var(--surface)",
-                  }}
+                  className="relative aspect-square overflow-hidden rounded-[14px] border border-[var(--glass-border)] bg-[var(--surface)]"
                 >
                   <img
                     src={photo.url}
                     alt="Фото отзыва"
                     loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
+                    className="h-full w-full object-cover"
                   />
-                  <ActionIcon
-                    size="sm"
-                    color="red"
-                    variant="filled"
+                  <button
+                    type="button"
                     aria-label="Удалить фото"
-                    style={{ position: "absolute", top: 6, right: 6 }}
+                    className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--color-status-error)] bg-[var(--color-status-error)] text-white ui-focus-ring ui-interactive"
                     onClick={() => onRemovePhoto(photo.id)}
                   >
                     <IconTrash size={12} />
-                  </ActionIcon>
-                </Box>
+                  </button>
+                </div>
               ))}
 
               {Array.from({ length: addPhotoTilesCount }, (_, idx) => (
-                <UnstyledButton
+                <button
                   key={`add-photo-slot-${idx + 1}`}
                   type="button"
                   aria-label="Добавить фото"
                   onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex aspect-square items-center justify-center rounded-[14px] border border-dashed ui-focus-ring ui-interactive"
                   style={{
-                    width: "100%",
-                    aspectRatio: "1 / 1",
-                    borderRadius: 14,
-                    border: "1px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
+                    borderColor:
+                      "color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
                     background:
                       "repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 30%, transparent), color-mix(in srgb, var(--color-brand-accent-soft) 30%, transparent) 6px, transparent 6px, transparent 12px)",
                     color: "var(--color-brand-accent)",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
                     boxShadow: "var(--glass-shadow)",
                   }}
                 >
                   {uploadingPhotos ? <IconPhotoPlus size={20} /> : <IconPlus size={22} />}
-                </UnstyledButton>
+                </button>
               ))}
-            </Box>
+            </div>
 
             <input
               ref={fileInputRef}
@@ -425,70 +418,63 @@ export function ReviewComposerCard({
               accept="image/jpeg,image/png,image/webp,image/avif"
               onChange={(event) => onAppendFiles(event.currentTarget.files)}
             />
-          </Stack>
+          </div>
 
-          {submitError && (
-            <Text size="sm" c="red">
-              {submitError}
-            </Text>
-          )}
-          {submitHint && (
-            <Text size="sm" c="teal">
-              {submitHint}
-            </Text>
-          )}
+          {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
+          {submitHint ? <p className="text-sm text-[var(--color-status-success)]">{submitHint}</p> : null}
 
-          {ownReviewQualityInsight && (
-            <Paper
-              withBorder
-              p="sm"
-              radius="md"
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <Stack gap={6}>
-                <Text size="sm" fw={600}>
-                  Качество отзыва: {ownReviewQualityInsight.score}/100
-                </Text>
-                <Group gap={6} wrap="wrap">
+          {ownReviewQualityInsight ? (
+            <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3">
+              <div className="flex flex-col gap-1.5">
+                <p className="text-sm font-semibold text-[var(--text)]">
+                  Качество отзыва: {Number(ownReviewQualityInsight.score) || 0}/100
+                </p>
+                <div className="flex flex-wrap gap-1.5">
                   {ownReviewQualityInsight.checklist.map((item) => (
                     <Badge
                       key={item.label}
-                      size="xs"
-                      variant={item.ok ? "light" : "outline"}
-                      color={item.ok ? "teal" : "gray"}
+                      variant={item.ok ? "secondary" : "outline"}
+                      className={cn(item.ok ? "" : "text-[var(--muted)]")}
                     >
                       {item.label}
                     </Badge>
                   ))}
-                </Group>
-                {ownReviewQualityInsight.suggestions.length > 0 && (
-                  <Text size="xs" c="dimmed">
-                    Чтобы повысить оценку: {ownReviewQualityInsight.suggestions.slice(0, 2).join(", ")}.
-                  </Text>
-                )}
-              </Stack>
-            </Paper>
-          )}
-          {!ownReviewQualityInsight && draftQualitySuggestions.length > 0 && (
-            <Text size="xs" c="dimmed">
+                </div>
+                {ownReviewQualityInsight.suggestions.length > 0 ? (
+                  <p className="text-xs text-[var(--muted)]">
+                    Чтобы повысить оценку:{" "}
+                    {ownReviewQualityInsight.suggestions.slice(0, 2).join(", ")}.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {!ownReviewQualityInsight && draftQualitySuggestions.length > 0 ? (
+            <p className="text-xs text-[var(--muted)]">
               Чтобы улучшить отзыв: {draftQualitySuggestions.slice(0, 2).join(", ")}.
-            </Text>
-          )}
+            </p>
+          ) : null}
 
           <Button
             type="submit"
-            loading={submitLoading}
-            className="review-submit-button"
+            disabled={submitLoading}
+            className="review-submit-button rounded-full"
             data-submitting={submitLoading ? "true" : "false"}
-            radius="xl"
           >
-            {ownReview ? "Сохранить изменения" : "Опубликовать отзыв"}
+            {submitLoading ? (
+              <>
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Сохраняем...
+              </>
+            ) : ownReview ? (
+              "Сохранить изменения"
+            ) : (
+              "Опубликовать отзыв"
+            )}
           </Button>
-        </Stack>
+        </div>
       </form>
-    </Paper>
+    </div>
   );
 }

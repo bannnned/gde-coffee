@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Box, Button, Group, Loader, Modal, Paper, Rating, Select, Skeleton, Stack, Text, Transition } from "@mantine/core";
-import { IconThumbUp } from "@tabler/icons-react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { IconStarFilled, IconThumbUp } from "@tabler/icons-react";
 
-import PhotoLightboxModal, { type PhotoLightboxItem } from "../../../../../components/PhotoLightboxModal";
+import { Badge, Button } from "../../../../../components/ui";
+import { AppModal, AppSelect } from "../../../../../ui/bridge";
+import PhotoLightboxModal, {
+  type PhotoLightboxItem,
+} from "../../../../../components/PhotoLightboxModal";
 import type { CafeReview, ReviewSort } from "../../../../../api/reviews";
 import { formatReviewDate, parseReviewSummarySections } from "./reviewForm";
 
@@ -22,6 +25,14 @@ function resolveVisitDate(review: CafeReview): string {
     withVisitDate.visit_verified_at ||
     (review.visit_verified ? review.updated_at : review.created_at);
   return formatReviewDate(sourceDate);
+}
+
+function buildReviewPhotos(review: CafeReview): PhotoLightboxItem[] {
+  return review.photos.map((url, index) => ({
+    id: `${review.id}:photo:${index + 1}`,
+    url,
+    alt: `Фото отзыва ${index + 1}`,
+  }));
 }
 
 type ReviewFeedProps = {
@@ -71,6 +82,7 @@ export function ReviewFeed({
     photos: PhotoLightboxItem[];
     index: number;
   } | null>(null);
+
   const expandedReview = useMemo(
     () => reviews.find((item) => item.id === expandedReviewID) ?? null,
     [expandedReviewID, reviews],
@@ -123,6 +135,7 @@ export function ReviewFeed({
     { value: "helpful", label: "Полезные" },
     { value: "verified", label: "С визитом" },
   ];
+
   const staleReviewsNotice = useMemo(() => {
     if (positionFilter !== "all") return "";
     if (reviews.length === 0) return "";
@@ -139,105 +152,86 @@ export function ReviewFeed({
   }, [positionFilter, reviews]);
 
   return (
-    <Box style={{ position: "relative" }}>
-      <Group grow align="flex-end" gap={8} wrap="nowrap">
-        <Select
-          size="xs"
-          aria-label="Сортировка отзывов"
-          placeholder="Сортировка"
-          value={sort}
-          data={sortSelectData}
-          onChange={(value) => onSortChange((value as ReviewSort) || "new")}
-          styles={filterSelectStyles}
-          style={{ flex: 1 }}
-        />
-        <Select
-          size="xs"
-          aria-label="Фильтр по позиции"
-          placeholder="Позиция"
-          value={positionFilter}
-          data={positionFilterData}
-          onChange={(value) => onPositionFilterChange(value || "all")}
-          styles={filterSelectStyles}
-          style={{ flex: 1 }}
-        />
-      </Group>
+    <div className="relative">
+      <div className="flex flex-nowrap items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <AppSelect
+            implementation="radix"
+            size="xs"
+            aria-label="Сортировка отзывов"
+            placeholder="Сортировка"
+            value={sort}
+            data={sortSelectData}
+            onChange={(value) => onSortChange((value as ReviewSort) || "new")}
+            styles={filterSelectStyles}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <AppSelect
+            implementation="radix"
+            size="xs"
+            aria-label="Фильтр по позиции"
+            placeholder="Позиция"
+            value={positionFilter}
+            data={positionFilterData}
+            onChange={(value) => onPositionFilterChange(value || "all")}
+            styles={filterSelectStyles}
+          />
+        </div>
+      </div>
 
-      <Stack gap="sm" mt="sm">
-        {isLoading && (
+      <div className="mt-3 flex flex-col gap-3">
+        {isLoading && reviews.length === 0 ? (
           <>
-            {reviews.length === 0 ? (
-              <>
-                <ReviewCardSkeleton />
-                <ReviewCardSkeleton />
-                <ReviewCardSkeleton />
-              </>
-            ) : null}
+            <ReviewCardSkeleton />
+            <ReviewCardSkeleton />
+            <ReviewCardSkeleton />
           </>
-        )}
-
-        {loadError && (
-          <Paper
-            withBorder
-            radius="md"
-            p="md"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-          >
-            <Text size="sm" c="red">
-              {loadError}
-            </Text>
-          </Paper>
-        )}
-
-        {!isLoading && !loadError && reviews.length === 0 && (
-          <Paper
-            withBorder
-            radius="md"
-            p="md"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-          >
-            <Text size="sm" c="dimmed">
-              Пока нет отзывов. Станьте первым автором.
-            </Text>
-          </Paper>
-        )}
-        {!isLoading && !loadError && staleReviewsNotice ? (
-          <Paper
-            withBorder
-            radius="md"
-            p="sm"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-          >
-            <Text size="sm" c="orange" fw={600}>
-              {staleReviewsNotice}
-            </Text>
-          </Paper>
         ) : null}
 
-        {!loadError &&
-          reviews.map((review, index) => (
-            <Transition key={review.id} mounted transition="fade" duration={220} timingFunction="ease">
-              {(styles) => (
-                <div style={{ ...styles, transitionDelay: `${Math.min(index, 6) * 24}ms` }}>
-                  <ReviewCard
-                    review={review}
-                    isOwn={review.user_id === currentUserId}
-                    helpfulLoading={helpfulPendingReviewID === review.id}
-                    onMarkHelpful={onMarkHelpful}
-                    onOpenExpandedReview={(item) => {
-                      onReviewRead(item);
-                      setExpandedReviewID(item.id);
-                    }}
-                    onReviewRead={onReviewRead}
+        {loadError ? (
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4">
+            <p className="text-sm text-danger">{loadError}</p>
+          </div>
+        ) : null}
+
+        {!isLoading && !loadError && reviews.length === 0 ? (
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4">
+            <p className="text-sm text-[var(--muted)]">Пока нет отзывов. Станьте первым автором.</p>
+          </div>
+        ) : null}
+
+        {!isLoading && !loadError && staleReviewsNotice ? (
+          <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3">
+            <p className="text-sm font-semibold text-[var(--color-status-warning)]">
+              {staleReviewsNotice}
+            </p>
+          </div>
+        ) : null}
+
+        {!loadError
+          ? reviews.map((review, index) => (
+              <motion.div
+                key={review.id}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: Math.min(index, 6) * 0.024 }}
+              >
+                <ReviewCard
+                  review={review}
+                  isOwn={review.user_id === currentUserId}
+                  helpfulLoading={helpfulPendingReviewID === review.id}
+                  onMarkHelpful={onMarkHelpful}
+                  onOpenExpandedReview={(item) => {
+                    onReviewRead(item);
+                    setExpandedReviewID(item.id);
+                  }}
+                  onReviewRead={onReviewRead}
                   canDeleteReviews={canDeleteReviews}
                   isAdmin={isAdmin}
                   onDeleteReview={onDeleteReview}
                   onOpenPhoto={(item, photoIndex) => {
-                    const photos = item.photos.map((url, index) => ({
-                      id: `${item.id}:photo:${index + 1}`,
-                      url,
-                      alt: `Фото отзыва ${index + 1}`,
-                    }));
+                    const photos = buildReviewPhotos(item);
                     if (photos.length === 0) return;
                     const safeIndex = Math.max(0, Math.min(photoIndex, photos.length - 1));
                     setPhotoViewerState({
@@ -247,65 +241,59 @@ export function ReviewFeed({
                     });
                   }}
                 />
-              </div>
+              </motion.div>
+            ))
+          : null}
+
+        {!isLoading && !loadError && hasMore ? (
+          <Button type="button" variant="secondary" onClick={onLoadMore} disabled={isLoadingMore}>
+            {isLoadingMore ? (
+              <>
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Загружаем...
+              </>
+            ) : (
+              "Показать еще"
             )}
-          </Transition>
-          ))}
-
-        {!isLoading && !loadError && hasMore && (
-          <Button variant="light" onClick={onLoadMore} loading={isLoadingMore}>
-            Показать еще
           </Button>
-        )}
-      </Stack>
+        ) : null}
+      </div>
 
-      <Transition mounted={isLoading && reviews.length > 0} transition="fade" duration={180} timingFunction="ease">
-        {(styles) => (
-          <Paper
-            withBorder
-            radius="xl"
-            px={10}
-            py={6}
+      <AnimatePresence>
+        {isLoading && reviews.length > 0 ? (
+          <motion.div
+            key="reviews-updating-indicator"
+            initial={{ opacity: 0, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 3 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             style={{
-              ...styles,
               position: "absolute",
               left: "50%",
               bottom: 8,
               transform: "translateX(-50%)",
-              border: "1px solid var(--glass-border)",
-              background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-              boxShadow: "var(--glass-shadow)",
-              backdropFilter: "blur(10px) saturate(130%)",
-              WebkitBackdropFilter: "blur(10px) saturate(130%)",
               pointerEvents: "none",
               zIndex: 6,
             }}
+            className="rounded-full border border-[var(--glass-border)] bg-[linear-gradient(135deg,var(--glass-grad-1),var(--glass-grad-2))] px-3 py-1.5 shadow-[var(--glass-shadow)] backdrop-blur-[10px] backdrop-saturate-[130%]"
           >
-            <Loader size={14} type="dots" />
-          </Paper>
-        )}
-      </Transition>
+            <span className="block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--text)] border-t-transparent" />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
-      <Modal
-        opened={Boolean(expandedReview)}
-        onClose={() => setExpandedReviewID(null)}
-        title="Полный отзыв"
-        size="lg"
-        centered
-        styles={{
-          content: {
-            background: "var(--glass-bg)",
-            border: "1px solid var(--glass-border)",
-            boxShadow: "var(--shadow)",
-            backdropFilter: "blur(14px) saturate(145%)",
-            WebkitBackdropFilter: "blur(14px) saturate(145%)",
-          },
-          header: {
-            background: "transparent",
-          },
+      <AppModal
+        open={Boolean(expandedReview)}
+        onOpenChange={(next) => {
+          if (!next) setExpandedReviewID(null);
         }}
+        title="Полный отзыв"
+        implementation="radix"
+        presentation="dialog"
+        contentClassName="w-[min(94vw,760px)] border border-glass-border bg-glass shadow-glass"
+        bodyClassName="max-h-[80vh] overflow-auto p-4"
       >
-        {expandedReview && (
+        {expandedReview ? (
           <ReviewCard
             review={expandedReview}
             isOwn={expandedReview.user_id === currentUserId}
@@ -316,11 +304,7 @@ export function ReviewFeed({
             isAdmin={isAdmin}
             onDeleteReview={onDeleteReview}
             onOpenPhoto={(item, photoIndex) => {
-              const photos = item.photos.map((url, index) => ({
-                id: `${item.id}:photo:${index + 1}`,
-                url,
-                alt: `Фото отзыва ${index + 1}`,
-              }));
+              const photos = buildReviewPhotos(item);
               if (photos.length === 0) return;
               const safeIndex = Math.max(0, Math.min(photoIndex, photos.length - 1));
               setPhotoViewerState({
@@ -331,8 +315,8 @@ export function ReviewFeed({
             }}
             forceExpanded
           />
-        )}
-      </Modal>
+        ) : null}
+      </AppModal>
 
       <PhotoLightboxModal
         opened={Boolean(photoViewerState)}
@@ -344,39 +328,31 @@ export function ReviewFeed({
           setPhotoViewerState((prev) => (prev ? { ...prev, index: nextIndex } : prev))
         }
       />
-    </Box>
+    </div>
   );
 }
 
 function ReviewCardSkeleton() {
   return (
-    <Paper
-      withBorder
-      radius="md"
-      p="md"
-      style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-    >
-      <Stack gap={10}>
-        <Group justify="space-between" align="center">
-          <Group gap={8} wrap="nowrap">
-            <Skeleton h={14} w={90} radius="sm" />
-            <Skeleton h={18} w={42} radius="xl" />
-          </Group>
-          <Skeleton h={14} w={90} radius="sm" />
-        </Group>
-        <Skeleton h={10} radius="sm" />
-        <Skeleton h={10} w="92%" radius="sm" />
-        <Skeleton h={10} w="76%" radius="sm" />
-        <Group gap={6}>
-          <Skeleton h={20} w={90} radius="xl" />
-          <Skeleton h={20} w={80} radius="xl" />
-          <Skeleton h={20} w={110} radius="xl" />
-        </Group>
-        <Group justify="space-between" align="center">
-          <Skeleton h={28} w={86} radius="sm" />
-        </Group>
-      </Stack>
-    </Paper>
+    <div className="animate-pulse rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div className="flex flex-col gap-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="h-3.5 w-24 rounded bg-[color:var(--color-surface-overlay-soft)]" />
+            <div className="h-5 w-12 rounded-full bg-[color:var(--color-surface-overlay-soft)]" />
+          </div>
+          <div className="h-3.5 w-20 rounded bg-[color:var(--color-surface-overlay-soft)]" />
+        </div>
+        <div className="h-2.5 w-full rounded bg-[color:var(--color-surface-overlay-soft)]" />
+        <div className="h-2.5 w-[92%] rounded bg-[color:var(--color-surface-overlay-soft)]" />
+        <div className="h-2.5 w-[76%] rounded bg-[color:var(--color-surface-overlay-soft)]" />
+        <div className="flex gap-2">
+          <div className="h-5 w-20 rounded-full bg-[color:var(--color-surface-overlay-soft)]" />
+          <div className="h-5 w-16 rounded-full bg-[color:var(--color-surface-overlay-soft)]" />
+          <div className="h-5 w-24 rounded-full bg-[color:var(--color-surface-overlay-soft)]" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -410,9 +386,9 @@ function ReviewCard({
   const [textExpanded, setTextExpanded] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const hasTrackedReadRef = useRef(false);
-  const MotionBox = motion(Box);
   const reviewBody = parseReviewSummarySections(review.summary);
   const visitDateLabel = resolveVisitDate(review);
+  const ratingValue = Number.isFinite(Number(review.rating)) ? Number(review.rating) : 0;
   const reviewSections = [
     { key: "liked", label: "Понравилось", value: reviewBody.liked.trim() },
     { key: "disliked", label: "Не понравилось", value: reviewBody.disliked.trim() },
@@ -479,94 +455,97 @@ function ReviewCard({
   }, [forceExpanded, onReviewRead, review]);
 
   return (
-    <Paper
+    <div
       ref={cardRef}
-      withBorder
-      radius="md"
-      p="md"
-      style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+      className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4"
     >
-      <Stack gap={8}>
-        <Group justify="space-between" align="flex-start">
-          <Stack gap={2}>
-            <Group gap={6}>
-              <Text fw={600} size="sm">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className="truncate text-sm font-semibold text-[var(--text)]">
                 {review.author_name || "Участник"}
-              </Text>
-              {review.author_badge && (
-                <Badge size="xs" variant="light">
+              </p>
+              {review.author_badge ? (
+                <Badge variant="secondary" className="text-[10px]">
                   {review.author_badge}
                 </Badge>
-              )}
-              {review.author_trusted && (
-                <Badge color="blue" size="xs" variant="light">
+              ) : null}
+              {review.author_trusted ? (
+                <Badge variant="secondary" className="text-[10px]">
                   Доверенный участник
                 </Badge>
-              )}
-              {isOwn && <Badge size="xs">Вы</Badge>}
-              {review.visit_verified && (
-                <Badge color="teal" size="xs" variant="light">
+              ) : null}
+              {isOwn ? <Badge className="text-[10px]">Вы</Badge> : null}
+              {review.visit_verified ? (
+                <Badge variant="secondary" className="text-[10px]">
                   Подтвержден визит
                 </Badge>
-              )}
-            </Group>
-            <Text size="xs" c="dimmed">
-              Дата визита: {visitDateLabel}
-            </Text>
-          </Stack>
-          <Rating value={review.rating} readOnly size="sm" />
-        </Group>
+              ) : null}
+            </div>
+            <p className="text-xs text-[var(--muted)]">Дата визита: {visitDateLabel}</p>
+          </div>
+          <div className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--card)] px-2 py-1">
+            <IconStarFilled size={13} className="text-[var(--color-brand-accent)]" />
+            <span className="text-xs font-semibold text-[var(--text)]">
+              {Number.isInteger(ratingValue) ? ratingValue : ratingValue.toFixed(1)}
+            </span>
+          </div>
+        </div>
 
-        {reviewSections.length > 0 && (
-          <Stack gap={6}>
+        {reviewSections.length > 0 ? (
+          <div className="flex flex-col gap-1.5">
             {reviewSections.map((section) => (
-              <Box key={`${review.id}:${section.key}`}>
-                <Text
-                  size="xs"
-                  fw={700}
-                  style={{ letterSpacing: "0.04em", textTransform: "uppercase" }}
-                  c="dimmed"
-                >
+              <div key={`${review.id}:${section.key}`}>
+                <p className="text-[10px] font-bold uppercase tracking-[0.04em] text-[var(--muted)]">
                   {section.label}
-                </Text>
-                <Text
-                  size="sm"
-                  lineClamp={shouldClampText ? 3 : undefined}
-                  style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}
+                </p>
+                <p
+                  className="text-sm text-[var(--text)]"
+                  style={{
+                    wordBreak: "break-word",
+                    overflowWrap: "anywhere",
+                    ...(shouldClampText
+                      ? {
+                          overflow: "hidden",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: "vertical",
+                        }
+                      : null),
+                  }}
                 >
                   {section.value}
-                </Text>
-              </Box>
+                </p>
+              </div>
             ))}
-            {canCollapseText && !textExpanded && (
+            {canCollapseText && !textExpanded ? (
               <Button
-                variant="subtle"
-                size="compact-xs"
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setTextExpanded(true)}
-                style={{ alignSelf: "flex-start", paddingInline: 0 }}
+                className="h-6 w-fit px-0 text-xs font-semibold text-[var(--cafe-hero-emphasis-color)] hover:bg-transparent"
               >
                 Показать еще
               </Button>
-            )}
-          </Stack>
-        )}
+            ) : null}
+          </div>
+        ) : null}
 
-        {review.photos.length > 0 && (
-          <Stack gap={6}>
-            <Group className="horizontal-scroll-modern" wrap="nowrap" gap={8} style={{ overflowX: "auto", paddingBottom: 2 }}>
+        {review.photos.length > 0 ? (
+          <div className="flex flex-col gap-1.5">
+            <div className="horizontal-scroll-modern flex flex-nowrap gap-2 overflow-x-auto pb-[2px]">
               {visiblePhotos.map((photoUrl, index) => (
-                <Paper
+                <button
                   key={`${review.id}:${index}`}
-                  withBorder
-                  radius="sm"
+                  type="button"
                   onClick={() => onOpenPhoto?.(review, index)}
+                  className="overflow-hidden rounded-sm border border-[var(--border)] bg-[var(--surface)] ui-interactive"
                   style={{
                     width: 96,
                     minWidth: 96,
                     height: 72,
-                    overflow: "hidden",
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
                     cursor: onOpenPhoto ? "pointer" : "default",
                   }}
                 >
@@ -574,129 +553,109 @@ function ReviewCard({
                     src={photoUrl}
                     alt={`Фото отзыва ${index + 1}`}
                     loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
+                    className="h-full w-full object-cover"
                   />
-                </Paper>
+                </button>
               ))}
-            </Group>
-            {canOpenExpandedModal && (
+            </div>
+            {canOpenExpandedModal ? (
               <Button
-                variant="subtle"
-                size="compact-xs"
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => onOpenExpandedReview?.(review)}
-                style={{ alignSelf: "flex-start", paddingInline: 0 }}
+                className="h-6 w-fit px-0 text-xs font-semibold text-[var(--cafe-hero-emphasis-color)] hover:bg-transparent"
               >
                 Смотреть все
               </Button>
-            )}
-          </Stack>
-        )}
+            ) : null}
+          </div>
+        ) : null}
 
-        {!forceExpanded && shouldCollapsePhotos && review.photos.length > visiblePhotos.length && (
-          <Text size="xs" c="dimmed">
+        {!forceExpanded && shouldCollapsePhotos && review.photos.length > visiblePhotos.length ? (
+          <p className="text-xs text-[var(--muted)]">
             Показано {visiblePhotos.length} из {review.photos.length} фото
-          </Text>
-        )}
+          </p>
+        ) : null}
 
-        <Group gap={6} wrap="wrap">
+        <div className="flex flex-wrap gap-1.5">
           {positionLabels.map((name, index) => (
             <Badge
               key={`${review.id}:position:${index}`}
-              size="xs"
               variant="outline"
-              radius="sm"
-              styles={{
-                root: {
-                  paddingInline: 6,
-                  minHeight: 18,
-                  fontSize: 10,
-                  lineHeight: "14px",
-                },
-              }}
+              className="min-h-[18px] px-1.5 text-[10px] leading-[14px]"
             >
               {name}
             </Badge>
           ))}
-        </Group>
-        {isAdmin && (
-          <>
-            <Group gap={6} wrap="wrap">
-              <Badge variant="outline">Качество: {review.quality_score}/100</Badge>
-            </Group>
-            <Text size="xs" c="dimmed">
-              Качество учитывает напиток, теги, детали текста, фото, визит и жалобы.
-            </Text>
-          </>
-        )}
+        </div>
 
-        <MotionBox
+        {isAdmin ? (
+          <>
+            <div className="flex flex-wrap gap-1.5">
+              <Badge variant="outline">Качество: {Number(review.quality_score) || 0}/100</Badge>
+            </div>
+            <p className="text-xs text-[var(--muted)]">
+              Качество учитывает напиток, теги, детали текста, фото, визит и жалобы.
+            </p>
+          </>
+        ) : null}
+
+        <motion.div
           whileTap={{ scale: isOwn || helpfulLoading ? 1 : 0.96 }}
           transition={{ duration: 0.12, ease: "easeOut" }}
           style={{ alignSelf: "flex-start" }}
         >
           <Button
-            size="xs"
-            variant="light"
+            type="button"
+            size="sm"
+            variant="secondary"
             onClick={() => onMarkHelpful(review)}
             disabled={isOwn || helpfulLoading}
-            styles={{
-              root: {
-                borderRadius: 999,
-                border: "1px solid color-mix(in srgb, var(--color-brand-accent) 48%, var(--border))",
-                background:
-                  "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
-                boxShadow:
-                  "0 8px 18px color-mix(in srgb, var(--color-brand-accent-soft) 52%, transparent)",
-                color: "var(--text)",
-                paddingInline: 12,
-              },
-              label: {
-                paddingBlock: 1,
-              },
+            className="rounded-full px-3"
+            style={{
+              border: "1px solid color-mix(in srgb, var(--color-brand-accent) 48%, var(--border))",
+              background:
+                "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
+              boxShadow:
+                "0 8px 18px color-mix(in srgb, var(--color-brand-accent-soft) 52%, transparent)",
+              color: "var(--text)",
             }}
           >
-            <Group gap={6} wrap="nowrap">
-              <Text component="span" size="xs" fw={600}>
-                Полезно
-              </Text>
-              <IconThumbUp size={14} stroke={2} />
-              <Box
-                component="span"
-                style={{
-                  minWidth: 20,
-                  height: 20,
-                  paddingInline: 6,
-                  borderRadius: 999,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  background:
-                    "color-mix(in srgb, var(--color-brand-accent) 18%, var(--color-surface-card))",
-                  border: "1px solid color-mix(in srgb, var(--color-brand-accent) 34%, var(--border))",
-                }}
-              >
-                {helpfulLoading ? <Loader size={11} type="dots" /> : review.helpful_votes}
-              </Box>
-            </Group>
+            <span className="text-xs font-semibold">Полезно</span>
+            <IconThumbUp size={14} stroke={2} />
+            <span
+              className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1.5 text-[11px] font-bold leading-none"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--color-brand-accent) 18%, var(--color-surface-card))",
+                borderColor:
+                  "color-mix(in srgb, var(--color-brand-accent) 34%, var(--border))",
+              }}
+            >
+              {helpfulLoading ? (
+                <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                review.helpful_votes
+              )}
+            </span>
           </Button>
-        </MotionBox>
+        </motion.div>
 
-        {canDeleteReviews && (
-          <Group justify="flex-end">
-            <Button size="xs" variant="subtle" color="red" onClick={() => onDeleteReview(review)}>
+        {canDeleteReviews ? (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-danger hover:bg-[color:color-mix(in_srgb,var(--color-status-error)_12%,transparent)]"
+              onClick={() => onDeleteReview(review)}
+            >
               Удалить отзыв
             </Button>
-          </Group>
-        )}
-      </Stack>
-    </Paper>
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
