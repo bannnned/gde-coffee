@@ -1,5 +1,6 @@
-import { Box, Button, Group, Paper, Stack, Text } from "@mantine/core";
+import { Badge, Button } from "../../../../../components/ui";
 import { IconCamera, IconCameraPlus, IconPlus } from "@tabler/icons-react";
+import { cn } from "../../../../../lib/utils";
 
 import type { Cafe, CafePhoto } from "../../../../../entities/cafe/model/types";
 import {
@@ -59,9 +60,9 @@ export default function MenuSection({
   const menuPhotoAddedDate = formatPhotoAddedDate(menuMainPhoto);
 
   return (
-    <Stack gap={0}>
+    <div className="flex flex-col gap-0">
       {menuMainPhoto ? (
-        <Box
+        <div
           onClick={onOpenViewer}
           style={{
             overflow: "hidden",
@@ -102,9 +103,9 @@ export default function MenuSection({
               }}
             />
           </picture>
-        </Box>
+        </div>
       ) : (
-        <Box
+        <div
           style={{
             height: 260,
             display: "grid",
@@ -117,110 +118,94 @@ export default function MenuSection({
         >
           {onManagePhotos && (
             <Button
+              type="button"
               size="sm"
-              radius="xl"
-              variant="light"
-              loading={isPhotoProcessing}
-              leftSection={<IconCameraPlus size={16} />}
+              variant="secondary"
+              disabled={isPhotoProcessing}
               onClick={() => onManagePhotos("menu")}
-              styles={{
-                root: {
-                  height: 44,
-                  marginTop: 4,
-                  paddingInline: 16,
-                  border: "1px solid color-mix(in srgb, var(--color-brand-accent) 45%, var(--glass-border))",
-                  background:
-                    "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
-                  color: "var(--cafe-hero-emphasis-color)",
-                  fontWeight: 700,
-                  boxShadow: "var(--glass-shadow)",
-                },
+              className="mt-1 h-11 rounded-full px-4 font-bold shadow-glass"
+              style={{
+                border: "1px solid color-mix(in srgb, var(--color-brand-accent) 45%, var(--glass-border))",
+                background:
+                  "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
+                color: "var(--cafe-hero-emphasis-color)",
               }}
             >
+              <IconCameraPlus size={16} />
               Добавить первое фото
+              {isPhotoProcessing ? (
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : null}
             </Button>
           )}
-        </Box>
+        </div>
       )}
 
       {menuPhotoAddedDate && (
-        <Box
-          py={8}
+        <div
+          className="py-2"
           style={{
             borderBottom: "1px solid var(--border)",
             paddingInline: "var(--page-edge-padding)",
           }}
         >
-          <Text size="xs" c="dimmed">
+          <p className="text-xs text-[var(--muted)]">
             Фото меню добавлено: {menuPhotoAddedDate}
-          </Text>
-        </Box>
+          </p>
+        </div>
       )}
 
       {specificTags.length > 0 && (
-        <Group
-          className="horizontal-scroll-modern"
-          wrap="nowrap"
-          gap={8}
-          pt="sm"
-          pb={menuPhotoItems.length > 1 ? 0 : "sm"}
+        <div
+          className="horizontal-scroll-modern flex flex-nowrap gap-2 overflow-x-auto pt-3"
           style={{
-            overflowX: "auto",
+            paddingBottom: menuPhotoItems.length > 1 ? 0 : 12,
             paddingInline: "var(--page-edge-padding)",
           }}
         >
           {specificTags.slice(0, 10).map((tag) => (
-            <Paper
+            <Badge
               key={tag}
-              withBorder
-              radius="xl"
-              px="sm"
-              py={4}
+              variant="secondary"
+              className="whitespace-nowrap px-3 py-1 text-xs font-semibold"
               style={{
                 border: "1px solid color-mix(in srgb, var(--accent) 28%, var(--glass-border))",
                 background:
                   "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 42%, var(--surface)), color-mix(in srgb, var(--glass-grad-1) 88%, var(--surface)))",
                 color: "var(--cafe-hero-emphasis-color)",
-                fontWeight: 600,
-                whiteSpace: "nowrap",
               }}
             >
               {tag}
-            </Paper>
+            </Badge>
           ))}
-        </Group>
+        </div>
       )}
 
       {menuPhotoItems.length > 1 && (
-        <Group
-          className="horizontal-scroll-modern"
-          wrap="nowrap"
-          gap={8}
-          py="sm"
+        <div
+          className="horizontal-scroll-modern flex flex-nowrap gap-2 overflow-x-auto py-3"
           style={{
-            overflowX: "auto",
             paddingInline: "var(--page-edge-padding)",
           }}
         >
           {menuPhotoItems.map((photo, index) => (
-            <Paper
+            <button
               key={photo.id}
-              withBorder
-              radius="md"
+              type="button"
               onClick={() => onSelectMenuPhoto(index)}
+              aria-label={`Открыть фото меню ${index + 1}`}
+              className={cn(
+                "overflow-hidden rounded-md border transition ui-interactive",
+                index === menuActiveIndex
+                  ? "border-[var(--color-brand-accent)]"
+                  : "border-[var(--border)]",
+              )}
               style={{
                 width: 108,
                 minWidth: 108,
                 height: 78,
-                overflow: "hidden",
-                border:
-                  index === menuActiveIndex
-                    ? "1px solid var(--color-brand-accent)"
-                    : "1px solid var(--border)",
                 background: "var(--surface)",
-                cursor: "pointer",
                 transform: index === menuActiveIndex ? "translateY(-1px)" : "none",
-                transition: "border-color 160ms ease, transform 160ms ease",
               }}
             >
               <img
@@ -236,49 +221,48 @@ export default function MenuSection({
                   display: "block",
                 }}
               />
-            </Paper>
+            </button>
           ))}
-        </Group>
+        </div>
       )}
 
-      <Box py="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
+      <div className="py-4" style={{ paddingInline: "var(--page-edge-padding)" }}>
         {menuPhotoItems.length === 0 && specificTags.length === 0 && (
-          <Text size="sm" c="dimmed">
+          <p className="text-sm text-[var(--muted)]">
             После добавления фото и отзывов здесь появятся позиции и теги меню.
-          </Text>
+          </p>
         )}
         {onManagePhotos && (
-          <Group justify="center" mt={menuPhotoItems.length === 0 ? "xs" : 0}>
+          <div className={cn("mt-2 flex justify-center", menuPhotoItems.length > 0 && "mt-0")}>
             <Button
+              type="button"
               size="sm"
-              radius="xl"
-              variant="default"
+              variant="secondary"
+              disabled={isPhotoProcessing}
               aria-label="Фото меню"
               onClick={() => onManagePhotos("menu")}
-              leftSection={<IconCamera size={16} />}
-              rightSection={<IconPlus size={14} />}
-              styles={{
-                root: {
-                  borderRadius: 999,
-                  border: "1px solid color-mix(in srgb, var(--accent) 46%, var(--glass-border))",
-                  background:
-                    "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 66%, var(--surface)), color-mix(in srgb, var(--glass-grad-1) 88%, var(--surface)))",
-                  color: "var(--cafe-hero-emphasis-color)",
-                  boxShadow:
-                    "0 10px 24px color-mix(in srgb, var(--color-brand-accent-soft) 58%, transparent)",
-                  backdropFilter: "blur(12px) saturate(150%)",
-                  WebkitBackdropFilter: "blur(12px) saturate(150%)",
-                  paddingInline: 14,
-                },
-                inner: { gap: 8 },
-                label: { fontWeight: 700, letterSpacing: "0.01em" },
+              className="rounded-full px-3.5 font-bold tracking-[0.01em]"
+              style={{
+                border: "1px solid color-mix(in srgb, var(--accent) 46%, var(--glass-border))",
+                background:
+                  "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 66%, var(--surface)), color-mix(in srgb, var(--glass-grad-1) 88%, var(--surface)))",
+                color: "var(--cafe-hero-emphasis-color)",
+                boxShadow:
+                  "0 10px 24px color-mix(in srgb, var(--color-brand-accent-soft) 58%, transparent)",
+                backdropFilter: "blur(12px) saturate(150%)",
+                WebkitBackdropFilter: "blur(12px) saturate(150%)",
               }}
             >
+              <IconCamera size={16} />
               Добавить фото
+              <IconPlus size={14} />
+              {isPhotoProcessing ? (
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : null}
             </Button>
-          </Group>
+          </div>
         )}
-      </Box>
-    </Stack>
+      </div>
+    </div>
   );
 }

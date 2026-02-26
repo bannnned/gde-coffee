@@ -1,7 +1,8 @@
-import { ActionIcon, Box, Collapse, Stack } from "@mantine/core";
 import { IconPencil, IconPlus } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
+import { Button } from "../../../../components/ui";
 import { ReviewComposerCard } from "./reviews/ReviewComposerCard";
 import { ReviewFeed } from "./reviews/ReviewFeed";
 import { useReviewsSectionController } from "./reviews/useReviewsSectionController";
@@ -40,34 +41,47 @@ export default function ReviewsSection({
   const hasOwnReview = Boolean(controller.ownReview);
 
   return (
-    <Stack gap="sm" pos="relative">
-      <Collapse in={composerOpen}>
-        <ReviewComposerCard
-          ownReview={controller.ownReview}
-          ownReviewQualityInsight={controller.ownReviewQualityInsight}
-          draftQualitySuggestions={controller.draftQualitySuggestions}
-          control={controller.control}
-          errors={controller.errors}
-          isSubmitting={controller.isSubmitting}
-          positionsInput={controller.positionsInput}
-          positionInputData={controller.positionInputData}
-          drinksLoading={controller.drinksLoading}
-          onPositionsInputSearchChange={controller.setDrinkSearchQuery}
-          photos={controller.photos}
-          uploadingPhotos={controller.uploadingPhotos}
-          activeCheckIn={controller.activeCheckIn}
-          checkInStarting={controller.checkInStarting}
-          verifyVisitPending={controller.verifyVisitPending}
-          submitError={controller.submitError}
-          submitHint={controller.submitHint}
-          fileInputRef={controller.fileInputRef}
-          onFormSubmit={controller.onFormSubmit}
-          onAppendFiles={controller.onAppendFiles}
-          onRemovePhoto={controller.onRemovePhoto}
-          onStartCheckIn={controller.onStartCheckIn}
-          onVerifyCurrentVisit={controller.onVerifyCurrentVisit}
-        />
-      </Collapse>
+    <div className="relative flex flex-col gap-3">
+      <AnimatePresence initial={false}>
+        {composerOpen ? (
+          <motion.div
+            key="reviews-composer"
+            initial={{ opacity: 0, height: 0, y: -6 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -6 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="pb-1">
+              <ReviewComposerCard
+                ownReview={controller.ownReview}
+                ownReviewQualityInsight={controller.ownReviewQualityInsight}
+                draftQualitySuggestions={controller.draftQualitySuggestions}
+                control={controller.control}
+                errors={controller.errors}
+                isSubmitting={controller.isSubmitting}
+                positionsInput={controller.positionsInput}
+                positionInputData={controller.positionInputData}
+                drinksLoading={controller.drinksLoading}
+                onPositionsInputSearchChange={controller.setDrinkSearchQuery}
+                photos={controller.photos}
+                uploadingPhotos={controller.uploadingPhotos}
+                activeCheckIn={controller.activeCheckIn}
+                checkInStarting={controller.checkInStarting}
+                verifyVisitPending={controller.verifyVisitPending}
+                submitError={controller.submitError}
+                submitHint={controller.submitHint}
+                fileInputRef={controller.fileInputRef}
+                onFormSubmit={controller.onFormSubmit}
+                onAppendFiles={controller.onAppendFiles}
+                onRemovePhoto={controller.onRemovePhoto}
+                onStartCheckIn={controller.onStartCheckIn}
+                onVerifyCurrentVisit={controller.onVerifyCurrentVisit}
+              />
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <ReviewFeed
         sort={controller.sort}
@@ -90,7 +104,7 @@ export default function ReviewsSection({
         onReviewRead={controller.onReviewRead}
       />
 
-      <Box
+      <div
         style={{
           position: "sticky",
           right: 0,
@@ -103,10 +117,10 @@ export default function ReviewsSection({
           zIndex: 5,
         }}
       >
-        <ActionIcon
-          variant={composerOpen ? "filled" : "light"}
-          radius="xl"
-          size={48}
+        <Button
+          type="button"
+          variant={composerOpen ? "default" : "secondary"}
+          size="icon"
           aria-label={
             composerOpen
               ? "Скрыть форму отзыва"
@@ -115,6 +129,7 @@ export default function ReviewsSection({
                 : "Добавить отзыв"
           }
           onClick={handleComposerToggle}
+          className="h-12 w-12 rounded-full"
           style={{
             pointerEvents: "auto",
             boxShadow: "0 10px 24px color-mix(in srgb, var(--color-brand-accent-soft) 55%, transparent)",
@@ -124,8 +139,8 @@ export default function ReviewsSection({
           }}
         >
           {hasOwnReview ? <IconPencil size={20} /> : <IconPlus size={20} />}
-        </ActionIcon>
-      </Box>
-    </Stack>
+        </Button>
+      </div>
+    </div>
   );
 }

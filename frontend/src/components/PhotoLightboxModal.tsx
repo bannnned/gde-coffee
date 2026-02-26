@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type TouchEventHandler } from "react";
-import { ActionIcon, Box, Group, Modal, Paper, Stack, Text } from "@mantine/core";
 import {
   IconArrowsLeftRight,
   IconChevronLeft,
   IconChevronRight,
-  IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
 
+import { Button } from "./ui";
+import { cn } from "../lib/utils";
+import { AppModal } from "../ui/bridge";
 import {
   buildCafePhotoPictureSources,
   buildCafePhotoSrcSet,
@@ -115,33 +116,18 @@ export default function PhotoLightboxModal({
   };
 
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      centered
-      withCloseButton={false}
-      size="xl"
-      styles={{
-        content: {
-          background: "transparent",
-          boxShadow: "none",
-          border: "none",
-          width: "min(96vw, 1080px)",
-          maxWidth: "1080px",
-        },
-        body: {
-          padding: 0,
-        },
-        overlay: {
-          backdropFilter: "blur(10px)",
-          backgroundColor: "color-mix(in srgb, var(--color-surface-overlay-strong) 72%, #050607)",
-        },
+    <AppModal
+      open={opened}
+      onOpenChange={(next) => {
+        if (!next) onClose();
       }}
+      implementation="radix"
+      presentation="dialog"
+      closeButton={false}
+      contentClassName="w-[min(96vw,1080px)] border-0 bg-transparent p-0 shadow-none"
+      bodyClassName="p-0"
     >
-      <Paper
-        withBorder
-        radius={26}
-        p={12}
+      <div
         style={{
           border: "1px solid color-mix(in srgb, var(--glass-border) 84%, transparent)",
           background:
@@ -149,38 +135,37 @@ export default function PhotoLightboxModal({
           boxShadow: "0 28px 80px color-mix(in srgb, #000 44%, transparent)",
           backdropFilter: "blur(22px) saturate(135%)",
           WebkitBackdropFilter: "blur(22px) saturate(135%)",
+          borderRadius: 26,
+          padding: 12,
         }}
       >
-        <Stack gap={10}>
-          <Group justify="space-between" align="center" wrap="nowrap" px={4}>
-            <Text fw={700} size="sm" lineClamp={1}>
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between gap-2 px-1">
+            <p className="truncate text-sm font-semibold text-[var(--text)]">
               {title}
-            </Text>
-            <Group gap={6} wrap="nowrap">
+            </p>
+            <div className="flex items-center gap-1.5">
               {photos.length > 0 && (
-                <Text size="xs" c="dimmed">
+                <p className="text-xs text-[var(--muted)]">
                   {safeIndex + 1} / {photos.length}
-                </Text>
+                </p>
               )}
-              <ActionIcon
-                variant="default"
-                radius="xl"
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
                 onClick={onClose}
                 aria-label="Закрыть просмотр фото"
-                style={{
-                  border: "1px solid var(--glass-border)",
-                  background:
-                    "linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 76%, transparent))",
-                }}
+                className="h-9 w-9 rounded-full border-glass-border bg-glass text-text shadow-glass"
               >
-                <IconX size={16} />
-              </ActionIcon>
-            </Group>
-          </Group>
+                ✕
+              </Button>
+            </div>
+          </div>
 
-          {activePhoto ? (
+              {activePhoto ? (
             <>
-              <Box
+              <div
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
                 style={{
@@ -247,93 +232,71 @@ export default function PhotoLightboxModal({
                   </motion.picture>
                 </AnimatePresence>
 
-                <Group
-                  justify="space-between"
+                <div
                   style={{
                     position: "absolute",
                     insetInline: 10,
                     top: "50%",
                     transform: "translateY(-50%)",
                     pointerEvents: "none",
+                    display: "flex",
+                    justifyContent: "space-between",
                   }}
                 >
-                  <ActionIcon
-                    variant="default"
-                    radius="xl"
-                    size="lg"
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
                     disabled={photos.length <= 1}
                     onClick={() => stepPhoto(-1)}
                     aria-label="Предыдущее фото"
-                    style={{
-                      pointerEvents: "auto",
-                      border: "1px solid color-mix(in srgb, var(--glass-border) 84%, transparent)",
-                      background:
-                        "linear-gradient(135deg, color-mix(in srgb, var(--surface) 88%, transparent), color-mix(in srgb, var(--surface) 72%, transparent))",
-                      backdropFilter: "blur(8px)",
-                      WebkitBackdropFilter: "blur(8px)",
-                    }}
+                    className="pointer-events-auto h-10 w-10 rounded-full border-glass-border bg-glass text-text shadow-glass backdrop-blur-[8px]"
                   >
                     <IconChevronLeft size={18} />
-                  </ActionIcon>
-                  <ActionIcon
-                    variant="default"
-                    radius="xl"
-                    size="lg"
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
                     disabled={photos.length <= 1}
                     onClick={() => stepPhoto(1)}
                     aria-label="Следующее фото"
-                    style={{
-                      pointerEvents: "auto",
-                      border: "1px solid color-mix(in srgb, var(--glass-border) 84%, transparent)",
-                      background:
-                        "linear-gradient(135deg, color-mix(in srgb, var(--surface) 88%, transparent), color-mix(in srgb, var(--surface) 72%, transparent))",
-                      backdropFilter: "blur(8px)",
-                      WebkitBackdropFilter: "blur(8px)",
-                    }}
+                    className="pointer-events-auto h-10 w-10 rounded-full border-glass-border bg-glass text-text shadow-glass backdrop-blur-[8px]"
                   >
                     <IconChevronRight size={18} />
-                  </ActionIcon>
-                </Group>
-              </Box>
+                  </Button>
+                </div>
+              </div>
 
               {photos.length > 1 && (
-                <Group justify="center" gap={6}>
+                <div className="flex items-center justify-center gap-1.5">
                   <IconArrowsLeftRight size={14} style={{ opacity: 0.6 }} />
-                  <Text size="xs" c="dimmed">
+                  <p className="text-xs text-[var(--muted)]">
                     Свайп влево/вправо или кнопки для листания
-                  </Text>
-                </Group>
+                  </p>
+                </div>
               )}
 
               {photos.length > 1 && (
-                <Group
-                  className="horizontal-scroll-modern"
-                  wrap="nowrap"
-                  gap={8}
-                  style={{
-                    overflowX: "auto",
-                    paddingBottom: 2,
-                  }}
-                >
+                <div className="horizontal-scroll-modern flex flex-nowrap gap-2 overflow-x-auto pb-[2px]">
                   {photos.map((photo, nextIndex) => (
-                    <Paper
+                    <button
                       key={photo.id}
-                      withBorder
-                      radius="md"
+                      type="button"
                       onClick={() => onIndexChange(nextIndex)}
+                      aria-label={`Открыть фото ${nextIndex + 1}`}
+                      className={cn(
+                        "overflow-hidden rounded-md border transition ui-interactive",
+                        nextIndex === safeIndex
+                          ? "border-[var(--color-brand-accent)]"
+                          : "border-[var(--border)]",
+                      )}
                       style={{
                         width: 92,
                         minWidth: 92,
                         height: 68,
-                        overflow: "hidden",
-                        border:
-                          nextIndex === safeIndex
-                            ? "1px solid var(--color-brand-accent)"
-                            : "1px solid var(--border)",
                         background: "var(--surface)",
-                        cursor: "pointer",
                         transform: nextIndex === safeIndex ? "translateY(-1px)" : "none",
-                        transition: "border-color 160ms ease, transform 160ms ease",
                       }}
                     >
                       <img
@@ -349,18 +312,18 @@ export default function PhotoLightboxModal({
                           display: "block",
                         }}
                       />
-                    </Paper>
+                    </button>
                   ))}
-                </Group>
+                </div>
               )}
             </>
           ) : (
-            <Paper withBorder radius="lg" p="md">
-              <Text c="dimmed">Фото не найдено.</Text>
-            </Paper>
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+              <p className="text-sm text-[var(--muted)]">Фото не найдено.</p>
+            </div>
           )}
-        </Stack>
-      </Paper>
-    </Modal>
+        </div>
+      </div>
+    </AppModal>
   );
 }

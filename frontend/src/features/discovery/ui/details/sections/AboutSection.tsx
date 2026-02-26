@@ -1,4 +1,5 @@
-import { Badge, Box, Button, Group, Paper, Stack, Text, Textarea } from "@mantine/core";
+import { Badge, Button } from "../../../../../components/ui";
+import { cn } from "../../../../../lib/utils";
 import { IconCamera, IconCameraPlus, IconPlus } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 
@@ -40,7 +41,6 @@ type AboutSectionProps = {
   onSaveDescription: () => void;
   onManagePhotos?: (kind: "cafe" | "menu") => void;
   canSaveDescription: boolean;
-  badgeStyles: Record<string, unknown>;
 };
 
 export default function AboutSection({
@@ -73,15 +73,14 @@ export default function AboutSection({
   onSaveDescription,
   onManagePhotos,
   canSaveDescription,
-  badgeStyles,
 }: AboutSectionProps) {
   const aboutMainSources = buildCafePhotoPictureSources(aboutMainPhoto?.url, [640, 1024, 1536]);
   const aboutThumbSizes = "108px";
 
   return (
-    <Stack gap={0}>
+    <div className="flex flex-col gap-0">
       {aboutMainPhoto ? (
-        <Box
+        <div
           onClick={onOpenViewer}
           style={{
             overflow: "hidden",
@@ -121,9 +120,9 @@ export default function AboutSection({
               }}
             />
           </picture>
-        </Box>
+        </div>
       ) : (
-        <Box
+        <div
           style={{
             height: 260,
             display: "grid",
@@ -136,62 +135,52 @@ export default function AboutSection({
         >
           {onManagePhotos && (
             <Button
+              type="button"
               size="sm"
-              radius="xl"
-              variant="light"
-              loading={isPhotoProcessing}
-              leftSection={<IconCameraPlus size={16} />}
+              variant="secondary"
+              disabled={isPhotoProcessing}
               onClick={() => onManagePhotos("cafe")}
-              styles={{
-                root: {
-                  height: 44,
-                  marginTop: 4,
-                  paddingInline: 16,
-                  border: "1px solid color-mix(in srgb, var(--color-brand-accent) 45%, var(--glass-border))",
-                  background:
-                    "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
-                  color: "var(--cafe-hero-emphasis-color)",
-                  fontWeight: 700,
-                  boxShadow: "var(--glass-shadow)",
-                },
+              className="mt-1 h-11 rounded-full px-4 font-bold shadow-glass"
+              style={{
+                border: "1px solid color-mix(in srgb, var(--color-brand-accent) 45%, var(--glass-border))",
+                background:
+                  "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
+                color: "var(--cafe-hero-emphasis-color)",
               }}
             >
+              <IconCameraPlus size={16} />
               Добавить первое фото
+              {isPhotoProcessing ? (
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : null}
             </Button>
           )}
-        </Box>
+        </div>
       )}
 
       {aboutPhotoItems.length > 1 && (
-        <Group
-          className="horizontal-scroll-modern"
-          wrap="nowrap"
-          gap={8}
-          py="sm"
-          style={{
-            overflowX: "auto",
-            paddingInline: "var(--page-edge-padding)",
-          }}
+        <div
+          className="horizontal-scroll-modern flex flex-nowrap gap-2 overflow-x-auto py-2"
+          style={{ paddingInline: "var(--page-edge-padding)" }}
         >
           {aboutPhotoItems.map((photo, index) => (
-            <Paper
+            <button
               key={photo.id}
-              withBorder
-              radius="md"
+              type="button"
               onClick={() => onSelectAboutPhoto(index)}
+              aria-label={`Открыть фото ${index + 1}`}
+              className={cn(
+                "overflow-hidden rounded-md border transition ui-interactive",
+                index === aboutActiveIndex
+                  ? "border-[var(--color-brand-accent)]"
+                  : "border-[var(--border)]",
+              )}
               style={{
                 width: 108,
                 minWidth: 108,
                 height: 78,
-                overflow: "hidden",
-                border:
-                  index === aboutActiveIndex
-                    ? "1px solid var(--color-brand-accent)"
-                    : "1px solid var(--border)",
                 background: "var(--surface)",
-                cursor: "pointer",
                 transform: index === aboutActiveIndex ? "translateY(-1px)" : "none",
-                transition: "border-color 160ms ease, transform 160ms ease",
               }}
             >
               <img
@@ -207,118 +196,138 @@ export default function AboutSection({
                   display: "block",
                 }}
               />
-            </Paper>
+            </button>
           ))}
-        </Group>
+        </div>
       )}
 
-      <Stack gap="xs" py="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
+      <div
+        className="flex flex-col gap-3 py-4"
+        style={{ paddingInline: "var(--page-edge-padding)" }}
+      >
         {ratingPanel}
 
-        <Text c="dimmed" size="sm">
+        <p className="text-sm text-[var(--muted)]">
           {cafe.address}
-        </Text>
-        {showDistance && <Text size="sm">{formatDistance(cafe.distance_m)}</Text>}
+        </p>
+        {showDistance ? (
+          <p className="text-sm text-[var(--text)]">{formatDistance(cafe.distance_m)}</p>
+        ) : null}
 
         {descriptionEditing ? (
-          <Stack gap="xs">
-            <Textarea
+          <div className="flex flex-col gap-2">
+            <textarea
               value={descriptionDraft}
               onChange={(event) => onDescriptionDraftChange(event.currentTarget.value)}
               placeholder="Опишите атмосферу, меню или особенности места"
-              autosize
-              minRows={3}
-              maxRows={6}
+              rows={4}
+              className="min-h-[96px] w-full resize-y rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] shadow-surface placeholder:text-[var(--muted)] ui-interactive ui-focus-ring"
             />
-            {descriptionError && (
-              <Text size="xs" c="red">
-                {descriptionError}
-              </Text>
-            )}
-            <Group justify="flex-end">
-              <Button variant="default" onClick={onCancelDescription} disabled={descriptionSaving}>
+            {descriptionError ? (
+              <p className="text-xs text-danger">{descriptionError}</p>
+            ) : null}
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onCancelDescription}
+                disabled={descriptionSaving}
+              >
                 Отмена
               </Button>
-              <Button onClick={onSaveDescription} loading={descriptionSaving}>
-                Сохранить
+              <Button type="button" onClick={onSaveDescription} disabled={descriptionSaving}>
+                {descriptionSaving ? (
+                  <>
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Сохраняем...
+                  </>
+                ) : (
+                  "Сохранить"
+                )}
               </Button>
-            </Group>
-          </Stack>
+            </div>
+          </div>
         ) : (
           <>
             {description ? (
-              <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+              <p className="whitespace-pre-wrap text-sm text-[var(--text)]">
                 {description}
-              </Text>
+              </p>
             ) : (
-              <Text size="sm" c="dimmed">
+              <p className="text-sm text-[var(--muted)]">
                 Описание пока не добавлено.
-              </Text>
+              </p>
             )}
             {canManageDirectly && (
-              <Button variant="subtle" onClick={onStartDescription} disabled={!canSaveDescription}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onStartDescription}
+                disabled={!canSaveDescription}
+                className="h-9 justify-start px-0 font-semibold text-[var(--cafe-hero-emphasis-color)] hover:bg-transparent"
+              >
                 {descriptionActionLabel}
               </Button>
             )}
           </>
         )}
 
-        {canManageDirectly && descriptionHint && (
-          <Text size="sm" c="teal.6">
-            {descriptionHint}
-          </Text>
-        )}
+        {canManageDirectly && descriptionHint ? (
+          <p className="text-sm text-[var(--color-status-success)]">{descriptionHint}</p>
+        ) : null}
 
         {cafe.amenities.length > 0 && (
-          <Group gap={6} wrap="wrap">
+          <div className="flex flex-wrap gap-1.5">
             {cafe.amenities.map((a) => (
-              <Badge key={a} variant="light" styles={badgeStyles}>
+              <Badge
+                key={a}
+                variant="secondary"
+                className="border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
+              >
                 {AMENITY_LABELS[a] ?? a}
               </Badge>
             ))}
-          </Group>
+          </div>
         )}
-        {showRoutes && (onOpen2gis || onOpenYandex) && (
-          <Group mt="xs" grow>
-            {onOpen2gis && <Button onClick={onOpen2gis}>2GIS</Button>}
+        {showRoutes && (onOpen2gis || onOpenYandex) ? (
+          <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {onOpen2gis ? (
+              <Button type="button" onClick={onOpen2gis}>
+                2GIS
+              </Button>
+            ) : null}
             {onOpenYandex && (
-              <Button variant="light" onClick={onOpenYandex}>
+              <Button type="button" variant="secondary" onClick={onOpenYandex}>
                 Яндекс
               </Button>
             )}
-          </Group>
-        )}
+          </div>
+        ) : null}
         {onManagePhotos && (
           <Button
-            mt="xs"
+            type="button"
             size="sm"
-            radius="xl"
-            variant="default"
+            variant="secondary"
             aria-label="Фото места"
             onClick={() => onManagePhotos("cafe")}
-            leftSection={<IconCamera size={16} />}
-            rightSection={<IconPlus size={14} />}
-            styles={{
-              root: {
-                borderRadius: 999,
-                border: "1px solid color-mix(in srgb, var(--accent) 46%, var(--glass-border))",
-                background:
-                  "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 66%, var(--surface)), color-mix(in srgb, var(--glass-grad-1) 88%, var(--surface)))",
-                color: "var(--cafe-hero-emphasis-color)",
-                boxShadow:
-                  "0 10px 24px color-mix(in srgb, var(--color-brand-accent-soft) 58%, transparent)",
-                backdropFilter: "blur(12px) saturate(150%)",
-                WebkitBackdropFilter: "blur(12px) saturate(150%)",
-                paddingInline: 14,
-              },
-              inner: { gap: 8 },
-              label: { fontWeight: 700, letterSpacing: "0.01em" },
+            className="mt-1 rounded-full px-3.5 font-bold tracking-[0.01em]"
+            style={{
+              border: "1px solid color-mix(in srgb, var(--accent) 46%, var(--glass-border))",
+              background:
+                "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 66%, var(--surface)), color-mix(in srgb, var(--glass-grad-1) 88%, var(--surface)))",
+              color: "var(--cafe-hero-emphasis-color)",
+              boxShadow:
+                "0 10px 24px color-mix(in srgb, var(--color-brand-accent-soft) 58%, transparent)",
+              backdropFilter: "blur(12px) saturate(150%)",
+              WebkitBackdropFilter: "blur(12px) saturate(150%)",
             }}
           >
+            <IconCamera size={16} />
             Добавить фото
+            <IconPlus size={14} />
           </Button>
         )}
-      </Stack>
-    </Stack>
+      </div>
+    </div>
   );
 }

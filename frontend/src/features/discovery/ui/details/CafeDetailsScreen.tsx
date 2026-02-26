@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Box,
-} from "@mantine/core";
+import { Box } from "@mantine/core";
 import {
   IconHeart,
   IconHeartFilled,
@@ -209,16 +207,6 @@ export default function CafeDetailsScreen({
     borderRadius: "var(--radius-lg)",
   } as const;
 
-  const badgeStyles = {
-    root: {
-      background: "var(--surface)",
-      border: "1px solid var(--border)",
-      color: "var(--text)",
-      backdropFilter: "blur(12px)",
-      WebkitBackdropFilter: "blur(12px)",
-    },
-  } as const;
-
   const handleStartDescription = () => {
     if (!canManageDirectly) return;
     if (onStartDescriptionEdit && !onStartDescriptionEdit()) {
@@ -412,7 +400,6 @@ export default function CafeDetailsScreen({
             }}
             onManagePhotos={onManagePhotos}
             canSaveDescription={Boolean(onSaveDescription)}
-            badgeStyles={badgeStyles}
           />
         )}
 

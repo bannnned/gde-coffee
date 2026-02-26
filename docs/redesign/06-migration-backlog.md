@@ -277,7 +277,7 @@ Critical path stack-transition:
 
 ## 8. Wave 2 Execution Queue (New UI)
 
-### [ ] W2-A · Cafe details shell/layout/tabs/top-actions migration (P0, status: review)
+### [x] W2-A · Cafe details shell/layout/tabs/top-actions migration (P0, status: done)
 - Цель: перенести shell карточки кофейни на новый UI-слой без изменения бизнес-логики вкладок.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/CafeDetailsScreen.tsx`.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx`.
@@ -287,3 +287,31 @@ Critical path stack-transition:
 - Артефакт: `CafeDetailsScreen` переведен на `AppModal` + new-ui tabs/actions в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/CafeDetailsScreen.tsx`.
 - Артефакт: `AppModal` bridge расширен для full-screen radix-модели в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx`.
 - Проверка: `npm test`, `npm run typecheck`, `npm run build` — pass.
+
+### [x] W2-B · About/Menu photo blocks + lightbox migration (P0, status: done)
+- Цель: перенести фото-flow деталки (`AboutSection`, `MenuSection`, lightbox) на новый UI-слой без деградации сценариев.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/AboutSection.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/MenuSection.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/PhotoLightboxModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx`.
+- Depends on: `W2-A`.
+- AC: основные фото-блоки вкладок `О месте/Меню` не используют ad-hoc Mantine layout primitives.
+- AC: лайтбокс открывается в новом bridge-контейнере и поддерживает свайп/кнопки/миниатюры.
+- AC: CTA добавления первого фото и добавления фото в обеих вкладках визуально и поведенчески согласованы.
+- Артефакт: `AboutSection` переведен на `components/ui` + нативные layout controls в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/AboutSection.tsx`.
+- Артефакт: `MenuSection` переведен на `components/ui` + унифицированные photo-strip/tag-strip controls в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/MenuSection.tsx`.
+- Артефакт: `PhotoLightboxModal` переведен на `AppModal` (`presentation="dialog"`) без Mantine layout wrappers в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/PhotoLightboxModal.tsx`.
+- Проверка: `npm run typecheck`, `npm test`, `npm run build` — pass.
+
+### [ ] W2-C · Reviews/composer/feed controls migration (P0, status: in_progress)
+- Цель: перевести reviews-flow деталки на новый UI-слой поэтапно, без регрессий в создании/чтении отзывов.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/ReviewsSection.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/ReviewComposerCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/ReviewFeed.tsx`.
+- Depends on: `W2-B`.
+- AC: sticky CTA и collapse/expand композера работают на новом UI-паттерне.
+- AC: feed controls (sort/filter/load-more/modal) переведены на bridge/new-ui без потери сценариев.
+- AC: composer controls (rating/tags/photos/submit) переведены на единый new-ui паттерн.
+- Прогресс: `ReviewsSection` переведен с Mantine `Stack/Collapse/ActionIcon` на `motion + components/ui/Button`.
+- Артефакт: новый collapse/CTA shell в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/ReviewsSection.tsx`.
+- Проверка: `npm run typecheck`, `npm test`, `npm run build` — pass (для текущего инкремента).

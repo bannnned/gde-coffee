@@ -19,7 +19,9 @@
 1. Gate выполнен (`W1-BL-050` и `W1-BL-052` закрыты).
 2. `STK-BL-001`, `STK-BL-002`, `STK-BL-003`, `STK-BL-010`, `STK-BL-020` закрыты.
 3. Следующий практический трек: реализация Wave 2 (`W2-A` -> `W2-B` -> `W2-C`) по правилам раздела 8.
-4. Текущий активный шаг: `W2-A` (status: review) — shell/layout/tabs/top-actions деталки кофейни.
+4. `W2-A` и `W2-B` закрыты (`done`).
+5. Текущий активный шаг: `W2-C` (reviews/composer/feed controls), status: `in_progress`.
+6. В `W2-C` завершен первый инкремент: `ReviewsSection` shell (collapse + sticky CTA) переведен на `motion + components/ui/Button`.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.
