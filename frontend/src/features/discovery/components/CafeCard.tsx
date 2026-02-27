@@ -1,4 +1,3 @@
-import { Paper } from "@mantine/core";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -87,13 +86,11 @@ export default function CafeCard({
   };
 
   return (
-    <Paper
-      withBorder
-      radius={22}
-      p={0}
+    <div
       style={{
         ...cardStyles,
         cursor: onOpenDetails ? "pointer" : "default",
+        borderRadius: 22,
       }}
       role={onOpenDetails ? "button" : undefined}
       tabIndex={onOpenDetails ? 0 : -1}
@@ -118,13 +115,13 @@ export default function CafeCard({
         onTouchStart={handlePhotoTouchStart}
         onTouchEnd={handlePhotoTouchEnd}
         badgeStyles={badgeStyles}
-      >
+        >
         <CafeCardFooter
           cafe={cafe}
           badgeStyles={badgeStyles}
           ratingRefreshToken={ratingRefreshToken}
         />
       </CafeCardHero>
-    </Paper>
+    </div>
   );
 }

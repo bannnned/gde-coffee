@@ -775,6 +775,14 @@ body {
   animation: splash-wordmark-reveal 900ms var(--splash-ease-soft-out) 940ms both;
 }
 
+.splash-question {
+  display: inline-block;
+  margin-left: 0.02em;
+  transform-origin: 55% 75%;
+  will-change: transform;
+  animation: splash-question-jiggle 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 1720ms both;
+}
+
 #app-splash.splash-fading {
   opacity: 0;
   transform: scale(1.008);
@@ -824,6 +832,21 @@ body {
     opacity: 1;
     margin-left: var(--splash-word-gap);
     transform: translateX(0);
+  }
+}
+
+@keyframes splash-question-jiggle {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  32% {
+    transform: translateY(-1px) rotate(3deg);
+  }
+  64% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
   }
 }
 

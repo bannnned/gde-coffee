@@ -356,3 +356,19 @@ Critical path stack-transition:
 - Артефакт: финальная полировка settings-flow и консолидация форм в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.module.css`.
 - Артефакт: flatten-полировка drawer-настроек в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`.
 - Проверка: `npm run typecheck`, `npm test`, `npm run build` — pass.
+
+## 10. Wave 4 Execution Queue (Stage C Legacy Shrink)
+
+### [x] W4-A · Discovery shell/card de-Mantine bootstrap (P1, status: done)
+- Цель: открыть Stage C практической задачей и начать сокращение прямых импортов `@mantine/core` в ключевом пользовательском Discovery-потоке.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/DiscoveryScreen.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/cafe-card/CafeCardFooter.tsx`.
+- Depends on: `W3-C`.
+- AC: root shell `/` не использует Mantine `Box`, layout построен на нативных контейнерах.
+- AC: выбранная карточка кофейни (`CafeCard`) не зависит от Mantine `Paper`.
+- AC: footer выбранной карточки (`CafeCardFooter`) не зависит от Mantine `Box/Group/Text/Badge`.
+- Артефакт: de-Mantine shell/layout в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/DiscoveryScreen.tsx`.
+- Артефакт: de-Mantine container карточки в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeCard.tsx`.
+- Артефакт: de-Mantine footer карточки и переход на `components/ui/Badge` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/cafe-card/CafeCardFooter.tsx`.
+- Проверка: `npm run typecheck`, `npm run build` — pass.

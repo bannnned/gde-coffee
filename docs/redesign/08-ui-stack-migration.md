@@ -24,6 +24,7 @@
 6. `W3-A` закрыт (`done`): profile shell + key cards/CTA переведены на new-ui слой.
 7. `W3-B` закрыт (`done`): settings shell + user forms + role-gated moderator/admin panels переведены на new-ui pattern.
 8. `W3-C` закрыт (`done`): Profile/Settings доведены до финального UX-polish, mixed-pattern зоны убраны, профильный legacy-код сокращен.
+9. `W4-A` закрыт (`done`): Stage C открыт через de-Mantine bootstrap для Discovery shell/card/footer.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

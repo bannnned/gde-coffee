@@ -1,4 +1,3 @@
-import { Box } from "@mantine/core";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 import Map from "../components/Map";
@@ -223,18 +222,22 @@ export default function DiscoveryScreen() {
   }, []);
 
   return (
-    <Box
-      pos="relative"
-      h={`${discoveryViewportHeight}px`}
-      w="100%"
+    <div
+      className="relative w-full"
       data-sheet-state={sheetState}
       data-vv-scale={visualViewportScale.toFixed(3)}
       style={{
         ["--sheet-height" as string]: `${sheetHeight}px`,
+        height: `${discoveryViewportHeight}px`,
         overflow: "hidden",
       }}
     >
-      <Box pos="absolute" inset={0}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+        }}
+      >
         <Map
           center={userCenter}
           zoom={13}
@@ -250,7 +253,7 @@ export default function DiscoveryScreen() {
           centerProbeOffsetY={manualPickMode ? manualCenterProbeOffsetY : 0}
           onCenterChange={manualPickMode ? handleManualCenterChange : undefined}
         />
-      </Box>
+      </div>
 
       {manualPickMode && (
         <ManualPickOverlay
@@ -444,6 +447,6 @@ export default function DiscoveryScreen() {
           />
         </Suspense>
       )}
-    </Box>
+    </div>
   );
 }

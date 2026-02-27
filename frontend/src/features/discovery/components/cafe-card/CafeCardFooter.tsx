@@ -1,8 +1,8 @@
-import { Badge, Box, Group, Text } from "@mantine/core";
 import { IconMessageCircle, IconSparkles, IconStarFilled } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { getCafeRatingSnapshot, type CafeRatingSnapshot } from "../../../../api/reviews";
+import { Badge } from "../../../../components/ui";
 import type { Cafe } from "../../../../entities/cafe/model/types";
 import { AMENITY_LABELS } from "../../constants";
 import { resolveCafeDisplayRating } from "../../utils/ratingDisplay";
@@ -137,8 +137,22 @@ export default function CafeCardFooter({
     return normalizeSummaryText(ratingSnapshot?.ai_summary?.stale_notice);
   }, [ratingSnapshot?.ai_summary?.stale_notice, ratingSnapshot?.ai_summary?.summary_short]);
 
+  const lineClampSingleStyle = {
+    display: "-webkit-box",
+    WebkitBoxOrient: "vertical" as const,
+    WebkitLineClamp: 1,
+    overflow: "hidden",
+  };
+
+  const lineClampDoubleStyle = {
+    display: "-webkit-box",
+    WebkitBoxOrient: "vertical" as const,
+    WebkitLineClamp: 2,
+    overflow: "hidden",
+  };
+
   return (
-    <Box
+    <div
       style={{
         position: "absolute",
         left: 0,
@@ -148,7 +162,7 @@ export default function CafeCardFooter({
         zIndex: 3,
       }}
     >
-      <Box
+      <div
         style={{
           borderRadius: 14,
           border: "1px solid color-mix(in srgb, var(--glass-border) 82%, transparent)",
@@ -160,47 +174,57 @@ export default function CafeCardFooter({
           marginBottom: 4,
         }}
       >
-        <Group justify="space-between" align="flex-end" gap={10} wrap="nowrap">
-          <Box style={{ minWidth: 0, flex: 1 }}>
-            <Text
-              fw={700}
-              size="md"
-              lineClamp={1}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p
               title={cafe.name}
               style={{
+                margin: 0,
+                fontSize: "1rem",
+                fontWeight: 700,
                 color: "var(--cafe-hero-emphasis-color)",
                 textShadow: "0 1px 2px color-mix(in srgb, var(--cafe-hero-overlay-3) 26%, transparent)",
+                ...lineClampSingleStyle,
               }}
             >
               {cafe.name}
-            </Text>
-            <Text
-              size="sm"
-              lineClamp={1}
+            </p>
+            <p
               title={cafe.address}
               style={{
+                margin: "2px 0 0",
+                fontSize: "0.875rem",
                 color: "color-mix(in srgb, var(--cafe-hero-subtitle-color) 92%, var(--text))",
                 textShadow: "0 1px 2px color-mix(in srgb, var(--cafe-hero-overlay-3) 18%, transparent)",
+                ...lineClampSingleStyle,
               }}
             >
               {cafe.address}
-            </Text>
+            </p>
             {ratingLoading ? (
-              <Text
-                size="xs"
-                mt={6}
+              <p
                 style={{
+                  margin: "6px 0 0",
+                  fontSize: "0.75rem",
                   color: "color-mix(in srgb, var(--cafe-hero-subtitle-color) 90%, var(--text))",
                 }}
               >
                 Считываем отзывы...
-              </Text>
+              </p>
             ) : summaryPreview ? (
-              <Group
-                gap={6}
-                wrap="nowrap"
-                mt={6}
+              <div
                 style={{
+                  marginTop: 6,
+                  display: "inline-flex",
+                  alignItems: "flex-start",
+                  gap: 6,
                   width: "fit-content",
                   maxWidth: "100%",
                   borderRadius: 10,
@@ -213,19 +237,20 @@ export default function CafeCardFooter({
                 }}
               >
                 <IconSparkles size={12} color="var(--cafe-hero-emphasis-color)" />
-                <Text
-                  size="xs"
-                  lineClamp={2}
+                <p
                   style={{
+                    margin: 0,
+                    fontSize: "0.75rem",
                     color: "color-mix(in srgb, var(--cafe-hero-title-color) 84%, var(--text))",
+                    ...lineClampDoubleStyle,
                   }}
                 >
                   {summaryPreview}
-                </Text>
-              </Group>
+                </p>
+              </div>
             ) : null}
-          </Box>
-          <Box
+          </div>
+          <div
             style={{
               minWidth: 74,
               display: "grid",
@@ -235,50 +260,77 @@ export default function CafeCardFooter({
             }}
           >
             {ratingLoading ? (
-              <Text size="xs" style={{ color: "var(--cafe-hero-subtitle-color)" }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "0.75rem",
+                  color: "var(--cafe-hero-subtitle-color)",
+                }}
+              >
                 ...
-              </Text>
+              </p>
             ) : hasReviewStats ? (
               <>
-                <Group gap={4} wrap="nowrap">
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                   <IconStarFilled size={14} color="var(--cafe-hero-emphasis-color)" />
-                  <Text fw={700} size="sm" style={{ color: "var(--cafe-hero-emphasis-color)" }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "0.875rem",
+                      fontWeight: 700,
+                      color: "var(--cafe-hero-emphasis-color)",
+                    }}
+                  >
                     {ratingLabel}
-                  </Text>
-                </Group>
-                <Group gap={4} wrap="nowrap">
+                  </p>
+                </div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                   <IconMessageCircle size={14} color="var(--cafe-hero-subtitle-color)" />
-                  <Text size="sm" style={{ color: "var(--cafe-hero-subtitle-color)" }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "0.875rem",
+                      color: "var(--cafe-hero-subtitle-color)",
+                    }}
+                  >
                     {ratingSnapshot?.reviews_count ?? 0}
-                  </Text>
-                </Group>
+                  </p>
+                </div>
               </>
             ) : (
-              <Badge variant="light" radius="xl" styles={badgeStyles}>
+              <Badge
+                variant="secondary"
+                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-0.5 text-[0.75rem] font-semibold text-[var(--text)]"
+              >
                 new
               </Badge>
             )}
-          </Box>
-        </Group>
-      </Box>
+          </div>
+        </div>
+      </div>
       {descriptiveLabels.length > 0 && (
-        <Group
-          gap={6}
-          mt={8}
-          wrap="nowrap"
+        <div
           style={{
+            marginTop: 8,
+            display: "flex",
+            flexWrap: "nowrap",
+            gap: 6,
             overflow: "hidden",
             WebkitMaskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
             maskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
           }}
         >
           {descriptiveLabels.map((label) => (
-            <Badge key={label} variant="light" styles={badgeStyles}>
+            <Badge
+              key={label}
+              variant="secondary"
+              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-0.5 text-[0.75rem] font-semibold text-[var(--text)]"
+            >
               {label}
             </Badge>
           ))}
-        </Group>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }

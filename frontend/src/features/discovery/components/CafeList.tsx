@@ -1,4 +1,3 @@
-import { Box, Group, Stack, Text, UnstyledButton } from "@mantine/core";
 import { IconMapPin } from "@tabler/icons-react";
 import type { MutableRefObject } from "react";
 
@@ -34,8 +33,7 @@ export default function CafeList({
 
   if (isLoading) {
     return (
-      <Stack
-        gap="sm"
+      <div
         className={classes.loadingList}
         role="status"
         aria-live="polite"
@@ -56,7 +54,7 @@ export default function CafeList({
             </div>
           </div>
         ))}
-      </Stack>
+      </div>
     );
   }
 
@@ -65,50 +63,50 @@ export default function CafeList({
   }
 
   return (
-    <Stack gap="sm" className={classes.list}>
+    <div className={classes.list}>
       {cafes.map((c) => {
         const isSelected = c.id === selectedCafeId;
         return (
-          <UnstyledButton
+          <button
             key={c.id}
             ref={(el) => {
               itemRefs.current[c.id] = el;
             }}
-            className={classes.item}
+            className={`${classes.item} ui-focus-ring`}
             data-selected={isSelected ? "true" : "false"}
             type="button"
             onClick={() => onSelectCafe(c.id)}
             aria-pressed={isSelected}
             aria-current={isSelected ? "true" : undefined}
           >
-            <Group
-              justify="space-between"
-              align="center"
-              gap="xs"
-              wrap="nowrap"
-              className={classes.itemInner}
-            >
-              <Box className={classes.itemMain}>
-                <Text
-                  fw={isSelected ? 700 : 600}
-                  size="sm"
+            <div className={classes.itemInner}>
+              <div className={classes.itemMain}>
+                <p
                   className={classes.itemTitle}
-                  lineClamp={1}
                   title={c.name}
+                  style={{
+                    margin: 0,
+                    fontWeight: isSelected ? 700 : 600,
+                    fontSize: "0.875rem",
+                    display: "-webkit-box",
+                    WebkitBoxOrient: "vertical",
+                    WebkitLineClamp: 1,
+                    overflow: "hidden",
+                  }}
                 >
                   {c.name}
-                </Text>
-              </Box>
+                </p>
+              </div>
               {showDistance && (
                 <span className={classes.distancePill}>
                   <IconMapPin size={12} />
                   {formatDistance(c.distance_m)}
                 </span>
               )}
-            </Group>
-          </UnstyledButton>
+            </div>
+          </button>
         );
       })}
-    </Stack>
+    </div>
   );
 }

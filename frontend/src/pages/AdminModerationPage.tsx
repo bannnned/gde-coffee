@@ -41,6 +41,40 @@ import { extractApiErrorMessage } from "../utils/apiError";
 
 const CafeDetailsScreen = lazy(() => import("../features/discovery/ui/details/CafeDetailsScreen"));
 
+const STATUS_META: Record<
+  SubmissionStatus,
+  { label: string; color: "yellow" | "green" | "red" | "orange" | "gray" }
+> = {
+  pending: { label: "В ожидании", color: "yellow" },
+  approved: { label: "Одобрено", color: "green" },
+  rejected: { label: "Отклонено", color: "red" },
+  needs_changes: { label: "Нужны правки", color: "orange" },
+  cancelled: { label: "Отменено", color: "gray" },
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  create: "Создание",
+  update: "Обновление",
+  delete: "Удаление",
+};
+
+function readPayloadString(payload: Record<string, unknown> | undefined, key: string): string | null {
+  const value = payload?.[key];
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized || null;
+}
+
+function readPayloadNumber(payload: Record<string, unknown> | undefined, key: string): number | null {
+  const value = payload?.[key];
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
 export default function AdminModerationPage() {
   useAllowBodyScroll();
   const navigate = useNavigate();
@@ -225,7 +259,16 @@ export default function AdminModerationPage() {
   }
 
   return (
-    <Box className="page-shell" pb="xl">
+    <Box
+      className="page-shell"
+      pb="xl"
+      style={{
+        height: "var(--app-vh)",
+        overflowY: "auto",
+        overflowX: "hidden",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
       <Container size="sm" py="md">
         <Stack gap="md">
           <Group justify="space-between" align="center">
@@ -342,56 +385,140 @@ export default function AdminModerationPage() {
           {visibleItems.map((item) => {
             const isPending = item.status === "pending";
             const isProcessing = processingId === item.id;
+            const statusMeta = STATUS_META[item.status] ?? {
+              label: item.status,
+              color: "gray" as const,
+            };
+            const actionLabel = ACTION_LABELS[item.action_type] ?? item.action_type;
+            const payload = item.payload;
             const photoUrls = readStringArrayFromPayload(item.payload, "photo_urls");
             const menuPhotoUrls = readStringArrayFromPayload(item.payload, "menu_photo_urls");
             const targetCafeMapUrl = resolveTargetCafeMapUrl(item);
             const targetCafeName = item.target_cafe_name?.trim();
             const previewCandidate = buildPreviewCafe(item);
+            const candidateName =
+              previewCandidate?.name ??
+              targetCafeName ??
+              readPayloadString(payload, "name") ??
+              "Без названия";
+            const candidateAddress =
+              previewCandidate?.address ??
+              item.target_cafe_address?.trim() ??
+              readPayloadString(payload, "address");
+            const description = readPayloadString(payload, "description");
+            const amenities = readStringArrayFromPayload(payload, "amenities");
+            const reviewSummary = readPayloadString(payload, "summary");
+            const reviewDrink =
+              readPayloadString(payload, "drink_name") ?? readPayloadString(payload, "drink");
+            const reviewRating = readPayloadNumber(payload, "rating");
+            const reviewTags = readStringArrayFromPayload(payload, "taste_tags");
             return (
               <Paper key={item.id} withBorder radius="lg" p="md">
-                <Stack gap="xs">
+                <Stack gap="sm">
                   <Group justify="space-between" align="center">
-                    <Badge variant="light">{entityLabel(item.entity_type)}</Badge>
-                    <Badge color={isPending ? "yellow" : item.status === "approved" ? "green" : "red"}>
-                      {item.status}
-                    </Badge>
-                  </Group>
-                  <Text size="sm">
-                    Автор: {item.author_label || item.author_user_id}
-                  </Text>
-                  <Text size="sm" c="dimmed">
-                    Создано: {formatModerationDate(item.created_at)}
-                  </Text>
-                  {(item.target_id || targetCafeName) && (
-                    <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-                      <Stack gap={2} style={{ minWidth: 0 }}>
-                        <Text size="sm">
-                          Кофейня: {targetCafeName || "Без названия"}
-                        </Text>
-                        {item.target_cafe_address && (
-                          <Text size="xs" c="dimmed" lineClamp={2}>
-                            {item.target_cafe_address}
-                          </Text>
-                        )}
-                        {item.target_id && (
-                          <Text size="xs" c="dimmed">
-                            ID: {item.target_id}
-                          </Text>
-                        )}
-                      </Stack>
-                      {targetCafeMapUrl && (
-                        <Button
-                          size="xs"
-                          variant="light"
-                          component="a"
-                          href={targetCafeMapUrl}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                        >
-                          Открыть карту
-                        </Button>
-                      )}
+                    <Group gap="xs">
+                      <Badge variant="light">{entityLabel(item.entity_type)}</Badge>
+                      <Badge variant="dot" color="gray">
+                        {actionLabel}
+                      </Badge>
                     </Group>
+                    <Badge color={statusMeta.color}>{statusMeta.label}</Badge>
+                  </Group>
+                  <Text size="sm" c="dimmed">
+                    {item.author_label || item.author_user_id} • {formatModerationDate(item.created_at)}
+                  </Text>
+
+                  {(item.target_id || targetCafeName || previewCandidate) && (
+                    <Paper withBorder radius="md" p="sm" style={{ background: "var(--surface)" }}>
+                      <Stack gap={6}>
+                        <Text size="sm" fw={600}>
+                          Предлагаемая кофейня
+                        </Text>
+                        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+                          <Stack gap={2} style={{ minWidth: 0 }}>
+                            <Text size="sm">{candidateName}</Text>
+                            {candidateAddress && (
+                              <Text size="xs" c="dimmed" lineClamp={2}>
+                                {candidateAddress}
+                              </Text>
+                            )}
+                            {item.target_id && (
+                              <Text size="xs" c="dimmed">
+                                ID: {item.target_id}
+                              </Text>
+                            )}
+                          </Stack>
+                          {targetCafeMapUrl && (
+                            <Button
+                              size="xs"
+                              variant="light"
+                              component="a"
+                              href={targetCafeMapUrl}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                            >
+                              На карте
+                            </Button>
+                          )}
+                        </Group>
+                      </Stack>
+                    </Paper>
+                  )}
+
+                  {description && (
+                    <Paper withBorder radius="md" p="sm" style={{ background: "var(--surface)" }}>
+                      <Stack gap={4}>
+                        <Text size="sm" fw={600}>
+                          {item.entity_type === "cafe_description"
+                            ? "Предложенное описание"
+                            : "Описание"}
+                        </Text>
+                        <Text size="sm">{description}</Text>
+                      </Stack>
+                    </Paper>
+                  )}
+
+                  {amenities.length > 0 && (
+                    <Stack gap={6}>
+                      <Text size="sm" fw={600}>
+                        Удобства
+                      </Text>
+                      <Group gap={6}>
+                        {amenities.map((amenity) => (
+                          <Badge key={`${item.id}-amenity-${amenity}`} variant="light" radius="sm">
+                            {amenity}
+                          </Badge>
+                        ))}
+                      </Group>
+                    </Stack>
+                  )}
+
+                  {(reviewSummary || reviewDrink || reviewRating != null || reviewTags.length > 0) && (
+                    <Paper withBorder radius="md" p="sm" style={{ background: "var(--surface)" }}>
+                      <Stack gap={6}>
+                        <Text size="sm" fw={600}>
+                          Данные отзыва
+                        </Text>
+                        <Group gap="xs">
+                          {reviewRating != null && (
+                            <Badge variant="light">Оценка: {reviewRating}</Badge>
+                          )}
+                          {reviewDrink && (
+                            <Badge variant="light">Напиток: {reviewDrink}</Badge>
+                          )}
+                        </Group>
+                        {reviewTags.length > 0 && (
+                          <Group gap={6}>
+                            {reviewTags.map((tag) => (
+                              <Badge key={`${item.id}-tag-${tag}`} radius="sm" variant="outline">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </Group>
+                        )}
+                        {reviewSummary && <Text size="sm">{reviewSummary}</Text>}
+                      </Stack>
+                    </Paper>
                   )}
 
                   {photoUrls.length > 0 && (
@@ -466,19 +593,6 @@ export default function AdminModerationPage() {
                     </Stack>
                   )}
 
-                  <Paper withBorder radius="md" p="xs" style={{ background: "var(--surface)" }}>
-                    <Text
-                      component="pre"
-                      size="xs"
-                      style={{
-                        margin: 0,
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {JSON.stringify(item.payload ?? {}, null, 2)}
-                    </Text>
-                  </Paper>
                   {item.moderator_comment && (
                     <Text size="sm" c="dimmed">
                       Комментарий модератора: {item.moderator_comment}
@@ -514,7 +628,7 @@ export default function AdminModerationPage() {
                         setPreviewOpen(true);
                       }}
                     >
-                      Открыть кофейню
+                      Предпросмотр карточки кофейни
                     </Button>
                   )}
                 </Stack>
