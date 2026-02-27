@@ -89,6 +89,7 @@ export default function useDiscoveryPageController() {
   const [favoriteBusyCafeId, setFavoriteBusyCafeId] = useState<string | null>(null);
   const [selectedCafeJourneyID, setSelectedCafeJourneyID] = useState("");
   const [photosRefreshToken, setPhotosRefreshToken] = useState(0);
+  const [ratingRefreshToken, setRatingRefreshToken] = useState(0);
   const [topDescriptiveTags, setTopDescriptiveTags] = useState<string[]>([]);
   const [topDescriptiveTagsSource, setTopDescriptiveTagsSource] = useState("city_popular");
   const [isTopTagsLoading, setIsTopTagsLoading] = useState(false);
@@ -551,6 +552,7 @@ export default function useDiscoveryPageController() {
     } else {
       invalidateCafeCardRatingSnapshot();
     }
+    setRatingRefreshToken((prev) => prev + 1);
     void cafesQuery.refetch();
   };
 
@@ -567,6 +569,7 @@ export default function useDiscoveryPageController() {
     selectedCafe,
     selectedCafeJourneyID,
     photosRefreshToken,
+    ratingRefreshToken,
     selectedCafePhotoProcessing,
     selectedMenuPhotoProcessing,
     itemRefs,

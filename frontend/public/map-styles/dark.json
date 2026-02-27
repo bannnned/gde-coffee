@@ -18,7 +18,13 @@
     {
       "id": "carto-dark-raster",
       "type": "raster",
-      "source": "carto-dark"
+      "source": "carto-dark",
+      "paint": {
+        "raster-saturation": -0.24,
+        "raster-contrast": -0.04,
+        "raster-brightness-min": 0.08,
+        "raster-brightness-max": 0.9
+      }
     }
   ]
 }

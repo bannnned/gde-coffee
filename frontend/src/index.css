@@ -706,7 +706,15 @@ body {
     radial-gradient(circle at top left, var(--bg-accent-1), transparent 45%),
     radial-gradient(circle at 80% 20%, var(--bg-accent-2), transparent 40%),
     var(--bg);
-  transition: opacity 220ms ease, visibility 220ms ease;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  will-change: opacity, transform, filter;
+  transition:
+    opacity 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 560ms;
 }
 
 .splash-lockup {
@@ -767,12 +775,15 @@ body {
   animation: splash-wordmark-reveal 900ms var(--splash-ease-soft-out) 940ms both;
 }
 
-body.app-loaded #app-splash {
+#app-splash.splash-fading {
   opacity: 0;
-  visibility: hidden;
+  transform: scale(1.008);
+  filter: saturate(0.94) blur(2px);
   pointer-events: none;
-  transition-duration: 360ms;
-  transition-timing-function: var(--splash-ease-smooth);
+}
+
+#app-splash.splash-hidden {
+  visibility: hidden;
 }
 
 @keyframes splash-logo-sequence {

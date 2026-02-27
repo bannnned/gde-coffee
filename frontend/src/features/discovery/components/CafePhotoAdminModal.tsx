@@ -16,6 +16,7 @@ import {
   IconChevronDown,
   IconChevronUp,
   IconPlus,
+  IconRotateClockwise2,
   IconStar,
   IconTrash,
 } from "@tabler/icons-react";
@@ -30,6 +31,7 @@ import {
   uploadCafePhotoByPresignedUrl,
 } from "../../../api/cafePhotos";
 import type { CafePhoto, CafePhotoKind } from "../../../entities/cafe/model/types";
+import { rotateImageFileByQuarterTurns } from "../../../utils/imageRotation";
 import { extractApiErrorMessage } from "../../../utils/apiError";
 
 type CafePhotoAdminModalProps = {
@@ -43,6 +45,36 @@ type CafePhotoAdminModalProps = {
 };
 
 const MAX_UPLOAD_CONCURRENCY = 3;
+
+type PendingUploadPhoto = {
+  id: string;
+  file: File;
+  previewUrl: string;
+  rotationQuarterTurns: 0 | 1 | 2 | 3;
+};
+
+function normalizeQuarterTurns(value: number): 0 | 1 | 2 | 3 {
+  const normalized = ((Math.trunc(value) % 4) + 4) % 4;
+  if (normalized === 0 || normalized === 1 || normalized === 2 || normalized === 3) {
+    return normalized;
+  }
+  return 0;
+}
+
+function createPendingUploadPhoto(file: File): PendingUploadPhoto {
+  return {
+    id: `pending-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    file,
+    previewUrl: URL.createObjectURL(file),
+    rotationQuarterTurns: 0,
+  };
+}
+
+function revokePendingPreviewUrls(items: PendingUploadPhoto[]) {
+  for (const item of items) {
+    URL.revokeObjectURL(item.previewUrl);
+  }
+}
 
 function moveItem<T>(items: T[], from: number, to: number): T[] {
   if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) {
@@ -85,18 +117,33 @@ export default function CafePhotoAdminModal({
   onPhotosChanged,
 }: CafePhotoAdminModalProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingUploadsRef = useRef<PendingUploadPhoto[]>([]);
   const [photos, setPhotos] = useState<CafePhoto[]>(initialPhotos);
+  const [pendingUploads, setPendingUploads] = useState<PendingUploadPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
-  const [uploadSkeletonCount, setUploadSkeletonCount] = useState(0);
   const [draggedPhotoId, setDraggedPhotoId] = useState<string | null>(null);
   const [orderDirty, setOrderDirty] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
+    pendingUploadsRef.current = pendingUploads;
+  }, [pendingUploads]);
+
+  useEffect(() => {
+    return () => {
+      revokePendingPreviewUrls(pendingUploadsRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!opened) return;
     setPhotos(initialPhotos);
+    setPendingUploads((prev) => {
+      revokePendingPreviewUrls(prev);
+      return [];
+    });
     setOrderDirty(false);
   }, [opened, cafeId, kind]);
 
@@ -144,7 +191,11 @@ export default function CafePhotoAdminModal({
     if (photos.length === 0) return "Фото пока нет";
     return photos.length === 1 ? "1 фото" : `${photos.length} фото`;
   }, [photos.length]);
-  const uploadPreviewPhotos = useMemo(() => photos.slice(0, 11), [photos]);
+  const pendingUploadsLabel = useMemo(() => {
+    if (pendingUploads.length === 0) return "Очередь пуста";
+    if (pendingUploads.length === 1) return "1 файл в очереди";
+    return `${pendingUploads.length} файлов в очереди`;
+  }, [pendingUploads.length]);
 
   const handlePickFiles = () => {
     fileInputRef.current?.click();
@@ -155,8 +206,8 @@ export default function CafePhotoAdminModal({
     onPhotosChanged?.(next);
   };
 
-  const handleUploadFiles = async (fileList: FileList | File[] | null) => {
-    if (!cafeId || !fileList || fileList.length === 0 || isUploading) return;
+  const handleQueueUploadFiles = (fileList: FileList | File[] | null) => {
+    if (!fileList || fileList.length === 0 || isUploading) return;
     const files = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
     if (files.length === 0) {
       notifications.show({
@@ -166,19 +217,31 @@ export default function CafePhotoAdminModal({
       });
       return;
     }
+    const pending = files.map(createPendingUploadPhoto);
+    setPendingUploads((prev) => [...prev, ...pending]);
+  };
 
+  const handleUploadQueue = async () => {
+    if (!cafeId || pendingUploads.length === 0 || isUploading) return;
     setIsUploading(true);
-    setUploadSkeletonCount(files.length);
     setLastError(null);
     try {
       const hadNoPhotos = photos.length === 0;
-      await runWithConcurrency(files, MAX_UPLOAD_CONCURRENCY, async (file, idx) => {
+      await runWithConcurrency(pendingUploads, MAX_UPLOAD_CONCURRENCY, async (pending, idx) => {
+        const uploadFile =
+          pending.rotationQuarterTurns === 0
+            ? pending.file
+            : await rotateImageFileByQuarterTurns(pending.file, pending.rotationQuarterTurns);
         const presigned = await presignCafePhotoUpload(cafeId, {
-          contentType: file.type,
-          sizeBytes: file.size,
+          contentType: uploadFile.type || pending.file.type,
+          sizeBytes: uploadFile.size,
           kind,
         });
-        await uploadCafePhotoByPresignedUrl(presigned.upload_url, file, presigned.headers ?? {});
+        await uploadCafePhotoByPresignedUrl(
+          presigned.upload_url,
+          uploadFile,
+          presigned.headers ?? {},
+        );
         await confirmCafePhotoUpload(cafeId, {
           objectKey: presigned.object_key,
           kind,
@@ -189,10 +252,14 @@ export default function CafePhotoAdminModal({
       const fresh = await getCafePhotos(cafeId, kind);
       publishPhotos(fresh);
       setOrderDirty(false);
+      setPendingUploads((prev) => {
+        revokePendingPreviewUrls(prev);
+        return [];
+      });
       notifications.show({
         color: "green",
         title: "Фото загружены",
-        message: `Добавлено: ${files.length}`,
+        message: `Добавлено: ${pendingUploads.length}`,
       });
     } catch (err: unknown) {
       const message = extractApiErrorMessage(err, "Не удалось загрузить фото.");
@@ -204,7 +271,6 @@ export default function CafePhotoAdminModal({
       });
     } finally {
       setIsUploading(false);
-      setUploadSkeletonCount(0);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -215,7 +281,7 @@ export default function CafePhotoAdminModal({
     event.preventDefault();
     event.stopPropagation();
     if (event.dataTransfer?.files?.length) {
-      void handleUploadFiles(event.dataTransfer.files);
+      handleQueueUploadFiles(event.dataTransfer.files);
     }
   };
 
@@ -366,12 +432,15 @@ export default function CafePhotoAdminModal({
               <Text fw={600}>Загрузка фото</Text>
               <Badge variant="light">
                 {isUploading
-                  ? `Обрабатываем ${uploadSkeletonCount}...`
-                  : photosCountLabel}
+                  ? `Загружаем ${pendingUploads.length}...`
+                  : pendingUploadsLabel}
               </Badge>
             </Group>
             <Text size="sm" c="dimmed">
-              Нажмите на слот с плюсом или перетащите файлы в эту область.
+              Нажмите на слот с плюсом или перетащите файлы. Можно повернуть фото до загрузки.
+            </Text>
+            <Text size="xs" c="dimmed">
+              Сейчас в галерее: {photosCountLabel}
             </Text>
             <Box
               style={{
@@ -380,9 +449,9 @@ export default function CafePhotoAdminModal({
                 gap: 8,
               }}
             >
-              {uploadPreviewPhotos.map((photo, index) => (
+              {pendingUploads.map((pending) => (
                 <Box
-                  key={`upload-preview-${photo.id}`}
+                  key={pending.id}
                   style={{
                     position: "relative",
                     width: "100%",
@@ -394,41 +463,83 @@ export default function CafePhotoAdminModal({
                   }}
                 >
                   <img
-                    src={photo.url}
-                    alt={`Фото ${index + 1}`}
+                    src={pending.previewUrl}
+                    alt={pending.file.name}
                     loading="lazy"
                     style={{
                       width: "100%",
                       height: "100%",
                       objectFit: "cover",
                       display: "block",
+                      transform: `rotate(${pending.rotationQuarterTurns * 90}deg)`,
+                      transformOrigin: "center center",
                     }}
                   />
-                </Box>
-              ))}
-              {Array.from({ length: uploadSkeletonCount }).map((_, index) => (
-                <Box
-                  key={`upload-skeleton-${index + 1}`}
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    aspectRatio: "1 / 1",
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
-                  }}
-                >
-                  <Skeleton
-                    visible
-                    animate
-                    h="100%"
-                    radius={12}
+                  <ActionIcon
+                    size={22}
+                    variant="filled"
+                    color="dark"
+                    aria-label="Повернуть фото"
+                    onClick={() =>
+                      setPendingUploads((prev) =>
+                        prev.map((item) =>
+                          item.id === pending.id
+                            ? {
+                                ...item,
+                                rotationQuarterTurns: normalizeQuarterTurns(
+                                  item.rotationQuarterTurns + 1,
+                                ),
+                              }
+                            : item,
+                        ),
+                      )
+                    }
+                    disabled={isUploading}
                     style={{
                       position: "absolute",
-                      inset: 0,
+                      top: 6,
+                      left: 6,
+                      background: "rgba(20,20,20,0.72)",
                     }}
-                  />
+                  >
+                    <IconRotateClockwise2 size={14} />
+                  </ActionIcon>
+                  <ActionIcon
+                    size={22}
+                    variant="filled"
+                    color="dark"
+                    aria-label="Убрать из очереди"
+                    onClick={() =>
+                      setPendingUploads((prev) => {
+                        const target = prev.find((item) => item.id === pending.id) ?? null;
+                        if (target) {
+                          URL.revokeObjectURL(target.previewUrl);
+                        }
+                        return prev.filter((item) => item.id !== pending.id);
+                      })
+                    }
+                    disabled={isUploading}
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      right: 6,
+                      background: "rgba(20,20,20,0.72)",
+                    }}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
+                  {isUploading && (
+                    <Skeleton
+                      visible
+                      animate
+                      h="100%"
+                      radius={12}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                      }}
+                    />
+                  )}
                 </Box>
               ))}
               <button
@@ -460,9 +571,23 @@ export default function CafePhotoAdminModal({
               multiple
               hidden
               onChange={(event) => {
-                void handleUploadFiles(event.currentTarget.files);
+                handleQueueUploadFiles(event.currentTarget.files);
               }}
             />
+            <Button
+              size="sm"
+              fullWidth
+              onClick={() => {
+                void handleUploadQueue();
+              }}
+              disabled={!cafeId || pendingUploads.length === 0 || isUploading}
+              loading={isUploading}
+              styles={glassButtonStyles}
+            >
+              {pendingUploads.length > 0
+                ? `Загрузить ${pendingUploads.length}`
+                : "Выберите фото для загрузки"}
+            </Button>
           </Stack>
         </Box>
 

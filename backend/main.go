@@ -54,10 +54,15 @@ func connectDB(dbURL string) (*pgxpool.Pool, error) {
 func applyStaticCacheHeaders(c *gin.Context, relPath string, isSPAFallback bool) {
 	normalized := strings.TrimPrefix(strings.ToLower(relPath), "/")
 
-	if isSPAFallback || normalized == "" || normalized == "index.html" || normalized == "sw.js" || normalized == "manifest.webmanifest" {
+	if isSPAFallback || normalized == "" || normalized == "index.html" || normalized == "sw.js" {
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		c.Header("Pragma", "no-cache")
 		c.Header("Expires", "0")
+		return
+	}
+
+	if normalized == "manifest.webmanifest" {
+		c.Header("Cache-Control", "public, max-age=86400")
 		return
 	}
 

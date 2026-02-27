@@ -133,6 +133,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 const splashMountedAt = performance.now()
 const MIN_SPLASH_VISIBLE_MS = 2000
+const SPLASH_FADE_FALLBACK_MS = 900
 
 const hideSplash = () => {
   const elapsed = performance.now() - splashMountedAt
@@ -141,9 +142,33 @@ const hideSplash = () => {
   window.setTimeout(() => {
     document.body.classList.add('app-loaded')
     const splash = document.getElementById('app-splash')
-    if (splash) {
-      window.setTimeout(() => splash.remove(), 620)
+    if (!splash) {
+      return
     }
+
+    splash.classList.add('splash-fading')
+
+    let done = false
+    const finalize = () => {
+      if (done) return
+      done = true
+      splash.classList.add('splash-hidden')
+      splash.remove()
+    }
+
+    const handleTransitionEnd = (event: TransitionEvent) => {
+      if (event.target !== splash || event.propertyName !== 'opacity') {
+        return
+      }
+      splash.removeEventListener('transitionend', handleTransitionEnd)
+      finalize()
+    }
+
+    splash.addEventListener('transitionend', handleTransitionEnd)
+    window.setTimeout(() => {
+      splash.removeEventListener('transitionend', handleTransitionEnd)
+      finalize()
+    }, SPLASH_FADE_FALLBACK_MS)
   }, delay)
 }
 

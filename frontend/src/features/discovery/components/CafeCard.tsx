@@ -11,6 +11,7 @@ import { useCafeCardPhotos } from "./cafe-card/useCafeCardPhotos";
 
 type CafeCardProps = {
   cafe: Cafe;
+  ratingRefreshToken?: number;
   onOpen2gis: (cafe: Cafe) => void;
   onOpenYandex: (cafe: Cafe) => void;
   onAddFirstPhoto?: () => void;
@@ -22,6 +23,7 @@ type CafeCardProps = {
 
 export default function CafeCard({
   cafe,
+  ratingRefreshToken = 0,
   onOpen2gis,
   onOpenYandex,
   onAddFirstPhoto,
@@ -117,7 +119,11 @@ export default function CafeCard({
         onTouchEnd={handlePhotoTouchEnd}
         badgeStyles={badgeStyles}
       >
-        <CafeCardFooter cafe={cafe} badgeStyles={badgeStyles} />
+        <CafeCardFooter
+          cafe={cafe}
+          badgeStyles={badgeStyles}
+          ratingRefreshToken={ratingRefreshToken}
+        />
       </CafeCardHero>
     </Paper>
   );

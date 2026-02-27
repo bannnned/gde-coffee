@@ -1,4 +1,4 @@
-const CACHE_NAME = "coffee-quest-v2";
+const CACHE_NAME = "coffee-quest-v3";
 const SHELL_ASSETS = [
   "/manifest.webmanifest",
   "/icon-192.png",
@@ -11,8 +11,19 @@ const SHELL_ASSETS = [
 function isStaticAssetPath(pathname) {
   return (
     pathname.startsWith("/assets/") ||
-    /\.(?:js|css|png|jpg|jpeg|svg|webp|ico|woff|woff2|ttf)$/i.test(pathname)
+    /\.(?:js|css|png|jpg|jpeg|svg|webp|ico|woff|woff2|ttf|webmanifest)$/i.test(pathname)
   );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithTooEarlyRetry(request, init) {
+  const first = await fetch(request, init);
+  if (first.status !== 425) return first;
+  await sleep(240);
+  return fetch(request, init);
 }
 
 self.addEventListener("install", (event) => {
@@ -43,9 +54,14 @@ async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
 
   try {
-    const response = await fetch(request, { cache: "no-store" });
+    const response = await fetchWithTooEarlyRetry(request, { cache: "no-store" });
     if (response && response.status === 200) {
       cache.put(request, response.clone());
+      return response;
+    }
+    if (response && response.status === 425) {
+      const cached = await cache.match(request);
+      if (cached) return cached;
     }
     return response;
   } catch (error) {
@@ -59,12 +75,13 @@ async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
 
-  const networkPromise = fetch(request)
+  const networkPromise = fetchWithTooEarlyRetry(request)
     .then((response) => {
       if (response && response.status === 200) {
         cache.put(request, response.clone());
+        return response;
       }
-      return response;
+      return response?.status === 425 ? undefined : response;
     })
     .catch(() => undefined);
 

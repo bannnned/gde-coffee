@@ -11,7 +11,7 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconRotateClockwise2, IconTrash } from "@tabler/icons-react";
 
 import { uploadCafePhotoByPresignedUrl } from "../../../api/cafePhotos";
 import { cn } from "../../../lib/utils";
@@ -20,6 +20,7 @@ import {
   submitCafePhotos,
   submitMenuPhotos,
 } from "../../../api/submissions";
+import { rotateImageFileByQuarterTurns } from "../../../utils/imageRotation";
 import { extractApiErrorMessage } from "../../../utils/apiError";
 
 type CafePhotoSubmissionModalProps = {
@@ -33,6 +34,36 @@ type CafePhotoSubmissionModalProps = {
 };
 
 const MAX_UPLOAD_CONCURRENCY = 3;
+
+type DraftUploadPhoto = {
+  id: string;
+  file: File;
+  previewUrl: string;
+  rotationQuarterTurns: 0 | 1 | 2 | 3;
+};
+
+function normalizeQuarterTurns(value: number): 0 | 1 | 2 | 3 {
+  const normalized = ((Math.trunc(value) % 4) + 4) % 4;
+  if (normalized === 0 || normalized === 1 || normalized === 2 || normalized === 3) {
+    return normalized;
+  }
+  return 0;
+}
+
+function createDraftUploadPhoto(file: File): DraftUploadPhoto {
+  return {
+    id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    file,
+    previewUrl: URL.createObjectURL(file),
+    rotationQuarterTurns: 0,
+  };
+}
+
+function revokePreviewUrls(items: DraftUploadPhoto[]) {
+  for (const item of items) {
+    URL.revokeObjectURL(item.previewUrl);
+  }
+}
 
 async function runWithConcurrency<T>(
   items: T[],
@@ -65,7 +96,8 @@ export default function CafePhotoSubmissionModal({
   onClose,
 }: CafePhotoSubmissionModalProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [files, setFiles] = useState<File[]>([]);
+  const draftPhotosRef = useRef<DraftUploadPhoto[]>([]);
+  const [draftPhotos, setDraftPhotos] = useState<DraftUploadPhoto[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"cafe" | "menu">(kind);
@@ -82,8 +114,21 @@ export default function CafePhotoSubmissionModal({
   } as const;
 
   useEffect(() => {
+    draftPhotosRef.current = draftPhotos;
+  }, [draftPhotos]);
+
+  useEffect(() => {
+    return () => {
+      revokePreviewUrls(draftPhotosRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!opened) return;
-    setFiles([]);
+    setDraftPhotos((prev) => {
+      revokePreviewUrls(prev);
+      return [];
+    });
     setError(null);
     setMode(kind);
   }, [kind, opened]);
@@ -91,21 +136,10 @@ export default function CafePhotoSubmissionModal({
   const modeLabel = mode === "menu" ? "фото меню" : "фото заведения";
   const isFirstPhotographer = existingPhotosCount <= 0;
   const fileCountLabel = useMemo(() => {
-    if (files.length === 0) return "Файлы не выбраны";
-    if (files.length === 1) return "1 файл";
-    return `${files.length} файлов`;
-  }, [files.length]);
-  const previewUrls = useMemo(
-    () => files.map((file) => URL.createObjectURL(file)),
-    [files],
-  );
-
-  useEffect(
-    () => () => {
-      previewUrls.forEach((url) => URL.revokeObjectURL(url));
-    },
-    [previewUrls],
-  );
+    if (draftPhotos.length === 0) return "Файлы не выбраны";
+    if (draftPhotos.length === 1) return "1 файл";
+    return `${draftPhotos.length} файлов`;
+  }, [draftPhotos.length]);
 
   const appendFiles = (fileList: FileList | File[] | null) => {
     if (!fileList || fileList.length === 0) return;
@@ -120,7 +154,8 @@ export default function CafePhotoSubmissionModal({
       });
       return;
     }
-    setFiles((prev) => [...prev, ...accepted]);
+    const nextDraftPhotos = accepted.map(createDraftUploadPhoto);
+    setDraftPhotos((prev) => [...prev, ...nextDraftPhotos]);
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -135,20 +170,24 @@ export default function CafePhotoSubmissionModal({
   };
 
   const handleSubmit = async () => {
-    if (!cafeId || files.length === 0 || isUploading) return;
+    if (!cafeId || draftPhotos.length === 0 || isUploading) return;
     setIsUploading(true);
     setError(null);
 
     try {
-      const objectKeys: Array<string | null> = Array.from({ length: files.length }, () => null);
-      await runWithConcurrency(files, MAX_UPLOAD_CONCURRENCY, async (file, index) => {
+      const objectKeys: Array<string | null> = Array.from({ length: draftPhotos.length }, () => null);
+      await runWithConcurrency(draftPhotos, MAX_UPLOAD_CONCURRENCY, async (draft, index) => {
+        const uploadFile =
+          draft.rotationQuarterTurns === 0
+            ? draft.file
+            : await rotateImageFileByQuarterTurns(draft.file, draft.rotationQuarterTurns);
         const presigned = await presignSubmissionPhotoUpload({
-          contentType: file.type,
-          sizeBytes: file.size,
+          contentType: uploadFile.type || draft.file.type,
+          sizeBytes: uploadFile.size,
         });
         await uploadCafePhotoByPresignedUrl(
           presigned.upload_url,
-          file,
+          uploadFile,
           presigned.headers ?? {},
         );
         objectKeys[index] = presigned.object_key;
@@ -175,7 +214,10 @@ export default function CafePhotoSubmissionModal({
           ? `Отправили ${modeLabel} на модерацию. После одобрения получите +4 к репутации как первый фотограф.`
           : `Отправили ${modeLabel} на модерацию. После одобрения получите +4 к репутации.`,
       });
-      setFiles([]);
+      setDraftPhotos((prev) => {
+        revokePreviewUrls(prev);
+        return [];
+      });
       onClose();
     } catch (err: unknown) {
       const message = extractApiErrorMessage(err, "Не удалось отправить заявку.");
@@ -287,9 +329,9 @@ export default function CafePhotoSubmissionModal({
                 gap: 8,
               }}
             >
-              {files.map((file, index) => (
+              {draftPhotos.map((draft) => (
                 <Box
-                  key={`${file.name}-${index}-${file.size}`}
+                  key={draft.id}
                   style={{
                     position: "relative",
                     width: "100%",
@@ -301,14 +343,16 @@ export default function CafePhotoSubmissionModal({
                   }}
                 >
                   <img
-                    src={previewUrls[index]}
-                    alt={file.name}
+                    src={draft.previewUrl}
+                    alt={draft.file.name}
                     loading="lazy"
                     style={{
                       width: "100%",
                       height: "100%",
                       objectFit: "cover",
                       display: "block",
+                      transform: `rotate(${draft.rotationQuarterTurns * 90}deg)`,
+                      transformOrigin: "center center",
                     }}
                   />
                   {isUploading && (
@@ -327,9 +371,44 @@ export default function CafePhotoSubmissionModal({
                     size={22}
                     variant="filled"
                     color="dark"
+                    aria-label="Повернуть фото"
+                    onClick={() =>
+                      setDraftPhotos((prev) =>
+                        prev.map((item) =>
+                          item.id === draft.id
+                            ? {
+                                ...item,
+                                rotationQuarterTurns: normalizeQuarterTurns(
+                                  item.rotationQuarterTurns + 1,
+                                ),
+                              }
+                            : item,
+                        ),
+                      )
+                    }
+                    disabled={isUploading}
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      left: 6,
+                      background: "rgba(20,20,20,0.72)",
+                    }}
+                  >
+                    <IconRotateClockwise2 size={14} />
+                  </ActionIcon>
+                  <ActionIcon
+                    size={22}
+                    variant="filled"
+                    color="dark"
                     aria-label="Удалить фото"
                     onClick={() =>
-                      setFiles((prev) => prev.filter((_, fileIdx) => fileIdx !== index))
+                      setDraftPhotos((prev) => {
+                        const target = prev.find((item) => item.id === draft.id) ?? null;
+                        if (target) {
+                          URL.revokeObjectURL(target.previewUrl);
+                        }
+                        return prev.filter((item) => item.id !== draft.id);
+                      })
                     }
                     disabled={isUploading}
                     style={{
@@ -403,7 +482,7 @@ export default function CafePhotoSubmissionModal({
           fullWidth
           onClick={() => void handleSubmit()}
           loading={isUploading}
-          disabled={!cafeId || files.length === 0}
+          disabled={!cafeId || draftPhotos.length === 0}
           radius="xl"
           styles={glassButtonStyles}
           style={{ marginBottom: 8 }}

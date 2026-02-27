@@ -10,6 +10,7 @@ import { resolveCafeDisplayRating } from "../../utils/ratingDisplay";
 type CafeCardFooterProps = {
   cafe: Cafe;
   badgeStyles: Record<string, unknown>;
+  ratingRefreshToken?: number;
 };
 
 const cafeRatingSnapshotCache = new Map<string, CafeRatingSnapshot>();
@@ -37,7 +38,11 @@ function normalizeSummaryText(raw: string | undefined): string {
   return raw.replace(/\s+/g, " ").trim();
 }
 
-export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProps) {
+export default function CafeCardFooter({
+  cafe,
+  badgeStyles,
+  ratingRefreshToken = 0,
+}: CafeCardFooterProps) {
   const [ratingState, setRatingState] = useState<{
     cafeId: string;
     snapshot: CafeRatingSnapshot | null;
@@ -58,11 +63,23 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
 
   useEffect(() => {
     let cancelled = false;
-    if (cachedSnapshot) {
+    const forceRefresh = ratingRefreshToken > 0;
+    if (cachedSnapshot && !forceRefresh) {
+      setRatingState({
+        cafeId: cafe.id,
+        snapshot: cachedSnapshot,
+        loading: false,
+      });
       return () => {
         cancelled = true;
       };
     }
+
+    setRatingState((prev) => ({
+      cafeId: cafe.id,
+      snapshot: prev.cafeId === cafe.id ? prev.snapshot : cachedSnapshot,
+      loading: true,
+    }));
 
     getCafeRatingSnapshot(cafe.id)
       .then((snapshot) => {
@@ -86,7 +103,7 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
     return () => {
       cancelled = true;
     };
-  }, [cafe.id, cachedSnapshot]);
+  }, [cafe.id, cachedSnapshot, ratingRefreshToken]);
 
   const hasReviewStats = (ratingSnapshot?.reviews_count ?? 0) > 0;
   const displayRating = useMemo(

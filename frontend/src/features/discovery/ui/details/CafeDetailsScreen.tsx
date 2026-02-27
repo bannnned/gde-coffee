@@ -275,6 +275,11 @@ export default function CafeDetailsScreen({
     }
   };
 
+  const handleReviewSaved = (reviewCafeId: string) => {
+    setRatingRefreshToken((value) => value + 1);
+    onReviewSaved?.(reviewCafeId);
+  };
+
   const ratingPanel = (
     <RatingPanel
       ratingLabel={ratingLabel}
@@ -423,7 +428,7 @@ export default function CafeDetailsScreen({
             cafeId={cafe.id}
             opened={opened}
             journeyID={journeyID}
-            onReviewSaved={onReviewSaved}
+            onReviewSaved={handleReviewSaved}
           />
         </div>
       )}

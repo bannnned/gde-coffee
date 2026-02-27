@@ -124,22 +124,25 @@ export default function PhotoLightboxModal({
       implementation="radix"
       presentation="dialog"
       closeButton={false}
-      contentClassName="w-[min(96vw,1080px)] border-0 bg-transparent p-0 shadow-none"
-      bodyClassName="p-0"
+      contentClassName="!left-0 !top-0 !h-[100dvh] !w-[100vw] !translate-x-0 !translate-y-0 border-0 bg-transparent p-0 shadow-none"
+      bodyClassName="h-full p-0"
     >
       <div
         style={{
+          height: "100%",
+          paddingTop: "max(8px, var(--safe-top))",
+          paddingBottom: "max(8px, var(--safe-bottom))",
+          paddingInline: "max(8px, var(--page-edge-padding))",
           border: "1px solid color-mix(in srgb, var(--glass-border) 84%, transparent)",
           background:
             "linear-gradient(135deg, color-mix(in srgb, var(--glass-grad-1) 94%, transparent), color-mix(in srgb, var(--glass-grad-2) 92%, transparent))",
           boxShadow: "0 28px 80px color-mix(in srgb, #000 44%, transparent)",
           backdropFilter: "blur(22px) saturate(135%)",
           WebkitBackdropFilter: "blur(22px) saturate(135%)",
-          borderRadius: 26,
-          padding: 12,
+          borderRadius: 0,
         }}
       >
-        <div className="flex flex-col gap-2.5">
+        <div className="flex h-full min-h-0 flex-col gap-2.5">
           <div className="flex items-center justify-between gap-2 px-1">
             <p className="truncate text-sm font-semibold text-[var(--text)]">
               {title}
@@ -175,8 +178,8 @@ export default function PhotoLightboxModal({
                   background:
                     "radial-gradient(circle at 30% 16%, color-mix(in srgb, var(--bg-accent-1) 35%, transparent), transparent 58%), var(--surface)",
                   border: "1px solid color-mix(in srgb, var(--glass-border) 80%, transparent)",
-                  minHeight: 240,
-                  maxHeight: "76vh",
+                  flex: "1 1 auto",
+                  minHeight: 0,
                 }}
               >
                 <AnimatePresence initial={false} custom={direction}>
@@ -189,6 +192,7 @@ export default function PhotoLightboxModal({
                     transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                     style={{
                       width: "100%",
+                      height: "100%",
                       display: "block",
                     }}
                   >
@@ -221,7 +225,8 @@ export default function PhotoLightboxModal({
                       onError={() => setImageReady(true)}
                       style={{
                         width: "100%",
-                        maxHeight: "76vh",
+                        height: "100%",
+                        maxHeight: "100%",
                         objectFit: "contain",
                         display: "block",
                         opacity: imageReady ? 1 : 0.3,

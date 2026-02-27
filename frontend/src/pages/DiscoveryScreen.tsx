@@ -38,6 +38,7 @@ export default function DiscoveryScreen() {
     selectedCafe,
     selectedCafeJourneyID,
     photosRefreshToken,
+    ratingRefreshToken,
     selectedCafePhotoProcessing,
     selectedMenuPhotoProcessing,
     itemRefs,
@@ -302,6 +303,7 @@ export default function DiscoveryScreen() {
           ) : selectedCafe ? (
             <CafeCard
               cafe={selectedCafe}
+              ratingRefreshToken={ratingRefreshToken}
               onOpen2gis={open2gisRoute}
               onOpenYandex={openYandexRoute}
               onAddFirstPhoto={() => handleOpenPhotoAdmin("cafe")}
