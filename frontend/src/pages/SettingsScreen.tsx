@@ -4,10 +4,15 @@
 } from "@mantine/core";
 import {
   IconArrowLeft,
+  IconBrandGithub,
+  IconBrandTelegram,
+  IconBrandYandex,
+  IconCheck,
   IconChevronDown,
   IconChevronRight,
   IconCircleCheck,
   IconCircleX,
+  IconLinkOff,
   IconMail,
   IconMessageCircle,
   IconMoon,
@@ -20,6 +25,7 @@ import { useLocation, useNavigate, useSearchParams, type Location as RouterLocat
 
 import * as authApi from "../api/auth";
 import { submitAppFeedback } from "../api/feedback";
+import { buildOAuthLinkUrl } from "../api/url";
 import {
   getReviewsAIHealth,
   getReviewsVersioningStatus,
@@ -33,6 +39,7 @@ import {
   type ReviewsVersioningStatus,
 } from "../api/reviews";
 import { useAuth } from "../components/AuthGate";
+import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import { Button as UIButton, Input } from "../components/ui";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import useOauthRedirect from "../hooks/useOauthRedirect";
@@ -106,6 +113,9 @@ export default function SettingsScreen() {
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
   const [isFeedbackSending, setIsFeedbackSending] = useState(false);
+  const [identities, setIdentities] = useState<authApi.AuthIdentity[]>([]);
+  const [isIdentitiesLoading, setIsIdentitiesLoading] = useState(false);
+  const [identityError, setIdentityError] = useState<string | null>(null);
 
   const verifiedParam = searchParams.get("verified") === "1";
   const emailChangedParam = searchParams.get("email_changed") === "1";
@@ -117,6 +127,25 @@ export default function SettingsScreen() {
   );
 
   const emailValue = user?.email ?? "—";
+  const accountEmail = user?.email?.trim() || "Email не указан";
+  const accountId = user?.id || "—";
+
+  const githubAuthUrl = useMemo(() => buildOAuthLinkUrl("github"), []);
+  const yandexAuthUrl = useMemo(() => buildOAuthLinkUrl("yandex"), []);
+
+  const isProviderLinked = useCallback(
+    (providerName: string) =>
+      identities.some((identity) => {
+        const provider = identity.provider ?? identity.type ?? identity.name ?? "";
+        return provider.toString().toLowerCase() === providerName;
+      }),
+    [identities],
+  );
+
+  const githubLinked = useMemo(() => isProviderLinked("github"), [isProviderLinked]);
+  const yandexLinked = useMemo(() => isProviderLinked("yandex"), [isProviderLinked]);
+  const telegramLinked = useMemo(() => isProviderLinked("telegram"), [isProviderLinked]);
+  const allSocialLinked = githubLinked && yandexLinked && telegramLinked;
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
     const target = event.currentTarget;
@@ -124,6 +153,29 @@ export default function SettingsScreen() {
       target.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }, []);
+
+  const refreshIdentities = useCallback(async () => {
+    if (status !== "authed") {
+      setIdentities([]);
+      setIdentityError(null);
+      setIsIdentitiesLoading(false);
+      return;
+    }
+
+    setIsIdentitiesLoading(true);
+    setIdentityError(null);
+    try {
+      const list = await authApi.getIdentities();
+      setIdentities(list);
+    } catch (error: unknown) {
+      setIdentities([]);
+      setIdentityError(
+        extractSettingsErrorMessage(error, "Не удалось обновить список подключений."),
+      );
+    } finally {
+      setIsIdentitiesLoading(false);
+    }
+  }, [status]);
 
   const handleFeedbackSubmit = useCallback(async () => {
     const message = feedbackMessage.trim();
@@ -190,8 +242,21 @@ export default function SettingsScreen() {
 
   useOauthRedirect({
     onResultOk: refreshAuth,
-    onResultLinked: refreshAuth,
+    onResultLinked: async () => {
+      await refreshAuth();
+      await refreshIdentities();
+    },
   });
+
+  useEffect(() => {
+    if (status !== "authed") {
+      setIdentities([]);
+      setIdentityError(null);
+      setIsIdentitiesLoading(false);
+      return;
+    }
+    void refreshIdentities();
+  }, [refreshIdentities, status]);
 
   useEffect(() => {
     if (!canModerate || status !== "authed") {
@@ -975,6 +1040,123 @@ export default function SettingsScreen() {
                 </UIButton>
               </div>
             </div>
+
+            {user ? (
+              <div className={classes.section}>
+                <div className={classes.sectionHeader}>
+                  <div className={classes.sectionTitleRow}>
+                    <IconMail size={18} />
+                    <h3 className={classes.sectionTitle}>Данные аккаунта</h3>
+                  </div>
+                </div>
+                <p className={classes.sectionDescription}>
+                  Базовые данные профиля и подключенные соцсети.
+                </p>
+                <div className={classes.accountDataGrid}>
+                  <div className={classes.accountDataRow}>
+                    <div className={classes.accountDataMeta}>
+                      <p className={classes.accountDataLabel}>Email</p>
+                      <p className={classes.accountDataValue}>{accountEmail}</p>
+                    </div>
+                    {isVerified ? (
+                      <span className={classes.accountDataCheck} aria-label="Email подтверждён">
+                        <IconCheck size={12} />
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className={classes.accountDataRow}>
+                    <div className={classes.accountDataMeta}>
+                      <p className={classes.accountDataLabel}>ID аккаунта</p>
+                      <p className={classes.accountDataValue}>{accountId}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={classes.socialHeader}>
+                  <p className={classes.socialTitle}>Подключение соцсетей</p>
+                  {isIdentitiesLoading ? (
+                    <p className={classes.socialMuted}>Обновляем...</p>
+                  ) : null}
+                </div>
+
+                <div className={classes.socialStatusRow}>
+                  <div
+                    className={classes.socialStatusItem}
+                    data-linked={githubLinked ? "true" : "false"}
+                    title={`GitHub: ${githubLinked ? "подключен" : "не подключен"}`}
+                    aria-label={`GitHub: ${githubLinked ? "подключен" : "не подключен"}`}
+                  >
+                    <IconBrandGithub size={18} />
+                    <span className={classes.socialStatusBadge}>
+                      {githubLinked ? <IconCheck size={10} /> : <IconLinkOff size={10} />}
+                    </span>
+                  </div>
+                  <div
+                    className={classes.socialStatusItem}
+                    data-linked={yandexLinked ? "true" : "false"}
+                    title={`Яндекс: ${yandexLinked ? "подключен" : "не подключен"}`}
+                    aria-label={`Яндекс: ${yandexLinked ? "подключен" : "не подключен"}`}
+                  >
+                    <IconBrandYandex size={18} />
+                    <span className={classes.socialStatusBadge}>
+                      {yandexLinked ? <IconCheck size={10} /> : <IconLinkOff size={10} />}
+                    </span>
+                  </div>
+                  <div
+                    className={classes.socialStatusItem}
+                    data-linked={telegramLinked ? "true" : "false"}
+                    title={`Telegram: ${telegramLinked ? "подключен" : "не подключен"}`}
+                    aria-label={`Telegram: ${telegramLinked ? "подключен" : "не подключен"}`}
+                  >
+                    <IconBrandTelegram size={18} />
+                    <span className={classes.socialStatusBadge}>
+                      {telegramLinked ? <IconCheck size={10} /> : <IconLinkOff size={10} />}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={classes.actionsRow}>
+                  {!githubLinked ? (
+                    <UIButton
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className={classes.actionButton}
+                      onClick={() => window.location.assign(githubAuthUrl)}
+                      disabled={isIdentitiesLoading}
+                    >
+                      Подключить GitHub
+                    </UIButton>
+                  ) : null}
+                  {!yandexLinked ? (
+                    <UIButton
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className={classes.actionButton}
+                      onClick={() => window.location.assign(yandexAuthUrl)}
+                      disabled={isIdentitiesLoading}
+                    >
+                      Подключить Яндекс
+                    </UIButton>
+                  ) : null}
+                  {!telegramLinked ? (
+                    <div className={classes.telegramInline}>
+                      <TelegramLoginWidget flow="link" size="medium" />
+                    </div>
+                  ) : null}
+                </div>
+
+                {allSocialLinked ? (
+                  <p className={classes.socialMuted}>Все соцсети подключены.</p>
+                ) : null}
+                {identityError ? (
+                  <div className={classes.error} style={{ marginTop: 10 }}>
+                    {identityError}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className={classes.section}>
               <div className={classes.sectionHeader}>

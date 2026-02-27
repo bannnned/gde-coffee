@@ -1,14 +1,8 @@
-import { useState } from "react";
 import {
   IconArrowLeft,
   IconCheck,
-  IconChevronDown,
-  IconChevronUp,
-  IconEye,
-  IconEyeOff,
   IconHeart,
   IconHeartFilled,
-  IconLinkOff,
   IconLogout,
   IconPencil,
   IconPlus,
@@ -18,7 +12,6 @@ import {
 import { useLocation, useNavigate, type Location as RouterLocation } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
-import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import { Badge, Button, Input } from "../components/ui";
 import useProfileAccount from "../features/profile/model/useProfileAccount";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
@@ -35,16 +28,8 @@ export default function ProfileScreen() {
   useAllowBodyScroll();
   const {
     profile,
-    githubAuthUrl,
-    yandexAuthUrl,
-    githubLinked,
-    yandexLinked,
-    telegramLinked,
-    socialStatuses,
     avatarInputRef,
     isLoggingOut,
-    isIdentitiesLoading,
-    identityError,
     nameDraft,
     isNameEditing,
     isNameSaving,
@@ -85,7 +70,6 @@ export default function ProfileScreen() {
   const levelPointsToNext = Math.max(0, Math.round(reputationProfile?.pointsToNextLevel ?? 0));
   const levelScore = Math.round(reputationProfile?.score ?? 0);
   const levelEventsCount = reputationProfile?.eventsCount ?? 0;
-  const [showProfileData, setShowProfileData] = useState(false);
   const isFavoritesContext = backgroundLocation?.pathname?.startsWith("/favorites") ?? false;
 
   return (
@@ -364,13 +348,30 @@ export default function ProfileScreen() {
                       <p className="text-sm text-[var(--muted)]">Обновляем...</p>
                     ) : null}
                   </div>
-                  <div className="h-2 rounded-full bg-[color:color-mix(in_srgb,var(--surface)_80%,transparent)]">
+                  <div
+                    className="relative h-3 overflow-hidden rounded-full border"
+                    style={{
+                      borderColor: "color-mix(in srgb, var(--color-brand-accent) 28%, var(--border))",
+                      background:
+                        "linear-gradient(90deg, color-mix(in srgb, var(--surface) 84%, transparent), color-mix(in srgb, var(--glass-grad-1) 70%, transparent))",
+                      boxShadow: "inset 0 1px 2px color-mix(in srgb, #000 20%, transparent)",
+                    }}
+                  >
                     <div
                       className="h-full rounded-full"
                       style={{
                         width: `${levelProgress}%`,
                         background:
-                          "linear-gradient(90deg, var(--color-brand-accent), var(--color-brand-accent-strong))",
+                          "linear-gradient(90deg, color-mix(in srgb, var(--color-brand-accent) 92%, white 8%), var(--color-brand-accent-strong))",
+                        boxShadow:
+                          "0 0 0 1px color-mix(in srgb, var(--color-brand-accent) 36%, transparent), 0 6px 16px color-mix(in srgb, var(--color-brand-accent-soft) 44%, transparent)",
+                      }}
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-0"
+                      style={{
+                        background:
+                          "linear-gradient(180deg, color-mix(in srgb, #fff 24%, transparent), transparent 60%)",
                       }}
                     />
                   </div>
@@ -383,149 +384,14 @@ export default function ProfileScreen() {
                   {reputationError ? <p className="mt-1 text-sm text-danger">{reputationError}</p> : null}
                 </div>
 
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className={cn(
-                    "w-full justify-between rounded-full",
-                    showProfileData && "border-[var(--color-brand-accent)]",
-                  )}
-                  onClick={() => setShowProfileData((prev) => !prev)}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    {showProfileData ? <IconEyeOff size={16} /> : <IconEye size={16} />}
-                    {showProfileData ? "Скрыть данные" : "Показать данные"}
-                  </span>
-                  {showProfileData ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
-                </Button>
-
-                {showProfileData ? (
-                  <div className="grid gap-2">
-                    <div className="flex min-h-[54px] items-center gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-                      <div className="grid min-w-0 flex-1 gap-0.5">
-                        <p className="text-xs text-[var(--muted)]">Email</p>
-                        <p className="break-all text-sm font-semibold text-[var(--text)]">{profile.email}</p>
-                      </div>
-                      {profile.isVerified ? (
-                        <span
-                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border"
-                          style={{
-                            background: "var(--color-status-success)",
-                            color: "var(--color-on-accent)",
-                            borderColor: "var(--color-status-success)",
-                          }}
-                          aria-label="Email подтверждён"
-                        >
-                          <IconCheck size={12} />
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex min-h-[54px] items-center gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-                      <div className="grid min-w-0 flex-1 gap-0.5">
-                        <p className="text-xs text-[var(--muted)]">ID аккаунта</p>
-                        <p className="break-all text-sm font-semibold text-[var(--text)]">{profile.id}</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
               </div>
             )}
           </section>
 
           {user ? (
-            <section className="grid gap-4 pt-1">
-              <div className="flex items-center justify-between gap-3.5">
-                <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold text-[var(--text)]">Соцсети</p>
-                </div>
-                {isIdentitiesLoading ? (
-                  <p className="text-sm text-[var(--muted)]">Обновляем...</p>
-                ) : null}
-              </div>
-
-              <div className="grid gap-3.5">
-                <div className="flex items-center gap-2.5">
-                  {socialStatuses.map((item) => {
-                    const ItemIcon = item.icon;
-                    const linked = item.linked;
-                    return (
-                      <div
-                        key={item.id}
-                        className="relative inline-flex h-[38px] w-[38px] items-center justify-center rounded-full border shadow-[var(--shadow)]"
-                        style={{
-                          borderColor: linked
-                            ? "color-mix(in srgb, var(--color-status-success) 45%, var(--border))"
-                            : "color-mix(in srgb, var(--color-status-error) 45%, var(--border))",
-                          color: linked
-                            ? "var(--color-status-success)"
-                            : "var(--color-status-error)",
-                          background:
-                            "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-                        }}
-                        title={`${item.label}: ${linked ? "подключен" : "не подключен"}`}
-                        aria-label={`${item.label}: ${linked ? "подключен" : "не подключен"}`}
-                      >
-                        <ItemIcon size={18} />
-                        <span
-                          className="absolute -bottom-1 -right-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--surface)]"
-                          style={{
-                            color: "var(--color-on-accent)",
-                            background: linked
-                              ? "var(--color-status-success)"
-                              : "var(--color-status-error)",
-                          }}
-                        >
-                          {linked ? <IconCheck size={10} /> : <IconLinkOff size={10} />}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {!githubLinked ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => window.location.assign(githubAuthUrl)}
-                      disabled={isIdentitiesLoading}
-                    >
-                      Подключить GitHub
-                    </Button>
-                  ) : null}
-
-                  {!yandexLinked ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => window.location.assign(yandexAuthUrl)}
-                      disabled={isIdentitiesLoading}
-                    >
-                      Подключить Яндекс
-                    </Button>
-                  ) : null}
-
-                  {!telegramLinked ? (
-                    <div className="inline-flex">
-                      <TelegramLoginWidget flow="link" size="medium" />
-                    </div>
-                  ) : null}
-
-                  {githubLinked && yandexLinked && telegramLinked ? (
-                    <p className="text-sm text-[var(--muted)]">Все соцсети подключены.</p>
-                  ) : null}
-                </div>
-              </div>
-
-              {identityError ? <p className="text-sm text-danger">{identityError}</p> : null}
-            </section>
-          ) : null}
-
-          {user ? (
             <Button
               type="button"
+              variant="destructive"
               onClick={() =>
                 void handleLogout(() => {
                   void navigate("/", { replace: true });
@@ -535,8 +401,10 @@ export default function ProfileScreen() {
               className="h-11 rounded-full"
               style={{
                 background:
-                  "linear-gradient(135deg, var(--color-status-error), color-mix(in srgb, var(--color-status-error) 60%, var(--color-brand-warning)))",
+                  "linear-gradient(135deg, #B93030, #8E2222)",
                 color: "white",
+                border: "1px solid color-mix(in srgb, #7F1E1E 58%, #000 42%)",
+                boxShadow: "0 12px 24px color-mix(in srgb, #8E2222 36%, transparent)",
               }}
             >
               {isLoggingOut ? (
