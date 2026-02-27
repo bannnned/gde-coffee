@@ -35,12 +35,13 @@
   top: 0;
   z-index: 2;
   pointer-events: none;
-  height: max(76px, calc(var(--sheet-header-height, 0px) * 0.88));
+  height: max(110px, calc(var(--sheet-header-height, 0px) + 14px));
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--glass-bg) 99%, transparent) 0%,
-    color-mix(in srgb, var(--glass-bg) 95%, transparent) 42%,
-    color-mix(in srgb, var(--glass-bg) 68%, transparent) 68%,
+    color-mix(in srgb, var(--surface) 97%, var(--glass-bg)) 0%,
+    color-mix(in srgb, var(--surface) 96%, var(--glass-bg)) 56%,
+    color-mix(in srgb, var(--surface) 88%, transparent) 74%,
+    color-mix(in srgb, var(--surface) 44%, transparent) 90%,
     transparent 100%
   );
 }

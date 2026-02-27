@@ -199,7 +199,13 @@ export default function useDiscoveryLocation({
   }, [locationChoice]);
 
   const handleSelectLocation = (id: string) => {
-    const option = LOCATION_OPTIONS.find((item) => item.id === id);
+    const normalized = id.trim().toLowerCase();
+    if (!normalized) return;
+    const option = LOCATION_OPTIONS.find(
+      (item) =>
+        item.id.toLowerCase() === normalized ||
+        item.label.trim().toLowerCase() === normalized,
+    );
     if (!option) return;
     setManualPickMode(false);
     setRadiusM(0);

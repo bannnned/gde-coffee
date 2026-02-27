@@ -305,7 +305,7 @@ export default function DiscoveryScreen() {
               onOpenDetails={() => setDetailsOpen(true)}
               isPhotoProcessing={selectedCafePhotoProcessing}
               showDistance={!isCityOnlyMode}
-              showRoutes={!isCityOnlyMode}
+              showRoutes={false}
             />
           ) : showEmptyState ? (
             <EmptyStateCard

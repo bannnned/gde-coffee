@@ -135,6 +135,7 @@ export function ReviewFeed({
     { value: "helpful", label: "Полезные" },
     { value: "verified", label: "С визитом" },
   ];
+  const showReviewFilters = reviews.length > 0 || positionOptions.length > 0;
 
   const staleReviewsNotice = useMemo(() => {
     if (positionFilter !== "all") return "";
@@ -153,32 +154,34 @@ export function ReviewFeed({
 
   return (
     <div className="relative">
-      <div className="flex flex-nowrap items-end gap-2">
-        <div className="min-w-0 flex-1">
-          <AppSelect
-            implementation="radix"
-            size="xs"
-            aria-label="Сортировка отзывов"
-            placeholder="Сортировка"
-            value={sort}
-            data={sortSelectData}
-            onChange={(value) => onSortChange((value as ReviewSort) || "new")}
-            styles={filterSelectStyles}
-          />
+      {showReviewFilters ? (
+        <div className="flex flex-nowrap items-end gap-2">
+          <div className="min-w-0 flex-1">
+            <AppSelect
+              implementation="radix"
+              size="xs"
+              aria-label="Сортировка отзывов"
+              placeholder="Сортировка"
+              value={sort}
+              data={sortSelectData}
+              onChange={(value) => onSortChange((value as ReviewSort) || "new")}
+              styles={filterSelectStyles}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <AppSelect
+              implementation="radix"
+              size="xs"
+              aria-label="Фильтр по позиции"
+              placeholder="Позиция"
+              value={positionFilter}
+              data={positionFilterData}
+              onChange={(value) => onPositionFilterChange(value || "all")}
+              styles={filterSelectStyles}
+            />
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <AppSelect
-            implementation="radix"
-            size="xs"
-            aria-label="Фильтр по позиции"
-            placeholder="Позиция"
-            value={positionFilter}
-            data={positionFilterData}
-            onChange={(value) => onPositionFilterChange(value || "all")}
-            styles={filterSelectStyles}
-          />
-        </div>
-      </div>
+      ) : null}
 
       <div className="mt-3 flex flex-col gap-3">
         {isLoading && reviews.length === 0 ? (

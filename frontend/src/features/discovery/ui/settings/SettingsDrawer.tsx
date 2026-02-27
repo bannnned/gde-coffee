@@ -81,8 +81,11 @@ export default function SettingsDrawer({
   const isCoarsePointer = useMediaQuery("(pointer: coarse)") ?? false;
   const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
   const [pendingTagToAdd, setPendingTagToAdd] = useState<string | null>(null);
+  const [pendingLocationId, setPendingLocationId] = useState<string>("");
   const [tagSaveFeedback, setTagSaveFeedback] = useState<string | null>(null);
   const prevTopTagsSavingRef = useRef(topTagsSaving);
+  const normalizedSelectedLocationId =
+    typeof selectedLocationId === "string" ? selectedLocationId.trim() : "";
   const normalizedSelectedTags = useMemo(() => {
     const unique: string[] = [];
     const seen = new Set<string>();
@@ -211,6 +214,10 @@ export default function SettingsDrawer({
     }
   }, [topTagsDirty]);
 
+  useEffect(() => {
+    setPendingLocationId(normalizedSelectedLocationId);
+  }, [normalizedSelectedLocationId, opened]);
+
   return (
     <AppSheet
       open={opened}
@@ -250,13 +257,16 @@ export default function SettingsDrawer({
                 value: option.id,
                 label: option.label,
               }))}
-              value={selectedLocationId || null}
+              value={pendingLocationId || null}
               placeholder="Выбрать город"
+              allowDeselect={false}
               searchable={!isCoarsePointer}
               nothingFoundMessage="Ничего не найдено"
               onChange={(value) => {
-                if (!value) return;
-                onSelectLocation(value);
+                const nextId = (value ?? "").trim();
+                setPendingLocationId(nextId);
+                if (!nextId) return;
+                onSelectLocation(nextId);
               }}
               comboboxProps={{ withinPortal: true, zIndex: 4300 }}
               styles={discoveryGlassSelectStyles}
