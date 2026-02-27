@@ -331,15 +331,16 @@ Critical path stack-transition:
 - Артефакт: `ProfileScreen` переписан на `components/ui` + utility layout, удалены ad-hoc placeholder-блоки.
 - Проверка: `npm run typecheck`, `npm test`, `npm run build` — pass.
 
-### [ ] W3-B · Settings forms + account actions migration (P0, status: in_progress)
+### [x] W3-B · Settings forms + account actions migration (P0, status: done)
 - Цель: перевести `/settings` пользовательские формы и account actions на единый new-ui/bridge паттерн.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`.
 - Depends on: `W3-A`.
 - AC: пользовательские формы (`verify email`, `email change`, `password reset`, `feedback`) используют единый new-ui pattern.
+- AC: role-gated moderator/admin блоки внутри `/settings` (навигация, versioning, health, DLQ) переведены на единый new-ui action/panel pattern.
+- AC: `/settings` shell (header/actions/container/forms) не зависит от Mantine layout primitives (`Box/Group/Stack/Text/Title`).
 - AC: UX и валидации форм сохранены без регрессий.
-- Прогресс: user-form controls в `/settings` переведены на `Input + UIButton`, оставшиеся moderator/admin панели остаются в legacy-слое текущего инкремента.
-- Артефакт: миграция пользовательских форм в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`.
-- Артефакт: form-styles для new-ui полей добавлены в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.module.css`.
+- Артефакт: миграция пользовательских форм + moderator/admin панелей в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`.
+- Артефакт: shell/panel/form styles в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.module.css`.
 - Проверка: `npm run typecheck`, `npm test`, `npm run build` — pass.
 
 ### [ ] W3-C · Profile/Settings final polish + legacy shrink (P1, status: todo)

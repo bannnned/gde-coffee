@@ -52,7 +52,16 @@
   border: none;
 }
 
+.stack {
+  display: grid;
+  gap: 24px;
+}
 
+.feedbackForm {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
 
 .section {
   border-radius: 22px;
@@ -67,6 +76,33 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.sectionTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.sectionDescription {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.emailValue {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .statusLine {
@@ -230,6 +266,18 @@
   justify-content: space-between;
 }
 
+.panelToggleTitle {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.panelMutedText {
+  margin: 8px 0 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
 .versioningGrid {
   margin-top: 10px;
   display: grid;
@@ -293,10 +341,16 @@
 
 .dlqStatusRow {
   margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .dlqBulkActions {
   margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .dlqList {
@@ -319,6 +373,19 @@
   gap: 10px;
 }
 
+.dlqTitle {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.dlqMeta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 .dlqErrorText {
   margin-top: 6px;
   color: var(--color-status-warning);
@@ -329,6 +396,9 @@
 
 .dlqItemActions {
   margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
 }
 

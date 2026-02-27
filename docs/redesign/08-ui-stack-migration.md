@@ -22,7 +22,8 @@
 4. `W2-A` и `W2-B` закрыты (`done`).
 5. `W2-C` закрыт (`done`): reviews/composer/feed переведены на new-ui/bridge контракты.
 6. `W3-A` закрыт (`done`): profile shell + key cards/CTA переведены на new-ui слой.
-7. Текущий активный шаг: `W3-B` (settings forms и account actions), status: `in_progress`.
+7. `W3-B` закрыт (`done`): settings shell + user forms + role-gated moderator/admin panels переведены на new-ui pattern.
+8. Текущий активный шаг: `W3-C` (final polish + legacy shrink), status: `todo`.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

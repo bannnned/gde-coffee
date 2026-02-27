@@ -1,11 +1,4 @@
 ﻿import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
-  Stack,
-  Text,
-  Title,
   useComputedColorScheme,
   useMantineColorScheme,
 } from "@mantine/core";
@@ -433,12 +426,13 @@ export default function SettingsScreen() {
   );
 
   return (
-    <Box className={classes.screen} data-ui="settings-screen">
+    <main className={classes.screen} data-ui="settings-screen">
       <div className={classes.container}>
         <header className={classes.header}>
-          <ActionIcon
-            size={42}
-            variant="transparent"
+          <UIButton
+            type="button"
+            variant="ghost"
+            size="icon"
             className={`${classes.iconButton} glass-action glass-action--square`}
             onClick={() => {
               if (backgroundLocation) {
@@ -450,15 +444,13 @@ export default function SettingsScreen() {
             aria-label="Назад"
           >
             <IconArrowLeft size={18} />
-          </ActionIcon>
-          <Text size="sm" className={classes.headerTitle}>
-            {settingsTitle}
-          </Text>
+          </UIButton>
+          <p className={classes.headerTitle}>{settingsTitle}</p>
           <span className={classes.headerSpacer} aria-hidden="true" />
         </header>
 
-        <Box className={classes.card}>
-          <Stack gap="lg">
+        <div className={classes.card}>
+          <div className={classes.stack}>
             {verifiedParam && (
               <div className={classes.banner}>Email успешно подтверждён.</div>
             )}
@@ -469,76 +461,80 @@ export default function SettingsScreen() {
             {canModerate && (
               <div className={classes.section}>
                 <div className={classes.sectionHeader}>
-                  <Group gap="xs">
+                  <div className={classes.sectionTitleRow}>
                     <IconShieldCheck size={18} />
-                    <Title order={4}>Модерация</Title>
-                  </Group>
+                    <h3 className={classes.sectionTitle}>Модерация</h3>
+                  </div>
                 </div>
-                <Text size="sm" className={classes.muted} mb="sm">
-                  Открыть очередь заявок на модерацию.
-                </Text>
-                <Group className={classes.actionsRow}>
-                  <Button
-                    variant="light"
+                <p className={classes.sectionDescription}>Открыть очередь заявок на модерацию.</p>
+                <div className={classes.actionsRow}>
+                  <UIButton
+                    type="button"
+                    variant="secondary"
                     className={classes.actionButton}
                     onClick={() => {
                       void navigate("/admin/moderation");
                     }}
                   >
                     Перейти в модерацию
-                  </Button>
-                  <Button
-                    variant="light"
+                  </UIButton>
+                  <UIButton
+                    type="button"
+                    variant="secondary"
                     className={classes.actionButton}
                     onClick={() => {
                       void navigate("/admin/drinks");
                     }}
                   >
                     Справочник напитков
-                  </Button>
-                  <Button
-                    variant="light"
+                  </UIButton>
+                  <UIButton
+                    type="button"
+                    variant="secondary"
                     className={classes.actionButton}
                     onClick={() => {
                       void navigate("/admin/metrics");
                     }}
                   >
                     North Star метрика
-                  </Button>
+                  </UIButton>
                   {userRole === "admin" && (
-                    <Button
-                      variant="light"
+                    <UIButton
+                      type="button"
+                      variant="secondary"
                       className={classes.actionButton}
                       onClick={() => {
                         void navigate("/admin/cafes/manage");
                       }}
                     >
                       Кофейни (CRUD)
-                    </Button>
+                    </UIButton>
                   )}
                   {userRole === "admin" && (
-                    <Button
-                      variant="light"
+                    <UIButton
+                      type="button"
+                      variant="secondary"
                       className={classes.actionButton}
                       onClick={() => {
                         void navigate("/admin/cafes/import");
                       }}
                     >
                       Импорт кофеен JSON
-                    </Button>
+                    </UIButton>
                   )}
                   {userRole === "admin" && (
-                    <Button
-                      variant="light"
+                    <UIButton
+                      type="button"
+                      variant="secondary"
                       className={classes.actionButton}
                       onClick={() => {
                         void navigate("/admin/feedback");
                       }}
                     >
                       Отзывы о приложении
-                    </Button>
+                    </UIButton>
                   )}
-                </Group>
+                </div>
                 <div className={classes.versioningPanel}>
                   <button
                     type="button"
@@ -546,17 +542,13 @@ export default function SettingsScreen() {
                     onClick={() => setVersioningExpanded((value) => !value)}
                     aria-expanded={versioningExpanded}
                   >
-                    <Text fw={600} size="sm">
-                      Версионирование отзывов
-                    </Text>
+                    <span className={classes.panelToggleTitle}>Версионирование отзывов</span>
                     {versioningExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
                   </button>
                   {versioningExpanded && (
                     <>
                       {reviewsVersioningLoading && (
-                        <Text size="sm" className={classes.muted} mt={6}>
-                          Загружаем конфигурацию...
-                        </Text>
+                        <p className={classes.panelMutedText}>Загружаем конфигурацию...</p>
                       )}
                       {!reviewsVersioningLoading && reviewsVersioningError && (
                         <div className={classes.error} style={{ marginTop: 10 }}>
@@ -665,28 +657,34 @@ export default function SettingsScreen() {
                     onClick={() => setHealthExpanded((value) => !value)}
                     aria-expanded={healthExpanded}
                   >
-                    <Text fw={600} size="sm">
-                      Health reviews/AI
-                    </Text>
+                    <span className={classes.panelToggleTitle}>Health reviews/AI</span>
                     {healthExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
                   </button>
                   {healthExpanded && (
                     <>
                       <div className={classes.dlqHeader} style={{ marginTop: 8 }}>
-                        <Text size="xs" className={classes.muted}>
+                        <p className={classes.panelMutedText}>
                           Мониторинг AI-суммаризации, очередей и покрытия снапшотов.
-                        </Text>
-                        <Button
-                          size="xs"
-                          variant="light"
+                        </p>
+                        <UIButton
+                          type="button"
+                          size="sm"
+                          variant="secondary"
                           className={classes.actionButton}
                           onClick={() => {
                             void loadReviewsHealth();
                           }}
-                          loading={reviewsHealthLoading}
+                          disabled={reviewsHealthLoading}
                         >
-                          Обновить
-                        </Button>
+                          {reviewsHealthLoading ? (
+                            <>
+                              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                              Обновляем...
+                            </>
+                          ) : (
+                            "Обновить"
+                          )}
+                        </UIButton>
                       </div>
                       {reviewsHealthError && !reviewsHealthLoading && (
                         <div className={classes.error} style={{ marginTop: 10 }}>
@@ -694,9 +692,7 @@ export default function SettingsScreen() {
                         </div>
                       )}
                       {reviewsHealthLoading && (
-                        <Text size="sm" className={classes.muted} mt={8}>
-                          Загружаем health-дашборд...
-                        </Text>
+                        <p className={classes.panelMutedText}>Загружаем health-дашборд...</p>
                       )}
                       {!reviewsHealthLoading && !reviewsHealthError && reviewsHealth && (
                         <div className={classes.versioningGrid}>
@@ -789,64 +785,87 @@ export default function SettingsScreen() {
                     onClick={() => setDlqExpanded((value) => !value)}
                     aria-expanded={dlqExpanded}
                   >
-                    <Text fw={600} size="sm">
-                      DLQ пересчетов
-                    </Text>
+                    <span className={classes.panelToggleTitle}>DLQ пересчетов</span>
                     {dlqExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
                   </button>
                   {dlqExpanded && (
                     <>
                       <div className={classes.dlqHeader}>
                         <span />
-                        <Button
-                          size="xs"
-                          variant="light"
+                        <UIButton
+                          type="button"
+                          size="sm"
+                          variant="secondary"
                           className={classes.actionButton}
                           onClick={() => {
                             void loadDLQ();
                           }}
-                          loading={dlqLoading}
+                          disabled={dlqLoading}
                         >
-                          Обновить
-                        </Button>
+                          {dlqLoading ? (
+                            <>
+                              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                              Обновляем...
+                            </>
+                          ) : (
+                            "Обновить"
+                          )}
+                        </UIButton>
                       </div>
-                      <Group className={classes.dlqStatusRow}>
+                      <div className={classes.dlqStatusRow}>
                         {(["open", "resolved", "all"] as const).map((value) => (
-                          <Button
+                          <UIButton
+                            type="button"
                             key={`dlq-status-${value}`}
-                            size="xs"
-                            variant={dlqStatus === value ? "filled" : "light"}
+                            size="sm"
+                            variant={dlqStatus === value ? "default" : "secondary"}
                             className={classes.actionButton}
                             onClick={() => setDlqStatus(value)}
                           >
                             {value === "open" ? "Открытые" : value === "resolved" ? "Решенные" : "Все"}
-                          </Button>
+                          </UIButton>
                         ))}
-                      </Group>
-                      <Group className={classes.dlqBulkActions}>
-                        <Button
-                          size="xs"
-                          variant="filled"
+                      </div>
+                      <div className={classes.dlqBulkActions}>
+                        <UIButton
+                          type="button"
+                          size="sm"
+                          variant="default"
                           className={classes.actionButton}
                           onClick={() => {
                             void handleReplayAllOpenDLQ();
                           }}
-                          loading={dlqBulkLoading === "replay"}
+                          disabled={dlqBulkLoading === "replay"}
                         >
-                          Replay all open
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant="light"
+                          {dlqBulkLoading === "replay" ? (
+                            <>
+                              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                              Запускаем...
+                            </>
+                          ) : (
+                            "Replay all open"
+                          )}
+                        </UIButton>
+                        <UIButton
+                          type="button"
+                          size="sm"
+                          variant="secondary"
                           className={classes.actionButton}
                           onClick={() => {
                             void handleResolveOpenDLQ();
                           }}
-                          loading={dlqBulkLoading === "resolve"}
+                          disabled={dlqBulkLoading === "resolve"}
                         >
-                          Resolve without replay
-                        </Button>
-                      </Group>
+                          {dlqBulkLoading === "resolve" ? (
+                            <>
+                              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                              Закрываем...
+                            </>
+                          ) : (
+                            "Resolve without replay"
+                          )}
+                        </UIButton>
+                      </div>
 
                       {dlqReplayError && (
                         <div className={classes.error} style={{ marginTop: 10 }}>
@@ -864,55 +883,55 @@ export default function SettingsScreen() {
                         </div>
                       )}
                       {dlqLoading && (
-                        <Text size="sm" className={classes.muted} mt={8}>
-                          Загружаем DLQ...
-                        </Text>
+                        <p className={classes.panelMutedText}>Загружаем DLQ...</p>
                       )}
                       {!dlqLoading && !dlqError && dlqEvents.length === 0 && (
-                        <Text size="sm" className={classes.muted} mt={8}>
-                          Пусто: сообщений в выбранном фильтре нет.
-                        </Text>
+                        <p className={classes.panelMutedText}>Пусто: сообщений в выбранном фильтре нет.</p>
                       )}
                       {!dlqLoading && !dlqError && dlqEvents.length > 0 && (
                         <div className={classes.dlqList}>
                           {dlqEvents.map((item) => (
                             <div key={`dlq-event-${item.id}`} className={classes.dlqItem}>
                               <div className={classes.dlqItemHeader}>
-                                <Text fw={600} size="sm">
-                                  {item.event_type}
-                                </Text>
-                                <Text size="xs" className={classes.muted}>
-                                  {item.consumer}
-                                </Text>
+                                <p className={classes.dlqTitle}>{item.event_type}</p>
+                                <p className={classes.dlqMeta}>{item.consumer}</p>
                               </div>
-                              <Text size="xs" className={classes.muted}>
+                              <p className={classes.dlqMeta}>
                                 outbox #{item.outbox_event_id} · inbox #{item.inbox_event_id || 0} · attempts {item.attempts}
-                              </Text>
-                              <Text size="xs" className={classes.muted}>
+                              </p>
+                              <p className={classes.dlqMeta}>
                                 aggregate {item.aggregate_id}
-                              </Text>
-                              <Text size="xs" className={classes.dlqErrorText}>
+                              </p>
+                              <p className={classes.dlqErrorText}>
                                 {item.last_error || "Без текста ошибки"}
-                              </Text>
-                              <Group className={classes.dlqItemActions}>
-                                <Text size="xs" className={classes.muted}>
+                              </p>
+                              <div className={classes.dlqItemActions}>
+                                <p className={classes.dlqMeta}>
                                   failed: {item.failed_at || "—"}
-                                </Text>
-                                <Text size="xs" className={classes.muted}>
+                                </p>
+                                <p className={classes.dlqMeta}>
                                   resolved: {item.resolved_at || "—"}
-                                </Text>
-                                <Button
-                                  size="xs"
-                                  variant="light"
+                                </p>
+                                <UIButton
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
                                   className={classes.actionButton}
                                   onClick={() => {
                                     void handleReplayDLQ(item.id);
                                   }}
-                                  loading={dlqReplayingID === item.id}
+                                  disabled={dlqReplayingID === item.id}
                                 >
-                                  Replay
-                                </Button>
-                              </Group>
+                                  {dlqReplayingID === item.id ? (
+                                    <>
+                                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                      Replay...
+                                    </>
+                                  ) : (
+                                    "Replay"
+                                  )}
+                                </UIButton>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -925,44 +944,44 @@ export default function SettingsScreen() {
 
             <div className={classes.section}>
               <div className={classes.sectionHeader}>
-                <Group gap="xs">
+                <div className={classes.sectionTitleRow}>
                   {computedColorScheme === "dark" ? (
                     <IconMoon size={18} />
                   ) : (
                     <IconSun size={18} />
                   )}
-                  <Title order={4}>Тема</Title>
-                </Group>
+                  <h3 className={classes.sectionTitle}>Тема</h3>
+                </div>
               </div>
-              <Text size="sm" className={classes.muted} mb="sm">
-                Выберите оформление интерфейса.
-              </Text>
-              <Group className={classes.actionsRow}>
-                <Button
-                  variant={computedColorScheme === "light" ? "filled" : "light"}
+              <p className={classes.sectionDescription}>Выберите оформление интерфейса.</p>
+              <div className={classes.actionsRow}>
+                <UIButton
+                  type="button"
+                  variant={computedColorScheme === "light" ? "default" : "secondary"}
                   className={classes.actionButton}
-                  leftSection={<IconSun size={16} />}
                   onClick={() => setColorScheme("light")}
                 >
+                  <IconSun size={16} />
                   Светлая
-                </Button>
-                <Button
-                  variant={computedColorScheme === "dark" ? "filled" : "light"}
+                </UIButton>
+                <UIButton
+                  type="button"
+                  variant={computedColorScheme === "dark" ? "default" : "secondary"}
                   className={classes.actionButton}
-                  leftSection={<IconMoon size={16} />}
                   onClick={() => setColorScheme("dark")}
                 >
+                  <IconMoon size={16} />
                   Тёмная
-                </Button>
-              </Group>
+                </UIButton>
+              </div>
             </div>
 
             <div className={classes.section}>
               <div className={classes.sectionHeader}>
-                <Group gap="xs">
+                <div className={classes.sectionTitleRow}>
                   <IconMail size={18} />
-                  <Title order={4}>Почта</Title>
-                </Group>
+                  <h3 className={classes.sectionTitle}>Почта</h3>
+                </div>
               </div>
               <div className={classes.statusLine}>
                 <span className={classes.statusPill} data-status={statusTone}>
@@ -974,11 +993,11 @@ export default function SettingsScreen() {
                   {statusLabel}
                 </span>
               </div>
-              <Text fw={600}>{emailValue}</Text>
-              <Text size="sm" className={classes.muted} mt={6}>
+              <p className={classes.emailValue}>{emailValue}</p>
+              <p className={classes.sectionDescription} style={{ marginTop: 6 }}>
                 Подтверждение почты нужно для защиты аккаунта и восстановления.
-              </Text>
-              <Group className={classes.actionsRow} mt="md">
+              </p>
+              <div className={classes.actionsRow} style={{ marginTop: 12 }}>
                 <UIButton
                   type="button"
                   variant="default"
@@ -991,7 +1010,7 @@ export default function SettingsScreen() {
                   <IconShieldCheck size={16} />
                   Отправить письмо подтверждения
                 </UIButton>
-              </Group>
+              </div>
               {verifySuccess && (
                 <div className={classes.banner} style={{ marginTop: 12 }}>
                   {verifySuccess}
@@ -1006,13 +1025,12 @@ export default function SettingsScreen() {
 
             <div className={classes.section}>
               <div className={classes.sectionHeader}>
-                <Group gap="xs">
+                <div className={classes.sectionTitleRow}>
                   <IconMail size={18} />
-                  <Title order={4}>Сменить email</Title>
-                </Group>
+                  <h3 className={classes.sectionTitle}>Сменить email</h3>
+                </div>
               </div>
-              <Box
-                component="form"
+              <form
                 onSubmit={(event) => {
                   void onEmailChangeSubmit(event);
                 }}
@@ -1077,7 +1095,7 @@ export default function SettingsScreen() {
                     )}
                   />
                 </div>
-                <Group className={classes.actionsRow} mt="md">
+                <div className={classes.actionsRow} style={{ marginTop: 12 }}>
                   <UIButton
                     type="submit"
                     disabled={isEmailSubmitting}
@@ -1092,8 +1110,8 @@ export default function SettingsScreen() {
                       "Отправить подтверждение"
                     )}
                   </UIButton>
-                </Group>
-              </Box>
+                </div>
+              </form>
               {emailChangeResult && (
                 <div className={classes.banner} style={{ marginTop: 12 }}>
                   {emailChangeResult}
@@ -1108,16 +1126,15 @@ export default function SettingsScreen() {
 
             <div className={classes.section}>
               <div className={classes.sectionHeader}>
-                <Group gap="xs">
+                <div className={classes.sectionTitleRow}>
                   <IconShieldCheck size={18} />
-                  <Title order={4}>Сменить пароль</Title>
-                </Group>
+                  <h3 className={classes.sectionTitle}>Сменить пароль</h3>
+                </div>
               </div>
-              <Text size="sm" className={classes.muted} mb="sm">
+              <p className={classes.sectionDescription}>
                 Мы отправим ссылку для смены пароля на вашу почту.
-              </Text>
-              <Box
-                component="form"
+              </p>
+              <form
                 onSubmit={(event) => {
                   void onResetSubmit(event);
                 }}
@@ -1155,7 +1172,7 @@ export default function SettingsScreen() {
                     )}
                   />
                 </div>
-                <Group className={classes.actionsRow} mt="md">
+                <div className={classes.actionsRow} style={{ marginTop: 12 }}>
                   <UIButton
                     type="submit"
                     disabled={isResetSubmitting}
@@ -1170,8 +1187,8 @@ export default function SettingsScreen() {
                       "Отправить письмо"
                     )}
                   </UIButton>
-                </Group>
-              </Box>
+                </div>
+              </form>
               {resetResult && (
                 <div className={classes.banner} style={{ marginTop: 12 }}>
                   {resetResult}
@@ -1186,16 +1203,16 @@ export default function SettingsScreen() {
 
             <div className={classes.section}>
               <div className={classes.sectionHeader}>
-                <Group gap="xs">
+                <div className={classes.sectionTitleRow}>
                   <IconMessageCircle size={18} />
-                  <Title order={4}>Отзыв о приложении</Title>
-                </Group>
+                  <h3 className={classes.sectionTitle}>Отзыв о приложении</h3>
+                </div>
               </div>
-              <Text size="sm" className={classes.muted}>
+              <p className={classes.sectionDescription}>
                 Есть идея или баг? Напишите команде продукта.
-              </Text>
+              </p>
               {!feedbackExpanded ? (
-                <Group className={classes.actionsRow} mt="md">
+                <div className={classes.actionsRow} style={{ marginTop: 12 }}>
                   <UIButton
                     type="button"
                     className="h-11 rounded-[14px] px-4"
@@ -1204,9 +1221,9 @@ export default function SettingsScreen() {
                   >
                     Оставить отзыв
                   </UIButton>
-                </Group>
+                </div>
               ) : (
-                <Stack gap="sm" mt="md">
+                <div className={classes.feedbackForm}>
                   <textarea
                     rows={4}
                     className={classes.fieldTextarea}
@@ -1240,7 +1257,7 @@ export default function SettingsScreen() {
                       {feedbackSuccess}
                     </div>
                   )}
-                  <Group className={classes.actionsRow}>
+                  <div className={classes.actionsRow}>
                     <UIButton
                       type="button"
                       className="h-11 rounded-[14px] px-4"
@@ -1271,14 +1288,14 @@ export default function SettingsScreen() {
                     >
                       Скрыть форму
                     </UIButton>
-                  </Group>
-                </Stack>
+                  </div>
+                </div>
               )}
             </div>
 
-          </Stack>
-        </Box>
+          </div>
+        </div>
       </div>
-    </Box>
+    </main>
   );
 }
