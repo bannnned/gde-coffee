@@ -256,8 +256,7 @@ export function useReviewsSectionController({
   const positionsInput = watch("positionsInput");
   const tagsInputValue = watch("tagsInput");
   const likedValue = watch("liked");
-  const dislikedValue = watch("disliked");
-  const summaryValue = watch("summary");
+  const improveValue = watch("improve");
   const photos = watch("photos");
 
   const positionInputData = useMemo(() => {
@@ -279,7 +278,7 @@ export function useReviewsSectionController({
   const ownReviewQualityInsight = useMemo(() => buildQualityInsight(ownReview), [ownReview]);
   const draftQualitySuggestions = useMemo(() => {
     const suggestions: string[] = [];
-    const reviewTextCombined = [likedValue, dislikedValue, summaryValue]
+    const reviewTextCombined = [likedValue, improveValue]
       .map((item) => item.trim())
       .filter(Boolean)
       .join(" ");
@@ -296,7 +295,7 @@ export function useReviewsSectionController({
       suggestions.push("добавьте еще позицию");
     }
     return suggestions;
-  }, [dislikedValue, likedValue, photos.length, positionsInput, summaryValue, tagsInputValue]);
+  }, [improveValue, likedValue, photos.length, positionsInput, tagsInputValue]);
 
   const activePositionFilter = useMemo(
     () => (positionFilter === "all" ? undefined : positionFilter),
@@ -360,10 +359,16 @@ export function useReviewsSectionController({
 
   useEffect(() => {
     if (!opened) return;
+    const normalizedQuery = drinkSearchQuery.trim();
+    if (!normalizedQuery) {
+      setDrinkSuggestions([]);
+      setDrinksLoading(false);
+      return;
+    }
     let cancelled = false;
     const timer = window.setTimeout(() => {
       setDrinksLoading(true);
-      searchDrinks(drinkSearchQuery, DRINK_SUGGESTIONS_LIMIT)
+      searchDrinks(normalizedQuery, DRINK_SUGGESTIONS_LIMIT)
         .then((items) => {
           if (!cancelled) {
             setDrinkSuggestions(items);
@@ -409,8 +414,7 @@ export function useReviewsSectionController({
       positionsInput: ownReviewPositions.slice(0, MAX_REVIEW_POSITIONS),
       tagsInput: (ownReview.taste_tags ?? []).join(", "),
       liked: summarySections.liked,
-      disliked: summarySections.disliked,
-      summary: summarySections.summary,
+      improve: summarySections.improve,
       photos: (ownReview.photos ?? []).map((url) => ({
         id: makePhotoId(),
         url,
@@ -517,8 +521,7 @@ export function useReviewsSectionController({
     const rating = Number(values.ratingValue);
     const nextSummary = buildReviewSummaryFromSections({
       liked: values.liked,
-      disliked: values.disliked,
-      summary: values.summary,
+      improve: values.improve,
     });
     const normalizedPositions = parseReviewPositions(values.positionsInput);
     const knownDrinkIDByName = new Map<string, string>();

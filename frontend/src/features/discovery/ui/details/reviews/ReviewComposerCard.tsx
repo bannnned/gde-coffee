@@ -109,7 +109,7 @@ export function ReviewComposerCard({
   const positionsError = errors.positionsInput?.message
     ? String(errors.positionsInput.message)
     : null;
-  const summaryError = errors.summary?.message ? String(errors.summary.message) : null;
+  const improveError = errors.improve?.message ? String(errors.improve.message) : null;
   const normalizedPositionInputData = useMemo(() => {
     const seen = new Set<string>();
     const unique: string[] = [];
@@ -245,10 +245,10 @@ export function ReviewComposerCard({
 
           <Controller
             control={control}
-            name="disliked"
+            name="improve"
             render={({ field }) => (
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-semibold text-[var(--text)]">Не понравилось</span>
+                <span className="text-sm font-semibold text-[var(--text)]">Что улучшить</span>
                 <textarea
                   value={field.value}
                   onChange={(event) => field.onChange(event.currentTarget.value)}
@@ -257,25 +257,7 @@ export function ReviewComposerCard({
                   className="min-h-[78px] w-full resize-y rounded-[14px] border px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] ui-interactive ui-focus-ring"
                   style={glassInputStyle}
                 />
-              </label>
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="summary"
-            render={({ field }) => (
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-semibold text-[var(--text)]">Короткий вывод</span>
-                <textarea
-                  value={field.value}
-                  onChange={(event) => field.onChange(event.currentTarget.value)}
-                  placeholder="Для кого место и стоит ли вернуться"
-                  rows={4}
-                  className="min-h-[98px] w-full resize-y rounded-[14px] border px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] ui-interactive ui-focus-ring"
-                  style={glassInputStyle}
-                />
-                {summaryError ? <p className="text-xs text-danger">{summaryError}</p> : null}
+                {improveError ? <p className="text-xs text-danger">{improveError}</p> : null}
               </label>
             )}
           />

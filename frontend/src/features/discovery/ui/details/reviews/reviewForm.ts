@@ -14,8 +14,7 @@ export const DRINK_SUGGESTIONS_LIMIT = 12;
 
 export type ReviewSummarySections = {
   liked: string;
-  disliked: string;
-  summary: string;
+  improve: string;
 };
 
 const formPhotoSchema = z.object({
@@ -30,8 +29,7 @@ export const reviewFormSchema = z
     positionsInput: z.array(z.string()).max(MAX_REVIEW_POSITIONS),
     tagsInput: z.string(),
     liked: z.string(),
-    disliked: z.string(),
-    summary: z.string(),
+    improve: z.string(),
     photos: z.array(formPhotoSchema).max(MAX_REVIEW_PHOTOS),
   })
   .superRefine((value, ctx) => {
@@ -44,15 +42,11 @@ export const reviewFormSchema = z
       });
     }
 
-    if (
-      value.liked.trim().length === 0 &&
-      value.disliked.trim().length === 0 &&
-      value.summary.trim().length === 0
-    ) {
+    if (value.liked.trim().length === 0 && value.improve.trim().length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["summary"],
-        message: "Заполните хотя бы одно поле: понравилось, не понравилось или короткий вывод.",
+        path: ["improve"],
+        message: "Заполните хотя бы одно поле: понравилось или что улучшить.",
       });
     }
   });
@@ -64,8 +58,7 @@ export const DEFAULT_REVIEW_FORM_VALUES: ReviewFormValues = {
   positionsInput: [],
   tagsInput: "",
   liked: "",
-  disliked: "",
-  summary: "",
+  improve: "",
   photos: [],
 };
 
@@ -147,6 +140,7 @@ export function formatReviewDate(value: string): string {
 function stripSectionPrefix(value: string): string {
   return value
     .replace(/^(что\s*понравил[ао]с[ья]|понравилось|плюсы?|liked)\s*[:\-]?\s*/i, "")
+    .replace(/^(что\s*улучшить|что\s*можно\s*улучшить|улучшить|could\s*improve|improve)\s*[:\-]?\s*/i, "")
     .replace(/^(что\s*не\s*понравил[ао]с[ья]|не\s*понравилось|минусы?|disliked)\s*[:\-]?\s*/i, "")
     .replace(/^(короткий\s*вывод|вывод|для\s*кого\s*место|кому\s*подойдет|summary)\s*[:\-]?\s*/i, "")
     .trim();
@@ -157,8 +151,7 @@ export function parseReviewSummarySections(summaryRaw: string): ReviewSummarySec
   if (!normalized) {
     return {
       liked: "",
-      disliked: "",
-      summary: "",
+      improve: "",
     };
   }
 
@@ -169,10 +162,10 @@ export function parseReviewSummarySections(summaryRaw: string): ReviewSummarySec
 
   const sections: Record<keyof ReviewSummarySections, string[]> = {
     liked: [],
-    disliked: [],
-    summary: [],
+    improve: [],
   };
-  let activeSection: keyof ReviewSummarySections | null = null;
+  const legacySummary: string[] = [];
+  let activeSection: keyof ReviewSummarySections | "legacySummary" | null = null;
 
   for (const line of lines) {
     if (/^(что\s*понравил[ао]с[ья]|понравилось|плюсы?|liked)/i.test(line)) {
@@ -181,48 +174,53 @@ export function parseReviewSummarySections(summaryRaw: string): ReviewSummarySec
       if (clean) sections.liked.push(clean);
       continue;
     }
-    if (/^(что\s*не\s*понравил[ао]с[ья]|не\s*понравилось|минусы?|disliked)/i.test(line)) {
-      activeSection = "disliked";
+    if (
+      /^(что\s*улучшить|что\s*можно\s*улучшить|улучшить|could\s*improve|improve|что\s*не\s*понравил[ао]с[ья]|не\s*понравилось|минусы?|disliked)/i.test(
+        line,
+      )
+    ) {
+      activeSection = "improve";
       const clean = stripSectionPrefix(line);
-      if (clean) sections.disliked.push(clean);
+      if (clean) sections.improve.push(clean);
       continue;
     }
     if (/^(короткий\s*вывод|вывод|для\s*кого\s*место|кому\s*подойдет|summary)/i.test(line)) {
-      activeSection = "summary";
+      activeSection = "legacySummary";
       const clean = stripSectionPrefix(line);
-      if (clean) sections.summary.push(clean);
+      if (clean) legacySummary.push(clean);
       continue;
     }
     if (activeSection) {
-      sections[activeSection].push(line);
+      if (activeSection === "legacySummary") {
+        legacySummary.push(line);
+      } else {
+        sections[activeSection].push(line);
+      }
     }
   }
 
-  const hasLabeledSections =
-    sections.liked.length > 0 || sections.disliked.length > 0 || sections.summary.length > 0;
+  const hasLabeledSections = sections.liked.length > 0 || sections.improve.length > 0 || legacySummary.length > 0;
   if (hasLabeledSections) {
+    const improve = sections.improve.join(" ").trim();
+    const legacy = legacySummary.join(" ").trim();
     return {
       liked: sections.liked.join(" ").trim(),
-      disliked: sections.disliked.join(" ").trim(),
-      summary: sections.summary.join(" ").trim(),
+      improve: improve || legacy,
     };
   }
 
   return {
     liked: lines[0] ?? "",
-    disliked: lines[1] ?? "",
-    summary: lines.slice(2).join(" ").trim(),
+    improve: lines.slice(1).join(" ").trim(),
   };
 }
 
 export function buildReviewSummaryFromSections(sections: ReviewSummarySections): string {
   const liked = sections.liked.trim();
-  const disliked = sections.disliked.trim();
-  const summary = sections.summary.trim();
+  const improve = sections.improve.trim();
 
   const lines: string[] = [];
   if (liked) lines.push(`Понравилось: ${liked}`);
-  if (disliked) lines.push(`Не понравилось: ${disliked}`);
-  if (summary) lines.push(`Короткий вывод: ${summary}`);
+  if (improve) lines.push(`Что улучшить: ${improve}`);
   return lines.join("\n");
 }

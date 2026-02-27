@@ -18,8 +18,7 @@ describe("reviewFormSchema", () => {
       positionsInput: ["espresso"],
       tagsInput: "berry, chocolate",
       liked: "Сбалансированная чашка без горечи.",
-      disliked: "",
-      summary: "",
+      improve: "",
       photos: [],
     });
 
@@ -32,8 +31,7 @@ describe("reviewFormSchema", () => {
       positionsInput: ["  filter v60  ", "espresso tonic"],
       tagsInput: "",
       liked: "",
-      disliked: "Долго ждали заказ.",
-      summary: "",
+      improve: "Долго ждали заказ.",
       photos: [],
     });
 
@@ -46,8 +44,7 @@ describe("reviewFormSchema", () => {
       positionsInput: [],
       tagsInput: "",
       liked: "",
-      disliked: "",
-      summary: "Вернусь еще раз.",
+      improve: "Стоит ускорить подачу.",
       photos: [],
     });
 
@@ -57,20 +54,19 @@ describe("reviewFormSchema", () => {
     }
   });
 
-  it("rejects when all three review blocks are empty", () => {
+  it("rejects when both review blocks are empty", () => {
     const result = reviewFormSchema.safeParse({
       ratingValue: "3",
       positionsInput: ["americano"],
       tagsInput: "",
       liked: "",
-      disliked: "",
-      summary: "",
+      improve: "",
       photos: [],
     });
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path.join(".") === "summary")).toBe(true);
+      expect(result.error.issues.some((issue) => issue.path.join(".") === "improve")).toBe(true);
     }
   });
 
@@ -85,8 +81,7 @@ describe("reviewFormSchema", () => {
       positionsInput: ["flat-white"],
       tagsInput: "",
       liked: "Плотная текстура и сладкое послевкусие.",
-      disliked: "",
-      summary: "",
+      improve: "",
       photos,
     });
 
@@ -128,15 +123,24 @@ describe("reviewForm utils", () => {
   it("parseReviewSummarySections and buildReviewSummaryFromSections work together", () => {
     const text = buildReviewSummaryFromSections({
       liked: "Быстрый сервис.",
-      disliked: "",
-      summary: "Лучше для короткой остановки.",
+      improve: "Хочется больше мест у окна.",
     });
     const parsed = parseReviewSummarySections(text);
 
     expect(parsed).toEqual({
       liked: "Быстрый сервис.",
-      disliked: "",
-      summary: "Лучше для короткой остановки.",
+      improve: "Хочется больше мест у окна.",
+    });
+  });
+
+  it("parseReviewSummarySections supports legacy review blocks", () => {
+    const parsed = parseReviewSummarySections(
+      "Понравилось: Отличный кофе\nНе понравилось: Шумно\nКороткий вывод: Приду снова в тихие часы",
+    );
+
+    expect(parsed).toEqual({
+      liked: "Отличный кофе",
+      improve: "Шумно",
     });
   });
 

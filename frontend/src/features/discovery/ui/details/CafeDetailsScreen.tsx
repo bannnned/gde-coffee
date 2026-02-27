@@ -330,7 +330,7 @@ export default function CafeDetailsScreen({
       bodyClassName="pb-[calc(var(--page-edge-padding)+var(--safe-bottom))]"
     >
       <div className="px-[var(--page-edge-padding)] pb-2 pt-4">
-        <div className="grid grid-cols-3 gap-1 rounded-[14px] border border-[var(--glass-border)] bg-[var(--surface)] p-1">
+        <div className="grid grid-cols-3 gap-2">
           {DETAILS_SECTION_CONTROL_DATA.map((item) => {
             const active = section === item.value;
             return (
@@ -342,7 +342,7 @@ export default function CafeDetailsScreen({
                   "rounded-[12px] border px-2 py-2 text-sm font-semibold transition ui-interactive",
                   active
                     ? "border-[var(--glass-border)] bg-[linear-gradient(135deg,var(--glass-grad-1),var(--glass-grad-2))] text-[var(--text)] shadow-[var(--glass-shadow)]"
-                    : "border-transparent bg-transparent text-[var(--text)]/82 hover:bg-[var(--card)]",
+                    : "border-[var(--border)] bg-transparent text-[var(--text)]/82 hover:bg-[var(--card)]",
                 )}
               >
                 {item.label}

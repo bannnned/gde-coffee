@@ -1,4 +1,3 @@
-import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IconMapPin, IconPlus } from "@tabler/icons-react";
 
@@ -78,7 +77,6 @@ export default function SettingsDrawer({
   onTopTagsQueryChange,
   onSaveTopTags,
 }: SettingsDrawerProps) {
-  const isCoarsePointer = useMediaQuery("(pointer: coarse)") ?? false;
   const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
   const [pendingTagToAdd, setPendingTagToAdd] = useState<string | null>(null);
   const [pendingLocationId, setPendingLocationId] = useState<string>("");
@@ -252,25 +250,43 @@ export default function SettingsDrawer({
             </p>
           </div>
           <FormField label="Город">
-            <AppSelect
-              data={locationOptions.map((option) => ({
-                value: option.id,
-                label: option.label,
-              }))}
-              value={pendingLocationId || null}
-              placeholder="Выбрать город"
-              allowDeselect={false}
-              searchable={!isCoarsePointer}
-              nothingFoundMessage="Ничего не найдено"
-              onChange={(value) => {
-                const nextId = (value ?? "").trim();
-                setPendingLocationId(nextId);
-                if (!nextId) return;
-                onSelectLocation(nextId);
-              }}
-              comboboxProps={{ withinPortal: true, zIndex: 4300 }}
-              styles={discoveryGlassSelectStyles}
-            />
+            <div className="relative">
+              <select
+                value={pendingLocationId}
+                onChange={(event) => {
+                  const nextId = event.currentTarget.value.trim();
+                  setPendingLocationId(nextId);
+                  if (!nextId) return;
+                  onSelectLocation(nextId);
+                }}
+                className="h-10 w-full rounded-[12px] border px-3 pr-9 text-sm font-medium text-[var(--text)] outline-none ui-focus-ring"
+                style={{
+                  borderColor: "var(--glass-border)",
+                  background:
+                    "linear-gradient(135deg, color-mix(in srgb, var(--surface) 82%, var(--bg)), color-mix(in srgb, var(--surface) 72%, var(--glass-grad-1)))",
+                  boxShadow: "var(--glass-shadow)",
+                  backdropFilter: "blur(16px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(16px) saturate(180%)",
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                }}
+              >
+                <option value="" disabled>
+                  Выбрать город
+                </option>
+                {locationOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]"
+              >
+                ▾
+              </span>
+            </div>
           </FormField>
           <Button
             type="button"

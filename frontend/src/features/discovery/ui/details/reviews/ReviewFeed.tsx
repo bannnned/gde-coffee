@@ -394,8 +394,7 @@ function ReviewCard({
   const ratingValue = Number.isFinite(Number(review.rating)) ? Number(review.rating) : 0;
   const reviewSections = [
     { key: "liked", label: "Понравилось", value: reviewBody.liked.trim() },
-    { key: "disliked", label: "Не понравилось", value: reviewBody.disliked.trim() },
-    { key: "summary", label: "Короткий вывод", value: reviewBody.summary.trim() },
+    { key: "improve", label: "Что улучшить", value: reviewBody.improve.trim() },
   ].filter((section) => section.value.length > 0);
   const positionLabels =
     review.positions.length > 0

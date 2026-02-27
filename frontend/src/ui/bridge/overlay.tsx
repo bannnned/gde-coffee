@@ -60,7 +60,7 @@ export function AppModal({
               )}
             >
               {(title || closeButton) && (
-                <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+                <div className="flex items-center justify-between gap-2 px-4 pb-0 pt-3">
                   {title ? (
                     <DialogPrimitive.Title className={cn("min-w-0 flex-1", titleClassName)}>
                       {title}
@@ -98,7 +98,7 @@ export function AppModal({
           )}
         >
           {(title || closeButton) && (
-            <SheetHeader className="border-b border-border px-4 py-3">
+            <SheetHeader className="px-4 pb-0 pt-3">
               <div className="flex items-center justify-between gap-2">
                 {title ? (
                   <SheetTitle className={cn("min-w-0 flex-1", titleClassName)}>{title}</SheetTitle>
@@ -182,7 +182,7 @@ export function AppSheet({
           )}
         >
           {title || closeButton ? (
-            <SheetHeader className="border-b border-border px-4 py-3">
+            <SheetHeader className="px-4 pb-0 pt-3">
               <div className="flex items-center justify-between gap-2">
                 {title ? (
                   <SheetTitle className={cn("min-w-0 flex-1", titleClassName)}>{title}</SheetTitle>
