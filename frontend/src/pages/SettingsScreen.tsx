@@ -1186,9 +1186,7 @@ export default function SettingsScreen() {
                     </UIButton>
                   ) : null}
                   {!telegramLinked ? (
-                    <div className={classes.telegramInline}>
-                      <TelegramLoginWidget flow="link" size="medium" />
-                    </div>
+                    <TelegramLoginWidget flow="link" size="medium" />
                   ) : null}
                 </div>
 

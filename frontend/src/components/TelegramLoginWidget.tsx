@@ -1,14 +1,4 @@
-import {
-  Box,
-  Group,
-  Loader,
-  Paper,
-  Skeleton,
-  Text,
-  ThemeIcon,
-} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconBrandTelegram } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -103,7 +93,6 @@ export default function TelegramLoginWidget({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [botUsername, setBotUsername] = useState("");
   const [isConfigLoading, setIsConfigLoading] = useState(true);
-  const [isWidgetLoading, setIsWidgetLoading] = useState(false);
   const [widgetError, setWidgetError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -151,7 +140,6 @@ export default function TelegramLoginWidget({
     }
 
     setWidgetError(null);
-    setIsWidgetLoading(true);
 
     const callbackName = callbackNameRef.current;
     const onAuth = async (rawUser: TelegramWidgetUser) => {
@@ -202,124 +190,48 @@ export default function TelegramLoginWidget({
     script.setAttribute("data-radius", "10");
     script.setAttribute("data-onauth", `${callbackName}(user)`);
     script.onerror = () => {
-      setIsWidgetLoading(false);
       setWidgetError("Не удалось загрузить Telegram widget.");
     };
 
     container.innerHTML = "";
     container.appendChild(script);
 
-    const markReadyIfWidgetMounted = () => {
-      const hasWidget = Boolean(
-        container.querySelector("iframe") ||
-          container.querySelector("a") ||
-          container.querySelector("[id^='telegram-login-']"),
-      );
-      if (hasWidget) {
-        setIsWidgetLoading(false);
-      }
-    };
-
-    // Widget may appear some time after script append.
-    markReadyIfWidgetMounted();
-    const observer = new MutationObserver(markReadyIfWidgetMounted);
-    observer.observe(container, { childList: true, subtree: true });
-    const readinessTimeout = window.setTimeout(() => {
-      markReadyIfWidgetMounted();
-      setIsWidgetLoading(false);
-    }, 8000);
-
     return () => {
-      observer.disconnect();
-      window.clearTimeout(readinessTimeout);
       delete callbacks[callbackName];
       container.innerHTML = "";
     };
   }, [botUsername, flow, isConfigLoading, size]);
 
-  return (
-    <Box w="100%" maw={340}>
-      <Paper
-        radius="xl"
-        p="sm"
-        withBorder
-        style={{
-          border: "1px solid var(--glass-border)",
-          background:
-            "linear-gradient(150deg, var(--glass-grad-1), var(--glass-grad-2))",
-          boxShadow: "0 12px 26px color-mix(in srgb, var(--attention-glow) 35%, transparent)",
-          backdropFilter: "blur(16px) saturate(150%)",
-          WebkitBackdropFilter: "blur(16px) saturate(150%)",
-        }}
-      >
-        <Group justify="space-between" mb={8}>
-          <Group gap={8}>
-            <ThemeIcon
-              size={28}
-              radius="md"
-              variant="gradient"
-              gradient={{ from: "#31A9E8", to: "#1886CC", deg: 135 }}
-            >
-              <IconBrandTelegram size={16} />
-            </ThemeIcon>
-            <Text size="sm" fw={700}>
-              {flow === "link" ? "Подключить Telegram" : "Вход через Telegram"}
-            </Text>
-          </Group>
-          {isSubmitting && <Loader size={14} color="var(--accent)" />}
-        </Group>
+  const widgetMinHeight = size === "large" ? 40 : size === "medium" ? 34 : 30;
 
-        <Box
+  return (
+    <div
+      style={{
+        display: "inline-block",
+        minHeight: widgetMinHeight,
+      }}
+    >
+      <div
+        ref={containerRef}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          opacity: isSubmitting ? 0.6 : 1,
+          pointerEvents: isSubmitting ? "none" : "auto",
+          minHeight: widgetMinHeight,
+        }}
+      />
+      {widgetError ? (
+        <p
           style={{
-            position: "relative",
-            borderRadius: 14,
-            border: "1px solid color-mix(in srgb, var(--accent) 22%, var(--glass-border))",
-            background:
-              "linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, white), color-mix(in srgb, var(--surface) 64%, transparent))",
-            padding: 8,
-            minHeight: size === "large" ? 58 : size === "medium" ? 46 : 40,
+            margin: "6px 0 0",
+            fontSize: "12px",
+            color: "var(--color-status-error)",
           }}
         >
-          {!widgetError && (isConfigLoading || isWidgetLoading) && (
-            <Skeleton
-              radius="md"
-              style={{
-                position: "absolute",
-                inset: 8,
-                zIndex: 1,
-              }}
-            />
-          )}
-          <div
-            ref={containerRef}
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              opacity: isSubmitting ? 0.6 : 1,
-              pointerEvents: isSubmitting ? "none" : "auto",
-              minHeight: size === "large" ? 40 : size === "medium" ? 34 : 30,
-              position: "relative",
-              zIndex: 2,
-            }}
-          />
-        </Box>
-
-        {isSubmitting && (
-          <Text size="xs" c="dimmed" mt={6}>
-            Авторизуем через Telegram...
-          </Text>
-        )}
-        {!widgetError && (isConfigLoading || isWidgetLoading) && (
-          <Text size="xs" c="dimmed" mt={6}>
-            Загружаем Telegram...
-          </Text>
-        )}
-        {widgetError && (
-          <Text size="xs" c="red" mt={6}>
-            {widgetError}
-          </Text>
-        )}
-      </Paper>
-    </Box>
+          {widgetError}
+        </p>
+      ) : null}
+    </div>
   );
 }
