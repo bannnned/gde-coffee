@@ -12,7 +12,6 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconArrowLeft,
   IconArrowsSort,
   IconChevronDown,
   IconChevronUp,
@@ -328,11 +327,14 @@ export default function CafePhotoAdminModal({
       title={`Фото ${photoKindLabel}: ${cafeName}`}
       styles={{
         content: {
-          background: "var(--glass-bg)",
+          background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
           border: "1px solid var(--glass-border)",
+          boxShadow: "var(--glass-shadow)",
+          backdropFilter: "blur(16px) saturate(150%)",
+          WebkitBackdropFilter: "blur(16px) saturate(150%)",
         },
         header: {
-          background: "var(--surface)",
+          background: "transparent",
           borderBottom: "1px solid var(--border)",
         },
         body: {
@@ -349,17 +351,6 @@ export default function CafePhotoAdminModal({
       }}
     >
       <Stack gap="md">
-        <Button
-          variant="default"
-          leftSection={<IconArrowLeft size={16} />}
-          onClick={onClose}
-          radius="xl"
-          styles={glassButtonStyles}
-          style={{ alignSelf: "flex-start", marginTop: 8, marginBottom: 8 }}
-        >
-          К карточке
-        </Button>
-
         <Box
           onDrop={handleDropUpload}
           onDragOver={handleDragOverUpload}
@@ -367,7 +358,7 @@ export default function CafePhotoAdminModal({
             border: "1px dashed var(--border)",
             borderRadius: 14,
             background: "transparent",
-            padding: 0,
+            padding: 12,
           }}
         >
           <Stack gap="sm">

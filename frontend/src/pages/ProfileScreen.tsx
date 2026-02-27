@@ -88,14 +88,6 @@ export default function ProfileScreen() {
   const [showProfileData, setShowProfileData] = useState(false);
   const isFavoritesContext = backgroundLocation?.pathname?.startsWith("/favorites") ?? false;
 
-  const surfaceGlassStyle = {
-    background: "linear-gradient(145deg, var(--glass-grad-1), var(--glass-grad-2))",
-    border: "1px solid var(--glass-border)",
-    boxShadow: "var(--glass-shadow)",
-    backdropFilter: "blur(12px) saturate(145%)",
-    WebkitBackdropFilter: "blur(12px) saturate(145%)",
-  } as const;
-
   return (
     <div
       data-ui="profile-screen"
@@ -168,16 +160,7 @@ export default function ProfileScreen() {
         </header>
 
         <div className="flex flex-col gap-4">
-          <section
-            className="grid gap-4 rounded-[24px] p-5 sm:p-7"
-            style={{
-              background: "linear-gradient(150deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "var(--glass-shadow)",
-              backdropFilter: "blur(14px) saturate(150%)",
-              WebkitBackdropFilter: "blur(14px) saturate(150%)",
-            }}
-          >
+          <section className="grid gap-4">
             {status === "loading" ? (
               <p className="text-sm text-[var(--muted)]">Загружаем профиль...</p>
             ) : !user ? (
@@ -367,7 +350,7 @@ export default function ProfileScreen() {
                   </div>
                 </div>
 
-                <div className="rounded-[20px] border border-[var(--glass-border)] bg-[linear-gradient(145deg,var(--glass-grad-1),var(--glass-grad-2))] p-4 shadow-[var(--glass-shadow)]">
+                <div className="grid gap-2">
                   <div className="mb-2 flex items-start justify-between gap-2">
                     <div>
                       <p className="text-base font-bold text-[var(--text)]">
@@ -417,8 +400,8 @@ export default function ProfileScreen() {
                 </Button>
 
                 {showProfileData ? (
-                  <div className="overflow-hidden rounded-[22px] border border-[var(--border)] bg-[var(--surface)]">
-                    <div className="flex min-h-[54px] items-center gap-3.5 border-b border-[var(--border)] px-4 py-3">
+                  <div className="grid gap-2">
+                    <div className="flex min-h-[54px] items-center gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
                       <div className="grid min-w-0 flex-1 gap-0.5">
                         <p className="text-xs text-[var(--muted)]">Email</p>
                         <p className="break-all text-sm font-semibold text-[var(--text)]">{profile.email}</p>
@@ -437,7 +420,7 @@ export default function ProfileScreen() {
                         </span>
                       ) : null}
                     </div>
-                    <div className="flex min-h-[54px] items-center gap-3.5 px-4 py-3">
+                    <div className="flex min-h-[54px] items-center gap-3.5 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
                       <div className="grid min-w-0 flex-1 gap-0.5">
                         <p className="text-xs text-[var(--muted)]">ID аккаунта</p>
                         <p className="break-all text-sm font-semibold text-[var(--text)]">{profile.id}</p>
@@ -450,7 +433,7 @@ export default function ProfileScreen() {
           </section>
 
           {user ? (
-            <section className="grid gap-4 rounded-[24px] p-4 sm:p-6" style={surfaceGlassStyle}>
+            <section className="grid gap-4 pt-1">
               <div className="flex items-center justify-between gap-3.5">
                 <div className="flex items-center gap-2">
                   <p className="text-base font-semibold text-[var(--text)]">Соцсети</p>

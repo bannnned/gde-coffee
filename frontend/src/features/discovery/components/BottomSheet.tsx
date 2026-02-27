@@ -32,7 +32,7 @@ const SWIPE_VELOCITY = 1100;
 const SWIPE_VELOCITY_STRONG = 1700;
 const PEEK_HEIGHT_PX = 24;
 const SHEET_PADDING_PX = 6;
-const MID_SINGLE_CAFE_EXTRA_PX = 26;
+const MID_HEADER_EXTRA_PX = 4;
 
 const MotionPaper = motion(Paper);
 
@@ -93,7 +93,7 @@ export default function BottomSheet({
     );
     const expanded = Math.max(peek, Math.round(available));
     const midTarget = hideHeaderContentInPeek
-      ? peek + MID_SINGLE_CAFE_EXTRA_PX
+      ? Math.round(headerHeight + SHEET_PADDING_PX * 2 + MID_HEADER_EXTRA_PX)
       : Math.max(peek + 120, Math.round(available * 0.33));
     const mid = disableMidState
       ? expanded
@@ -187,7 +187,6 @@ export default function BottomSheet({
       }
 
       if (startState === "expanded") {
-        if (projected <= toPeekThreshold - 20) return "peek";
         if (projected <= heights.mid - 14) return "mid";
         return "expanded";
       }

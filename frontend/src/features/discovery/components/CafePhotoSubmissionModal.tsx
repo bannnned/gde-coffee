@@ -12,7 +12,7 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconArrowLeft, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { uploadCafePhotoByPresignedUrl } from "../../../api/cafePhotos";
 import {
@@ -203,12 +203,18 @@ export default function CafePhotoSubmissionModal({
       title={`Предложить фото: ${cafeName}`}
       styles={{
         content: {
-          background: "var(--glass-bg)",
+          background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
           border: "1px solid var(--glass-border)",
+          boxShadow: "var(--glass-shadow)",
+          backdropFilter: "blur(16px) saturate(150%)",
+          WebkitBackdropFilter: "blur(16px) saturate(150%)",
         },
         header: {
-          background: "var(--surface)",
+          background: "transparent",
           borderBottom: "1px solid var(--border)",
+        },
+        body: {
+          paddingBottom: "calc(12px + var(--safe-bottom))",
         },
         overlay: {
           backgroundColor: "var(--color-surface-overlay-strong)",
@@ -217,17 +223,6 @@ export default function CafePhotoSubmissionModal({
       }}
     >
       <Stack gap="md">
-        <Button
-          variant="default"
-          leftSection={<IconArrowLeft size={16} />}
-          onClick={onClose}
-          radius="xl"
-          styles={glassButtonStyles}
-          style={{ alignSelf: "flex-start", marginTop: 8, marginBottom: 8 }}
-        >
-          К карточке
-        </Button>
-
         <SegmentedControl
           fullWidth
           value={mode}
@@ -281,7 +276,7 @@ export default function CafePhotoSubmissionModal({
             border: "1px dashed var(--border)",
             borderRadius: 14,
             background: "transparent",
-            padding: 0,
+            padding: 12,
           }}
         >
           <Stack gap="sm">
@@ -403,28 +398,17 @@ export default function CafePhotoSubmissionModal({
           </Box>
         )}
 
-        <Box
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: "12px 16px calc(12px + var(--safe-bottom))",
-            borderTop: "1px solid var(--border)",
-            background: "var(--surface)",
-          }}
+        <Button
+          fullWidth
+          onClick={() => void handleSubmit()}
+          loading={isUploading}
+          disabled={!cafeId || files.length === 0}
+          radius="xl"
+          styles={glassButtonStyles}
+          style={{ marginTop: 4 }}
         >
-          <Button
-            fullWidth
-            onClick={() => void handleSubmit()}
-            loading={isUploading}
-            disabled={!cafeId || files.length === 0}
-            radius="xl"
-            styles={glassButtonStyles}
-          >
-            Отправить на модерацию
-          </Button>
-        </Box>
+          Отправить на модерацию
+        </Button>
       </Stack>
     </Modal>
   );
