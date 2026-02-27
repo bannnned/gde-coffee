@@ -414,7 +414,7 @@ export type ReviewDeleteResponse = {
 };
 
 export type ReviewDeletePayload = {
-  reason: "abuse" | "violation";
+  reason?: "abuse" | "violation";
   details?: string;
 };
 

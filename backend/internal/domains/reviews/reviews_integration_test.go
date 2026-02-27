@@ -1269,7 +1269,7 @@ func TestDeleteReviewByModeratorOnly(t *testing.T) {
 	}
 }
 
-func TestDeleteReviewRequiresReason(t *testing.T) {
+func TestDeleteReviewWithoutReasonSkipsPenalty(t *testing.T) {
 	pool := integrationTestPool(t)
 	router := newIntegrationRouter(pool)
 
@@ -1322,8 +1322,42 @@ func TestDeleteReviewRequiresReason(t *testing.T) {
 		},
 		nil,
 	)
-	if deleteRec.Code != http.StatusBadRequest {
-		t.Fatalf("delete without reason expected 400, got %d, body=%s", deleteRec.Code, deleteRec.Body.String())
+	if deleteRec.Code != http.StatusOK {
+		t.Fatalf("delete without reason expected 200, got %d, body=%s", deleteRec.Code, deleteRec.Body.String())
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var reviewStatus string
+	if err := pool.QueryRow(
+		ctx,
+		`select status
+		   from reviews
+		  where id = $1::uuid`,
+		createResp.ReviewID,
+	).Scan(&reviewStatus); err != nil {
+		t.Fatalf("load review status after delete without reason: %v", err)
+	}
+	if reviewStatus != "removed" {
+		t.Fatalf("expected review status=removed, got %q", reviewStatus)
+	}
+
+	var reputationPenaltyCount int
+	if err := pool.QueryRow(
+		ctx,
+		`select count(*)::int
+		   from reputation_events
+		  where user_id = $1::uuid
+		    and source_type = 'review_moderation'
+		    and source_id = $2`,
+		userID,
+		createResp.ReviewID,
+	).Scan(&reputationPenaltyCount); err != nil {
+		t.Fatalf("count moderation reputation events: %v", err)
+	}
+	if reputationPenaltyCount != 0 {
+		t.Fatalf("expected no moderation penalty without reason, got %d events", reputationPenaltyCount)
 	}
 }
 

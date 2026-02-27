@@ -29,19 +29,20 @@ func (h *Handler) DeleteReview(c *gin.Context) {
 
 	var req DeleteReviewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		if strings.Contains(err.Error(), "EOF") {
-			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Нужно указать причину удаления: abuse или violation.", nil)
+		if !strings.Contains(err.Error(), "EOF") {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
 			return
 		}
-		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
-		return
 	}
-	reason, ok := normalizeReviewModerationReason(req.Reason)
-	if !ok {
-		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "reason должен быть abuse или violation.", nil)
-		return
+	req.Reason = strings.TrimSpace(req.Reason)
+	if req.Reason != "" {
+		reason, ok := normalizeReviewModerationReason(req.Reason)
+		if !ok {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "reason должен быть abuse или violation.", nil)
+			return
+		}
+		req.Reason = reason
 	}
-	req.Reason = reason
 	req.Details = strings.TrimSpace(req.Details)
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)

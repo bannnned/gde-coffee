@@ -1,9 +1,3 @@
-import {
-  ActionIcon,
-  Box,
-  Text,
-  UnstyledButton,
-} from "@mantine/core";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { IconHeart, IconHeartFilled, IconLogin } from "@tabler/icons-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -86,13 +80,15 @@ export default function FiltersBar({
   const isClickSuppressed = Date.now() < suppressClicksUntil;
 
   return (
-    <Box
-      pos="absolute"
-      top={0}
-      left={0}
-      right={0}
+    <div
       className={classes.root}
       data-ui="filters-bar"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+      }}
     >
       <div
         className={classes.headerMain}
@@ -100,7 +96,7 @@ export default function FiltersBar({
         ref={headerRef}
       >
         {user ? (
-          <UnstyledButton
+          <button
             className={`${classes.userBadge} ui-focus-ring`}
             aria-label="Open profile"
             type="button"
@@ -127,16 +123,16 @@ export default function FiltersBar({
                 loading="lazy"
               />
             ) : (
-              <Text fw={700}>
+              <span style={{ fontWeight: 700 }}>
                 {(userLabel || "?")
                   .trim()
                   .charAt(0)
                   .toUpperCase()}
-              </Text>
+              </span>
             )}
-          </UnstyledButton>
+          </button>
         ) : (
-          <UnstyledButton
+          <button
             className={`${classes.userBadge} ui-focus-ring`}
             aria-label="Войти"
             type="button"
@@ -147,17 +143,14 @@ export default function FiltersBar({
             }}
           >
             <IconLogin size={17} />
-          </UnstyledButton>
+          </button>
         )}
 
         <div className={classes.actionsRow}>
           {canToggleFavorites && (
-            <ActionIcon
-              variant="transparent"
-              size={42}
-              className={`glass-action glass-action--square ${
-                favoritesOnly ? classes.favoriteHeaderButtonActive : ""
-              }`}
+            <button
+              type="button"
+              className={`glass-action glass-action--square ui-focus-ring ${favoritesOnly ? classes.favoriteHeaderButtonActive : ""}`}
               aria-label="Избранные кофейни"
               onClick={() => {
                 if (isClickSuppressed) return;
@@ -165,14 +158,11 @@ export default function FiltersBar({
               }}
             >
               {favoritesOnly ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
-            </ActionIcon>
+            </button>
           )}
-          <ActionIcon
-            variant="transparent"
-            size={42}
-            className={`glass-action glass-action--square ${
-              highlightSettingsButton ? classes.attentionButton : ""
-            }`}
+          <button
+            type="button"
+            className={`glass-action glass-action--square ui-focus-ring ${highlightSettingsButton ? classes.attentionButton : ""}`}
             aria-label={DISCOVERY_UI_TEXT.settingsAria}
             onClick={() => {
               if (isClickSuppressed) return;
@@ -180,9 +170,9 @@ export default function FiltersBar({
             }}
           >
             <DISCOVERY_ICONS.settings size={18} />
-          </ActionIcon>
+          </button>
         </div>
       </div>
-    </Box>
+    </div>
   );
 }

@@ -16,10 +16,26 @@
 }
 
 .button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-md);
   box-shadow:
     0 10px 22px color-mix(in srgb, var(--color-surface-overlay-soft) 60%, transparent),
     var(--shadow-2);
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: floating-controls-spin 0.7s linear infinite;
 }
 
 .attentionButton {
@@ -47,5 +63,11 @@
   50% {
     transform: scale(1.02);
     filter: brightness(1.04);
+  }
+}
+
+@keyframes floating-controls-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

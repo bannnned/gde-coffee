@@ -1,4 +1,3 @@
-import { Box, Paper, Text } from "@mantine/core";
 import {
   animate,
   motion,
@@ -34,7 +33,7 @@ const PEEK_HEIGHT_PX = 24;
 const SHEET_PADDING_PX = 6;
 const MID_HEADER_EXTRA_PX = 4;
 
-const MotionPaper = motion(Paper);
+const MotionSheet = motion.div;
 
 export default function BottomSheet({
   sheetRef,
@@ -298,24 +297,24 @@ export default function BottomSheet({
   };
 
   return (
-    <Box
-      pos="absolute"
+    <div
       ref={sheetRef}
-      bottom={0}
-      left={0}
-      right={0}
       className={classes.wrapper}
+      style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+      }}
     >
-      <MotionPaper
-        withBorder
-        radius={22}
-        p={0}
+      <MotionSheet
         className={classes.sheet}
         data-state={effectiveSheetState}
         style={{
           y: 0,
           height,
           maxHeight: "100%",
+          borderRadius: 22,
           ["--sheet-header-height" as string]: `${Math.round(headerHeight)}px`,
           background: "var(--glass-bg)",
           border: "1px solid var(--glass-border)",
@@ -330,9 +329,15 @@ export default function BottomSheet({
         >
           <div className={classes.grabber} />
           {isError && (
-            <Text c="red" size="sm">
+            <p
+              style={{
+                margin: 0,
+                color: "var(--color-status-error)",
+                fontSize: "0.875rem",
+              }}
+            >
               {errorText}
-            </Text>
+            </p>
           )}
           {!hideHeaderContent && header}
         </div>
@@ -343,7 +348,7 @@ export default function BottomSheet({
         >
           {children}
         </div>
-      </MotionPaper>
-    </Box>
+      </MotionSheet>
+    </div>
   );
 }

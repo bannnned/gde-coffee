@@ -198,7 +198,8 @@ describe("useReviewsSectionController", () => {
 
     vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.spyOn(window, "prompt").mockImplementation((message: string | undefined) => {
-      if ((message ?? "").toLowerCase().includes("причину удаления")) {
+      const normalized = (message ?? "").toLowerCase();
+      if (normalized.includes("причина удаления") || normalized.includes("причину удаления")) {
         return "abuse";
       }
       return "";

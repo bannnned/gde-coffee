@@ -280,6 +280,7 @@
 }
 
 .ui-interactive {
+  -webkit-tap-highlight-color: transparent;
   transition:
     background-color var(--duration-base) var(--ease-standard),
     border-color var(--duration-base) var(--ease-standard),
@@ -290,6 +291,15 @@
 
 .ui-interactive:active {
   transform: translateY(1px);
+}
+
+:where(button, [role="button"], .mantine-SegmentedControl-control, .mantine-SegmentedControl-label, .mantine-Tabs-tab, .mantine-Chip-label) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(.mantine-SegmentedControl-label, .mantine-Tabs-tab, .mantine-Chip-label) {
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .ui-focus-ring:focus-visible {

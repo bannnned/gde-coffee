@@ -372,3 +372,20 @@ Critical path stack-transition:
 - Артефакт: de-Mantine container карточки в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeCard.tsx`.
 - Артефакт: de-Mantine footer карточки и переход на `components/ui/Badge` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/cafe-card/CafeCardFooter.tsx`.
 - Проверка: `npm run typecheck`, `npm run build` — pass.
+
+### [x] W4-B · Discovery list/controls de-Mantine (P1, status: done)
+- Цель: продолжить Stage C и снять прямые зависимости от Mantine в базовых list/control контейнерах Discovery.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeList.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FloatingControls.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/BottomSheet.tsx`.
+- Depends on: `W4-A`.
+- AC: `CafeList` не использует Mantine `Stack/Group/Box/Text/UnstyledButton`.
+- AC: `FloatingControls` не использует Mantine `ActionIcon/Box`, включая loading-состояние кнопки.
+- AC: `FiltersBar` не использует Mantine `ActionIcon/Box/Text/UnstyledButton`.
+- AC: `BottomSheet` не использует Mantine `Box/Paper/Text`, сохраняя текущую drag/snap механику.
+- Артефакт: de-Mantine list row/skeleton layout в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeList.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeList.module.css`.
+- Артефакт: de-Mantine floating locate control в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FloatingControls.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FloatingControls.module.css`.
+- Артефакт: de-Mantine top controls bar в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.tsx`.
+- Артефакт: de-Mantine bottom sheet shell/container в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/BottomSheet.tsx`.
+- Проверка: `npm run typecheck`, `npm run build` — pass.

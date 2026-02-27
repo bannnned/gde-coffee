@@ -639,12 +639,18 @@ export function useReviewsSectionController({
       if (!ok) return;
 
       const rawReason = window.prompt(
-        "Укажите причину удаления: abuse или violation",
-        "abuse",
+        "Причина удаления (необязательно): abuse или violation",
+        "",
       );
-      const normalizedReason = (rawReason ?? "").trim().toLowerCase();
-      if (normalizedReason !== "abuse" && normalizedReason !== "violation") {
-        setSubmitError("Нужно указать причину удаления: abuse или violation.");
+      if (rawReason === null) return;
+
+      const normalizedReason = rawReason.trim().toLowerCase();
+      if (
+        normalizedReason !== "" &&
+        normalizedReason !== "abuse" &&
+        normalizedReason !== "violation"
+      ) {
+        setSubmitError("Если причина указана, используйте abuse или violation.");
         return;
       }
 
@@ -656,9 +662,15 @@ export function useReviewsSectionController({
       setSubmitError(null);
       setSubmitHint(null);
       try {
+        const deletePayload =
+          normalizedReason === ""
+            ? { details: (rawDetails ?? "").trim() }
+            : {
+                reason: normalizedReason as "abuse" | "violation",
+                details: (rawDetails ?? "").trim(),
+              };
         await deleteReview(review.id, {
-          reason: normalizedReason,
-          details: (rawDetails ?? "").trim(),
+          ...deletePayload,
         });
         setSubmitHint("Отзыв удален.");
         await loadFirstPage();
