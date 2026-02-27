@@ -36,6 +36,13 @@ Runtime palette control:
 - Stored key: `coffeeQuest.palette`
 - JS helper: `window.gdeCoffeePalette.get() | list() | set(name)`
 
+Map style by color scheme:
+- `VITE_MAP_STYLE_URL_LIGHT` — light map style URL (`style.json`)
+- `VITE_MAP_STYLE_URL_DARK` — dark map style URL (`style.json`)
+- `VITE_MAP_STYLE_URL` — legacy fallback (used as light if `VITE_MAP_STYLE_URL_LIGHT` is unset)
+
+If no style URL is set, frontend falls back to raster OpenStreetMap tiles.
+
 ## Backend overview
 The backend serves:
 - API endpoints under `/api`

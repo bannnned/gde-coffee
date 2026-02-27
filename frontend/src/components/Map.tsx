@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
+import { useComputedColorScheme } from "@mantine/core";
 import maplibregl, {
   GeoJSONSource,
   Map as MLMap,
@@ -11,9 +12,19 @@ import cupUrl from "../assets/cup.png";
 
 const MAP_STYLE_URL_RAW =
   (import.meta.env.VITE_MAP_STYLE_URL as string | undefined)?.trim() || "";
-const MAP_STYLE_URL = /tiles\.openfreemap\.org/i.test(MAP_STYLE_URL_RAW)
-  ? ""
-  : MAP_STYLE_URL_RAW;
+const MAP_STYLE_LIGHT_URL_RAW =
+  (import.meta.env.VITE_MAP_STYLE_URL_LIGHT as string | undefined)?.trim() ||
+  MAP_STYLE_URL_RAW;
+const MAP_STYLE_DARK_URL_RAW =
+  (import.meta.env.VITE_MAP_STYLE_URL_DARK as string | undefined)?.trim() ||
+  "";
+
+function normalizeMapStyleUrl(raw: string): string {
+  return /tiles\.openfreemap\.org/i.test(raw) ? "" : raw;
+}
+
+const MAP_STYLE_LIGHT_URL = normalizeMapStyleUrl(MAP_STYLE_LIGHT_URL_RAW);
+const MAP_STYLE_DARK_URL = normalizeMapStyleUrl(MAP_STYLE_DARK_URL_RAW);
 
 function createFallbackMapStyle() {
   return {
@@ -38,6 +49,13 @@ function createFallbackMapStyle() {
       },
     ],
   } as const;
+}
+
+function resolveMapStyleByScheme(scheme: "light" | "dark") {
+  if (scheme === "dark") {
+    return MAP_STYLE_DARK_URL || MAP_STYLE_LIGHT_URL || createFallbackMapStyle();
+  }
+  return MAP_STYLE_LIGHT_URL || createFallbackMapStyle();
 }
 const USER_ICON_ID = "user-pin";
 const CAFE_ICON_ID = "cafe-cup";
@@ -419,6 +437,9 @@ export default function Map({
   filtersBarHeight = 0,
   controlsHidden = false,
 }: Props) {
+  const scheme = useComputedColorScheme("light", {
+    getInitialValueInEffect: true,
+  });
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const onCafeSelectRef = useRef(onCafeSelect);
@@ -500,7 +521,7 @@ export default function Map({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: MAP_STYLE_URL || createFallbackMapStyle(),
+      style: resolveMapStyleByScheme(scheme),
       center,
       zoom,
       attributionControl: false,
@@ -620,7 +641,7 @@ export default function Map({
       setIsMapReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scheme]);
 
   useEffect(() => {
     if (!isMapReady) return;

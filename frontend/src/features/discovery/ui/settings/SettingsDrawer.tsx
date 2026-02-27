@@ -146,17 +146,6 @@ export default function SettingsDrawer({
   };
 
   const canEditTags = isAuthed && !topTagsLoading && !topTagsSaving;
-  const baseSectionStyles = {
-    padding: 12,
-    borderRadius: 16,
-    border: "1px solid var(--glass-border)",
-    background:
-      "linear-gradient(135deg, color-mix(in srgb, var(--glass-grad-1) 96%, transparent), color-mix(in srgb, var(--glass-grad-2) 88%, transparent))",
-    boxShadow: "0 10px 22px color-mix(in srgb, var(--color-surface-overlay-soft) 54%, transparent)",
-    backdropFilter: "blur(14px) saturate(145%)",
-    WebkitBackdropFilter: "blur(14px) saturate(145%)",
-  } as const;
-
   const toggleTag = (tag: string) => {
     if (!canEditTags) return;
     const value = tag.trim();
@@ -229,22 +218,13 @@ export default function SettingsDrawer({
     >
       <div className="flex flex-col gap-4">
         <div
-          className="flex flex-col gap-2"
-          style={
-            highlightLocationBlock
-              ? {
-                  ...baseSectionStyles,
-                  border: "1px solid var(--attention-ring)",
-                  boxShadow:
-                    "0 0 0 1px var(--attention-ring), 0 0 20px var(--attention-glow)",
-                  background:
-                    "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 78%, var(--glass-grad-1)), color-mix(in srgb, var(--glass-grad-2) 82%, transparent))",
-                }
-              : baseSectionStyles
-          }
+          className={cn(
+            "flex flex-col gap-2",
+            highlightLocationBlock &&
+              "rounded-[14px] border border-[var(--attention-ring)] p-3 shadow-[0_0_0_1px_var(--attention-ring),0_0_20px_var(--attention-glow)]",
+          )}
         >
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-[var(--text)]">1. Где искать</p>
             <p className="line-clamp-2 text-right text-xs text-[var(--muted)]">
               {locationLabel}
             </p>
@@ -300,9 +280,7 @@ export default function SettingsDrawer({
           </Button>
         </div>
 
-        <div className="flex flex-col gap-3" style={baseSectionStyles}>
-          <p className="text-sm font-semibold text-[var(--text)]">2. Фильтрация</p>
-
+        <div className="flex flex-col gap-3">
           <FormField label={DISCOVERY_UI_TEXT.radiusTitle}>
             <div className="flex flex-wrap gap-2">
               {RADIUS_OPTIONS.map((value) => (
@@ -480,8 +458,7 @@ export default function SettingsDrawer({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2" style={baseSectionStyles}>
-          <p className="text-sm font-semibold text-[var(--text)]">3. Контент</p>
+        <div className="flex flex-col gap-2">
           <Button
             type="button"
             variant="secondary"

@@ -1,14 +1,14 @@
 .screen {
   min-height: 100vh;
   min-height: 100dvh;
-  display: flex;
-  justify-content: center;
+  display: block;
   padding-inline: var(--page-edge-padding);
   padding-top: calc(var(--page-edge-padding) + var(--safe-top));
   padding-bottom: calc(var(--page-edge-padding) + var(--safe-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+  overscroll-behavior-y: contain;
   background:
     radial-gradient(circle at top left, var(--bg-accent-1), transparent 45%),
     radial-gradient(circle at 80% 20%, var(--bg-accent-2), transparent 40%),
@@ -17,6 +17,7 @@
 
 .container {
   width: min(1080px, 100%);
+  margin-inline: auto;
 }
 
 .header {
@@ -64,10 +65,10 @@
 }
 
 .section {
-  border-radius: 22px;
-  padding: clamp(16px, 3vw, 22px);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
 }
 
 .sectionHeader {

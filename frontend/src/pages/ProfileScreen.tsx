@@ -1,18 +1,15 @@
 import {
   IconArrowLeft,
-  IconCheck,
   IconHeart,
   IconHeartFilled,
   IconLogout,
-  IconPencil,
   IconPlus,
   IconSettings,
-  IconX,
 } from "@tabler/icons-react";
 import { useLocation, useNavigate, type Location as RouterLocation } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
-import { Badge, Button, Input } from "../components/ui";
+import { Badge, Button } from "../components/ui";
 import useProfileAccount from "../features/profile/model/useProfileAccount";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import { cn } from "../lib/utils";
@@ -30,24 +27,13 @@ export default function ProfileScreen() {
     profile,
     avatarInputRef,
     isLoggingOut,
-    nameDraft,
-    isNameEditing,
-    isNameSaving,
-    nameError,
-    nameSuccess,
     isAvatarUploading,
     avatarError,
     avatarSuccess,
     reputationProfile,
     isReputationLoading,
     reputationError,
-    setNameDraft,
-    setNameError,
-    setNameSuccess,
     handleLogout,
-    handleNameEditStart,
-    handleNameEditCancel,
-    handleNameSave,
     handleAvatarPick,
     handleAvatarSelected,
   } = useProfileAccount({
@@ -57,10 +43,6 @@ export default function ProfileScreen() {
     logout,
   });
 
-  const inlineNameWidthCh = Math.max(
-    10,
-    Math.min(28, ((nameDraft || profile.name || "").trim().length || 8) + 1),
-  );
   const levelLabel = reputationProfile?.levelLabel || user?.reputationBadge || "Участник";
   const levelNumber = reputationProfile?.level ?? 1;
   const levelProgress = Math.max(
@@ -228,105 +210,10 @@ export default function ProfileScreen() {
 
                   <div className="grid gap-2">
                     <div className="flex min-h-10 items-center justify-center gap-2">
-                      {isNameEditing ? (
-                        <>
-                          <Input
-                            type="text"
-                            value={nameDraft}
-                            placeholder="Введите имя"
-                            autoFocus
-                            aria-label="Имя профиля"
-                            style={{
-                              width: `${inlineNameWidthCh}ch`,
-                              minWidth: "10ch",
-                              maxWidth: "min(74vw, 320px)",
-                              border: "none",
-                              borderBottom:
-                                "2px solid color-mix(in srgb, var(--accent) 46%, transparent)",
-                              outline: "none",
-                              borderRadius: 0,
-                              background: "transparent",
-                              boxShadow: "none",
-                              color: "var(--text)",
-                              fontFamily: "var(--font-display)",
-                              fontSize: "clamp(1.5rem, 4.8vw, 2rem)",
-                              fontWeight: 600,
-                              lineHeight: 1.05,
-                              letterSpacing: "0.01em",
-                              textAlign: "center",
-                              padding: "0 2px 2px",
-                              height: "auto",
-                            }}
-                            onChange={(event) => {
-                              setNameDraft(event.currentTarget.value);
-                              setNameError(null);
-                              setNameSuccess(null);
-                            }}
-                            onFocus={(event) => {
-                              event.currentTarget.select();
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                event.preventDefault();
-                                void handleNameSave();
-                              }
-                              if (event.key === "Escape") {
-                                event.preventDefault();
-                                handleNameEditCancel();
-                              }
-                            }}
-                            disabled={isNameSaving}
-                          />
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Сохранить имя"
-                            onClick={() => {
-                              void handleNameSave();
-                            }}
-                            disabled={isNameSaving}
-                            className="h-7 w-7 rounded-full text-[var(--text)]"
-                          >
-                            {isNameSaving ? (
-                              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                            ) : (
-                              <IconCheck size={15} />
-                            )}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Отмена"
-                            onClick={handleNameEditCancel}
-                            disabled={isNameSaving}
-                            className="h-7 w-7 rounded-full text-[var(--text)]"
-                          >
-                            <IconX size={15} />
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <h2 className="text-[clamp(1.5rem,4.8vw,2rem)] font-semibold leading-[1.05] text-[var(--text)]">
-                            {profile.name}
-                          </h2>
-                          <button
-                            type="button"
-                            className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-transparent text-[var(--muted)] ui-focus-ring ui-interactive hover:bg-[color:color-mix(in_srgb,var(--surface)_70%,transparent)] hover:text-[var(--text)]"
-                            aria-label="Редактировать имя"
-                            onClick={handleNameEditStart}
-                          >
-                            <IconPencil size={24} />
-                          </button>
-                        </>
-                      )}
+                      <h2 className="text-[clamp(1.5rem,4.8vw,2rem)] font-semibold leading-[1.05] text-[var(--text)]">
+                        {profile.name}
+                      </h2>
                     </div>
-
-                    {nameError ? <p className="text-sm text-danger">{nameError}</p> : null}
-                    {nameSuccess ? (
-                      <p className="text-sm text-[var(--color-status-success)]">{nameSuccess}</p>
-                    ) : null}
                     {avatarError ? <p className="text-sm text-danger">{avatarError}</p> : null}
                     {avatarSuccess ? (
                       <p className="text-sm text-[var(--color-status-success)]">{avatarSuccess}</p>

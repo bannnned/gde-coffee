@@ -50,6 +50,10 @@ type EmailChangeFormValues = {
   currentPassword: string;
 };
 
+type ProfileNameChangeFormValues = {
+  displayName: string;
+};
+
 type PasswordResetRequestValues = {
   email: string;
 };
@@ -86,6 +90,8 @@ export default function SettingsScreen() {
   });
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [verifySuccess, setVerifySuccess] = useState<string | null>(null);
+  const [nameChangeResult, setNameChangeResult] = useState<string | null>(null);
+  const [nameChangeError, setNameChangeError] = useState<string | null>(null);
   const [emailChangeResult, setEmailChangeResult] = useState<string | null>(null);
   const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<string | null>(null);
@@ -211,6 +217,18 @@ export default function SettingsScreen() {
       setIsFeedbackSending(false);
     }
   }, [feedbackContact, feedbackMessage]);
+
+  const {
+    control: nameControl,
+    handleSubmit: handleNameSubmit,
+    formState: { errors: nameErrors, isSubmitting: isNameSubmitting },
+    reset: resetNameForm,
+  } = useForm<ProfileNameChangeFormValues>({
+    defaultValues: {
+      displayName: user?.displayName?.trim() || user?.name?.trim() || "",
+    },
+    mode: "onBlur",
+  });
 
   const {
     control: emailControl,
@@ -452,6 +470,27 @@ export default function SettingsScreen() {
     }
   };
 
+  const onNameChangeSubmit = handleNameSubmit(async (values) => {
+    const displayName = values.displayName.trim();
+    if (!displayName) {
+      setNameChangeError("Введите имя профиля.");
+      setNameChangeResult(null);
+      return;
+    }
+    setNameChangeError(null);
+    setNameChangeResult(null);
+    try {
+      await authApi.updateProfileName({ displayName });
+      await refreshAuth();
+      setNameChangeResult("Имя профиля обновлено.");
+      resetNameForm({ displayName });
+    } catch (error: unknown) {
+      setNameChangeError(
+        extractSettingsErrorMessage(error, "Не удалось обновить имя профиля."),
+      );
+    }
+  });
+
   const onEmailChangeSubmit = handleEmailSubmit(async (values) => {
     setEmailChangeError(null);
     setEmailChangeResult(null);
@@ -489,6 +528,12 @@ export default function SettingsScreen() {
     () => (status === "loading" ? "Загружаем аккаунт..." : "Аккаунт / Настройки"),
     [status],
   );
+
+  useEffect(() => {
+    resetNameForm({
+      displayName: user?.displayName?.trim() || user?.name?.trim() || "",
+    });
+  }, [resetNameForm, user?.displayName, user?.name]);
 
   return (
     <main className={classes.screen} data-ui="settings-screen">
@@ -1208,179 +1253,234 @@ export default function SettingsScreen() {
             <div className={classes.section}>
               <div className={classes.sectionHeader}>
                 <div className={classes.sectionTitleRow}>
-                  <IconMail size={18} />
-                  <h3 className={classes.sectionTitle}>Сменить email</h3>
-                </div>
-              </div>
-              <form
-                onSubmit={(event) => {
-                  void onEmailChangeSubmit(event);
-                }}
-              >
-                <div className={classes.formGrid}>
-                  <Controller
-                    name="newEmail"
-                    control={emailControl}
-                    rules={{
-                      required: "Введите новый email",
-                      pattern: {
-                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                        message: "Введите корректный email",
-                      },
-                    }}
-                    render={({ field }) => (
-                      <label className={classes.fieldBlock}>
-                        <span className={classes.fieldLabel}>Новый email</span>
-                        <Input
-                          type="email"
-                          placeholder="new@example.com"
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          onFocus={handleFieldFocus}
-                          ref={field.ref}
-                          className={classes.fieldInput}
-                        />
-                        {emailErrors.newEmail?.message ? (
-                          <span className={classes.fieldError}>
-                            {String(emailErrors.newEmail.message)}
-                          </span>
-                        ) : null}
-                      </label>
-                    )}
-                  />
-                  <Controller
-                    name="currentPassword"
-                    control={emailControl}
-                    rules={{
-                      required: "Введите текущий пароль",
-                      minLength: { value: 8, message: "Минимум 8 символов" },
-                    }}
-                    render={({ field }) => (
-                      <label className={classes.fieldBlock}>
-                        <span className={classes.fieldLabel}>Текущий пароль</span>
-                        <Input
-                          type="password"
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          onFocus={handleFieldFocus}
-                          ref={field.ref}
-                          className={classes.fieldInput}
-                        />
-                        {emailErrors.currentPassword?.message ? (
-                          <span className={classes.fieldError}>
-                            {String(emailErrors.currentPassword.message)}
-                          </span>
-                        ) : null}
-                      </label>
-                    )}
-                  />
-                </div>
-                <div className={classes.actionsRow} style={{ marginTop: 12 }}>
-                  <UIButton
-                    type="submit"
-                    disabled={isEmailSubmitting}
-                    className="h-11 rounded-[14px] px-4"
-                  >
-                    {isEmailSubmitting ? (
-                      <>
-                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        Отправляем...
-                      </>
-                    ) : (
-                      "Отправить подтверждение"
-                    )}
-                  </UIButton>
-                </div>
-              </form>
-              {emailChangeResult && (
-                <div className={classes.banner} style={{ marginTop: 12 }}>
-                  {emailChangeResult}
-                </div>
-              )}
-              {emailChangeError && (
-                <div className={classes.error} style={{ marginTop: 12 }}>
-                  {emailChangeError}
-                </div>
-              )}
-            </div>
-
-            <div className={classes.section}>
-              <div className={classes.sectionHeader}>
-                <div className={classes.sectionTitleRow}>
                   <IconShieldCheck size={18} />
-                  <h3 className={classes.sectionTitle}>Сменить пароль</h3>
+                  <h3 className={classes.sectionTitle}>Смена данных</h3>
                 </div>
               </div>
-              <p className={classes.sectionDescription}>
-                Мы отправим ссылку для смены пароля на вашу почту.
-              </p>
-              <form
-                onSubmit={(event) => {
-                  void onResetSubmit(event);
-                }}
-              >
-                <div className={classes.formGrid}>
-                  <Controller
-                    name="email"
-                    control={resetControl}
-                    rules={{
-                      required: "Введите email",
-                      pattern: {
-                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                        message: "Введите корректный email",
-                      },
-                    }}
-                    render={({ field }) => (
-                      <label className={classes.fieldBlock}>
-                        <span className={classes.fieldLabel}>Email</span>
-                        <Input
-                          type="email"
-                          placeholder="name@example.com"
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          onFocus={handleFieldFocus}
-                          ref={field.ref}
-                          className={classes.fieldInput}
-                        />
-                        {resetErrors.email?.message ? (
-                          <span className={classes.fieldError}>
-                            {String(resetErrors.email.message)}
-                          </span>
-                        ) : null}
-                      </label>
-                    )}
-                  />
-                </div>
-                <div className={classes.actionsRow} style={{ marginTop: 12 }}>
-                  <UIButton
-                    type="submit"
-                    disabled={isResetSubmitting}
-                    className="h-11 rounded-[14px] px-4"
-                  >
-                    {isResetSubmitting ? (
-                      <>
-                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        Отправляем...
-                      </>
-                    ) : (
-                      "Отправить письмо"
-                    )}
-                  </UIButton>
-                </div>
-              </form>
-              {resetResult && (
-                <div className={classes.banner} style={{ marginTop: 12 }}>
-                  {resetResult}
-                </div>
-              )}
-              {resetError && (
-                <div className={classes.error} style={{ marginTop: 12 }}>
-                  {resetError}
-                </div>
-              )}
+
+              <div className={classes.formGrid}>
+                <form
+                  onSubmit={(event) => {
+                    void onNameChangeSubmit(event);
+                  }}
+                >
+                  <div className={classes.formGrid}>
+                    <Controller
+                      name="displayName"
+                      control={nameControl}
+                      rules={{
+                        required: "Введите имя",
+                        minLength: { value: 2, message: "Минимум 2 символа" },
+                      }}
+                      render={({ field }) => (
+                        <label className={classes.fieldBlock}>
+                          <span className={classes.fieldLabel}>Имя профиля</span>
+                          <Input
+                            type="text"
+                            placeholder="Ваше имя"
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            onFocus={handleFieldFocus}
+                            ref={field.ref}
+                            className={classes.fieldInput}
+                          />
+                          {nameErrors.displayName?.message ? (
+                            <span className={classes.fieldError}>
+                              {String(nameErrors.displayName.message)}
+                            </span>
+                          ) : null}
+                        </label>
+                      )}
+                    />
+                  </div>
+                  <div className={classes.actionsRow} style={{ marginTop: 12 }}>
+                    <UIButton
+                      type="submit"
+                      disabled={isNameSubmitting}
+                      className="h-11 rounded-[14px] px-4"
+                    >
+                      {isNameSubmitting ? (
+                        <>
+                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          Сохраняем...
+                        </>
+                      ) : (
+                        "Сохранить имя"
+                      )}
+                    </UIButton>
+                  </div>
+                  {nameChangeResult && (
+                    <div className={classes.banner} style={{ marginTop: 12 }}>
+                      {nameChangeResult}
+                    </div>
+                  )}
+                  {nameChangeError && (
+                    <div className={classes.error} style={{ marginTop: 12 }}>
+                      {nameChangeError}
+                    </div>
+                  )}
+                </form>
+
+                <form
+                  onSubmit={(event) => {
+                    void onEmailChangeSubmit(event);
+                  }}
+                >
+                  <div className={classes.formGrid}>
+                    <Controller
+                      name="newEmail"
+                      control={emailControl}
+                      rules={{
+                        required: "Введите новый email",
+                        pattern: {
+                          value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                          message: "Введите корректный email",
+                        },
+                      }}
+                      render={({ field }) => (
+                        <label className={classes.fieldBlock}>
+                          <span className={classes.fieldLabel}>Новый email</span>
+                          <Input
+                            type="email"
+                            placeholder="new@example.com"
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            onFocus={handleFieldFocus}
+                            ref={field.ref}
+                            className={classes.fieldInput}
+                          />
+                          {emailErrors.newEmail?.message ? (
+                            <span className={classes.fieldError}>
+                              {String(emailErrors.newEmail.message)}
+                            </span>
+                          ) : null}
+                        </label>
+                      )}
+                    />
+                    <Controller
+                      name="currentPassword"
+                      control={emailControl}
+                      rules={{
+                        required: "Введите текущий пароль",
+                        minLength: { value: 8, message: "Минимум 8 символов" },
+                      }}
+                      render={({ field }) => (
+                        <label className={classes.fieldBlock}>
+                          <span className={classes.fieldLabel}>Текущий пароль</span>
+                          <Input
+                            type="password"
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            onFocus={handleFieldFocus}
+                            ref={field.ref}
+                            className={classes.fieldInput}
+                          />
+                          {emailErrors.currentPassword?.message ? (
+                            <span className={classes.fieldError}>
+                              {String(emailErrors.currentPassword.message)}
+                            </span>
+                          ) : null}
+                        </label>
+                      )}
+                    />
+                  </div>
+                  <div className={classes.actionsRow} style={{ marginTop: 12 }}>
+                    <UIButton
+                      type="submit"
+                      disabled={isEmailSubmitting}
+                      className="h-11 rounded-[14px] px-4"
+                    >
+                      {isEmailSubmitting ? (
+                        <>
+                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          Отправляем...
+                        </>
+                      ) : (
+                        "Сменить email"
+                      )}
+                    </UIButton>
+                  </div>
+                  {emailChangeResult && (
+                    <div className={classes.banner} style={{ marginTop: 12 }}>
+                      {emailChangeResult}
+                    </div>
+                  )}
+                  {emailChangeError && (
+                    <div className={classes.error} style={{ marginTop: 12 }}>
+                      {emailChangeError}
+                    </div>
+                  )}
+                </form>
+
+                <form
+                  onSubmit={(event) => {
+                    void onResetSubmit(event);
+                  }}
+                >
+                  <div className={classes.formGrid}>
+                    <Controller
+                      name="email"
+                      control={resetControl}
+                      rules={{
+                        required: "Введите email",
+                        pattern: {
+                          value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                          message: "Введите корректный email",
+                        },
+                      }}
+                      render={({ field }) => (
+                        <label className={classes.fieldBlock}>
+                          <span className={classes.fieldLabel}>Email для сброса пароля</span>
+                          <Input
+                            type="email"
+                            placeholder="name@example.com"
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            onFocus={handleFieldFocus}
+                            ref={field.ref}
+                            className={classes.fieldInput}
+                          />
+                          {resetErrors.email?.message ? (
+                            <span className={classes.fieldError}>
+                              {String(resetErrors.email.message)}
+                            </span>
+                          ) : null}
+                        </label>
+                      )}
+                    />
+                  </div>
+                  <div className={classes.actionsRow} style={{ marginTop: 12 }}>
+                    <UIButton
+                      type="submit"
+                      disabled={isResetSubmitting}
+                      className="h-11 rounded-[14px] px-4"
+                    >
+                      {isResetSubmitting ? (
+                        <>
+                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          Отправляем...
+                        </>
+                      ) : (
+                        "Сбросить пароль"
+                      )}
+                    </UIButton>
+                  </div>
+                  {resetResult && (
+                    <div className={classes.banner} style={{ marginTop: 12 }}>
+                      {resetResult}
+                    </div>
+                  )}
+                  {resetError && (
+                    <div className={classes.error} style={{ marginTop: 12 }}>
+                      {resetError}
+                    </div>
+                  )}
+                </form>
+              </div>
             </div>
 
             <div className={classes.section}>

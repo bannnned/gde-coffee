@@ -6,7 +6,6 @@ import {
   Button,
   Group,
   Modal,
-  SegmentedControl,
   Skeleton,
   Stack,
   Text,
@@ -15,6 +14,7 @@ import { notifications } from "@mantine/notifications";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 
 import { uploadCafePhotoByPresignedUrl } from "../../../api/cafePhotos";
+import { cn } from "../../../lib/utils";
 import {
   presignSubmissionPhotoUpload,
   submitCafePhotos,
@@ -211,7 +211,7 @@ export default function CafePhotoSubmissionModal({
         },
         header: {
           background: "transparent",
-          borderBottom: "1px solid var(--border)",
+          borderBottom: "none",
         },
         body: {
           paddingBottom: "calc(12px + var(--safe-bottom))",
@@ -222,41 +222,33 @@ export default function CafePhotoSubmissionModal({
         },
       }}
     >
-      <Stack gap="md">
-        <SegmentedControl
-          fullWidth
-          value={mode}
-          onChange={(value) => setMode(value as "cafe" | "menu")}
-          data={[
-            { value: "cafe", label: "Фото места" },
-            { value: "menu", label: "Фото меню" },
-          ]}
-          styles={{
-            root: {
-              background: "transparent",
-              border: "none",
-              boxShadow: "none",
-              padding: 0,
-            },
-            control: {
-              border: "none",
-              "&::before": {
-                display: "none",
-              },
-            },
-            indicator: {
-              border: "1px solid var(--glass-border)",
-              borderRadius: 14,
-              background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-              boxShadow: "var(--glass-shadow)",
-            },
-            label: {
-              borderRadius: 14,
-              fontWeight: 600,
-              color: "var(--text)",
-            },
-          }}
-        />
+      <Stack gap="md" style={{ paddingBottom: "calc(74px + var(--safe-bottom))" }}>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("cafe")}
+            className={cn(
+              "rounded-[12px] border px-2 py-2 text-sm font-semibold transition ui-interactive",
+              mode === "cafe"
+                ? "border-[var(--glass-border)] bg-[linear-gradient(135deg,var(--glass-grad-1),var(--glass-grad-2))] text-[var(--text)] shadow-[var(--glass-shadow)]"
+                : "border-[var(--border)] bg-transparent text-[var(--text)]/82 hover:bg-[var(--card)]",
+            )}
+          >
+            Фото места
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("menu")}
+            className={cn(
+              "rounded-[12px] border px-2 py-2 text-sm font-semibold transition ui-interactive",
+              mode === "menu"
+                ? "border-[var(--glass-border)] bg-[linear-gradient(135deg,var(--glass-grad-1),var(--glass-grad-2))] text-[var(--text)] shadow-[var(--glass-shadow)]"
+                : "border-[var(--border)] bg-transparent text-[var(--text)]/82 hover:bg-[var(--card)]",
+            )}
+          >
+            Фото меню
+          </button>
+        </div>
 
         {isFirstPhotographer && (
           <Group justify="space-between" align="center" wrap="nowrap" gap={8}>
@@ -397,7 +389,16 @@ export default function CafePhotoSubmissionModal({
             </Text>
           </Box>
         )}
+      </Stack>
 
+      <div
+        style={{
+          position: "sticky",
+          bottom: "calc(var(--safe-bottom) + 8px)",
+          zIndex: 2,
+          marginTop: 4,
+        }}
+      >
         <Button
           fullWidth
           onClick={() => void handleSubmit()}
@@ -405,11 +406,11 @@ export default function CafePhotoSubmissionModal({
           disabled={!cafeId || files.length === 0}
           radius="xl"
           styles={glassButtonStyles}
-          style={{ marginTop: 4 }}
+          style={{ marginBottom: 8 }}
         >
           Отправить на модерацию
         </Button>
-      </Stack>
+      </div>
     </Modal>
   );
 }

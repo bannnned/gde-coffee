@@ -1,5 +1,5 @@
 import { Box } from "@mantine/core";
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
 import Map from "../components/Map";
 import { DISCOVERY_UI_TEXT } from "../features/discovery/constants";
@@ -119,6 +119,7 @@ export default function DiscoveryScreen() {
   const detailsOpenRef = useRef(detailsOpen);
   const detailsHistoryActiveRef = useRef(false);
   const suppressDetailsPopRef = useRef(false);
+  const [suppressTopActionsUntil, setSuppressTopActionsUntil] = useState(0);
 
   useEffect(() => {
     detailsOpenRef.current = detailsOpen;
@@ -161,6 +162,7 @@ export default function DiscoveryScreen() {
 
   const handleCloseDetails = () => {
     if (!detailsOpenRef.current) return;
+    setSuppressTopActionsUntil(Date.now() + 450);
     if (detailsHistoryActiveRef.current) {
       suppressDetailsPopRef.current = true;
       setDetailsOpen(false);
@@ -268,6 +270,7 @@ export default function DiscoveryScreen() {
         onOpenSettings={() => setSettingsOpen(true)}
         showFetchingBadge={showFetchingBadge}
         highlightSettingsButton={needsLocationChoice}
+        suppressClicksUntil={suppressTopActionsUntil}
       />
 
       <FloatingControls

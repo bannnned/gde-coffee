@@ -24,6 +24,7 @@ type FiltersBarProps = {
   onOpenSettings: () => void;
   showFetchingBadge: boolean;
   highlightSettingsButton?: boolean;
+  suppressClicksUntil?: number;
 };
 
 export default function FiltersBar({
@@ -36,6 +37,7 @@ export default function FiltersBar({
   onOpenSettings,
   showFetchingBadge: _showFetchingBadge,
   highlightSettingsButton = false,
+  suppressClicksUntil = 0,
 }: FiltersBarProps) {
   const headerRef = useRef<HTMLDivElement | null>(null);
   const { setFiltersBarHeight } = useLayoutMetrics();
@@ -81,6 +83,8 @@ export default function FiltersBar({
     };
   }, [setFiltersBarHeight]);
 
+  const isClickSuppressed = Date.now() < suppressClicksUntil;
+
   return (
     <Box
       pos="absolute"
@@ -101,6 +105,7 @@ export default function FiltersBar({
             aria-label="Open profile"
             type="button"
             onClick={() => {
+              if (isClickSuppressed) return;
               const overlayBackgroundLocation = {
                 pathname: location.pathname,
                 search: location.search,
@@ -136,6 +141,7 @@ export default function FiltersBar({
             aria-label="Войти"
             type="button"
             onClick={() => {
+              if (isClickSuppressed) return;
               if (status === "loading") return;
               openAuthModal("login");
             }}
@@ -153,7 +159,10 @@ export default function FiltersBar({
                 favoritesOnly ? classes.favoriteHeaderButtonActive : ""
               }`}
               aria-label="Избранные кофейни"
-              onClick={onToggleFavorites}
+              onClick={() => {
+                if (isClickSuppressed) return;
+                onToggleFavorites?.();
+              }}
             >
               {favoritesOnly ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
             </ActionIcon>
@@ -165,7 +174,10 @@ export default function FiltersBar({
               highlightSettingsButton ? classes.attentionButton : ""
             }`}
             aria-label={DISCOVERY_UI_TEXT.settingsAria}
-            onClick={onOpenSettings}
+            onClick={() => {
+              if (isClickSuppressed) return;
+              onOpenSettings();
+            }}
           >
             <DISCOVERY_ICONS.settings size={18} />
           </ActionIcon>
