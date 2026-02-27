@@ -37,11 +37,11 @@ Runtime palette control:
 - JS helper: `window.gdeCoffeePalette.get() | list() | set(name)`
 
 Map style by color scheme:
-- `VITE_MAP_STYLE_URL_LIGHT` — light map style URL (`style.json`)
-- `VITE_MAP_STYLE_URL_DARK` — dark map style URL (`style.json`)
-- `VITE_MAP_STYLE_URL` — legacy fallback (used as light if `VITE_MAP_STYLE_URL_LIGHT` is unset)
-
-If no style URL is set, frontend falls back to raster OpenStreetMap tiles.
+- default light style: `/map-styles/light.json` (`frontend/public/map-styles/light.json`)
+- default dark style: `/map-styles/dark.json` (`frontend/public/map-styles/dark.json`)
+- `VITE_MAP_STYLE_URL_LIGHT` — optional override for light map style URL (`style.json`)
+- `VITE_MAP_STYLE_URL_DARK` — optional override for dark map style URL (`style.json`)
+- `VITE_MAP_STYLE_URL` — legacy override for both schemes (kept for backward compatibility)
 
 ## Backend overview
 The backend serves:

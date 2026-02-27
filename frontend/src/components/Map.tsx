@@ -14,10 +14,12 @@ const MAP_STYLE_URL_RAW =
   (import.meta.env.VITE_MAP_STYLE_URL as string | undefined)?.trim() || "";
 const MAP_STYLE_LIGHT_URL_RAW =
   (import.meta.env.VITE_MAP_STYLE_URL_LIGHT as string | undefined)?.trim() ||
-  MAP_STYLE_URL_RAW;
+  MAP_STYLE_URL_RAW ||
+  "/map-styles/light.json";
 const MAP_STYLE_DARK_URL_RAW =
   (import.meta.env.VITE_MAP_STYLE_URL_DARK as string | undefined)?.trim() ||
-  "";
+  MAP_STYLE_URL_RAW ||
+  "/map-styles/dark.json";
 
 function normalizeMapStyleUrl(raw: string): string {
   return /tiles\.openfreemap\.org/i.test(raw) ? "" : raw;

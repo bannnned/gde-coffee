@@ -343,8 +343,16 @@ Critical path stack-transition:
 - Артефакт: shell/panel/form styles в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.module.css`.
 - Проверка: `npm run typecheck`, `npm test`, `npm run build` — pass.
 
-### [ ] W3-C · Profile/Settings final polish + legacy shrink (P1, status: todo)
+### [x] W3-C · Profile/Settings final polish + legacy shrink (P1, status: done)
 - Цель: закрыть остаточные mixed-pattern зоны Profile/Settings и подготовить deprecation legacy UI в Wave 3.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ProfileScreen.tsx`.
 - Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`.
 - Depends on: `W3-B`.
+- AC: из `/profile` убраны остаточные mixed-pattern фрагменты (inline-редактирование имени/соцсети), экран сфокусирован на hero + уровень + key-actions.
+- AC: профильные изменения данных консолидированы в `/settings` в единый блок `Смена данных` (имя + email + пароль).
+- AC: в профильном слое убран неиспользуемый legacy state/API-код, который не влияет на текущий UX.
+- AC: `/settings` и drawer-настройки приведены к “плоскому” стилю без лишних визуальных контейнеров/нумерованных секций.
+- Артефакт: упрощение profile account hook и удаление неиспользуемых профильных стилей в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/profile/model/useProfileAccount.ts`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ProfileScreen.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ProfileScreen.module.css`.
+- Артефакт: финальная полировка settings-flow и консолидация форм в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.module.css`.
+- Артефакт: flatten-полировка drawer-настроек в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`.
+- Проверка: `npm run typecheck`, `npm test`, `npm run build` — pass.
