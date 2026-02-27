@@ -1,27 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import {
-  ActionIcon,
-  Badge,
-  Box,
-  Button,
-  Group,
-  Modal,
-  Skeleton,
-  Stack,
-  Text,
-} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconRotateClockwise2, IconTrash } from "@tabler/icons-react";
 
 import { uploadCafePhotoByPresignedUrl } from "../../../api/cafePhotos";
+import { presignSubmissionPhotoUpload, submitCafePhotos, submitMenuPhotos } from "../../../api/submissions";
+import { Badge, Button } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
-import {
-  presignSubmissionPhotoUpload,
-  submitCafePhotos,
-  submitMenuPhotos,
-} from "../../../api/submissions";
-import { rotateImageFileByQuarterTurns } from "../../../utils/imageRotation";
+import { AppModal } from "../../../ui/bridge";
 import { extractApiErrorMessage } from "../../../utils/apiError";
+import { rotateImageFileByQuarterTurns } from "../../../utils/imageRotation";
+import classes from "./CafePhotoSubmissionModal.module.css";
 
 type CafePhotoSubmissionModalProps = {
   opened: boolean;
@@ -101,17 +89,6 @@ export default function CafePhotoSubmissionModal({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"cafe" | "menu">(kind);
-  const glassButtonStyles = {
-    root: {
-      borderRadius: 14,
-      border: "1px solid var(--glass-border)",
-      background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-      boxShadow: "var(--glass-shadow)",
-      backdropFilter: "blur(12px) saturate(140%)",
-      WebkitBackdropFilter: "blur(12px) saturate(140%)",
-      color: "var(--text)",
-    },
-  } as const;
 
   useEffect(() => {
     draftPhotosRef.current = draftPhotos;
@@ -143,9 +120,7 @@ export default function CafePhotoSubmissionModal({
 
   const appendFiles = (fileList: FileList | File[] | null) => {
     if (!fileList || fileList.length === 0) return;
-    const accepted = Array.from(fileList).filter((file) =>
-      file.type.startsWith("image/"),
-    );
+    const accepted = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
     if (accepted.length === 0) {
       notifications.show({
         color: "orange",
@@ -185,11 +160,7 @@ export default function CafePhotoSubmissionModal({
           contentType: uploadFile.type || draft.file.type,
           sizeBytes: uploadFile.size,
         });
-        await uploadCafePhotoByPresignedUrl(
-          presigned.upload_url,
-          uploadFile,
-          presigned.headers ?? {},
-        );
+        await uploadCafePhotoByPresignedUrl(presigned.upload_url, uploadFile, presigned.headers ?? {});
         objectKeys[index] = presigned.object_key;
       });
       const uploadedObjectKeys = objectKeys.filter(
@@ -236,260 +207,150 @@ export default function CafePhotoSubmissionModal({
   };
 
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      fullScreen
-      withCloseButton
-      zIndex={3601}
-      title={`Предложить фото: ${cafeName}`}
-      styles={{
-        content: {
-          background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-          border: "1px solid var(--glass-border)",
-          boxShadow: "var(--glass-shadow)",
-          backdropFilter: "blur(16px) saturate(150%)",
-          WebkitBackdropFilter: "blur(16px) saturate(150%)",
-        },
-        header: {
-          background: "transparent",
-          borderBottom: "none",
-        },
-        body: {
-          paddingBottom: "calc(12px + var(--safe-bottom))",
-        },
-        overlay: {
-          backgroundColor: "var(--color-surface-overlay-strong)",
-          backdropFilter: "blur(6px)",
-        },
+    <AppModal
+      open={opened}
+      onOpenChange={(next) => {
+        if (!next) onClose();
       }}
+      title={`Предложить фото: ${cafeName}`}
+      fullScreen
+      implementation="radix"
+      presentation="sheet"
+      contentClassName={classes.modalContent}
+      bodyClassName={classes.modalBody}
+      titleClassName={classes.modalTitle}
     >
-      <Stack gap="md" style={{ paddingBottom: "calc(74px + var(--safe-bottom))" }}>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setMode("cafe")}
-            className={cn(
-              "rounded-[12px] border px-2 py-2 text-sm font-semibold transition ui-interactive",
-              mode === "cafe"
-                ? "border-[var(--glass-border)] bg-[linear-gradient(135deg,var(--glass-grad-1),var(--glass-grad-2))] text-[var(--text)] shadow-[var(--glass-shadow)]"
-                : "border-[var(--border)] bg-transparent text-[var(--text)]/82 hover:bg-[var(--card)]",
-            )}
-          >
-            Фото места
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("menu")}
-            className={cn(
-              "rounded-[12px] border px-2 py-2 text-sm font-semibold transition ui-interactive",
-              mode === "menu"
-                ? "border-[var(--glass-border)] bg-[linear-gradient(135deg,var(--glass-grad-1),var(--glass-grad-2))] text-[var(--text)] shadow-[var(--glass-shadow)]"
-                : "border-[var(--border)] bg-transparent text-[var(--text)]/82 hover:bg-[var(--card)]",
-            )}
-          >
-            Фото меню
-          </button>
-        </div>
-
-        {isFirstPhotographer && (
-          <Group justify="space-between" align="center" wrap="nowrap" gap={8}>
-            <Badge radius="xl" variant="filled">
-              Первый фотограф
-            </Badge>
-            <Text size="sm" fw={600}>
-              +4 к репутации после одобрения
-            </Text>
-          </Group>
-        )}
-
-        <Box
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          style={{
-            border: "1px dashed var(--border)",
-            borderRadius: 14,
-            background: "transparent",
-            padding: 12,
-          }}
-        >
-          <Stack gap="sm">
-            <Group justify="space-between" align="center">
-              <Text fw={600}>Загрузка</Text>
-              <Badge variant="light">{fileCountLabel}</Badge>
-            </Group>
-            <Text size="sm" c="dimmed">
-              Выберите или перетащите изображения. После отправки они попадут в очередь
-              модерации.
-            </Text>
-            <Box
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))",
-                gap: 8,
-              }}
+      <div className={classes.bodyRoot}>
+        <div className={classes.content}>
+          <div className={classes.modeTabs}>
+            <button
+              type="button"
+              onClick={() => setMode("cafe")}
+              className={cn(classes.modeTab, mode === "cafe" ? classes.modeTabActive : "")}
             >
-              {draftPhotos.map((draft) => (
-                <Box
-                  key={draft.id}
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    aspectRatio: "1 / 1",
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    border: "1px solid var(--border)",
-                    background: "var(--surface)",
-                  }}
-                >
-                  <img
-                    src={draft.previewUrl}
-                    alt={draft.file.name}
-                    loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                      transform: `rotate(${draft.rotationQuarterTurns * 90}deg)`,
-                      transformOrigin: "center center",
-                    }}
-                  />
-                  {isUploading && (
-                    <Skeleton
-                      visible
-                      animate
-                      h="100%"
-                      radius={12}
+              Фото места
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("menu")}
+              className={cn(classes.modeTab, mode === "menu" ? classes.modeTabActive : "")}
+            >
+              Фото меню
+            </button>
+          </div>
+
+          {isFirstPhotographer ? (
+            <div className={classes.firstPhotographerRow}>
+              <Badge className={classes.firstPhotographerBadge}>Первый фотограф</Badge>
+              <p className={classes.firstPhotographerText}>+4 к репутации после одобрения</p>
+            </div>
+          ) : null}
+
+          <div className={classes.uploadCard} onDrop={handleDrop} onDragOver={handleDragOver}>
+            <div className={classes.uploadStack}>
+              <div className={classes.uploadHeader}>
+                <p className={classes.uploadTitle}>Загрузка</p>
+                <Badge className={classes.counterBadge}>{fileCountLabel}</Badge>
+              </div>
+              <p className={classes.mutedText}>
+                Выберите или перетащите изображения. После отправки они попадут в очередь
+                модерации.
+              </p>
+              <div className={classes.uploadGrid}>
+                {draftPhotos.map((draft) => (
+                  <div key={draft.id} className={classes.photoTile}>
+                    <img
+                      src={draft.previewUrl}
+                      alt={draft.file.name}
+                      loading="lazy"
+                      className={classes.photoTileImage}
                       style={{
-                        position: "absolute",
-                        inset: 0,
+                        transform: `rotate(${draft.rotationQuarterTurns * 90}deg)`,
+                        transformOrigin: "center center",
                       }}
                     />
-                  )}
-                  <ActionIcon
-                    size={22}
-                    variant="filled"
-                    color="dark"
-                    aria-label="Повернуть фото"
-                    onClick={() =>
-                      setDraftPhotos((prev) =>
-                        prev.map((item) =>
-                          item.id === draft.id
-                            ? {
-                                ...item,
-                                rotationQuarterTurns: normalizeQuarterTurns(
-                                  item.rotationQuarterTurns + 1,
-                                ),
-                              }
-                            : item,
-                        ),
-                      )
-                    }
-                    disabled={isUploading}
-                    style={{
-                      position: "absolute",
-                      top: 6,
-                      left: 6,
-                      background: "rgba(20,20,20,0.72)",
-                    }}
-                  >
-                    <IconRotateClockwise2 size={14} />
-                  </ActionIcon>
-                  <ActionIcon
-                    size={22}
-                    variant="filled"
-                    color="dark"
-                    aria-label="Удалить фото"
-                    onClick={() =>
-                      setDraftPhotos((prev) => {
-                        const target = prev.find((item) => item.id === draft.id) ?? null;
-                        if (target) {
-                          URL.revokeObjectURL(target.previewUrl);
-                        }
-                        return prev.filter((item) => item.id !== draft.id);
-                      })
-                    }
-                    disabled={isUploading}
-                    style={{
-                      position: "absolute",
-                      top: 6,
-                      right: 6,
-                      background: "rgba(20,20,20,0.72)",
-                    }}
-                  >
-                    <IconTrash size={14} />
-                  </ActionIcon>
-                </Box>
-              ))}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                aria-label="Добавить фото"
-                style={{
-                  width: "100%",
-                  aspectRatio: "1 / 1",
-                  borderRadius: 12,
-                  border: "1.5px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
-                  background: "color-mix(in srgb, var(--surface) 86%, transparent)",
-                  color: "var(--muted)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: isUploading ? "not-allowed" : "pointer",
-                  opacity: isUploading ? 0.6 : 1,
-                }}
-              >
-                <IconPlus size={24} />
-              </button>
-            </Box>
-            <input
-              ref={fileInputRef}
-              type="file"
-              hidden
-              multiple
-              accept="image/jpeg,image/png,image/webp,image/avif"
-              onChange={(event) => appendFiles(event.currentTarget.files)}
-            />
-          </Stack>
-        </Box>
+                    {isUploading ? <div className={classes.skeletonOverlay} /> : null}
+                    <button
+                      type="button"
+                      className={`${classes.tileActionButton} ${classes.tileActionLeft} ui-focus-ring`}
+                      aria-label="Повернуть фото"
+                      onClick={() =>
+                        setDraftPhotos((prev) =>
+                          prev.map((item) =>
+                            item.id === draft.id
+                              ? {
+                                  ...item,
+                                  rotationQuarterTurns: normalizeQuarterTurns(
+                                    item.rotationQuarterTurns + 1,
+                                  ),
+                                }
+                              : item,
+                          ),
+                        )
+                      }
+                      disabled={isUploading}
+                    >
+                      <IconRotateClockwise2 size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`${classes.tileActionButton} ${classes.tileActionRight} ui-focus-ring`}
+                      aria-label="Удалить фото"
+                      onClick={() =>
+                        setDraftPhotos((prev) => {
+                          const target = prev.find((item) => item.id === draft.id) ?? null;
+                          if (target) URL.revokeObjectURL(target.previewUrl);
+                          return prev.filter((item) => item.id !== draft.id);
+                        })
+                      }
+                      disabled={isUploading}
+                    >
+                      <IconTrash size={14} />
+                    </button>
+                  </div>
+                ))}
 
-        {error && (
-          <Box
-            p="sm"
-            style={{
-              borderRadius: 12,
-              border: "1px solid var(--color-status-error)",
-            }}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  aria-label="Добавить фото"
+                  className={`${classes.addTile} ui-focus-ring`}
+                >
+                  <IconPlus size={24} />
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                hidden
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/avif"
+                onChange={(event) => appendFiles(event.currentTarget.files)}
+              />
+            </div>
+          </div>
+
+          {error ? (
+            <div className={classes.errorBox}>
+              <p className={classes.errorText}>{error}</p>
+            </div>
+          ) : null}
+        </div>
+
+        <div className={classes.footerSticky}>
+          <Button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={!cafeId || draftPhotos.length === 0 || isUploading}
+            aria-busy={isUploading ? "true" : undefined}
+            className={classes.submitButton}
           >
-            <Text size="sm" c="red.6">
-              {error}
-            </Text>
-          </Box>
-        )}
-      </Stack>
-
-      <div
-        style={{
-          position: "sticky",
-          bottom: "calc(var(--safe-bottom) + 8px)",
-          zIndex: 2,
-          marginTop: 4,
-        }}
-      >
-        <Button
-          fullWidth
-          onClick={() => void handleSubmit()}
-          loading={isUploading}
-          disabled={!cafeId || draftPhotos.length === 0}
-          radius="xl"
-          styles={glassButtonStyles}
-          style={{ marginBottom: 8 }}
-        >
-          Отправить на модерацию
-        </Button>
+            <span className={isUploading ? classes.loadingHidden : ""}>Отправить на модерацию</span>
+            {isUploading ? <span className={classes.spinner} aria-hidden="true" /> : null}
+          </Button>
+        </div>
       </div>
-    </Modal>
+    </AppModal>
   );
 }

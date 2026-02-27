@@ -419,3 +419,18 @@ Critical path stack-transition:
 - Артефакт: de-Mantine rating panel + style module в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/RatingPanel.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/RatingPanel.module.css`.
 - Артефакт: de-Mantine admin diagnostics panel + style module в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/AdminDiagnosticsPanel.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/AdminDiagnosticsPanel.module.css`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W4-E · Discovery photo/proposal modals de-Mantine (P1, status: done)
+- Цель: убрать прямые зависимости `@mantine/core` из ключевых full-screen модалок загрузки фото и предложения новой кофейни.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoSubmissionModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoAdminModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/modals/CafeProposalModal.tsx`.
+- Depends on: `W4-D`.
+- AC: `CafePhotoSubmissionModal` не использует Mantine `Modal/Stack/Group/Box/Text/Button/Badge/ActionIcon/Skeleton`.
+- AC: `CafePhotoAdminModal` не использует Mantine `Modal/Stack/Group/Box/Text/Button/Badge/ActionIcon/Skeleton`.
+- AC: `CafeProposalModal` не использует Mantine `Modal/Paper/Stack/Group/Box/Text/TextInput/Textarea/Button/Badge/ActionIcon`.
+- AC: full-screen UX и сценарии (upload/reorder/cover/delete/geocode/map-pick/submit) сохранены без регрессий.
+- Артефакт: de-Mantine photo submission modal + styles в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoSubmissionModal.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoSubmissionModal.module.css`.
+- Артефакт: de-Mantine photo admin modal + styles в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoAdminModal.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoAdminModal.module.css`.
+- Артефакт: de-Mantine cafe proposal modal + map picker + styles в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/modals/CafeProposalModal.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/modals/CafeProposalModal.module.css`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

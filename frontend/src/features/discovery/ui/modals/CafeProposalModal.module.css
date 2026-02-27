@@ -1,0 +1,238 @@
+.modalContent {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+}
+
+.modalBody {
+  padding: 0;
+}
+
+.modalTitle {
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 var(--page-edge-padding);
+  padding-bottom: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sectionCard {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: var(--space-3);
+  background: var(--surface);
+}
+
+.sectionStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.fieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.coordsRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.textarea {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 92px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  font-family: inherit;
+}
+
+.textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.hintText {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.fileRow {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+}
+
+.filePreview {
+  width: 88px;
+  height: 66px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.filePreviewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fileMeta {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fileName {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+}
+
+.fileSize {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.removeButton {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  color: var(--color-status-error);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.errorBox {
+  border: 1px solid var(--color-status-error);
+  border-radius: 10px;
+  padding: var(--space-2);
+  background: var(--surface);
+}
+
+.errorText {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--color-status-error);
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px var(--page-edge-padding) calc(12px + var(--safe-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  z-index: 3;
+}
+
+.submitButton {
+  width: 100%;
+}
+
+.mapModalContent {
+  background: var(--surface);
+}
+
+.mapModalBody {
+  padding: 0;
+}
+
+.mapRoot {
+  position: relative;
+  height: calc(100dvh - 62px);
+}
+
+.mapCanvas {
+  position: absolute;
+  inset: 0;
+}
+
+.mapPin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.mapActions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(16px + var(--safe-bottom));
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.mapActions > * {
+  pointer-events: auto;
+}

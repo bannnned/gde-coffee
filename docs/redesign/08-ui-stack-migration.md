@@ -28,6 +28,7 @@
 10. `W4-B` закрыт (`done`): de-Mantine migration для Discovery list/controls (`CafeList`, `FloatingControls`, `FiltersBar`, `BottomSheet`).
 11. `W4-C` закрыт (`done`): de-Mantine migration для location-choice/empty-state flow (`EmptyStateCard`, `DiscoveryLocationChoiceHeader`, `DiscoveryManualPickHeader`, `ManualPickOverlay`).
 12. `W4-D` закрыт (`done`): de-Mantine migration для selected-card hero и rating/admin-diagnostics panels (`CafeCardHero`, `RatingPanel`, `AdminDiagnosticsPanel`).
+13. `W4-E` закрыт (`done`): de-Mantine migration для photo/proposal модалок (`CafePhotoSubmissionModal`, `CafePhotoAdminModal`, `CafeProposalModal`).
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

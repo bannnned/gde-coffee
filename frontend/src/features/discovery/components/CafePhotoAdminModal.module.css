@@ -1,0 +1,352 @@
+.modalContent {
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2));
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+
+.modalBody {
+  padding-bottom: calc(12px + var(--safe-bottom));
+}
+
+.modalTitle {
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.bodyRoot {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0 var(--page-edge-padding);
+}
+
+.uploadCard {
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: transparent;
+  padding: 12px;
+}
+
+.uploadStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.uploadHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.uploadTitle {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.counterBadge {
+  border-radius: 999px;
+}
+
+.mutedText {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.mutedTextSecondary {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.uploadGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+
+.photoTile {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.photoTileImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tileActionButton {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(20, 20, 20, 0.72);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tileActionLeft {
+  top: 6px;
+  left: 6px;
+}
+
+.tileActionRight {
+  top: 6px;
+  right: 6px;
+}
+
+.skeletonOverlay {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  animation: admin-modal-pulse 1.05s ease-in-out infinite;
+}
+
+.addTile {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  border: 1.5px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.addTile:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.uploadButton {
+  position: relative;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2));
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  color: var(--text);
+}
+
+.loadingHidden {
+  opacity: 0;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: admin-modal-spin 0.65s linear infinite;
+}
+
+.errorBox {
+  border-radius: 12px;
+  border: 1px solid var(--color-status-error);
+  padding: var(--space-2);
+}
+
+.errorText {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--color-status-error);
+}
+
+.photosStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.loadingText {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.emptyStateBox {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  padding: var(--space-3);
+}
+
+.emptyStateText {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.photoRow {
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  padding: var(--space-2);
+}
+
+.photoRow[data-dragged="true"] {
+  border-color: var(--color-brand-accent);
+}
+
+.photoRowMain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+}
+
+.photoThumb {
+  width: 88px;
+  height: 66px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.photoThumbImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photoMeta {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.photoMetaHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.photoNumber {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.coverBadge {
+  border-radius: 999px;
+}
+
+.photoActions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.coverButton {
+  border-radius: 10px;
+  min-height: 28px;
+  height: 28px;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.actionIconButton {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionIconButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.actionIconDanger {
+  color: var(--color-status-error);
+}
+
+.footerSticky {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  margin-inline: calc(-1 * var(--page-edge-padding));
+  padding: 12px var(--page-edge-padding) calc(12px + var(--safe-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  z-index: 2;
+}
+
+.saveOrderButton {
+  position: relative;
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2));
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  color: var(--text);
+}
+
+@keyframes admin-modal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes admin-modal-pulse {
+  0% {
+    opacity: 0.38;
+  }
+  50% {
+    opacity: 0.62;
+  }
+  100% {
+    opacity: 0.38;
+  }
+}

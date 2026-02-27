@@ -2,13 +2,24 @@
   "version": 8,
   "name": "gde-coffee-dark",
   "sources": {
-    "carto-dark": {
+    "carto-dark-base": {
       "type": "raster",
       "tiles": [
-        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-        "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+        "https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png"
+      ],
+      "tileSize": 256,
+      "attribution": "© OpenStreetMap contributors © CARTO"
+    },
+    "carto-dark-labels": {
+      "type": "raster",
+      "tiles": [
+        "https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png"
       ],
       "tileSize": 256,
       "attribution": "© OpenStreetMap contributors © CARTO"
@@ -16,14 +27,26 @@
   },
   "layers": [
     {
-      "id": "carto-dark-raster",
+      "id": "carto-dark-base-raster",
       "type": "raster",
-      "source": "carto-dark",
+      "source": "carto-dark-base",
       "paint": {
-        "raster-saturation": -0.24,
-        "raster-contrast": -0.04,
-        "raster-brightness-min": 0.08,
-        "raster-brightness-max": 0.9
+        "raster-saturation": -0.08,
+        "raster-contrast": 0.22,
+        "raster-brightness-min": 0.12,
+        "raster-brightness-max": 0.94
+      }
+    },
+    {
+      "id": "carto-dark-labels-raster",
+      "type": "raster",
+      "source": "carto-dark-labels",
+      "paint": {
+        "raster-opacity": 0.98,
+        "raster-saturation": 0.06,
+        "raster-contrast": 0.42,
+        "raster-brightness-min": 0.28,
+        "raster-brightness-max": 1
       }
     }
   ]

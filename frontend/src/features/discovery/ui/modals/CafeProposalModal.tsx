@@ -1,28 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActionIcon,
-  Badge,
-  Box,
-  Button,
-  Group,
-  Modal,
-  Paper,
-  Stack,
-  Text,
-  TextInput,
-  Textarea,
-} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconMapPinFilled, IconPhotoPlus, IconTrash } from "@tabler/icons-react";
 
-import Map from "../../../../components/Map";
 import { uploadCafePhotoByPresignedUrl } from "../../../../api/cafePhotos";
 import { geocodeAddress } from "../../../../api/geocode";
-import {
-  presignSubmissionPhotoUpload,
-  submitCafeCreate,
-} from "../../../../api/submissions";
+import { presignSubmissionPhotoUpload, submitCafeCreate } from "../../../../api/submissions";
+import Map from "../../../../components/Map";
+import { Badge, Button, Input } from "../../../../components/ui";
+import { AppModal } from "../../../../ui/bridge";
 import { extractApiErrorMessage, extractApiErrorStatus } from "../../../../utils/apiError";
+import classes from "./CafeProposalModal.module.css";
 
 type CafeProposalModalProps = {
   opened: boolean;
@@ -75,9 +62,7 @@ export default function CafeProposalModal({
   const [error, setError] = useState<string | null>(null);
   const [geocodeHint, setGeocodeHint] = useState<string | null>(null);
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
-  const [mapPickerStartCenter, setMapPickerStartCenter] = useState<[number, number]>(
-    mapCenter,
-  );
+  const [mapPickerStartCenter, setMapPickerStartCenter] = useState<[number, number]>(mapCenter);
   const [mapPickerCenter, setMapPickerCenter] = useState<[number, number]>(mapCenter);
 
   const centerLatitude = useMemo(() => Number(mapCenter[1]).toFixed(6), [mapCenter]);
@@ -144,10 +129,7 @@ export default function CafeProposalModal({
             setGeocodeHint("Адрес не найден. Укажите координаты вручную или выберите точку на карте.");
             return;
           }
-          if (
-            !Number.isFinite(result.latitude) ||
-            !Number.isFinite(result.longitude)
-          ) {
+          if (!Number.isFinite(result.latitude) || !Number.isFinite(result.longitude)) {
             setGeocodeHint("Геокодер вернул некорректные координаты.");
             return;
           }
@@ -177,9 +159,7 @@ export default function CafeProposalModal({
     fileList: FileList | null,
   ) => {
     if (!fileList || fileList.length === 0) return;
-    const accepted = Array.from(fileList).filter((file) =>
-      file.type.startsWith("image/"),
-    );
+    const accepted = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
     if (accepted.length === 0) return;
     setter((prev) => [...prev, ...accepted]);
   };
@@ -216,11 +196,7 @@ export default function CafeProposalModal({
         contentType: file.type,
         sizeBytes: file.size,
       });
-      await uploadCafePhotoByPresignedUrl(
-        presigned.upload_url,
-        file,
-        presigned.headers ?? {},
-      );
+      await uploadCafePhotoByPresignedUrl(presigned.upload_url, file, presigned.headers ?? {});
       objectKeys[index] = presigned.object_key;
     });
     return objectKeys.filter(
@@ -287,107 +263,87 @@ export default function CafeProposalModal({
 
   return (
     <>
-      <Modal
-        opened={opened}
-        onClose={onClose}
-        fullScreen
-        withCloseButton
-        title="Предложить новую кофейню"
-        styles={{
-          content: {
-            background: "var(--glass-bg)",
-            border: "1px solid var(--glass-border)",
-          },
-          header: {
-            background: "var(--surface)",
-            borderBottom: "1px solid var(--border)",
-          },
-          body: {
-            padding: 16,
-            overflow: "hidden",
-          },
-          overlay: {
-            backgroundColor: "var(--color-surface-overlay-strong)",
-            backdropFilter: "blur(6px)",
-          },
+      <AppModal
+        open={opened}
+        onOpenChange={(next) => {
+          if (!next) onClose();
         }}
+        title="Предложить новую кофейню"
+        fullScreen
+        implementation="radix"
+        presentation="sheet"
+        contentClassName={classes.modalContent}
+        bodyClassName={classes.modalBody}
+        titleClassName={classes.modalTitle}
       >
-        <Box style={{ height: "calc(100dvh - 74px)", overflow: "hidden" }}>
-          <Stack
-            gap="md"
-            style={{
-              height: "100%",
-              overflowY: "auto",
-              WebkitOverflowScrolling: "touch",
-              paddingBottom: 96,
-            }}
-          >
-            <Paper withBorder radius="md" p="md" style={{ background: "var(--surface)" }}>
-              <Stack gap="sm">
-                <TextInput
-                  label="Название"
-                  placeholder="Например, Roasters Corner"
-                  value={name}
-                  onChange={(event) => setName(event.currentTarget.value)}
-                />
-                <TextInput
-                  label="Адрес"
-                  placeholder="Улица, дом"
-                  value={address}
-                  onChange={(event) => {
-                    setAddress(event.currentTarget.value);
-                    setGeocodeHint("Определяем координаты...");
-                  }}
-                />
-                <Textarea
-                  label="Описание (необязательно)"
-                  placeholder="Что здесь особенного"
-                  minRows={3}
-                  value={description}
-                  onChange={(event) => setDescription(event.currentTarget.value)}
-                />
-                <Group grow>
-                  <TextInput
-                    label="Широта"
-                    value={latitude}
-                    onChange={(event) => setLatitude(event.currentTarget.value)}
+        <div className={classes.root}>
+          <div className={classes.scrollArea}>
+            <section className={classes.sectionCard}>
+              <div className={classes.sectionStack}>
+                <label className={classes.fieldLabel}>
+                  Название
+                  <Input
+                    placeholder="Например, Roasters Corner"
+                    value={name}
+                    onChange={(event) => setName(event.currentTarget.value)}
                   />
-                  <TextInput
-                    label="Долгота"
-                    value={longitude}
-                    onChange={(event) => setLongitude(event.currentTarget.value)}
+                </label>
+                <label className={classes.fieldLabel}>
+                  Адрес
+                  <Input
+                    placeholder="Улица, дом"
+                    value={address}
+                    onChange={(event) => {
+                      setAddress(event.currentTarget.value);
+                      setGeocodeHint("Определяем координаты...");
+                    }}
                   />
-                </Group>
-                <Button variant="light" onClick={handleOpenMapPicker}>
+                </label>
+                <label className={classes.fieldLabel}>
+                  Описание (необязательно)
+                  <textarea
+                    className={classes.textarea}
+                    placeholder="Что здесь особенного"
+                    rows={3}
+                    value={description}
+                    onChange={(event) => setDescription(event.currentTarget.value)}
+                  />
+                </label>
+
+                <div className={classes.coordsRow}>
+                  <label className={classes.fieldLabel}>
+                    Широта
+                    <Input value={latitude} onChange={(event) => setLatitude(event.currentTarget.value)} />
+                  </label>
+                  <label className={classes.fieldLabel}>
+                    Долгота
+                    <Input value={longitude} onChange={(event) => setLongitude(event.currentTarget.value)} />
+                  </label>
+                </div>
+
+                <Button type="button" variant="secondary" onClick={handleOpenMapPicker}>
                   Выбрать на карте
                 </Button>
-                <Text size="xs" c="dimmed">
+                <p className={classes.hintText}>
                   По умолчанию координаты подставлены из текущего центра карты.
-                </Text>
-                {city && (
-                  <Text size="xs" c="dimmed">
-                    Город для автопоиска: {city}
-                  </Text>
-                )}
-                {geocodeHint && (
-                  <Text size="xs" c="dimmed">
-                    {geocodeHint}
-                  </Text>
-                )}
-              </Stack>
-            </Paper>
+                </p>
+                {city ? <p className={classes.hintText}>Город для автопоиска: {city}</p> : null}
+                {geocodeHint ? <p className={classes.hintText}>{geocodeHint}</p> : null}
+              </div>
+            </section>
 
-            <Paper withBorder radius="md" p="md" style={{ background: "var(--surface)" }}>
-              <Stack gap="sm">
-                <Group justify="space-between">
-                  <Text fw={600}>Фото заведения</Text>
-                  <Badge variant="light">{placePhotos.length}</Badge>
-                </Group>
+            <section className={classes.sectionCard}>
+              <div className={classes.sectionStack}>
+                <div className={classes.sectionHeader}>
+                  <p className={classes.sectionTitle}>Фото заведения</p>
+                  <Badge>{placePhotos.length}</Badge>
+                </div>
                 <Button
-                  variant="light"
-                  leftSection={<IconPhotoPlus size={16} />}
+                  type="button"
+                  variant="secondary"
                   onClick={() => placePhotosRef.current?.click()}
                 >
+                  <IconPhotoPlus size={16} />
                   Добавить фото места
                 </Button>
                 <input
@@ -399,65 +355,44 @@ export default function CafeProposalModal({
                   onChange={(event) => appendFiles(setPlacePhotos, event.currentTarget.files)}
                 />
                 {placePhotos.map((file, index) => (
-                  <Paper key={`${file.name}-${index}-${file.size}`} withBorder radius="md" p="xs">
-                    <Group align="center" wrap="nowrap" gap="xs">
-                      <Box
-                        style={{
-                          width: 88,
-                          height: 66,
-                          borderRadius: 10,
-                          overflow: "hidden",
-                          border: "1px solid var(--border)",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <img
-                          src={placePreviewUrls[index]}
-                          alt={file.name}
-                          loading="lazy"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                            display: "block",
-                          }}
-                        />
-                      </Box>
-                      <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
-                        <Text size="sm" lineClamp={1}>
-                          {file.name}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </Text>
-                      </Stack>
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        aria-label="Удалить фото"
-                        onClick={() =>
-                          setPlacePhotos((prev) => prev.filter((_, i) => i !== index))
-                        }
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Group>
-                  </Paper>
+                  <div key={`${file.name}-${index}-${file.size}`} className={classes.fileRow}>
+                    <div className={classes.filePreview}>
+                      <img
+                        src={placePreviewUrls[index]}
+                        alt={file.name}
+                        loading="lazy"
+                        className={classes.filePreviewImage}
+                      />
+                    </div>
+                    <div className={classes.fileMeta}>
+                      <p className={classes.fileName}>{file.name}</p>
+                      <p className={classes.fileSize}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`${classes.removeButton} ui-focus-ring`}
+                      aria-label="Удалить фото"
+                      onClick={() => setPlacePhotos((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <IconTrash size={16} />
+                    </button>
+                  </div>
                 ))}
-              </Stack>
-            </Paper>
+              </div>
+            </section>
 
-            <Paper withBorder radius="md" p="md" style={{ background: "var(--surface)" }}>
-              <Stack gap="sm">
-                <Group justify="space-between">
-                  <Text fw={600}>Фото меню</Text>
-                  <Badge variant="light">{menuPhotos.length}</Badge>
-                </Group>
+            <section className={classes.sectionCard}>
+              <div className={classes.sectionStack}>
+                <div className={classes.sectionHeader}>
+                  <p className={classes.sectionTitle}>Фото меню</p>
+                  <Badge>{menuPhotos.length}</Badge>
+                </div>
                 <Button
-                  variant="light"
-                  leftSection={<IconPhotoPlus size={16} />}
+                  type="button"
+                  variant="secondary"
                   onClick={() => menuPhotosRef.current?.click()}
                 >
+                  <IconPhotoPlus size={16} />
                   Добавить фото меню
                 </Button>
                 <input
@@ -469,113 +404,67 @@ export default function CafeProposalModal({
                   onChange={(event) => appendFiles(setMenuPhotos, event.currentTarget.files)}
                 />
                 {menuPhotos.map((file, index) => (
-                  <Paper key={`${file.name}-${index}-${file.size}`} withBorder radius="md" p="xs">
-                    <Group align="center" wrap="nowrap" gap="xs">
-                      <Box
-                        style={{
-                          width: 88,
-                          height: 66,
-                          borderRadius: 10,
-                          overflow: "hidden",
-                          border: "1px solid var(--border)",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <img
-                          src={menuPreviewUrls[index]}
-                          alt={file.name}
-                          loading="lazy"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                            display: "block",
-                          }}
-                        />
-                      </Box>
-                      <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
-                        <Text size="sm" lineClamp={1}>
-                          {file.name}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          {(file.size / 1024 / 1024).toFixed(2)} MB
-                        </Text>
-                      </Stack>
-                      <ActionIcon
-                        variant="subtle"
-                        color="red"
-                        aria-label="Удалить фото"
-                        onClick={() =>
-                          setMenuPhotos((prev) => prev.filter((_, i) => i !== index))
-                        }
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Group>
-                  </Paper>
+                  <div key={`${file.name}-${index}-${file.size}`} className={classes.fileRow}>
+                    <div className={classes.filePreview}>
+                      <img
+                        src={menuPreviewUrls[index]}
+                        alt={file.name}
+                        loading="lazy"
+                        className={classes.filePreviewImage}
+                      />
+                    </div>
+                    <div className={classes.fileMeta}>
+                      <p className={classes.fileName}>{file.name}</p>
+                      <p className={classes.fileSize}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={`${classes.removeButton} ui-focus-ring`}
+                      aria-label="Удалить фото"
+                      onClick={() => setMenuPhotos((prev) => prev.filter((_, i) => i !== index))}
+                    >
+                      <IconTrash size={16} />
+                    </button>
+                  </div>
                 ))}
-              </Stack>
-            </Paper>
+              </div>
+            </section>
 
-            {error && (
-              <Paper
-                withBorder
-                p="sm"
-                radius="md"
-                style={{ borderColor: "var(--color-status-error)" }}
-              >
-                <Text size="sm" c="red.6">
-                  {error}
-                </Text>
-              </Paper>
-            )}
-          </Stack>
-        </Box>
+            {error ? (
+              <div className={classes.errorBox}>
+                <p className={classes.errorText}>{error}</p>
+              </div>
+            ) : null}
+          </div>
 
-        <Paper
-          style={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: "12px 16px calc(12px + var(--safe-bottom))",
-            borderTop: "1px solid var(--border)",
-            background: "var(--surface)",
-            zIndex: 3,
-          }}
-        >
-          <Button fullWidth onClick={() => void handleSubmit()} loading={submitting}>
-            Отправить заявку
-          </Button>
-        </Paper>
-      </Modal>
+          <div className={classes.footer}>
+            <Button
+              type="button"
+              onClick={() => void handleSubmit()}
+              disabled={submitting}
+              aria-busy={submitting ? "true" : undefined}
+              className={classes.submitButton}
+            >
+              {submitting ? "Отправляем..." : "Отправить заявку"}
+            </Button>
+          </div>
+        </div>
+      </AppModal>
 
-      <Modal
-        opened={mapPickerOpen}
-        onClose={() => setMapPickerOpen(false)}
-        fullScreen
-        withCloseButton
-        zIndex={430}
-        title="Выбор точки на карте"
-        styles={{
-          content: {
-            background: "var(--surface)",
-          },
-          header: {
-            background: "var(--surface)",
-            borderBottom: "1px solid var(--border)",
-          },
-          body: {
-            padding: 0,
-          },
-          overlay: {
-            backgroundColor: "var(--color-surface-overlay-strong)",
-            backdropFilter: "blur(6px)",
-          },
+      <AppModal
+        open={mapPickerOpen}
+        onOpenChange={(next) => {
+          if (!next) setMapPickerOpen(false);
         }}
+        title="Выбор точки на карте"
+        fullScreen
+        implementation="radix"
+        presentation="sheet"
+        contentClassName={classes.mapModalContent}
+        bodyClassName={classes.mapModalBody}
       >
-        <Box pos="relative" h="calc(100dvh - 62px)">
-          <Box pos="absolute" inset={0}>
+        <div className={classes.mapRoot}>
+          <div className={classes.mapCanvas}>
             <Map
               center={mapPickerStartCenter}
               zoom={14}
@@ -584,51 +473,22 @@ export default function CafeProposalModal({
               paddingEnabled={false}
               onCenterChange={setMapPickerCenter}
             />
-          </Box>
+          </div>
 
-          <Box
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%, -100%)",
-              pointerEvents: "none",
-              zIndex: 2,
-            }}
-          >
+          <div className={classes.mapPin}>
             <IconMapPinFilled size={40} color="var(--color-map-cafe-marker)" stroke={1.5} />
-          </Box>
+          </div>
 
-          <Group
-            justify="center"
-            gap="xs"
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: "calc(16px + var(--safe-bottom))",
-              zIndex: 3,
-              pointerEvents: "none",
-            }}
-          >
-            <Button
-              variant="default"
-              style={{ pointerEvents: "auto" }}
-              onClick={() => setMapPickerOpen(false)}
-            >
+          <div className={classes.mapActions}>
+            <Button type="button" variant="secondary" onClick={() => setMapPickerOpen(false)}>
               Отмена
             </Button>
-            <Button
-              variant="gradient"
-              gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
-              style={{ pointerEvents: "auto" }}
-              onClick={handleConfirmMapPicker}
-            >
+            <Button type="button" onClick={handleConfirmMapPicker}>
               Выбрать
             </Button>
-          </Group>
-        </Box>
-      </Modal>
+          </div>
+        </div>
+      </AppModal>
     </>
   );
 }
