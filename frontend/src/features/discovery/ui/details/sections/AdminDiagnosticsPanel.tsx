@@ -1,6 +1,7 @@
-import { Badge, Button, Group, Paper, Stack, Text } from "@mantine/core";
+import { Badge, Button } from "../../../../../components/ui";
 
 import type { CafeRatingDiagnostics } from "../../../../../api/reviews";
+import classes from "./AdminDiagnosticsPanel.module.css";
 
 type AdminDiagnosticsPanelProps = {
   diagnostics: CafeRatingDiagnostics | null;
@@ -30,226 +31,154 @@ export default function AdminDiagnosticsPanel({
   const aiSummary = diagnostics?.ai_summary ?? null;
 
   return (
-    <Paper
-      withBorder
-      radius="md"
-      p="sm"
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-      }}
-    >
-      <Stack gap={8}>
-        <Group justify="space-between" align="flex-start" wrap="wrap" gap={8}>
-          <Text fw={600} size="sm" style={{ flex: "1 1 220px", minWidth: 0 }}>
-            Admin-диагностика рейтинга
-          </Text>
-          <Group gap={6} wrap="wrap" justify="flex-end" style={{ marginLeft: "auto" }}>
+    <div className={classes.card}>
+      <div className={classes.stack}>
+        <div className={classes.headerRow}>
+          <p className={classes.title}>Admin-диагностика рейтинга</p>
+          <div className={classes.actionsRow}>
             <Button
-              variant="light"
-              size="compact-xs"
+              type="button"
+              variant="secondary"
+              size="sm"
+              className={classes.actionButton}
               onClick={onTriggerAISummary}
-              loading={aiSummaryTriggerLoading}
+              disabled={aiSummaryTriggerLoading}
+              aria-busy={aiSummaryTriggerLoading ? "true" : undefined}
             >
-              Суммаризировать через AI
+              <span className={aiSummaryTriggerLoading ? classes.loadingHidden : ""}>
+                Суммаризировать через AI
+              </span>
+              {aiSummaryTriggerLoading ? (
+                <span className={classes.spinner} aria-hidden="true" />
+              ) : null}
             </Button>
-            <Button variant="light" size="compact-xs" onClick={onToggleExpanded}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className={classes.actionButton}
+              onClick={onToggleExpanded}
+            >
               {expanded ? "Скрыть" : "Показать"}
             </Button>
-          </Group>
-        </Group>
+          </div>
+        </div>
 
-        {loading && (
-          <Text size="xs" c="dimmed">
-            Загружаем диагностику...
-          </Text>
-        )}
-        {error && (
-          <Text size="xs" c="dimmed">
-            {error}
-          </Text>
-        )}
+        {loading ? <p className={classes.metaText}>Загружаем диагностику...</p> : null}
+        {error ? <p className={classes.metaText}>{error}</p> : null}
 
-        {expanded && diagnostics && (
-          <Stack gap={8}>
-            <Group gap={6} wrap="wrap">
-              <Badge size="xs" variant="light">
-                Snapshot: {diagnostics.snapshot_rating.toFixed(2)}
-              </Badge>
-              <Badge size="xs" variant="light">
-                Derived: {diagnostics.derived_rating.toFixed(2)}
-              </Badge>
+        {expanded && diagnostics ? (
+          <div className={classes.detailsStack}>
+            <div className={classes.badgesRow}>
+              <Badge className={classes.badge}>Snapshot: {diagnostics.snapshot_rating.toFixed(2)}</Badge>
+              <Badge className={classes.badge}>Derived: {diagnostics.derived_rating.toFixed(2)}</Badge>
               <Badge
-                size="xs"
-                variant="light"
-                color={diagnostics.is_consistent ? "teal" : "orange"}
+                variant={diagnostics.is_consistent ? "success" : "warning"}
+                className={classes.badge}
               >
                 Δ {diagnostics.rating_delta.toFixed(3)}
               </Badge>
-              <Badge size="xs" variant="light">
-                Trust: {trustValue.toFixed(3)}
-              </Badge>
-              <Badge size="xs" variant="light">
-                Base: {baseValue.toFixed(3)}
-              </Badge>
-              <Badge size="xs" variant="light">
+              <Badge className={classes.badge}>Trust: {trustValue.toFixed(3)}</Badge>
+              <Badge className={classes.badge}>Base: {baseValue.toFixed(3)}</Badge>
+              <Badge className={classes.badge}>
                 Tags source: {diagnostics.descriptive_tags_source || "rules_v1"}
               </Badge>
-              <Badge
-                size="xs"
-                variant="light"
-                color={aiSummary?.status === "ok" ? "teal" : "orange"}
-              >
+              <Badge variant={aiSummary?.status === "ok" ? "success" : "warning"} className={classes.badge}>
                 AI: {aiSummary?.status || "n/a"}
               </Badge>
-            </Group>
+            </div>
 
-            {aiSummary && (
-              <Stack gap={4}>
+            {aiSummary ? (
+              <div className={classes.aiStack}>
                 {aiSummary.summary_short ? (
-                  <Text size="xs" c="dimmed">
-                    AI summary: {aiSummary.summary_short}
-                  </Text>
+                  <p className={classes.metaText}>AI summary: {aiSummary.summary_short}</p>
                 ) : null}
                 {aiSummary.stale_notice ? (
-                  <Text size="xs" c="orange">
-                    {aiSummary.stale_notice}
-                  </Text>
+                  <p className={classes.warningText}>{aiSummary.stale_notice}</p>
                 ) : null}
                 {Array.isArray(aiSummary.tags) && aiSummary.tags.length > 0 ? (
-                  <Group gap={6} wrap="wrap">
+                  <div className={classes.badgesRow}>
                     {aiSummary.tags.map((tag) => (
-                      <Badge key={`ai-tag-${tag}`} size="xs" variant="light">
+                      <Badge key={`ai-tag-${tag}`} className={classes.badge}>
                         {tag}
                       </Badge>
                     ))}
-                  </Group>
+                  </div>
                 ) : null}
-                {aiSummary.model ? (
-                  <Text size="xs" c="dimmed">
-                    Model: {aiSummary.model}
-                  </Text>
-                ) : null}
+                {aiSummary.model ? <p className={classes.metaText}>Model: {aiSummary.model}</p> : null}
                 {aiSummary.prompt_version ? (
-                  <Text size="xs" c="dimmed">
-                    Prompt: {aiSummary.prompt_version}
-                  </Text>
+                  <p className={classes.metaText}>Prompt: {aiSummary.prompt_version}</p>
                 ) : null}
                 {(typeof aiSummary.eligible_reviews_count === "number" ||
                   typeof aiSummary.attempted_reviews_count === "number" ||
                   aiSummary.last_attempt_reason) ? (
-                  <Group gap={6} wrap="wrap">
+                  <div className={classes.badgesRow}>
                     {typeof aiSummary.eligible_reviews_count === "number" ? (
-                      <Badge size="xs" variant="light">
-                        Eligible: {aiSummary.eligible_reviews_count}
-                      </Badge>
+                      <Badge className={classes.badge}>Eligible: {aiSummary.eligible_reviews_count}</Badge>
                     ) : null}
                     {typeof aiSummary.attempted_reviews_count === "number" ? (
-                      <Badge size="xs" variant="light">
-                        Attempted: {aiSummary.attempted_reviews_count}
-                      </Badge>
+                      <Badge className={classes.badge}>Attempted: {aiSummary.attempted_reviews_count}</Badge>
                     ) : null}
                     {aiSummary.last_attempt_reason ? (
-                      <Badge size="xs" variant="light" color="gray">
-                        Last attempt: {aiSummary.last_attempt_reason}
-                      </Badge>
+                      <Badge className={classes.badge}>Last attempt: {aiSummary.last_attempt_reason}</Badge>
                     ) : null}
-                  </Group>
+                  </div>
                 ) : null}
                 {aiSummary.token_usage ? (
-                  <Group gap={6} wrap="wrap">
-                    <Badge size="xs" variant="light">
-                      Prompt: {aiSummary.token_usage.prompt_tokens}
-                    </Badge>
-                    <Badge size="xs" variant="light">
+                  <div className={classes.badgesRow}>
+                    <Badge className={classes.badge}>Prompt: {aiSummary.token_usage.prompt_tokens}</Badge>
+                    <Badge className={classes.badge}>
                       Completion: {aiSummary.token_usage.completion_tokens}
                     </Badge>
-                    <Badge size="xs" variant="light">
-                      Total: {aiSummary.token_usage.total_tokens}
-                    </Badge>
-                  </Group>
+                    <Badge className={classes.badge}>Total: {aiSummary.token_usage.total_tokens}</Badge>
+                  </div>
                 ) : null}
                 {aiSummary.budget_guard_enabled ? (
-                  <Group gap={6} wrap="wrap">
+                  <div className={classes.badgesRow}>
                     {typeof aiSummary.daily_token_budget === "number" ? (
-                      <Badge size="xs" variant="light">
-                        Budget/day: {aiSummary.daily_token_budget}
-                      </Badge>
+                      <Badge className={classes.badge}>Budget/day: {aiSummary.daily_token_budget}</Badge>
                     ) : null}
                     {typeof aiSummary.daily_token_usage === "number" ? (
-                      <Badge size="xs" variant="light">
-                        Used today: {aiSummary.daily_token_usage}
-                      </Badge>
+                      <Badge className={classes.badge}>Used today: {aiSummary.daily_token_usage}</Badge>
                     ) : null}
                     {typeof aiSummary.daily_token_remaining === "number" ? (
-                      <Badge size="xs" variant="light">
-                        Remaining: {aiSummary.daily_token_remaining}
-                      </Badge>
+                      <Badge className={classes.badge}>Remaining: {aiSummary.daily_token_remaining}</Badge>
                     ) : null}
-                  </Group>
+                  </div>
                 ) : null}
-              </Stack>
-            )}
+              </div>
+            ) : null}
 
-            {diagnostics.warnings.length > 0 && (
-              <Group gap={6} wrap="wrap">
+            {diagnostics.warnings.length > 0 ? (
+              <div className={classes.badgesRow}>
                 {diagnostics.warnings.map((warning, index) => (
-                  <Badge key={`rating-warning-${index}`} size="xs" color="orange">
+                  <Badge key={`rating-warning-${index}`} variant="warning" className={classes.badge}>
                     {warning}
                   </Badge>
                 ))}
-              </Group>
-            )}
+              </div>
+            ) : null}
 
-            {topReviews.length > 0 && (
-              <Stack gap={6}>
-                <Text size="xs" fw={600} c="dimmed">
-                  Топ отзывов по влиянию
-                </Text>
+            {topReviews.length > 0 ? (
+              <div className={classes.topReviewsStack}>
+                <p className={classes.topReviewsTitle}>Топ отзывов по влиянию</p>
                 {topReviews.map((review) => (
-                  <Paper
-                    key={review.review_id}
-                    withBorder
-                    radius="sm"
-                    p="xs"
-                    style={{
-                      background: "var(--surface-2)",
-                      border: "1px solid var(--border)",
-                    }}
-                  >
-                    <Group justify="space-between" align="center" gap={8}>
-                      <Text size="xs" fw={600} lineClamp={1}>
-                        {review.author_name}
-                      </Text>
-                      <Group gap={4}>
-                        <Badge size="xs" variant="light">
-                          Helpful {review.helpful_score.toFixed(1)}
-                        </Badge>
-                        <Badge size="xs" variant="light">
-                          Q {review.quality_score.toFixed(0)}
-                        </Badge>
-                      </Group>
-                    </Group>
-                    <Text
-                      size="xs"
-                      c="dimmed"
-                      mt={4}
-                      style={{
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                        overflowWrap: "anywhere",
-                      }}
-                      lineClamp={2}
-                    >
-                      {review.summary_excerpt}
-                    </Text>
-                  </Paper>
+                  <div key={review.review_id} className={classes.reviewCard}>
+                    <div className={classes.reviewHeader}>
+                      <p className={classes.reviewAuthor}>{review.author_name}</p>
+                      <div className={classes.badgesRow}>
+                        <Badge className={classes.badge}>Helpful {review.helpful_score.toFixed(1)}</Badge>
+                        <Badge className={classes.badge}>Q {review.quality_score.toFixed(0)}</Badge>
+                      </div>
+                    </div>
+                    <p className={classes.reviewExcerpt}>{review.summary_excerpt}</p>
+                  </div>
                 ))}
-              </Stack>
-            )}
-          </Stack>
-        )}
-      </Stack>
-    </Paper>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }

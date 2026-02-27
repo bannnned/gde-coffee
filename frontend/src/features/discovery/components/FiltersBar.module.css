@@ -39,6 +39,15 @@
   color: var(--text);
 }
 
+.userSpinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--text) 45%, transparent);
+  border-top-color: var(--text);
+  animation: userBadgeSpin 0.8s linear infinite;
+}
+
 .userAvatar {
   width: 100%;
   height: 100%;
@@ -87,8 +96,17 @@
   }
 }
 
+@keyframes userBadgeSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .attentionButton {
     animation: none;
+  }
+  .userSpinner {
+    animation-duration: 1.2s;
   }
 }

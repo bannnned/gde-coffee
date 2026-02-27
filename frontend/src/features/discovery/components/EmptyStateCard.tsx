@@ -1,20 +1,14 @@
 import {
-  ActionIcon,
-  Button,
-  Paper,
-  Select,
-  Stack,
-  Text,
-  ThemeIcon,
-} from "@mantine/core";
-import {
   IconAlertCircle,
   IconCheck,
   IconMapPinOff,
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 
+import { Button } from "../../../components/ui";
+import { AppSelect } from "../../../ui/bridge";
 import { DISCOVERY_UI_TEXT } from "../constants";
+import classes from "./EmptyStateCard.module.css";
 
 type EmptyState = "no-results" | "no-geo" | "error";
 
@@ -65,27 +59,9 @@ export default function EmptyStateCard({
             onAction: onResetFilters,
           };
 
-  const emptyCardStyles = {
-    border: "1px solid var(--glass-border)",
-    background:
-      "linear-gradient(135deg, color-mix(in srgb, var(--glass-grad-1) 95%, transparent), color-mix(in srgb, var(--glass-grad-2) 88%, transparent))",
-    boxShadow:
-      "0 10px 24px color-mix(in srgb, var(--color-surface-overlay-soft) 65%, transparent)",
-    backdropFilter: "blur(12px) saturate(130%)",
-    WebkitBackdropFilter: "blur(12px) saturate(130%)",
-  } as const;
-
-  const emptyIconStyles = {
-    background:
-      "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 84%, var(--surface)), var(--surface))",
-    border: "1px solid color-mix(in srgb, var(--color-brand-accent) 34%, var(--glass-border))",
-    color: "var(--color-brand-accent)",
-    boxShadow:
-      "0 10px 22px color-mix(in srgb, var(--color-brand-accent-soft) 36%, transparent)",
-  } as const;
-
   const compactNoResults = emptyState === "no-results" && !isError;
   const locateMode = emptyState === "no-geo" && !isError;
+  const locateLoading = emptyState === "no-geo" && Boolean(isLocating);
   const EmptyIcon = emptyConfig.icon;
   const locationSelectData = useMemo(
     () =>
@@ -99,29 +75,6 @@ export default function EmptyStateCard({
     emptyState === "no-geo" &&
     Boolean(pendingLocationId) &&
     Boolean(onSelectLocation);
-  const actionButtonStyles = {
-    root: {
-      height: 36,
-      paddingInline: 16,
-      borderRadius: 999,
-      border: locateMode
-        ? "1px solid color-mix(in srgb, var(--color-brand-accent) 58%, transparent)"
-        : "1px solid color-mix(in srgb, var(--color-brand-accent) 44%, var(--glass-border))",
-      background: locateMode
-        ? "linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong))"
-        : "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 72%, var(--surface)), color-mix(in srgb, var(--color-brand-accent) 18%, var(--surface)))",
-      color: locateMode ? "var(--color-on-accent)" : "var(--text)",
-      boxShadow: locateMode
-        ? "0 12px 24px color-mix(in srgb, var(--color-brand-accent-soft) 46%, transparent)"
-        : "0 8px 18px color-mix(in srgb, var(--color-surface-overlay-soft) 48%, transparent)",
-      transition:
-        "transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-base) var(--ease-standard)",
-    },
-    label: {
-      fontWeight: 650,
-      letterSpacing: "0.01em",
-    },
-  } as const;
   const selectStyles = {
     input: {
       height: 40,
@@ -144,49 +97,49 @@ export default function EmptyStateCard({
   } as const;
 
   return (
-    <Paper
-      radius="xl"
-      p={compactNoResults ? "sm" : "md"}
-      withBorder
-      style={emptyCardStyles}
+    <div
+      className={`${classes.card} ${compactNoResults ? classes.cardCompact : ""}`}
+      data-empty-state={emptyState}
     >
-      <Stack gap={compactNoResults ? 6 : 8} align="center">
+      <div
+        className={classes.stack}
+        style={{ gap: compactNoResults ? 6 : 8 }}
+      >
         {EmptyIcon && (
-          <ThemeIcon size={48} radius={18} style={emptyIconStyles}>
+          <div className={classes.iconWrap}>
             <EmptyIcon size={22} />
-          </ThemeIcon>
+          </div>
         )}
-        <Text size="sm" fw={600} ta="center">
-          {emptyConfig.title}
-        </Text>
-        <Text size="xs" c="dimmed" ta="center">
-          {emptyConfig.subtitle}
-        </Text>
+        <p className={classes.title}>{emptyConfig.title}</p>
+        <p className={classes.subtitle}>{emptyConfig.subtitle}</p>
         <Button
-          size="xs"
-          variant="filled"
+          size="sm"
           onClick={emptyConfig.onAction}
-          loading={emptyState === "no-geo" && isLocating}
-          disabled={emptyState === "no-geo" && isLocating}
-          styles={actionButtonStyles}
+          disabled={locateLoading}
+          aria-busy={locateLoading ? "true" : undefined}
+          className={[
+            classes.actionButton,
+            locateMode ? classes.actionButtonLocate : classes.actionButtonDefault,
+            locateLoading ? classes.actionButtonBusy : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         >
-          {emptyConfig.actionLabel}
+          <span className={classes.actionLabel}>{emptyConfig.actionLabel}</span>
+          {locateLoading ? (
+            <span className={classes.spinner} aria-hidden="true" />
+          ) : null}
         </Button>
         {emptyState === "no-geo" && locationSelectData.length > 0 && (
-          <Stack gap={6} w="100%">
-            <Text size="xs" c="dimmed" ta="center">
+          <div className={classes.locationBlock}>
+            <p className={classes.locationHint}>
               или выберите город
-            </Text>
+            </p>
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: canApplyLocation ? "1fr auto" : "1fr",
-                alignItems: "center",
-                gap: 8,
-                width: "100%",
-              }}
+              className={classes.locationRow}
+              style={{ gridTemplateColumns: canApplyLocation ? "1fr auto" : "1fr" }}
             >
-              <Select
+              <AppSelect
                 data={locationSelectData}
                 value={pendingLocationId}
                 placeholder="Выбрать город"
@@ -196,10 +149,9 @@ export default function EmptyStateCard({
                 styles={selectStyles}
               />
               {canApplyLocation && (
-                <ActionIcon
-                  size="lg"
-                  variant="gradient"
-                  gradient={{ from: "green.6", to: "teal.5", deg: 135 }}
+                <button
+                  type="button"
+                  className={`${classes.confirmButton} ui-focus-ring`}
                   aria-label="Подтвердить город"
                   onClick={() => {
                     if (!pendingLocationId || !onSelectLocation) return;
@@ -208,12 +160,12 @@ export default function EmptyStateCard({
                   }}
                 >
                   <IconCheck size={18} />
-                </ActionIcon>
+                </button>
               )}
             </div>
-          </Stack>
+          </div>
         )}
-      </Stack>
-    </Paper>
+      </div>
+    </div>
   );
 }

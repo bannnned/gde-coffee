@@ -1,0 +1,33 @@
+.card {
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  padding: var(--space-4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--glass-grad-1) 95%, transparent),
+    color-mix(in srgb, var(--glass-grad-2) 88%, transparent)
+  );
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-surface-overlay-soft) 65%, transparent);
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--muted);
+}

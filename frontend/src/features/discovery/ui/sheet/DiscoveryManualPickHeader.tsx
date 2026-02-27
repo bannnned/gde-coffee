@@ -1,16 +1,14 @@
-import { Paper, Stack, Text } from "@mantine/core";
+import classes from "./DiscoveryManualPickHeader.module.css";
 
 export default function DiscoveryManualPickHeader() {
   return (
-    <Paper radius="xl" p="md" withBorder>
-      <Stack gap={4}>
-        <Text size="sm" fw={600}>
-          Выбор точки на карте
-        </Text>
-        <Text size="sm" c="dimmed">
+    <div className={classes.card}>
+      <div className={classes.content}>
+        <p className={classes.title}>Выбор точки на карте</p>
+        <p className={classes.subtitle}>
           Передвигайте карту. Точка фиксируется по пину в центре открытой области.
-        </Text>
-      </Stack>
-    </Paper>
+        </p>
+      </div>
+    </div>
   );
 }

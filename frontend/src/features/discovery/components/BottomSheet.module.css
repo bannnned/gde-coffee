@@ -35,13 +35,12 @@
   top: 0;
   z-index: 2;
   pointer-events: none;
-  height: max(110px, calc(var(--sheet-header-height, 0px) + 14px));
+  height: max(126px, calc(var(--sheet-header-height, 0px) + 20px));
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--surface) 97%, var(--glass-bg)) 0%,
-    color-mix(in srgb, var(--surface) 96%, var(--glass-bg)) 56%,
-    color-mix(in srgb, var(--surface) 88%, transparent) 74%,
-    color-mix(in srgb, var(--surface) 44%, transparent) 90%,
+    color-mix(in srgb, var(--surface) 99%, var(--glass-bg)) 0%,
+    color-mix(in srgb, var(--surface) 98%, var(--glass-bg)) 62%,
+    color-mix(in srgb, var(--surface) 92%, transparent) 82%,
     transparent 100%
   );
 }
@@ -92,6 +91,14 @@
   z-index: 3;
   padding: var(--page-edge-padding);
   padding-bottom: var(--space-1);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface) 98%, var(--glass-bg)) 0%,
+    color-mix(in srgb, var(--surface) 95%, var(--glass-bg)) 72%,
+    color-mix(in srgb, var(--surface) 70%, transparent) 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   pointer-events: auto;
   user-select: none;
 }
@@ -108,7 +115,7 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   --list-inline-padding: var(--page-edge-padding);
-  padding: calc(var(--sheet-header-height, 0px) + var(--space-2)) var(--list-inline-padding) 14px;
+  padding: calc(var(--sheet-header-height, 0px) + var(--space-3)) var(--list-inline-padding) 14px;
   pointer-events: auto;
   touch-action: pan-y;
   transition:

@@ -1,0 +1,43 @@
+.card {
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  padding: var(--space-4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--glass-grad-1) 95%, transparent),
+    color-mix(in srgb, var(--glass-grad-2) 88%, transparent)
+  );
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-surface-overlay-soft) 65%, transparent);
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.actionButton {
+  width: 100%;
+  border-radius: 12px;
+  justify-content: center;
+}
+
+.locateButton {
+  border: 1px solid color-mix(in srgb, var(--color-brand-accent) 58%, transparent);
+  background: linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong));
+  color: var(--color-on-accent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--color-brand-accent-soft) 46%, transparent);
+}
+
+.select {
+  width: 100%;
+}

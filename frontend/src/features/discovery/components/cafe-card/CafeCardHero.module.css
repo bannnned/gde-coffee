@@ -1,0 +1,185 @@
+.root {
+  position: relative;
+  min-height: var(--hero-height);
+  height: var(--hero-height);
+  width: 100%;
+  max-width: 100%;
+  touch-action: pan-y;
+  background: radial-gradient(circle at 20% 20%, var(--bg-accent-1), transparent 45%), var(--surface);
+}
+
+.emptyState {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  bottom: var(--empty-reserved-bottom, 86px);
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding-inline: var(--page-edge-padding);
+}
+
+.addPhotoButton {
+  position: relative;
+  margin-top: 4px;
+  height: 44px;
+  padding-inline: 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-brand-accent) 45%, var(--glass-border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)),
+    var(--surface)
+  );
+  color: var(--cafe-hero-emphasis-color);
+  font-weight: 700;
+  box-shadow: var(--glass-shadow);
+}
+
+.loadingIconHidden,
+.loadingLabelHidden {
+  opacity: 0;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: cafe-hero-spin 0.65s linear infinite;
+}
+
+.distanceBadge {
+  position: absolute;
+  left: var(--page-edge-padding);
+  top: var(--page-edge-padding);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.routes {
+  position: absolute;
+  right: var(--page-edge-padding);
+  top: var(--page-edge-padding);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.routeButton {
+  width: 90px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--cafe-hero-title-color);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 4px 8px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.indicatorWrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 10px;
+  padding: 6px var(--indicator-inner-padding);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cafe-hero-overlay-3) 28%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.indicatorTrack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--indicator-segment-gap);
+  flex-wrap: nowrap;
+}
+
+.indicatorSegment {
+  width: var(--indicator-segment-width);
+  height: var(--indicator-segment-height);
+  border-radius: 999px;
+  background: var(--cafe-hero-indicator-idle);
+  transition: background 180ms ease;
+}
+
+.indicatorSegment[data-active="true"] {
+  background: transparent;
+}
+
+.indicatorActive {
+  position: absolute;
+  top: 6px;
+  width: var(--indicator-segment-width);
+  height: var(--indicator-segment-height);
+  border-radius: 999px;
+  background: var(--cafe-hero-indicator-active);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--cafe-hero-indicator-active) 55%, transparent);
+}
+
+.topFade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 56px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--cafe-hero-overlay-3) 34%, transparent) 0%,
+    transparent 100%
+  );
+}
+
+.bottomOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    transparent 56%,
+    var(--cafe-hero-overlay-1) 64%,
+    var(--cafe-hero-overlay-2) 82%,
+    var(--cafe-hero-overlay-3) 100%
+  );
+  transition: background 260ms ease;
+  z-index: 1;
+}
+
+@keyframes cafe-hero-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

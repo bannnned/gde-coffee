@@ -1,5 +1,7 @@
-import { Box, Button, Group } from "@mantine/core";
 import { IconMapPinFilled } from "@tabler/icons-react";
+
+import { Button } from "../../../../components/ui";
+import classes from "./ManualPickOverlay.module.css";
 
 type ManualPickOverlayProps = {
   pinOffsetY: number;
@@ -16,43 +18,39 @@ export default function ManualPickOverlay({
 }: ManualPickOverlayProps) {
   return (
     <>
-      <Box
+      <div
+        className={classes.pin}
         style={{
-          position: "absolute",
-          left: "50%",
           top: `calc(50% - (var(--sheet-height, 240px) / 2) + ${pinOffsetY}px)`,
-          transform: "translate(-50%, -100%)",
-          pointerEvents: "none",
-          zIndex: 4,
         }}
       >
         <IconMapPinFilled size={40} color="var(--color-map-cafe-marker)" stroke={1.5} />
-      </Box>
-      <Group
-        justify="center"
-        gap="xs"
+      </div>
+      <div
+        className={classes.actions}
         style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
           bottom: "calc(var(--sheet-height, 240px) + 20px)",
-          zIndex: 4,
-          pointerEvents: "none",
         }}
       >
-        <Button variant="default" style={{ pointerEvents: "auto" }} onClick={onCancel}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className={classes.actionButton}
+          onClick={onCancel}
+        >
           Отмена
         </Button>
         <Button
-          variant="gradient"
-          gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
-          style={{ pointerEvents: "auto" }}
+          type="button"
+          size="sm"
+          className={`${classes.actionButton} ${classes.confirmButton}`}
           onClick={onConfirm}
           disabled={!canConfirm}
         >
           Выбрать
         </Button>
-      </Group>
+      </div>
     </>
   );
 }

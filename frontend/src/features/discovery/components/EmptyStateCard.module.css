@@ -1,0 +1,155 @@
+.card {
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+  padding: var(--space-4);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--glass-grad-1) 95%, transparent),
+    color-mix(in srgb, var(--glass-grad-2) 88%, transparent)
+  );
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-surface-overlay-soft) 65%, transparent);
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+}
+
+.cardCompact {
+  padding: var(--space-3);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.iconWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-brand-accent-soft) 84%, var(--surface)),
+    var(--surface)
+  );
+  border: 1px solid color-mix(in srgb, var(--color-brand-accent) 34%, var(--glass-border));
+  color: var(--color-brand-accent);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-brand-accent-soft) 36%, transparent);
+}
+
+.title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--muted);
+  text-align: center;
+}
+
+.actionButton {
+  position: relative;
+  min-width: 168px;
+  border-radius: 999px;
+  height: 36px;
+  padding-inline: 16px;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-surface-overlay-soft) 48%, transparent);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-standard);
+}
+
+.actionButton:hover {
+  transform: translateY(-1px);
+}
+
+.actionButtonLocate {
+  border: 1px solid color-mix(in srgb, var(--color-brand-accent) 58%, transparent);
+  background: linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong));
+  color: var(--color-on-accent);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--color-brand-accent-soft) 46%, transparent);
+}
+
+.actionButtonDefault {
+  border: 1px solid color-mix(in srgb, var(--color-brand-accent) 44%, var(--glass-border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-brand-accent-soft) 72%, var(--surface)),
+    color-mix(in srgb, var(--color-brand-accent) 18%, var(--surface))
+  );
+  color: var(--text);
+}
+
+.actionButtonBusy .actionLabel {
+  opacity: 0;
+}
+
+.actionLabel {
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: empty-state-spin 0.65s linear infinite;
+}
+
+.locationBlock {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.locationHint {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--muted);
+  text-align: center;
+}
+
+.locationRow {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.confirmButton {
+  width: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in srgb, var(--color-brand-accent) 62%, var(--glass-border));
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, #1ea87a, #0d8f92);
+  box-shadow: 0 8px 18px color-mix(in srgb, #1ea87a 42%, transparent);
+}
+
+.confirmButton:hover {
+  transform: translateY(-1px);
+}
+
+@keyframes empty-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

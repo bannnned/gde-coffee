@@ -1,11 +1,12 @@
-import { Badge, Box, Button, Group, Stack } from "@mantine/core";
 import { IconCameraPlus, IconRoute2 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ReactNode } from "react";
 
+import { Button } from "../../../../components/ui";
 import type { Cafe } from "../../../../entities/cafe/model/types";
 import { buildCafePhotoPictureSources } from "../../../../utils/cafePhotoVariants";
 import { formatDistance } from "../../utils";
+import classes from "./CafeCardHero.module.css";
 
 type CafeCardHeroProps = {
   cafe: Cafe;
@@ -24,7 +25,6 @@ type CafeCardHeroProps = {
   isPhotoProcessing?: boolean;
   onTouchStart: (event: React.TouchEvent<HTMLDivElement>) => void;
   onTouchEnd: (event: React.TouchEvent<HTMLDivElement>) => void;
-  badgeStyles: Record<string, unknown>;
   children?: ReactNode;
 };
 
@@ -45,7 +45,6 @@ export default function CafeCardHero({
   isPhotoProcessing = false,
   onTouchStart,
   onTouchEnd,
-  badgeStyles,
   children,
 }: CafeCardHeroProps) {
   const HERO_HEIGHT = "clamp(132px, 28vh, 172px)";
@@ -60,18 +59,12 @@ export default function CafeCardHero({
     activePhotoIndex * (INDICATOR_SEGMENT_WIDTH + INDICATOR_SEGMENT_GAP);
 
   return (
-    <Box
+    <div
+      className={classes.root}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       style={{
-        position: "relative",
-        minHeight: HERO_HEIGHT,
-        height: HERO_HEIGHT,
-        width: "100%",
-        maxWidth: "100%",
-        touchAction: "pan-y",
-        background:
-          "radial-gradient(circle at 20% 20%, var(--bg-accent-1), transparent 45%), var(--surface)",
+        ["--hero-height" as string]: HERO_HEIGHT,
       }}
     >
       {activePhotoURL ? (
@@ -170,179 +163,93 @@ export default function CafeCardHero({
           </picture>
         </>
       ) : (
-        <Box
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: 6,
-            bottom: EMPTY_STATE_RESERVED_BOTTOM_PX,
-            zIndex: 1,
-            display: "grid",
-            placeItems: "center",
-            paddingInline: "var(--page-edge-padding)",
-          }}
+        <div
+          className={classes.emptyState}
+          style={{ ["--empty-reserved-bottom" as string]: `${EMPTY_STATE_RESERVED_BOTTOM_PX}px` }}
           data-no-drag="true"
         >
           {onAddFirstPhoto && (
             <Button
+              type="button"
               size="sm"
-              variant="light"
-              radius="xl"
-              loading={isPhotoProcessing}
-              leftSection={<IconCameraPlus size={16} />}
+              variant="secondary"
+              disabled={isPhotoProcessing}
+              aria-busy={isPhotoProcessing ? "true" : undefined}
+              className={classes.addPhotoButton}
               onClick={(event) => {
                 event.stopPropagation();
                 onAddFirstPhoto();
               }}
-              styles={{
-                root: {
-                  height: 44,
-                  marginTop: 4,
-                  paddingInline: 16,
-                  border: "1px solid color-mix(in srgb, var(--color-brand-accent) 45%, var(--glass-border))",
-                  background:
-                    "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 68%, var(--surface)), var(--surface))",
-                  color: "var(--cafe-hero-emphasis-color)",
-                  fontWeight: 700,
-                  boxShadow: "var(--glass-shadow)",
-                },
-              }}
             >
-              Добавить первое фото
+              <IconCameraPlus
+                size={16}
+                className={isPhotoProcessing ? classes.loadingIconHidden : ""}
+              />
+              <span className={isPhotoProcessing ? classes.loadingLabelHidden : ""}>
+                Добавить первое фото
+              </span>
+              {isPhotoProcessing ? (
+                <span className={classes.spinner} aria-hidden="true" />
+              ) : null}
             </Button>
           )}
-        </Box>
+        </div>
       )}
 
       {showDistance && (
-        <Badge
-          styles={badgeStyles}
-          style={{
-            position: "absolute",
-            left: "var(--page-edge-padding)",
-            top: "var(--page-edge-padding)",
-            zIndex: 2,
-          }}
-        >
+        <span className={classes.distanceBadge}>
           {formatDistance(cafe.distance_m)}
-        </Badge>
+        </span>
       )}
 
       {showRoutes && (
-        <Stack
-          gap={6}
-          style={{
-            position: "absolute",
-            right: "var(--page-edge-padding)",
-            top: "var(--page-edge-padding)",
-            zIndex: 2,
-            alignItems: "stretch",
-          }}
-          data-no-drag="true"
-        >
-          <Button
-            size="compact-xs"
-            variant="default"
-            leftSection={<IconRoute2 size={14} />}
-            styles={{
-              root: {
-                borderRadius: 999,
-                border: "1px solid var(--glass-border)",
-                background: "var(--glass-bg)",
-                color: "var(--cafe-hero-title-color)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-                width: 90,
-                justifyContent: "flex-start",
-                paddingInline: 8,
-              },
-              inner: {
-                justifyContent: "flex-start",
-                width: "100%",
-              },
-              label: {
-                textAlign: "left",
-                paddingLeft: 2,
-              },
-            }}
+        <div className={classes.routes} data-no-drag="true">
+          <button
+            type="button"
+            className={`${classes.routeButton} ui-focus-ring`}
             onClick={(event) => {
               event.stopPropagation();
               onOpen2gis(cafe);
             }}
           >
+            <IconRoute2 size={14} />
             2ГИС
-          </Button>
-          <Button
-            size="compact-xs"
-            variant="default"
-            leftSection={<IconRoute2 size={14} />}
-            styles={{
-              root: {
-                borderRadius: 999,
-                border: "1px solid var(--glass-border)",
-                background: "var(--glass-bg)",
-                color: "var(--cafe-hero-title-color)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-                width: 90,
-                justifyContent: "flex-start",
-                paddingInline: 8,
-              },
-              inner: {
-                justifyContent: "flex-start",
-                width: "100%",
-              },
-              label: {
-                textAlign: "left",
-                paddingLeft: 2,
-              },
-            }}
+          </button>
+          <button
+            type="button"
+            className={`${classes.routeButton} ui-focus-ring`}
             onClick={(event) => {
               event.stopPropagation();
               onOpenYandex(cafe);
             }}
           >
+            <IconRoute2 size={14} />
             Яндекс
-          </Button>
-        </Stack>
+          </button>
+        </div>
       )}
 
       {photoURLs.length > 1 && (
-        <Box
+        <div
+          className={classes.indicatorWrap}
           style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
-            top: 10,
-            padding: `6px ${INDICATOR_INNER_HORIZONTAL_PADDING}px`,
-            borderRadius: 999,
-            background: "color-mix(in srgb, var(--cafe-hero-overlay-3) 28%, transparent)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            pointerEvents: "none",
-            zIndex: 4,
+            ["--indicator-segment-width" as string]: `${INDICATOR_SEGMENT_WIDTH}px`,
+            ["--indicator-segment-height" as string]: `${INDICATOR_SEGMENT_HEIGHT}px`,
+            ["--indicator-segment-gap" as string]: `${INDICATOR_SEGMENT_GAP}px`,
+            ["--indicator-inner-padding" as string]: `${INDICATOR_INNER_HORIZONTAL_PADDING}px`,
           }}
         >
-          <Group gap={INDICATOR_SEGMENT_GAP} wrap="nowrap">
+          <div className={classes.indicatorTrack}>
             {photoURLs.map((_, index) => (
-              <Box
+              <div
                 key={`photo-dot-${index + 1}`}
-                style={{
-                  width: INDICATOR_SEGMENT_WIDTH,
-                  height: INDICATOR_SEGMENT_HEIGHT,
-                  borderRadius: 999,
-                  background:
-                    index === activePhotoIndex
-                      ? "transparent"
-                      : "var(--cafe-hero-indicator-idle)",
-                  transition: "background 180ms ease",
-                }}
+                className={classes.indicatorSegment}
+                data-active={index === activePhotoIndex ? "true" : "false"}
               />
             ))}
-          </Group>
-          <Box
-            component={motion.div}
+          </div>
+          <motion.div
+            className={classes.indicatorActive}
             animate={{ x: indicatorOffset }}
             transition={{
               type: "spring",
@@ -350,48 +257,17 @@ export default function CafeCardHero({
               damping: 32,
               mass: 0.45,
             }}
-            style={{
-              position: "absolute",
-              left: INDICATOR_INNER_HORIZONTAL_PADDING,
-              top: 6,
-              width: INDICATOR_SEGMENT_WIDTH,
-              height: INDICATOR_SEGMENT_HEIGHT,
-              borderRadius: 999,
-              background: "var(--cafe-hero-indicator-active)",
-              boxShadow: "0 0 10px color-mix(in srgb, var(--cafe-hero-indicator-active) 55%, transparent)",
-            }}
+            style={{ left: INDICATOR_INNER_HORIZONTAL_PADDING }}
           />
-        </Box>
+        </div>
       )}
 
       {photoURLs.length > 1 && (
-        <Box
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 56,
-            zIndex: 2,
-            pointerEvents: "none",
-            background:
-              "linear-gradient(180deg, color-mix(in srgb, var(--cafe-hero-overlay-3) 34%, transparent) 0%, transparent 100%)",
-          }}
-        />
+        <div className={classes.topFade} />
       )}
 
-      <Box
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          background:
-            "linear-gradient(180deg, transparent 0%, transparent 56%, var(--cafe-hero-overlay-1) 64%, var(--cafe-hero-overlay-2) 82%, var(--cafe-hero-overlay-3) 100%)",
-          transition: "background 260ms ease",
-          zIndex: 1,
-        }}
-      />
+      <div className={classes.bottomOverlay} />
       {children}
-    </Box>
+    </div>
   );
 }

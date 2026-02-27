@@ -56,16 +56,6 @@ export default function CafeCard({
     overflow: "hidden",
   } as const;
 
-  const badgeStyles = {
-    root: {
-      background: "var(--surface)",
-      border: "1px solid var(--border)",
-      color: "var(--text)",
-      backdropFilter: "blur(12px)",
-      WebkitBackdropFilter: "blur(12px)",
-    },
-  } as const;
-
   const handleCardClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (!onOpenDetails) return;
     if (shouldSuppressCardClick()) return;
@@ -114,13 +104,8 @@ export default function CafeCard({
         onPhotoError={handlePhotoError}
         onTouchStart={handlePhotoTouchStart}
         onTouchEnd={handlePhotoTouchEnd}
-        badgeStyles={badgeStyles}
-        >
-        <CafeCardFooter
-          cafe={cafe}
-          badgeStyles={badgeStyles}
-          ratingRefreshToken={ratingRefreshToken}
-        />
+      >
+        <CafeCardFooter cafe={cafe} ratingRefreshToken={ratingRefreshToken} />
       </CafeCardHero>
     </div>
   );

@@ -11,6 +11,8 @@ type ReviewsSectionProps = {
   cafeId: string;
   opened: boolean;
   journeyID?: string;
+  focusReviewID?: string | null;
+  onFocusReviewApplied?: () => void;
   onReviewSaved?: (cafeId: string) => void;
 };
 
@@ -18,6 +20,8 @@ export default function ReviewsSection({
   cafeId,
   opened,
   journeyID = "",
+  focusReviewID = null,
+  onFocusReviewApplied,
   onReviewSaved,
 }: ReviewsSectionProps) {
   const controller = useReviewsSectionController({ cafeId, opened, journeyID, onReviewSaved });
@@ -27,6 +31,33 @@ export default function ReviewsSection({
     if (controller.submitSuccessVersion <= 0) return;
     setComposerOpen(false);
   }, [controller.submitSuccessVersion]);
+
+  useEffect(() => {
+    if (!focusReviewID || !opened) return;
+    if (controller.sort !== "helpful") {
+      controller.setSort("helpful");
+    }
+    if (controller.positionFilter !== "all") {
+      controller.setPositionFilter("all");
+    }
+  }, [controller.positionFilter, controller.setPositionFilter, controller.setSort, controller.sort, focusReviewID, opened]);
+
+  useEffect(() => {
+    if (!focusReviewID || !opened) return;
+    if (controller.isLoading || controller.isLoadingMore) return;
+    const hasTargetReview = controller.reviews.some((review) => review.id === focusReviewID);
+    if (hasTargetReview) return;
+    if (!controller.hasMore) return;
+    controller.onLoadMore();
+  }, [
+    controller.hasMore,
+    controller.isLoading,
+    controller.isLoadingMore,
+    controller.onLoadMore,
+    controller.reviews,
+    focusReviewID,
+    opened,
+  ]);
 
   const handleComposerToggle = () => {
     setComposerOpen((prev) => {
@@ -102,6 +133,8 @@ export default function ReviewsSection({
         hasMore={controller.hasMore}
         onLoadMore={controller.onLoadMore}
         onReviewRead={controller.onReviewRead}
+        focusReviewID={focusReviewID}
+        onFocusReviewApplied={onFocusReviewApplied}
       />
 
       <div

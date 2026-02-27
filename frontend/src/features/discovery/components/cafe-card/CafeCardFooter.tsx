@@ -1,15 +1,13 @@
-import { IconMessageCircle, IconSparkles, IconStarFilled } from "@tabler/icons-react";
+import { IconMessageCircle, IconStarFilled } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { getCafeRatingSnapshot, type CafeRatingSnapshot } from "../../../../api/reviews";
 import { Badge } from "../../../../components/ui";
 import type { Cafe } from "../../../../entities/cafe/model/types";
-import { AMENITY_LABELS } from "../../constants";
 import { resolveCafeDisplayRating } from "../../utils/ratingDisplay";
 
 type CafeCardFooterProps = {
   cafe: Cafe;
-  badgeStyles: Record<string, unknown>;
   ratingRefreshToken?: number;
 };
 
@@ -23,24 +21,8 @@ export function invalidateCafeCardRatingSnapshot(cafeId?: string) {
   cafeRatingSnapshotCache.clear();
 }
 
-function buildAmenityDescriptors(amenities: string[]): string[] {
-  const descriptors: string[] = [];
-  for (const amenity of amenities) {
-    const label = (AMENITY_LABELS[amenity] ?? amenity).trim();
-    if (!label) continue;
-    descriptors.push(`есть ${label}`);
-  }
-  return descriptors;
-}
-
-function normalizeSummaryText(raw: string | undefined): string {
-  if (!raw) return "";
-  return raw.replace(/\s+/g, " ").trim();
-}
-
 export default function CafeCardFooter({
   cafe,
-  badgeStyles,
   ratingRefreshToken = 0,
 }: CafeCardFooterProps) {
   const [ratingState, setRatingState] = useState<{
@@ -114,40 +96,11 @@ export default function CafeCardFooter({
     if (displayRating.value === null) return "";
     return displayRating.value.toFixed(1);
   }, [displayRating.value]);
-  const descriptiveLabels = useMemo(() => {
-    const fromSnapshot = (ratingSnapshot?.descriptive_tags ?? [])
-      .map((item) => item.label.trim())
-      .filter(Boolean);
-    const fromAISummary = (ratingSnapshot?.ai_summary?.tags ?? [])
-      .map((item) => item.trim())
-      .filter(Boolean);
-    const base =
-      fromSnapshot.length > 0
-        ? fromSnapshot
-        : fromAISummary.length > 0
-          ? fromAISummary
-          : buildAmenityDescriptors(cafe.amenities);
-    const unique = Array.from(new Map(base.map((item) => [item.toLowerCase(), item])).values());
-    return unique.slice(0, 4);
-  }, [cafe.amenities, ratingSnapshot?.ai_summary?.tags, ratingSnapshot?.descriptive_tags]);
-
-  const summaryPreview = useMemo(() => {
-    const summary = normalizeSummaryText(ratingSnapshot?.ai_summary?.summary_short);
-    if (summary) return summary;
-    return normalizeSummaryText(ratingSnapshot?.ai_summary?.stale_notice);
-  }, [ratingSnapshot?.ai_summary?.stale_notice, ratingSnapshot?.ai_summary?.summary_short]);
 
   const lineClampSingleStyle = {
     display: "-webkit-box",
     WebkitBoxOrient: "vertical" as const,
     WebkitLineClamp: 1,
-    overflow: "hidden",
-  };
-
-  const lineClampDoubleStyle = {
-    display: "-webkit-box",
-    WebkitBoxOrient: "vertical" as const,
-    WebkitLineClamp: 2,
     overflow: "hidden",
   };
 
@@ -208,47 +161,6 @@ export default function CafeCardFooter({
             >
               {cafe.address}
             </p>
-            {ratingLoading ? (
-              <p
-                style={{
-                  margin: "6px 0 0",
-                  fontSize: "0.75rem",
-                  color: "color-mix(in srgb, var(--cafe-hero-subtitle-color) 90%, var(--text))",
-                }}
-              >
-                Считываем отзывы...
-              </p>
-            ) : summaryPreview ? (
-              <div
-                style={{
-                  marginTop: 6,
-                  display: "inline-flex",
-                  alignItems: "flex-start",
-                  gap: 6,
-                  width: "fit-content",
-                  maxWidth: "100%",
-                  borderRadius: 10,
-                  padding: "4px 8px",
-                  border: "1px solid color-mix(in srgb, var(--glass-border) 85%, transparent)",
-                  background:
-                    "linear-gradient(135deg, color-mix(in srgb, var(--surface) 85%, transparent), color-mix(in srgb, var(--surface) 58%, transparent))",
-                  backdropFilter: "blur(6px)",
-                  WebkitBackdropFilter: "blur(6px)",
-                }}
-              >
-                <IconSparkles size={12} color="var(--cafe-hero-emphasis-color)" />
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "0.75rem",
-                    color: "color-mix(in srgb, var(--cafe-hero-title-color) 84%, var(--text))",
-                    ...lineClampDoubleStyle,
-                  }}
-                >
-                  {summaryPreview}
-                </p>
-              </div>
-            ) : null}
           </div>
           <div
             style={{
@@ -308,29 +220,6 @@ export default function CafeCardFooter({
           </div>
         </div>
       </div>
-      {descriptiveLabels.length > 0 && (
-        <div
-          style={{
-            marginTop: 8,
-            display: "flex",
-            flexWrap: "nowrap",
-            gap: 6,
-            overflow: "hidden",
-            WebkitMaskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
-            maskImage: "linear-gradient(90deg, currentColor 80%, transparent)",
-          }}
-        >
-          {descriptiveLabels.map((label) => (
-            <Badge
-              key={label}
-              variant="secondary"
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-0.5 text-[0.75rem] font-semibold text-[var(--text)]"
-            >
-              {label}
-            </Badge>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

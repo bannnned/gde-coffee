@@ -389,3 +389,33 @@ Critical path stack-transition:
 - Артефакт: de-Mantine top controls bar в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.tsx`.
 - Артефакт: de-Mantine bottom sheet shell/container в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/BottomSheet.tsx`.
 - Проверка: `npm run typecheck`, `npm run build` — pass.
+
+### [x] W4-C · Discovery location choice flow de-Mantine (P1, status: done)
+- Цель: убрать прямые зависимости `@mantine/core` из header/overlay/empty-state сценариев выбора локации и пустого состояния на главном экране.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/EmptyStateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/sheet/DiscoveryLocationChoiceHeader.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/sheet/DiscoveryManualPickHeader.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/map/ManualPickOverlay.tsx`.
+- Depends on: `W4-B`.
+- AC: `EmptyStateCard` не использует Mantine `Paper/Stack/Text/Button/ThemeIcon/ActionIcon/Select`.
+- AC: `DiscoveryLocationChoiceHeader` и `DiscoveryManualPickHeader` не используют Mantine `Paper/Stack/Text/Button/Select`.
+- AC: `ManualPickOverlay` не использует Mantine `Box/Group/Button`.
+- AC: select-контракты сохранены через bridge (`AppSelect`) без изменения сценариев выбора города.
+- Артефакт: de-Mantine empty state + style module в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/EmptyStateCard.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/EmptyStateCard.module.css`.
+- Артефакт: de-Mantine location headers в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/sheet/DiscoveryLocationChoiceHeader.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/sheet/DiscoveryLocationChoiceHeader.module.css`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/sheet/DiscoveryManualPickHeader.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/sheet/DiscoveryManualPickHeader.module.css`.
+- Артефакт: de-Mantine manual-pick overlay в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/map/ManualPickOverlay.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/map/ManualPickOverlay.module.css`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W4-D · Discovery hero + rating diagnostics de-Mantine (P1, status: done)
+- Цель: снять прямые зависимости `@mantine/core` в выбранной карточке (hero) и в блоках диагностики рейтинга внутри деталки.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/cafe-card/CafeCardHero.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/RatingPanel.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/AdminDiagnosticsPanel.tsx`.
+- Depends on: `W4-C`.
+- AC: `CafeCardHero` не использует Mantine `Box/Stack/Group/Button/Badge`, включая route-кнопки, distance-бейдж и photo-indicators.
+- AC: `RatingPanel` не использует Mantine `Badge/Group/Paper/Stack/Text`, сохраняя логику чипов рейтинга, лучшего отзыва и перехода к отзывам.
+- AC: `AdminDiagnosticsPanel` не использует Mantine `Badge/Button/Group/Paper/Stack/Text`, сохраняя все метрики, AI-поля и top-reviews list.
+- Артефакт: de-Mantine hero + style module в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/cafe-card/CafeCardHero.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/cafe-card/CafeCardHero.module.css`.
+- Артефакт: de-Mantine rating panel + style module в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/RatingPanel.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/RatingPanel.module.css`.
+- Артефакт: de-Mantine admin diagnostics panel + style module в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/AdminDiagnosticsPanel.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/sections/AdminDiagnosticsPanel.module.css`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

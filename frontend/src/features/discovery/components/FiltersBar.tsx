@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { IconHeart, IconHeartFilled, IconLogin } from "@tabler/icons-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -38,6 +38,7 @@ export default function FiltersBar({
   const { user, status, openAuthModal } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isOpeningProfile, setIsOpeningProfile] = useState(false);
   const avatarUrl = useMemo(() => resolveAvatarUrl(user?.avatarUrl), [user]);
   const userLabel = useMemo(() => {
     const value =
@@ -77,6 +78,32 @@ export default function FiltersBar({
     };
   }, [setFiltersBarHeight]);
 
+  useEffect(() => {
+    if (location.pathname === "/profile") {
+      setIsOpeningProfile(false);
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isOpeningProfile) return;
+    const resetTimer = window.setTimeout(() => {
+      setIsOpeningProfile(false);
+    }, 2500);
+    return () => {
+      window.clearTimeout(resetTimer);
+    };
+  }, [isOpeningProfile]);
+
+  useEffect(() => {
+    if (!user) return;
+    const prefetchTimer = window.setTimeout(() => {
+      void import("../../../pages/ProfileScreen");
+    }, 800);
+    return () => {
+      window.clearTimeout(prefetchTimer);
+    };
+  }, [user]);
+
   const isClickSuppressed = Date.now() < suppressClicksUntil;
 
   return (
@@ -101,7 +128,8 @@ export default function FiltersBar({
             aria-label="Open profile"
             type="button"
             onClick={() => {
-              if (isClickSuppressed) return;
+              if (isClickSuppressed || isOpeningProfile) return;
+              setIsOpeningProfile(true);
               const overlayBackgroundLocation = {
                 pathname: location.pathname,
                 search: location.search,
@@ -114,8 +142,11 @@ export default function FiltersBar({
               });
             }}
             title={userLabel}
+            aria-busy={isOpeningProfile}
           >
-            {avatarUrl ? (
+            {isOpeningProfile ? (
+              <span className={classes.userSpinner} aria-hidden="true" />
+            ) : avatarUrl ? (
               <img
                 src={avatarUrl}
                 alt={userLabel || "User"}

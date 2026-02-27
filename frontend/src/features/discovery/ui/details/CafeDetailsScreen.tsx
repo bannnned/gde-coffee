@@ -74,6 +74,7 @@ export default function CafeDetailsScreen({
   canViewAdminDiagnostics = false,
 }: CafeDetailsScreenProps) {
   const [section, setSection] = useState<DetailsSection>("about");
+  const [focusReviewID, setFocusReviewID] = useState<string | null>(null);
   const [description, setDescription] = useState((cafe?.description ?? "").trim());
   const [descriptionDraft, setDescriptionDraft] = useState((cafe?.description ?? "").trim());
   const [descriptionEditing, setDescriptionEditing] = useState(false);
@@ -143,6 +144,7 @@ export default function CafeDetailsScreen({
   useEffect(() => {
     if (!opened) return;
     setSection("about");
+    setFocusReviewID(null);
     const nextDescription = (cafe?.description ?? "").trim();
     setDescription(nextDescription);
     setDescriptionDraft(nextDescription);
@@ -287,7 +289,14 @@ export default function CafeDetailsScreen({
       ratingReviews={ratingReviews}
       verifiedSharePercent={verifiedSharePercent}
       showVerifiedSharePercent={canViewAdminDiagnostics}
-      onOpenReviews={() => setSection("reviews")}
+      onOpenReviews={() => {
+        setFocusReviewID(null);
+        setSection("reviews");
+      }}
+      onOpenBestReview={(reviewID) => {
+        setFocusReviewID(reviewID);
+        setSection("reviews");
+      }}
       ratingLoading={ratingLoading}
       ratingError={ratingError}
       bestReview={bestReview}
@@ -344,7 +353,12 @@ export default function CafeDetailsScreen({
               <button
                 key={item.value}
                 type="button"
-                onClick={() => setSection(item.value)}
+                onClick={() => {
+                  if (item.value !== "reviews") {
+                    setFocusReviewID(null);
+                  }
+                  setSection(item.value);
+                }}
                 className={cn(
                   "rounded-[12px] border px-2 py-2 text-sm font-semibold transition ui-interactive",
                   active
@@ -428,6 +442,8 @@ export default function CafeDetailsScreen({
             cafeId={cafe.id}
             opened={opened}
             journeyID={journeyID}
+            focusReviewID={focusReviewID}
+            onFocusReviewApplied={() => setFocusReviewID(null)}
             onReviewSaved={handleReviewSaved}
           />
         </div>

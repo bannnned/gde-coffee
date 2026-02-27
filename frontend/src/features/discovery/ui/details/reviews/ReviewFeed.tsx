@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { IconStarFilled, IconThumbUp } from "@tabler/icons-react";
 
@@ -54,6 +54,8 @@ type ReviewFeedProps = {
   hasMore: boolean;
   onLoadMore: () => void;
   onReviewRead: (review: CafeReview) => void;
+  focusReviewID?: string | null;
+  onFocusReviewApplied?: () => void;
 };
 
 export function ReviewFeed({
@@ -75,13 +77,24 @@ export function ReviewFeed({
   hasMore,
   onLoadMore,
   onReviewRead,
+  focusReviewID = null,
+  onFocusReviewApplied,
 }: ReviewFeedProps) {
   const [expandedReviewID, setExpandedReviewID] = useState<string | null>(null);
+  const [highlightedReviewID, setHighlightedReviewID] = useState<string | null>(null);
   const [photoViewerState, setPhotoViewerState] = useState<{
     title: string;
     photos: PhotoLightboxItem[];
     index: number;
   } | null>(null);
+  const reviewCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const setReviewCardRef = useCallback(
+    (reviewID: string) => (node: HTMLDivElement | null) => {
+      reviewCardRefs.current[reviewID] = node;
+    },
+    [],
+  );
 
   const expandedReview = useMemo(
     () => reviews.find((item) => item.id === expandedReviewID) ?? null,
@@ -152,6 +165,37 @@ export function ReviewFeed({
     return "Сюда давно не заходили. Исправьте это и оставьте свежий отзыв.";
   }, [positionFilter, reviews]);
 
+  useEffect(() => {
+    if (!focusReviewID) return;
+    const targetReview = reviews.find((review) => review.id === focusReviewID);
+    if (!targetReview) return;
+    const targetNode = reviewCardRefs.current[focusReviewID];
+    if (!targetNode) return;
+
+    const frameID = window.requestAnimationFrame(() => {
+      targetNode.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      setHighlightedReviewID(focusReviewID);
+      onFocusReviewApplied?.();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameID);
+    };
+  }, [focusReviewID, onFocusReviewApplied, reviews]);
+
+  useEffect(() => {
+    if (!highlightedReviewID) return;
+    const timerID = window.setTimeout(() => {
+      setHighlightedReviewID(null);
+    }, 2200);
+    return () => {
+      window.clearTimeout(timerID);
+    };
+  }, [highlightedReviewID]);
+
   return (
     <div className="relative">
       {showReviewFilters ? (
@@ -213,15 +257,17 @@ export function ReviewFeed({
         ) : null}
 
         {!loadError
-          ? reviews.map((review, index) => (
+            ? reviews.map((review, index) => (
               <motion.div
                 key={review.id}
+                ref={setReviewCardRef(review.id)}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: Math.min(index, 6) * 0.024 }}
               >
                 <ReviewCard
                   review={review}
+                  isHighlighted={review.id === highlightedReviewID}
                   isOwn={review.user_id === currentUserId}
                   helpfulLoading={helpfulPendingReviewID === review.id}
                   onMarkHelpful={onMarkHelpful}
@@ -361,6 +407,7 @@ function ReviewCardSkeleton() {
 
 type ReviewCardProps = {
   review: CafeReview;
+  isHighlighted?: boolean;
   isOwn: boolean;
   helpfulLoading: boolean;
   onMarkHelpful: (review: CafeReview) => void;
@@ -375,6 +422,7 @@ type ReviewCardProps = {
 
 function ReviewCard({
   review,
+  isHighlighted = false,
   isOwn,
   helpfulLoading,
   onMarkHelpful,
@@ -460,6 +508,16 @@ function ReviewCard({
     <div
       ref={cardRef}
       className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4"
+      style={
+        isHighlighted
+          ? {
+              borderColor:
+                "color-mix(in srgb, var(--color-brand-accent) 58%, var(--border))",
+              boxShadow:
+                "0 0 0 2px color-mix(in srgb, var(--color-brand-accent) 28%, transparent), 0 14px 28px color-mix(in srgb, var(--color-brand-accent-soft) 30%, transparent)",
+            }
+          : undefined
+      }
     >
       <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
