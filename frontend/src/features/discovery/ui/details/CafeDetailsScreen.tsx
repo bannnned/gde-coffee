@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Box } from "@mantine/core";
 import {
   IconHeart,
   IconHeartFilled,
@@ -197,16 +196,6 @@ export default function CafeDetailsScreen({
 
   if (!cafe) return null;
 
-  const cardStyles = {
-    background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-    border: "1px solid var(--glass-border)",
-    boxShadow: "var(--shadow)",
-    backdropFilter: "blur(18px) saturate(160%)",
-    WebkitBackdropFilter: "blur(18px) saturate(160%)",
-    overflow: "hidden",
-    borderRadius: "var(--radius-lg)",
-  } as const;
-
   const handleStartDescription = () => {
     if (!canManageDirectly) return;
     if (onStartDescriptionEdit && !onStartDescriptionEdit()) {
@@ -290,6 +279,8 @@ export default function CafeDetailsScreen({
       ratingLabel={ratingLabel}
       ratingReviews={ratingReviews}
       verifiedSharePercent={verifiedSharePercent}
+      showVerifiedSharePercent={canViewAdminDiagnostics}
+      onOpenReviews={() => setSection("reviews")}
       ratingLoading={ratingLoading}
       ratingError={ratingError}
       bestReview={bestReview}
@@ -335,107 +326,105 @@ export default function CafeDetailsScreen({
           </Button>
         </div>
       }
-      contentClassName="bg-glass border border-glass-border shadow-[var(--shadow)] backdrop-blur-[18px] backdrop-saturate-[160%]"
-      bodyClassName="px-[var(--page-edge-padding)] pb-[calc(var(--page-edge-padding)+var(--safe-bottom))]"
+      contentClassName="border border-glass-border bg-[linear-gradient(135deg,var(--glass-grad-1),var(--glass-grad-2))] shadow-[var(--shadow)] backdrop-blur-[18px] backdrop-saturate-[160%]"
+      bodyClassName="pb-[calc(var(--page-edge-padding)+var(--safe-bottom))]"
     >
-      <div style={cardStyles}>
-        <div className="px-[var(--page-edge-padding)] pb-2 pt-4">
-          <div className="grid grid-cols-3 gap-1 rounded-[14px] border border-[var(--glass-border)] bg-[var(--surface)] p-1">
-            {DETAILS_SECTION_CONTROL_DATA.map((item) => {
-              const active = section === item.value;
-              return (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => setSection(item.value)}
-                  className={cn(
-                    "rounded-[12px] border px-2 py-2 text-sm font-semibold transition ui-interactive",
-                    active
-                      ? "border-[var(--glass-border)] bg-[linear-gradient(135deg,var(--glass-grad-1),var(--glass-grad-2))] text-[var(--text)] shadow-[var(--glass-shadow)]"
-                      : "border-transparent bg-transparent text-[var(--text)]/82 hover:bg-[var(--card)]",
-                  )}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
+      <div className="px-[var(--page-edge-padding)] pb-2 pt-4">
+        <div className="grid grid-cols-3 gap-1 rounded-[14px] border border-[var(--glass-border)] bg-[var(--surface)] p-1">
+          {DETAILS_SECTION_CONTROL_DATA.map((item) => {
+            const active = section === item.value;
+            return (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setSection(item.value)}
+                className={cn(
+                  "rounded-[12px] border px-2 py-2 text-sm font-semibold transition ui-interactive",
+                  active
+                    ? "border-[var(--glass-border)] bg-[linear-gradient(135deg,var(--glass-grad-1),var(--glass-grad-2))] text-[var(--text)] shadow-[var(--glass-shadow)]"
+                    : "border-transparent bg-transparent text-[var(--text)]/82 hover:bg-[var(--card)]",
+                )}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
-
-        {section === "about" && (
-          <AboutSection
-            cafe={cafe}
-            aboutMainPhoto={aboutMainPhoto}
-            aboutPhotoItems={aboutPhotoItems}
-            aboutActiveIndex={aboutActiveIndex}
-            aboutImageReady={aboutImageReady}
-            isPhotoProcessing={isCafePhotoProcessing}
-            onOpenViewer={() => openViewer("cafe", aboutActiveIndex)}
-            onAboutMainPhotoLoad={(src) => {
-              if (src) {
-                loadedAboutUrlsRef.current.add(src);
-              }
-              setAboutImageReady(true);
-            }}
-            onAboutMainPhotoError={() => setAboutImageReady(true)}
-            onSelectAboutPhoto={setAboutActiveIndex}
-            ratingPanel={ratingPanel}
-            showDistance={showDistance}
-            showRoutes={showRoutes}
-            onOpen2gis={onOpen2gis}
-            onOpenYandex={onOpenYandex}
-            descriptionEditing={descriptionEditing}
-            description={description}
-            descriptionDraft={descriptionDraft}
-            descriptionSaving={descriptionSaving}
-            descriptionError={descriptionError}
-            descriptionHint={descriptionHint}
-            descriptionActionLabel={descriptionActionLabel}
-            canManageDirectly={canManageDirectly}
-            onDescriptionDraftChange={setDescriptionDraft}
-            onStartDescription={handleStartDescription}
-            onCancelDescription={handleCancelDescription}
-            onSaveDescription={() => {
-              void handleSaveDescription();
-            }}
-            onManagePhotos={onManagePhotos}
-            canSaveDescription={Boolean(onSaveDescription)}
-          />
-        )}
-
-        {section === "menu" && (
-          <MenuSection
-            cafe={cafe}
-            menuMainPhoto={menuMainPhoto}
-            menuPhotoItems={menuPhotoItems}
-            specificTags={specificTags}
-            menuActiveIndex={menuActiveIndex}
-            menuImageReady={menuImageReady}
-            isPhotoProcessing={isMenuPhotoProcessing}
-            onOpenViewer={() => openViewer("menu", menuActiveIndex)}
-            onMenuMainPhotoLoad={(src) => {
-              if (src) {
-                loadedMenuUrlsRef.current.add(src);
-              }
-              setMenuImageReady(true);
-            }}
-            onMenuMainPhotoError={() => setMenuImageReady(true)}
-            onSelectMenuPhoto={setMenuActiveIndex}
-            onManagePhotos={onManagePhotos}
-          />
-        )}
-
-        {section === "reviews" && (
-          <Box pb="md" style={{ paddingInline: "var(--page-edge-padding)" }}>
-            <ReviewsSection
-              cafeId={cafe.id}
-              opened={opened}
-              journeyID={journeyID}
-              onReviewSaved={onReviewSaved}
-            />
-          </Box>
-        )}
       </div>
+
+      {section === "about" && (
+        <AboutSection
+          cafe={cafe}
+          aboutMainPhoto={aboutMainPhoto}
+          aboutPhotoItems={aboutPhotoItems}
+          aboutActiveIndex={aboutActiveIndex}
+          aboutImageReady={aboutImageReady}
+          isPhotoProcessing={isCafePhotoProcessing}
+          onOpenViewer={() => openViewer("cafe", aboutActiveIndex)}
+          onAboutMainPhotoLoad={(src) => {
+            if (src) {
+              loadedAboutUrlsRef.current.add(src);
+            }
+            setAboutImageReady(true);
+          }}
+          onAboutMainPhotoError={() => setAboutImageReady(true)}
+          onSelectAboutPhoto={setAboutActiveIndex}
+          ratingPanel={ratingPanel}
+          showDistance={showDistance}
+          showRoutes={showRoutes}
+          onOpen2gis={onOpen2gis}
+          onOpenYandex={onOpenYandex}
+          descriptionEditing={descriptionEditing}
+          description={description}
+          descriptionDraft={descriptionDraft}
+          descriptionSaving={descriptionSaving}
+          descriptionError={descriptionError}
+          descriptionHint={descriptionHint}
+          descriptionActionLabel={descriptionActionLabel}
+          canManageDirectly={canManageDirectly}
+          onDescriptionDraftChange={setDescriptionDraft}
+          onStartDescription={handleStartDescription}
+          onCancelDescription={handleCancelDescription}
+          onSaveDescription={() => {
+            void handleSaveDescription();
+          }}
+          onManagePhotos={onManagePhotos}
+          canSaveDescription={Boolean(onSaveDescription)}
+        />
+      )}
+
+      {section === "menu" && (
+        <MenuSection
+          cafe={cafe}
+          menuMainPhoto={menuMainPhoto}
+          menuPhotoItems={menuPhotoItems}
+          specificTags={specificTags}
+          menuActiveIndex={menuActiveIndex}
+          menuImageReady={menuImageReady}
+          isPhotoProcessing={isMenuPhotoProcessing}
+          onOpenViewer={() => openViewer("menu", menuActiveIndex)}
+          onMenuMainPhotoLoad={(src) => {
+            if (src) {
+              loadedMenuUrlsRef.current.add(src);
+            }
+            setMenuImageReady(true);
+          }}
+          onMenuMainPhotoError={() => setMenuImageReady(true)}
+          onSelectMenuPhoto={setMenuActiveIndex}
+          onManagePhotos={onManagePhotos}
+        />
+      )}
+
+      {section === "reviews" && (
+        <div className="pb-4" style={{ paddingInline: "var(--page-edge-padding)" }}>
+          <ReviewsSection
+            cafeId={cafe.id}
+            opened={opened}
+            journeyID={journeyID}
+            onReviewSaved={onReviewSaved}
+          />
+        </div>
+      )}
 
       <PhotoLightboxModal
         opened={viewerOpen}

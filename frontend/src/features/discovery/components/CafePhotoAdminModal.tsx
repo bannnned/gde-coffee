@@ -6,7 +6,6 @@ import {
   Button,
   Group,
   Modal,
-  Paper,
   Skeleton,
   Stack,
   Text,
@@ -325,7 +324,7 @@ export default function CafePhotoAdminModal({
       onClose={onClose}
       fullScreen
       withCloseButton
-      zIndex={420}
+      zIndex={3600}
       title={`Фото ${photoKindLabel}: ${cafeName}`}
       styles={{
         content: {
@@ -350,166 +349,176 @@ export default function CafePhotoAdminModal({
       }}
     >
       <Stack gap="md">
-        <Stack gap={0}>
-          <Button
-            variant="default"
-            leftSection={<IconArrowLeft size={16} />}
-            onClick={onClose}
-            radius="xl"
-            styles={glassButtonStyles}
-            style={{ alignSelf: "flex-start", marginTop: 8, marginBottom: 8 }}
-          >
-            К карточке
-          </Button>
+        <Button
+          variant="default"
+          leftSection={<IconArrowLeft size={16} />}
+          onClick={onClose}
+          radius="xl"
+          styles={glassButtonStyles}
+          style={{ alignSelf: "flex-start", marginTop: 8, marginBottom: 8 }}
+        >
+          К карточке
+        </Button>
 
-          <Paper
-            withBorder
-            p="md"
-            radius="md"
-            onDrop={handleDropUpload}
-            onDragOver={handleDragOverUpload}
-            style={{
-              border: "1px dashed var(--border)",
-              background: "var(--surface)",
-            }}
-          >
-            <Stack gap="sm">
-              <Group justify="space-between" align="center">
-                <Text fw={600}>Загрузка фото</Text>
-                <Badge variant="light">
-                  {isUploading
-                    ? `Обрабатываем ${uploadSkeletonCount}...`
-                    : photosCountLabel}
-                </Badge>
-              </Group>
-              <Text size="sm" c="dimmed">
-                Нажмите на слот с плюсом или перетащите файлы в эту область.
-              </Text>
-              <Box
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))",
-                  gap: 8,
-                }}
-              >
-                {uploadPreviewPhotos.map((photo, index) => (
-                  <Box
-                    key={`upload-preview-${photo.id}`}
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      aspectRatio: "1 / 1",
-                      borderRadius: 12,
-                      overflow: "hidden",
-                      border: "1px solid var(--border)",
-                      background: "var(--surface)",
-                    }}
-                  >
-                    <img
-                      src={photo.url}
-                      alt={`Фото ${index + 1}`}
-                      loading="lazy"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        display: "block",
-                      }}
-                    />
-                  </Box>
-                ))}
-                {Array.from({ length: uploadSkeletonCount }).map((_, index) => (
-                  <Box
-                    key={`upload-skeleton-${index + 1}`}
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      aspectRatio: "1 / 1",
-                      borderRadius: 12,
-                      overflow: "hidden",
-                      border: "1px solid var(--border)",
-                      background: "var(--surface)",
-                    }}
-                  >
-                    <Skeleton
-                      visible
-                      animate
-                      h="100%"
-                      radius={12}
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                      }}
-                    />
-                  </Box>
-                ))}
-                <button
-                  type="button"
-                  onClick={handlePickFiles}
-                  disabled={isUploading || !cafeId}
-                  aria-label="Добавить фото"
+        <Box
+          onDrop={handleDropUpload}
+          onDragOver={handleDragOverUpload}
+          style={{
+            border: "1px dashed var(--border)",
+            borderRadius: 14,
+            background: "transparent",
+            padding: 0,
+          }}
+        >
+          <Stack gap="sm">
+            <Group justify="space-between" align="center">
+              <Text fw={600}>Загрузка фото</Text>
+              <Badge variant="light">
+                {isUploading
+                  ? `Обрабатываем ${uploadSkeletonCount}...`
+                  : photosCountLabel}
+              </Badge>
+            </Group>
+            <Text size="sm" c="dimmed">
+              Нажмите на слот с плюсом или перетащите файлы в эту область.
+            </Text>
+            <Box
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(84px, 1fr))",
+                gap: 8,
+              }}
+            >
+              {uploadPreviewPhotos.map((photo, index) => (
+                <Box
+                  key={`upload-preview-${photo.id}`}
                   style={{
+                    position: "relative",
                     width: "100%",
                     aspectRatio: "1 / 1",
                     borderRadius: 12,
-                    border: "1.5px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
-                    background: "color-mix(in srgb, var(--surface) 86%, transparent)",
-                    color: "var(--muted)",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: isUploading || !cafeId ? "not-allowed" : "pointer",
-                    opacity: isUploading ? 0.6 : 1,
+                    overflow: "hidden",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
                   }}
                 >
-                  <IconPlus size={24} />
-                </button>
-              </Box>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/avif"
-                multiple
-                hidden
-                onChange={(event) => {
-                  void handleUploadFiles(event.currentTarget.files);
+                  <img
+                    src={photo.url}
+                    alt={`Фото ${index + 1}`}
+                    loading="lazy"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </Box>
+              ))}
+              {Array.from({ length: uploadSkeletonCount }).map((_, index) => (
+                <Box
+                  key={`upload-skeleton-${index + 1}`}
+                  style={{
+                    position: "relative",
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                  }}
+                >
+                  <Skeleton
+                    visible
+                    animate
+                    h="100%"
+                    radius={12}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                    }}
+                  />
+                </Box>
+              ))}
+              <button
+                type="button"
+                onClick={handlePickFiles}
+                disabled={isUploading || !cafeId}
+                aria-label="Добавить фото"
+                style={{
+                  width: "100%",
+                  aspectRatio: "1 / 1",
+                  borderRadius: 12,
+                  border: "1.5px dashed color-mix(in srgb, var(--color-brand-accent) 55%, var(--border))",
+                  background: "color-mix(in srgb, var(--surface) 86%, transparent)",
+                  color: "var(--muted)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: isUploading || !cafeId ? "not-allowed" : "pointer",
+                  opacity: isUploading ? 0.6 : 1,
                 }}
-              />
-            </Stack>
-          </Paper>
-        </Stack>
+              >
+                <IconPlus size={24} />
+              </button>
+            </Box>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              multiple
+              hidden
+              onChange={(event) => {
+                void handleUploadFiles(event.currentTarget.files);
+              }}
+            />
+          </Stack>
+        </Box>
 
         {lastError && (
-          <Paper withBorder p="sm" radius="md" style={{ borderColor: "var(--color-status-error)" }}>
+          <Box
+            p="sm"
+            style={{
+              borderRadius: 12,
+              border: "1px solid var(--color-status-error)",
+            }}
+          >
             <Text size="sm" c="red.6">
               {lastError}
             </Text>
-          </Paper>
+          </Box>
         )}
 
         <Stack gap="xs">
           {isLoading && <Text size="sm">Загружаем фото...</Text>}
           {!isLoading && photos.length === 0 && (
-            <Paper withBorder radius="md" p="md" style={{ background: "var(--surface)" }}>
+            <Box
+              p="md"
+              style={{
+                borderRadius: 12,
+                border: "1px solid var(--border)",
+                background: "transparent",
+              }}
+            >
               <Text size="sm" c="dimmed">
                 {isCafeKind
                   ? "Пока нет фото. Добавьте первые изображения места."
                   : "Пока нет фото. Добавьте первые изображения меню и позиций."}
               </Text>
-            </Paper>
+            </Box>
           )}
           {photos.map((photo, index) => (
-            <Paper
+            <Box
               key={photo.id}
-              withBorder
-              radius="md"
               p="xs"
               draggable
               onDragStart={() => handleDragStart(photo.id)}
               onDragOver={handleDragOverRow}
               onDrop={(event) => handleDropRow(event, photo.id)}
               style={{
-                background: "var(--surface)",
+                borderRadius: 12,
+                border: "1px solid",
+                background: "transparent",
                 borderColor:
                   draggedPhotoId === photo.id
                     ? "var(--color-brand-accent)"
@@ -590,7 +599,7 @@ export default function CafePhotoAdminModal({
                   </Group>
                 </Stack>
               </Group>
-            </Paper>
+            </Box>
           ))}
         </Stack>
       </Stack>

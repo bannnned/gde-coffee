@@ -3,11 +3,8 @@
   Box,
   Button,
   Group,
-  PasswordInput,
   Stack,
   Text,
-  TextInput,
-  Textarea,
   Title,
   useComputedColorScheme,
   useMantineColorScheme,
@@ -43,6 +40,7 @@ import {
   type ReviewsVersioningStatus,
 } from "../api/reviews";
 import { useAuth } from "../components/AuthGate";
+import { Button as UIButton, Input } from "../components/ui";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import useOauthRedirect from "../hooks/useOauthRedirect";
 import classes from "./SettingsScreen.module.css";
@@ -981,17 +979,18 @@ export default function SettingsScreen() {
                 Подтверждение почты нужно для защиты аккаунта и восстановления.
               </Text>
               <Group className={classes.actionsRow} mt="md">
-                <Button
-                  variant="filled"
-                  className={classes.actionButton}
+                <UIButton
+                  type="button"
+                  variant="default"
+                  className="h-11 rounded-[14px] px-4"
                   onClick={() => {
                     void handleVerifyRequest();
                   }}
-                  leftSection={<IconShieldCheck size={16} />}
                   disabled={status !== "authed"}
                 >
+                  <IconShieldCheck size={16} />
                   Отправить письмо подтверждения
-                </Button>
+                </UIButton>
               </Group>
               {verifySuccess && (
                 <div className={classes.banner} style={{ marginTop: 12 }}>
@@ -1030,17 +1029,25 @@ export default function SettingsScreen() {
                       },
                     }}
                     render={({ field }) => (
-                        <TextInput
-                          label="Новый email"
+                      <label className={classes.fieldBlock}>
+                        <span className={classes.fieldLabel}>Новый email</span>
+                        <Input
+                          type="email"
                           placeholder="new@example.com"
                           value={field.value ?? ""}
                           onChange={field.onChange}
                           onBlur={field.onBlur}
                           onFocus={handleFieldFocus}
                           ref={field.ref}
-                          error={emailErrors.newEmail?.message}
+                          className={classes.fieldInput}
                         />
-                      )}
+                        {emailErrors.newEmail?.message ? (
+                          <span className={classes.fieldError}>
+                            {String(emailErrors.newEmail.message)}
+                          </span>
+                        ) : null}
+                      </label>
+                    )}
                   />
                   <Controller
                     name="currentPassword"
@@ -1050,27 +1057,41 @@ export default function SettingsScreen() {
                       minLength: { value: 8, message: "Минимум 8 символов" },
                     }}
                     render={({ field }) => (
-                        <PasswordInput
-                          label="Текущий пароль"
+                      <label className={classes.fieldBlock}>
+                        <span className={classes.fieldLabel}>Текущий пароль</span>
+                        <Input
+                          type="password"
                           value={field.value ?? ""}
                           onChange={field.onChange}
                           onBlur={field.onBlur}
                           onFocus={handleFieldFocus}
                           ref={field.ref}
-                          error={emailErrors.currentPassword?.message}
+                          className={classes.fieldInput}
                         />
-                      )}
+                        {emailErrors.currentPassword?.message ? (
+                          <span className={classes.fieldError}>
+                            {String(emailErrors.currentPassword.message)}
+                          </span>
+                        ) : null}
+                      </label>
+                    )}
                   />
                 </div>
                 <Group className={classes.actionsRow} mt="md">
-                  <Button
+                  <UIButton
                     type="submit"
-                    loading={isEmailSubmitting}
-                    variant="filled"
-                    className={classes.actionButton}
+                    disabled={isEmailSubmitting}
+                    className="h-11 rounded-[14px] px-4"
                   >
-                    Отправить подтверждение
-                  </Button>
+                    {isEmailSubmitting ? (
+                      <>
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        Отправляем...
+                      </>
+                    ) : (
+                      "Отправить подтверждение"
+                    )}
+                  </UIButton>
                 </Group>
               </Box>
               {emailChangeResult && (
@@ -1113,28 +1134,42 @@ export default function SettingsScreen() {
                       },
                     }}
                     render={({ field }) => (
-                        <TextInput
-                          label="Email"
+                      <label className={classes.fieldBlock}>
+                        <span className={classes.fieldLabel}>Email</span>
+                        <Input
+                          type="email"
                           placeholder="name@example.com"
                           value={field.value ?? ""}
                           onChange={field.onChange}
                           onBlur={field.onBlur}
                           onFocus={handleFieldFocus}
                           ref={field.ref}
-                          error={resetErrors.email?.message}
+                          className={classes.fieldInput}
                         />
-                      )}
+                        {resetErrors.email?.message ? (
+                          <span className={classes.fieldError}>
+                            {String(resetErrors.email.message)}
+                          </span>
+                        ) : null}
+                      </label>
+                    )}
                   />
                 </div>
                 <Group className={classes.actionsRow} mt="md">
-                  <Button
+                  <UIButton
                     type="submit"
-                    loading={isResetSubmitting}
-                    variant="filled"
-                    className={classes.actionButton}
+                    disabled={isResetSubmitting}
+                    className="h-11 rounded-[14px] px-4"
                   >
-                    Отправить письмо
-                  </Button>
+                    {isResetSubmitting ? (
+                      <>
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        Отправляем...
+                      </>
+                    ) : (
+                      "Отправить письмо"
+                    )}
+                  </UIButton>
                 </Group>
               </Box>
               {resetResult && (
@@ -1161,21 +1196,20 @@ export default function SettingsScreen() {
               </Text>
               {!feedbackExpanded ? (
                 <Group className={classes.actionsRow} mt="md">
-                  <Button
-                    variant="filled"
-                    className={classes.actionButton}
+                  <UIButton
+                    type="button"
+                    className="h-11 rounded-[14px] px-4"
                     onClick={() => setFeedbackExpanded(true)}
                     disabled={status !== "authed"}
                   >
                     Оставить отзыв
-                  </Button>
+                  </UIButton>
                 </Group>
               ) : (
                 <Stack gap="sm" mt="md">
-                  <Textarea
-                    minRows={4}
-                    autosize
-                    maxRows={8}
+                  <textarea
+                    rows={4}
+                    className={classes.fieldTextarea}
                     placeholder="Например: на iPhone иногда дергается карта при открытии карточки кофейни..."
                     value={feedbackMessage}
                     onChange={(event) => {
@@ -1185,7 +1219,7 @@ export default function SettingsScreen() {
                     }}
                     disabled={isFeedbackSending}
                   />
-                  <TextInput
+                  <Input
                     placeholder="Контакт для ответа (опционально): email, Telegram"
                     value={feedbackContact}
                     onChange={(event) => {
@@ -1194,6 +1228,7 @@ export default function SettingsScreen() {
                       setFeedbackSuccess(null);
                     }}
                     disabled={isFeedbackSending}
+                    className={classes.fieldInput}
                   />
                   {feedbackError && (
                     <div className={classes.error}>
@@ -1206,20 +1241,27 @@ export default function SettingsScreen() {
                     </div>
                   )}
                   <Group className={classes.actionsRow}>
-                    <Button
-                      variant="filled"
-                      className={classes.actionButton}
+                    <UIButton
+                      type="button"
+                      className="h-11 rounded-[14px] px-4"
                       onClick={() => {
                         void handleFeedbackSubmit();
                       }}
-                      loading={isFeedbackSending}
                       disabled={status !== "authed"}
                     >
-                      Отправить отзыв
-                    </Button>
-                    <Button
-                      variant="subtle"
-                      className={classes.actionButton}
+                      {isFeedbackSending ? (
+                        <>
+                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          Отправляем...
+                        </>
+                      ) : (
+                        "Отправить отзыв"
+                      )}
+                    </UIButton>
+                    <UIButton
+                      type="button"
+                      variant="secondary"
+                      className="h-11 rounded-[14px] px-4"
                       onClick={() => {
                         setFeedbackExpanded(false);
                         setFeedbackError(null);
@@ -1228,7 +1270,7 @@ export default function SettingsScreen() {
                       disabled={isFeedbackSending}
                     >
                       Скрыть форму
-                    </Button>
+                    </UIButton>
                   </Group>
                 </Stack>
               )}

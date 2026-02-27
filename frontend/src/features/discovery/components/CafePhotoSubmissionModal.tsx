@@ -6,7 +6,6 @@ import {
   Button,
   Group,
   Modal,
-  Paper,
   SegmentedControl,
   Skeleton,
   Stack,
@@ -200,7 +199,7 @@ export default function CafePhotoSubmissionModal({
       onClose={onClose}
       fullScreen
       withCloseButton
-      zIndex={425}
+      zIndex={3601}
       title={`Предложить фото: ${cafeName}`}
       styles={{
         content: {
@@ -265,36 +264,24 @@ export default function CafePhotoSubmissionModal({
         />
 
         {isFirstPhotographer && (
-          <Paper
-            withBorder
-            p="sm"
-            radius="md"
-            style={{
-              border: "1px solid color-mix(in srgb, var(--color-brand-accent) 35%, var(--glass-border))",
-              background:
-                "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 58%, var(--surface)), var(--surface))",
-            }}
-          >
-            <Group justify="space-between" align="center" wrap="nowrap" gap={8}>
-              <Badge radius="xl" variant="filled">
-                Первый фотограф
-              </Badge>
-              <Text size="sm" fw={600}>
-                +4 к репутации после одобрения
-              </Text>
-            </Group>
-          </Paper>
+          <Group justify="space-between" align="center" wrap="nowrap" gap={8}>
+            <Badge radius="xl" variant="filled">
+              Первый фотограф
+            </Badge>
+            <Text size="sm" fw={600}>
+              +4 к репутации после одобрения
+            </Text>
+          </Group>
         )}
 
-        <Paper
-          withBorder
-          p="md"
-          radius="md"
+        <Box
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           style={{
             border: "1px dashed var(--border)",
-            background: "var(--surface)",
+            borderRadius: 14,
+            background: "transparent",
+            padding: 0,
           }}
         >
           <Stack gap="sm">
@@ -400,14 +387,20 @@ export default function CafePhotoSubmissionModal({
               onChange={(event) => appendFiles(event.currentTarget.files)}
             />
           </Stack>
-        </Paper>
+        </Box>
 
         {error && (
-          <Paper withBorder p="sm" radius="md" style={{ borderColor: "var(--color-status-error)" }}>
+          <Box
+            p="sm"
+            style={{
+              borderRadius: 12,
+              border: "1px solid var(--color-status-error)",
+            }}
+          >
             <Text size="sm" c="red.6">
               {error}
             </Text>
-          </Paper>
+          </Box>
         )}
 
         <Box

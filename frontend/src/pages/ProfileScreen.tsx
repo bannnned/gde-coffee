@@ -1,40 +1,28 @@
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
+import { useState } from "react";
 import {
   IconArrowLeft,
   IconCheck,
   IconChevronDown,
   IconChevronUp,
-  IconChecklist,
-  IconCrown,
   IconEye,
   IconEyeOff,
   IconHeart,
   IconHeartFilled,
-  IconLink,
   IconLinkOff,
   IconLogout,
-  IconPlus,
   IconPencil,
+  IconPlus,
   IconSettings,
-  IconTrophy,
   IconX,
 } from "@tabler/icons-react";
 import { useLocation, useNavigate, type Location as RouterLocation } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
 import TelegramLoginWidget from "../components/TelegramLoginWidget";
+import { Badge, Button, Input } from "../components/ui";
 import useProfileAccount from "../features/profile/model/useProfileAccount";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
-import classes from "./ProfileScreen.module.css";
-import { useState } from "react";
+import { cn } from "../lib/utils";
 
 export default function ProfileScreen() {
   const { user, logout, openAuthModal, status, refreshAuth } = useAuth();
@@ -83,27 +71,49 @@ export default function ProfileScreen() {
     refreshAuth,
     logout,
   });
+
   const inlineNameWidthCh = Math.max(
     10,
     Math.min(28, ((nameDraft || profile.name || "").trim().length || 8) + 1),
   );
   const levelLabel = reputationProfile?.levelLabel || user?.reputationBadge || "Участник";
   const levelNumber = reputationProfile?.level ?? 1;
-  const levelProgress = Math.max(0, Math.min(100, Math.round((reputationProfile?.levelProgress ?? 0) * 100)));
+  const levelProgress = Math.max(
+    0,
+    Math.min(100, Math.round((reputationProfile?.levelProgress ?? 0) * 100)),
+  );
   const levelPointsToNext = Math.max(0, Math.round(reputationProfile?.pointsToNextLevel ?? 0));
   const levelScore = Math.round(reputationProfile?.score ?? 0);
   const levelEventsCount = reputationProfile?.eventsCount ?? 0;
   const [showProfileData, setShowProfileData] = useState(false);
   const isFavoritesContext = backgroundLocation?.pathname?.startsWith("/favorites") ?? false;
 
+  const surfaceGlassStyle = {
+    background: "linear-gradient(145deg, var(--glass-grad-1), var(--glass-grad-2))",
+    border: "1px solid var(--glass-border)",
+    boxShadow: "var(--glass-shadow)",
+    backdropFilter: "blur(12px) saturate(145%)",
+    WebkitBackdropFilter: "blur(12px) saturate(145%)",
+  } as const;
+
   return (
-    <Box className={classes.screen} data-ui="profile-screen">
-      <div className={classes.container}>
-        <header className={classes.header}>
-          <ActionIcon
-            size={42}
-            variant="transparent"
-            className={`${classes.iconButton} glass-action glass-action--square`}
+    <div
+      data-ui="profile-screen"
+      className="min-h-[100dvh] overflow-y-auto px-[var(--page-edge-padding)]"
+      style={{
+        paddingTop: "calc(var(--page-edge-padding) + var(--safe-top))",
+        paddingBottom: "calc(var(--page-edge-padding) + var(--safe-bottom))",
+        background:
+          "radial-gradient(circle at top left, var(--bg-accent-1), transparent 45%), radial-gradient(circle at 80% 20%, var(--bg-accent-2), transparent 40%), var(--bg)",
+      }}
+    >
+      <div className="mx-auto w-full max-w-[680px]">
+        <header className="relative mb-5 flex min-h-[42px] items-center justify-between gap-2.5">
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="glass-action glass-action--square"
             onClick={() => {
               if (backgroundLocation) {
                 void navigate(-1);
@@ -114,30 +124,33 @@ export default function ProfileScreen() {
             aria-label="Назад"
           >
             <IconArrowLeft size={18} />
-          </ActionIcon>
-          <Text size="sm" className={classes.headerTitle}>
+          </Button>
+          <p className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-sm font-semibold text-[var(--muted)]">
             Профиль
-          </Text>
-          <div className={classes.headerActions}>
-            {user && (
-              <ActionIcon
-                size={42}
-                variant="transparent"
-                className={`${classes.iconButton} glass-action glass-action--square ${
-                  isFavoritesContext ? "glass-action--active" : ""
-                }`}
+          </p>
+          <div className="inline-flex items-center gap-2">
+            {user ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                className={cn(
+                  "glass-action glass-action--square",
+                  isFavoritesContext && "glass-action--active",
+                )}
                 onClick={() => {
                   void navigate("/favorites");
                 }}
                 aria-label="Избранные кофейни"
               >
                 {isFavoritesContext ? <IconHeartFilled size={18} /> : <IconHeart size={18} />}
-              </ActionIcon>
-            )}
-            <ActionIcon
-              size={42}
-              variant="transparent"
-              className={`${classes.iconButton} glass-action glass-action--square`}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              className="glass-action glass-action--square"
               onClick={() => {
                 if (backgroundLocation) {
                   void navigate("/settings", {
@@ -150,55 +163,91 @@ export default function ProfileScreen() {
               aria-label="Настройки"
             >
               <IconSettings size={18} />
-            </ActionIcon>
+            </Button>
           </div>
         </header>
 
-        <Stack gap="lg">
-          <section className={classes.profileCard}>
+        <div className="flex flex-col gap-4">
+          <section
+            className="grid gap-4 rounded-[24px] p-5 sm:p-7"
+            style={{
+              background: "linear-gradient(150deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
+              border: "1px solid var(--glass-border)",
+              boxShadow: "var(--glass-shadow)",
+              backdropFilter: "blur(14px) saturate(150%)",
+              WebkitBackdropFilter: "blur(14px) saturate(150%)",
+            }}
+          >
             {status === "loading" ? (
-              <Text>Загружаем профиль...</Text>
+              <p className="text-sm text-[var(--muted)]">Загружаем профиль...</p>
             ) : !user ? (
-              <Stack gap="md">
-                <div className={classes.avatarLarge}>?</div>
-                <Title order={2}>Профиль недоступен</Title>
-                <Text className={classes.subtitle}>
-                  Войдите, чтобы увидеть данные аккаунта и управлять профилем.
-                </Text>
-                <Button
-                  variant="gradient"
-                  gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
-                  onClick={() => openAuthModal("login")}
+              <div className="flex flex-col items-center gap-3 text-center">
+                <div
+                  className="inline-flex h-[120px] w-[120px] items-center justify-center rounded-full border-4 text-[2.2rem] font-bold"
+                  style={{
+                    color: "var(--text)",
+                    borderColor: "var(--glass-border)",
+                    background:
+                      "radial-gradient(circle at 30% 30%, var(--glass-grad-hover-1), var(--surface)), linear-gradient(135deg, var(--accent), var(--glass-grad-hover-1))",
+                    boxShadow: "var(--shadow)",
+                  }}
                 >
+                  ?
+                </div>
+                <h2 className="text-[1.6rem] font-semibold leading-tight text-[var(--text)]">
+                  Профиль недоступен
+                </h2>
+                <p className="max-w-[340px] text-sm text-[var(--muted)]">
+                  Войдите, чтобы увидеть данные аккаунта и управлять профилем.
+                </p>
+                <Button type="button" onClick={() => openAuthModal("login")}>
                   Войти
                 </Button>
-              </Stack>
+              </div>
             ) : (
-              <Stack gap="md">
-                <div className={classes.hero}>
-                  <div className={classes.avatarWrap}>
-                    <div className={classes.avatarLarge}>
+              <div className="flex flex-col gap-4">
+                <div className="grid place-items-center gap-2.5 text-center">
+                  <div className="relative inline-block h-[120px] w-[120px] leading-none">
+                    <div
+                      className="relative inline-flex h-[120px] w-[120px] items-center justify-center overflow-hidden rounded-full border-4 text-[2.2rem] font-bold"
+                      style={{
+                        color: "var(--text)",
+                        borderColor: "var(--glass-border)",
+                        background:
+                          "radial-gradient(circle at 30% 30%, var(--glass-grad-hover-1), var(--surface)), linear-gradient(135deg, var(--accent), var(--glass-grad-hover-1))",
+                        boxShadow: "var(--shadow)",
+                      }}
+                    >
                       {profile.avatarUrl ? (
                         <img
                           src={profile.avatarUrl}
                           alt={profile.name}
-                          className={classes.avatarImage}
+                          className="h-full w-full rounded-full object-cover"
                           loading="lazy"
                         />
                       ) : (
                         profile.initial
                       )}
                     </div>
-                    <ActionIcon
-                      size={32}
-                      radius="xl"
-                      className={classes.avatarPlusButton}
+                    <button
+                      type="button"
+                      className="absolute right-0 top-0 z-[2] inline-flex h-8 w-8 items-center justify-center rounded-full border text-[var(--text)] ui-focus-ring ui-interactive"
+                      style={{
+                        borderColor: "var(--glass-border)",
+                        background:
+                          "linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
+                        boxShadow: "var(--shadow)",
+                      }}
                       aria-label="Изменить фото профиля"
                       onClick={handleAvatarPick}
-                      loading={isAvatarUploading}
+                      disabled={isAvatarUploading}
                     >
-                      <IconPlus size={16} />
-                    </ActionIcon>
+                      {isAvatarUploading ? (
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <IconPlus size={16} />
+                      )}
+                    </button>
                     <input
                       ref={avatarInputRef}
                       type="file"
@@ -209,18 +258,38 @@ export default function ProfileScreen() {
                       }}
                     />
                   </div>
-                  <div className={classes.heroText}>
-                    <div className={classes.heroNameRow}>
+
+                  <div className="grid gap-2">
+                    <div className="flex min-h-10 items-center justify-center gap-2">
                       {isNameEditing ? (
                         <>
-                          <input
+                          <Input
                             type="text"
                             value={nameDraft}
                             placeholder="Введите имя"
                             autoFocus
                             aria-label="Имя профиля"
-                            className={classes.nameInlineEditor}
-                            style={{ width: `${inlineNameWidthCh}ch` }}
+                            style={{
+                              width: `${inlineNameWidthCh}ch`,
+                              minWidth: "10ch",
+                              maxWidth: "min(74vw, 320px)",
+                              border: "none",
+                              borderBottom:
+                                "2px solid color-mix(in srgb, var(--accent) 46%, transparent)",
+                              outline: "none",
+                              borderRadius: 0,
+                              background: "transparent",
+                              boxShadow: "none",
+                              color: "var(--text)",
+                              fontFamily: "var(--font-display)",
+                              fontSize: "clamp(1.5rem, 4.8vw, 2rem)",
+                              fontWeight: 600,
+                              lineHeight: 1.05,
+                              letterSpacing: "0.01em",
+                              textAlign: "center",
+                              padding: "0 2px 2px",
+                              height: "auto",
+                            }}
                             onChange={(event) => {
                               setNameDraft(event.currentTarget.value);
                               setNameError(null);
@@ -241,39 +310,43 @@ export default function ProfileScreen() {
                             }}
                             disabled={isNameSaving}
                           />
-                          <ActionIcon
-                            size={28}
-                            radius="xl"
-                            variant="subtle"
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
                             aria-label="Сохранить имя"
                             onClick={() => {
                               void handleNameSave();
                             }}
-                            loading={isNameSaving}
-                            className={classes.nameInlineAction}
+                            disabled={isNameSaving}
+                            className="h-7 w-7 rounded-full text-[var(--text)]"
                           >
-                            <IconCheck size={15} />
-                          </ActionIcon>
-                          <ActionIcon
-                            size={28}
-                            radius="xl"
-                            variant="subtle"
+                            {isNameSaving ? (
+                              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                            ) : (
+                              <IconCheck size={15} />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
                             aria-label="Отмена"
                             onClick={handleNameEditCancel}
                             disabled={isNameSaving}
-                            className={classes.nameInlineAction}
+                            className="h-7 w-7 rounded-full text-[var(--text)]"
                           >
                             <IconX size={15} />
-                          </ActionIcon>
+                          </Button>
                         </>
                       ) : (
                         <>
-                          <Title order={2} className={classes.heroNameTitle}>
+                          <h2 className="text-[clamp(1.5rem,4.8vw,2rem)] font-semibold leading-[1.05] text-[var(--text)]">
                             {profile.name}
-                          </Title>
+                          </h2>
                           <button
                             type="button"
-                            className={classes.inlineEditIcon}
+                            className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-transparent text-[var(--muted)] ui-focus-ring ui-interactive hover:bg-[color:color-mix(in_srgb,var(--surface)_70%,transparent)] hover:text-[var(--text)]"
                             aria-label="Редактировать имя"
                             onClick={handleNameEditStart}
                           >
@@ -282,233 +355,222 @@ export default function ProfileScreen() {
                         </>
                       )}
                     </div>
-                    {nameError && <Text className={classes.errorText}>{nameError}</Text>}
-                    {nameSuccess && <Text className={classes.successText}>{nameSuccess}</Text>}
-                    {avatarError && <Text className={classes.errorText}>{avatarError}</Text>}
-                    {avatarSuccess && <Text className={classes.successText}>{avatarSuccess}</Text>}
+
+                    {nameError ? <p className="text-sm text-danger">{nameError}</p> : null}
+                    {nameSuccess ? (
+                      <p className="text-sm text-[var(--color-status-success)]">{nameSuccess}</p>
+                    ) : null}
+                    {avatarError ? <p className="text-sm text-danger">{avatarError}</p> : null}
+                    {avatarSuccess ? (
+                      <p className="text-sm text-[var(--color-status-success)]">{avatarSuccess}</p>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className={classes.levelCard}>
-                  <div className={classes.levelTop}>
+                <div className="rounded-[20px] border border-[var(--glass-border)] bg-[linear-gradient(145deg,var(--glass-grad-1),var(--glass-grad-2))] p-4 shadow-[var(--glass-shadow)]">
+                  <div className="mb-2 flex items-start justify-between gap-2">
                     <div>
-                      <Text fw={700} className={classes.levelTitle}>
+                      <p className="text-base font-bold text-[var(--text)]">
                         Lv. {levelNumber} - {levelLabel}
-                      </Text>
-                      <Text size="sm" className={classes.muted}>
+                      </p>
+                      <p className="text-sm text-[var(--muted)]">
                         Очки: {levelScore} · событий: {levelEventsCount}
-                      </Text>
+                      </p>
                     </div>
-                    {isReputationLoading && (
-                      <Text size="sm" className={classes.sectionAction}>
-                        Обновляем...
-                      </Text>
-                    )}
+                    {isReputationLoading ? (
+                      <p className="text-sm text-[var(--muted)]">Обновляем...</p>
+                    ) : null}
                   </div>
-                  <div className={classes.levelBar}>
+                  <div className="h-2 rounded-full bg-[color:color-mix(in_srgb,var(--surface)_80%,transparent)]">
                     <div
-                      className={classes.levelBarFill}
-                      style={{ width: `${levelProgress}%` }}
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${levelProgress}%`,
+                        background:
+                          "linear-gradient(90deg, var(--color-brand-accent), var(--color-brand-accent-strong))",
+                      }}
                     />
                   </div>
-                  <Text size="sm" className={classes.levelProgressText}>
-                    Прогресс: {levelProgress}%{levelPointsToNext > 0 ? ` · до следующего уровня ${levelPointsToNext}` : " · максимальный уровень"}
-                  </Text>
-                  {Boolean(reputationError) && <Text className={classes.errorText}>{reputationError}</Text>}
+                  <p className="mt-2 text-sm text-[var(--text)]">
+                    Прогресс: {levelProgress}%
+                    {levelPointsToNext > 0
+                      ? ` · до следующего уровня ${levelPointsToNext}`
+                      : " · максимальный уровень"}
+                  </p>
+                  {reputationError ? <p className="mt-1 text-sm text-danger">{reputationError}</p> : null}
                 </div>
 
                 <Button
-                  variant="transparent"
-                  fullWidth
-                  leftSection={
-                    showProfileData ? <IconEyeOff size={16} /> : <IconEye size={16} />
-                  }
-                  rightSection={
-                    showProfileData ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />
-                  }
-                  className={`${classes.profileDataToggle} ${
-                    showProfileData ? classes.profileDataToggleOpen : ""
-                  }`}
+                  type="button"
+                  variant="secondary"
+                  className={cn(
+                    "w-full justify-between rounded-full",
+                    showProfileData && "border-[var(--color-brand-accent)]",
+                  )}
                   onClick={() => setShowProfileData((prev) => !prev)}
                 >
-                  {showProfileData ? "Скрыть данные" : "Показать данные"}
+                  <span className="inline-flex items-center gap-2">
+                    {showProfileData ? <IconEyeOff size={16} /> : <IconEye size={16} />}
+                    {showProfileData ? "Скрыть данные" : "Показать данные"}
+                  </span>
+                  {showProfileData ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
                 </Button>
 
-                {showProfileData && (
-                  <div className={classes.listCard}>
-                    <div className={classes.listRow}>
-                      <div className={classes.listText}>
-                        <Text size="xs" className={classes.muted}>
-                          Email
-                        </Text>
-                        <Text fw={600} className={classes.listPrimary}>
-                          {profile.email}
-                        </Text>
+                {showProfileData ? (
+                  <div className="overflow-hidden rounded-[22px] border border-[var(--border)] bg-[var(--surface)]">
+                    <div className="flex min-h-[54px] items-center gap-3.5 border-b border-[var(--border)] px-4 py-3">
+                      <div className="grid min-w-0 flex-1 gap-0.5">
+                        <p className="text-xs text-[var(--muted)]">Email</p>
+                        <p className="break-all text-sm font-semibold text-[var(--text)]">{profile.email}</p>
                       </div>
-                      <div className={classes.rowMeta}>
-                        {profile.isVerified && (
-                          <span className={classes.verifiedBadge} aria-label="Email подтверждён">
-                            <IconCheck size={12} />
-                          </span>
-                        )}
-                      </div>
+                      {profile.isVerified ? (
+                        <span
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full border"
+                          style={{
+                            background: "var(--color-status-success)",
+                            color: "var(--color-on-accent)",
+                            borderColor: "var(--color-status-success)",
+                          }}
+                          aria-label="Email подтверждён"
+                        >
+                          <IconCheck size={12} />
+                        </span>
+                      ) : null}
                     </div>
-                    <div className={classes.listRow}>
-                      <div className={classes.listText}>
-                        <Text size="xs" className={classes.muted}>
-                          ID аккаунта
-                        </Text>
-                        <Text fw={600} className={classes.listPrimary}>
-                          {profile.id}
-                        </Text>
+                    <div className="flex min-h-[54px] items-center gap-3.5 px-4 py-3">
+                      <div className="grid min-w-0 flex-1 gap-0.5">
+                        <p className="text-xs text-[var(--muted)]">ID аккаунта</p>
+                        <p className="break-all text-sm font-semibold text-[var(--text)]">{profile.id}</p>
                       </div>
                     </div>
                   </div>
-                )}
-              </Stack>
+                ) : null}
+              </div>
             )}
           </section>
 
-          {user && (
-            <section className={classes.sectionCard}>
-              <div className={classes.sectionHeader}>
-                <Group gap="xs">
-                  <IconLink size={18} />
-                  <Text fw={600}>Соцсети</Text>
-                </Group>
-                {isIdentitiesLoading && (
-                  <Text size="sm" className={classes.sectionAction}>
-                    Обновляем...
-                  </Text>
-                )}
+          {user ? (
+            <section className="grid gap-4 rounded-[24px] p-4 sm:p-6" style={surfaceGlassStyle}>
+              <div className="flex items-center justify-between gap-3.5">
+                <div className="flex items-center gap-2">
+                  <p className="text-base font-semibold text-[var(--text)]">Соцсети</p>
+                </div>
+                {isIdentitiesLoading ? (
+                  <p className="text-sm text-[var(--muted)]">Обновляем...</p>
+                ) : null}
               </div>
 
-              <div className={classes.socialCompact}>
-                <div className={classes.socialIconRow}>
+              <div className="grid gap-3.5">
+                <div className="flex items-center gap-2.5">
                   {socialStatuses.map((item) => {
                     const ItemIcon = item.icon;
+                    const linked = item.linked;
                     return (
                       <div
                         key={item.id}
-                        className={`${classes.socialIconItem} ${
-                          item.linked ? classes.socialIconItemOk : classes.socialIconItemWarn
-                        }`}
-                        title={`${item.label}: ${item.linked ? "подключен" : "не подключен"}`}
-                        aria-label={`${item.label}: ${item.linked ? "подключен" : "не подключен"}`}
+                        className="relative inline-flex h-[38px] w-[38px] items-center justify-center rounded-full border shadow-[var(--shadow)]"
+                        style={{
+                          borderColor: linked
+                            ? "color-mix(in srgb, var(--color-status-success) 45%, var(--border))"
+                            : "color-mix(in srgb, var(--color-status-error) 45%, var(--border))",
+                          color: linked
+                            ? "var(--color-status-success)"
+                            : "var(--color-status-error)",
+                          background:
+                            "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
+                        }}
+                        title={`${item.label}: ${linked ? "подключен" : "не подключен"}`}
+                        aria-label={`${item.label}: ${linked ? "подключен" : "не подключен"}`}
                       >
                         <ItemIcon size={18} />
                         <span
-                          className={classes.socialIconBadge}
-                          data-status={item.linked ? "ok" : "warn"}
+                          className="absolute -bottom-1 -right-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--surface)]"
+                          style={{
+                            color: "var(--color-on-accent)",
+                            background: linked
+                              ? "var(--color-status-success)"
+                              : "var(--color-status-error)",
+                          }}
                         >
-                          {item.linked ? <IconCheck size={10} /> : <IconLinkOff size={10} />}
+                          {linked ? <IconCheck size={10} /> : <IconLinkOff size={10} />}
                         </span>
                       </div>
                     );
                   })}
                 </div>
 
-                <div className={classes.socialConnectList}>
-                  {!githubLinked && (
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {!githubLinked ? (
                     <Button
-                      size="xs"
-                      variant="light"
+                      type="button"
+                      size="sm"
+                      variant="secondary"
                       onClick={() => window.location.assign(githubAuthUrl)}
                       disabled={isIdentitiesLoading}
                     >
                       Подключить GitHub
                     </Button>
-                  )}
+                  ) : null}
 
-                  {!yandexLinked && (
+                  {!yandexLinked ? (
                     <Button
-                      size="xs"
-                      variant="light"
+                      type="button"
+                      size="sm"
+                      variant="secondary"
                       onClick={() => window.location.assign(yandexAuthUrl)}
                       disabled={isIdentitiesLoading}
                     >
                       Подключить Яндекс
                     </Button>
-                  )}
+                  ) : null}
 
-                  {!telegramLinked && (
-                    <div className={classes.socialTelegramConnect}>
+                  {!telegramLinked ? (
+                    <div className="inline-flex">
                       <TelegramLoginWidget flow="link" size="medium" />
                     </div>
-                  )}
+                  ) : null}
 
-                  {githubLinked && yandexLinked && telegramLinked && (
-                    <Text size="sm" className={classes.muted}>
-                      Все соцсети подключены.
-                    </Text>
-                  )}
+                  {githubLinked && yandexLinked && telegramLinked ? (
+                    <p className="text-sm text-[var(--muted)]">Все соцсети подключены.</p>
+                  ) : null}
                 </div>
               </div>
 
-              {identityError && <Text className={classes.errorText}>{identityError}</Text>}
+              {identityError ? <p className="text-sm text-danger">{identityError}</p> : null}
             </section>
-          )}
+          ) : null}
 
-          <section className={`${classes.sectionCard} ${classes.disabledSection}`}>
-            <div className={classes.sectionHeader}>
-              <Group gap="xs">
-                <IconTrophy size={18} />
-                <Text fw={600}>Ачивки</Text>
-              </Group>
-              <Text size="sm" className={classes.sectionAction}>
-                Смотреть всё
-              </Text>
-            </div>
-            <div className={classes.placeholderCard}>
-              <IconCrown size={24} />
-              <div>
-                <Text fw={600}>Новичок</Text>
-                <Text size="sm" className={classes.muted}>
-                  Скоро появятся достижения
-                </Text>
-              </div>
-            </div>
-          </section>
-
-          <section className={`${classes.sectionCard} ${classes.disabledSection}`}>
-            <div className={classes.sectionHeader}>
-              <Group gap="xs">
-                <IconChecklist size={18} />
-                <Text fw={600}>Задания</Text>
-              </Group>
-              <Text size="sm" className={classes.sectionAction}>
-                Смотреть всё
-              </Text>
-            </div>
-            <div className={classes.placeholderCard}>
-              <IconChecklist size={24} />
-              <div>
-                <Text fw={600}>Скоро</Text>
-                <Text size="sm" className={classes.muted}>
-                  Задания появятся позже
-                </Text>
-              </div>
-            </div>
-          </section>
-
-          {user && (
+          {user ? (
             <Button
+              type="button"
               onClick={() =>
                 void handleLogout(() => {
                   void navigate("/", { replace: true });
                 })
               }
-              loading={isLoggingOut}
-              leftSection={<IconLogout size={16} />}
-              variant="gradient"
-              gradient={{ from: "red.6", to: "orange.5", deg: 135 }}
-              className={classes.logoutButton}
+              disabled={isLoggingOut}
+              className="h-11 rounded-full"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--color-status-error), color-mix(in srgb, var(--color-status-error) 60%, var(--color-brand-warning)))",
+                color: "white",
+              }}
             >
-              Выйти
+              {isLoggingOut ? (
+                <>
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Выходим...
+                </>
+              ) : (
+                <>
+                  <IconLogout size={16} />
+                  Выйти
+                </>
+              )}
             </Button>
-          )}
-        </Stack>
+          ) : null}
+        </div>
       </div>
-    </Box>
+    </div>
   );
 }

@@ -10,6 +10,8 @@ type RatingPanelProps = {
   ratingLabel: string;
   ratingReviews: number;
   verifiedSharePercent: number;
+  showVerifiedSharePercent?: boolean;
+  onOpenReviews?: () => void;
   ratingLoading: boolean;
   ratingError: string | null;
   bestReview: CafeRatingBestReview | null;
@@ -30,6 +32,8 @@ export default function RatingPanel({
   ratingLabel,
   ratingReviews,
   verifiedSharePercent,
+  showVerifiedSharePercent = false,
+  onOpenReviews,
   ratingLoading,
   ratingError,
   bestReview,
@@ -88,8 +92,21 @@ export default function RatingPanel({
     <>
       <Group gap={6} wrap="wrap">
         <Badge styles={statChipStyles}>Рейтинг: {ratingLabel}</Badge>
-        <Badge styles={statChipStyles}>Отзывы: {ratingReviews}</Badge>
-        <Badge styles={statChipStyles}>Визиты: {verifiedSharePercent}%</Badge>
+        <Badge
+          styles={statChipStyles}
+          component={onOpenReviews ? "button" : "span"}
+          onClick={onOpenReviews}
+          style={{
+            cursor: onOpenReviews ? "pointer" : "default",
+          }}
+          aria-label="Перейти к отзывам"
+          title={onOpenReviews ? "Открыть раздел отзывов" : undefined}
+        >
+          Отзывы: {ratingReviews}
+        </Badge>
+        {showVerifiedSharePercent && (
+          <Badge styles={statChipStyles}>Визиты: {verifiedSharePercent}%</Badge>
+        )}
       </Group>
       {ratingLoading && (
         <Text size="xs" c="dimmed">

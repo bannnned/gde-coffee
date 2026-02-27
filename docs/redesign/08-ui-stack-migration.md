@@ -21,7 +21,8 @@
 3. Следующий практический трек: реализация Wave 2 (`W2-A` -> `W2-B` -> `W2-C`) по правилам раздела 8.
 4. `W2-A` и `W2-B` закрыты (`done`).
 5. `W2-C` закрыт (`done`): reviews/composer/feed переведены на new-ui/bridge контракты.
-6. Текущий активный шаг: `W3-A` (profile shell + ключевые карточки и CTA).
+6. `W3-A` закрыт (`done`): profile shell + key cards/CTA переведены на new-ui слой.
+7. Текущий активный шаг: `W3-B` (settings forms и account actions), status: `in_progress`.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

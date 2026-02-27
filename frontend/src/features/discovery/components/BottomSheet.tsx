@@ -30,8 +30,8 @@ type SheetState = "peek" | "mid" | "expanded";
 
 const SWIPE_VELOCITY = 1100;
 const SWIPE_VELOCITY_STRONG = 1700;
-const PEEK_HEIGHT_PX = 56;
-const SHEET_PADDING_PX = 8;
+const PEEK_HEIGHT_PX = 24;
+const SHEET_PADDING_PX = 6;
 const MID_SINGLE_CAFE_EXTRA_PX = 26;
 
 const MotionPaper = motion(Paper);

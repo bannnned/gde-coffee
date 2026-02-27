@@ -134,6 +134,12 @@
   padding-top: 0;
 }
 
+.sheet[data-state="peek"] .header {
+  padding-top: 4px;
+  padding-bottom: 2px;
+  padding-inline: 0;
+}
+
 .sheet:not([data-state="peek"]) .list {
   visibility: visible;
   transform: translateY(0);

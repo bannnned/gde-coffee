@@ -318,3 +318,32 @@ Critical path stack-transition:
 - Артефакт: `ReviewComposerCard` переведен на new-ui controls с bridge для тегового инпута в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/ReviewComposerCard.tsx`.
 - Артефакт: добавлен `AppTagsInput` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/tags-input.tsx` и экспорт в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/index.ts`.
 - Проверка: `npm run typecheck`, `npm test`, `npm run build` — pass.
+
+## 9. Wave 3 Execution Queue (New UI)
+
+### [x] W3-A · Profile shell + key cards/CTA migration (P0, status: done)
+- Цель: перевести `/profile` на new-ui слой, сохранить бизнес-логику профиля и упростить визуальный шум.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ProfileScreen.tsx`.
+- Depends on: `W2-C`.
+- AC: shell профиля (header/hero/key-actions) не зависит от Mantine UI primitives.
+- AC: ключевые сценарии профиля (имя, фото, level/progress, соцсети, logout) сохранены.
+- AC: приватные данные скрыты по умолчанию и раскрываются контролируемо.
+- Артефакт: `ProfileScreen` переписан на `components/ui` + utility layout, удалены ad-hoc placeholder-блоки.
+- Проверка: `npm run typecheck`, `npm test`, `npm run build` — pass.
+
+### [ ] W3-B · Settings forms + account actions migration (P0, status: in_progress)
+- Цель: перевести `/settings` пользовательские формы и account actions на единый new-ui/bridge паттерн.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`.
+- Depends on: `W3-A`.
+- AC: пользовательские формы (`verify email`, `email change`, `password reset`, `feedback`) используют единый new-ui pattern.
+- AC: UX и валидации форм сохранены без регрессий.
+- Прогресс: user-form controls в `/settings` переведены на `Input + UIButton`, оставшиеся moderator/admin панели остаются в legacy-слое текущего инкремента.
+- Артефакт: миграция пользовательских форм в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`.
+- Артефакт: form-styles для new-ui полей добавлены в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.module.css`.
+- Проверка: `npm run typecheck`, `npm test`, `npm run build` — pass.
+
+### [ ] W3-C · Profile/Settings final polish + legacy shrink (P1, status: todo)
+- Цель: закрыть остаточные mixed-pattern зоны Profile/Settings и подготовить deprecation legacy UI в Wave 3.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ProfileScreen.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`.
+- Depends on: `W3-B`.

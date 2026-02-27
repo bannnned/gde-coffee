@@ -261,10 +261,18 @@ export default function AboutSection({
             {canManageDirectly && (
               <Button
                 type="button"
-                variant="ghost"
+                variant="secondary"
                 onClick={onStartDescription}
                 disabled={!canSaveDescription}
-                className="h-9 justify-start px-0 font-semibold text-[var(--cafe-hero-emphasis-color)] hover:bg-transparent"
+                className="h-9 w-fit rounded-full px-3.5 font-semibold tracking-[0.01em]"
+                style={{
+                  border: "1px solid color-mix(in srgb, var(--color-brand-accent) 42%, var(--glass-border))",
+                  background:
+                    "linear-gradient(135deg, color-mix(in srgb, var(--color-brand-accent-soft) 62%, var(--surface)), color-mix(in srgb, var(--glass-grad-1) 86%, var(--surface)))",
+                  color: "var(--cafe-hero-emphasis-color)",
+                  boxShadow:
+                    "0 8px 18px color-mix(in srgb, var(--color-brand-accent-soft) 44%, transparent)",
+                }}
               >
                 {descriptionActionLabel}
               </Button>
