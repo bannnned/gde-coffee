@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getCafeRatingSnapshot, type CafeRatingSnapshot } from "../../../../api/reviews";
 import type { Cafe } from "../../../../entities/cafe/model/types";
 import { AMENITY_LABELS } from "../../constants";
+import { resolveCafeDisplayRating } from "../../utils/ratingDisplay";
 
 type CafeCardFooterProps = {
   cafe: Cafe;
@@ -88,10 +89,14 @@ export default function CafeCardFooter({ cafe, badgeStyles }: CafeCardFooterProp
   }, [cafe.id, cachedSnapshot]);
 
   const hasReviewStats = (ratingSnapshot?.reviews_count ?? 0) > 0;
+  const displayRating = useMemo(
+    () => resolveCafeDisplayRating(ratingSnapshot),
+    [ratingSnapshot],
+  );
   const ratingLabel = useMemo(() => {
-    if (!ratingSnapshot) return "";
-    return ratingSnapshot.rating.toFixed(1);
-  }, [ratingSnapshot]);
+    if (displayRating.value === null) return "";
+    return displayRating.value.toFixed(1);
+  }, [displayRating.value]);
   const descriptiveLabels = useMemo(() => {
     const fromSnapshot = (ratingSnapshot?.descriptive_tags ?? [])
       .map((item) => item.label.trim())

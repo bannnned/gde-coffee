@@ -120,6 +120,7 @@ export default function CafeDetailsScreen({
     menuMainPhoto,
     viewerPhotos,
     ratingLabel,
+    ratingIsPreliminary,
     ratingReviews,
     verifiedSharePercent,
     bestReview,
@@ -277,6 +278,7 @@ export default function CafeDetailsScreen({
   const ratingPanel = (
     <RatingPanel
       ratingLabel={ratingLabel}
+      ratingIsPreliminary={ratingIsPreliminary}
       ratingReviews={ratingReviews}
       verifiedSharePercent={verifiedSharePercent}
       showVerifiedSharePercent={canViewAdminDiagnostics}

@@ -8,6 +8,7 @@ import AdminDiagnosticsPanel from "./AdminDiagnosticsPanel";
 
 type RatingPanelProps = {
   ratingLabel: string;
+  ratingIsPreliminary?: boolean;
   ratingReviews: number;
   verifiedSharePercent: number;
   showVerifiedSharePercent?: boolean;
@@ -30,6 +31,7 @@ type RatingPanelProps = {
 
 export default function RatingPanel({
   ratingLabel,
+  ratingIsPreliminary = false,
   ratingReviews,
   verifiedSharePercent,
   showVerifiedSharePercent = false,
@@ -116,6 +118,11 @@ export default function RatingPanel({
       {ratingError && (
         <Text size="xs" c="dimmed">
           {ratingError}
+        </Text>
+      )}
+      {ratingIsPreliminary && ratingReviews > 0 && (
+        <Text size="xs" c="dimmed">
+          Предварительный рейтинг: до 5 отзывов показываем среднюю оценку по звёздам.
         </Text>
       )}
       {canViewAdminDiagnostics && (

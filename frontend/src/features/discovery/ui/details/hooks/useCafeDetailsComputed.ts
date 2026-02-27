@@ -5,6 +5,7 @@ import type {
   CafeRatingSnapshot,
 } from "../../../../../api/reviews";
 import type { Cafe, CafePhoto, CafePhotoKind } from "../../../../../entities/cafe/model/types";
+import { resolveCafeDisplayRating } from "../../../utils/ratingDisplay";
 
 type UseCafeDetailsComputedParams = {
   cafe: Cafe | null;
@@ -54,7 +55,9 @@ export function useCafeDetailsComputed({
   const viewerPhotos = viewerKind === "menu" ? menuPhotoItems : aboutPhotoItems;
   const viewerPhoto = viewerPhotos[viewerIndex] ?? null;
 
-  const ratingLabel = ratingSnapshot ? ratingSnapshot.rating.toFixed(2) : "—";
+  const displayRating = resolveCafeDisplayRating(ratingSnapshot);
+  const ratingLabel = displayRating.value !== null ? displayRating.value.toFixed(2) : "—";
+  const ratingIsPreliminary = displayRating.isPreliminary;
   const ratingReviews = ratingSnapshot?.reviews_count ?? 0;
   const verifiedSharePercent = Math.round((ratingSnapshot?.verified_share ?? 0) * 100);
   const bestReview = ratingSnapshot?.best_review ?? null;
@@ -75,6 +78,7 @@ export function useCafeDetailsComputed({
     viewerPhotos,
     viewerPhoto,
     ratingLabel,
+    ratingIsPreliminary,
     ratingReviews,
     verifiedSharePercent,
     bestReview,
