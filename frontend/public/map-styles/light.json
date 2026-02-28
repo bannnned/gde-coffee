@@ -2,13 +2,24 @@
   "version": 8,
   "name": "gde-coffee-light",
   "sources": {
-    "carto-light": {
+    "carto-light-base": {
       "type": "raster",
       "tiles": [
-        "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-        "https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+        "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"
+      ],
+      "tileSize": 256,
+      "attribution": "© OpenStreetMap contributors © CARTO"
+    },
+    "carto-light-labels": {
+      "type": "raster",
+      "tiles": [
+        "https://a.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png"
       ],
       "tileSize": 256,
       "attribution": "© OpenStreetMap contributors © CARTO"
@@ -16,14 +27,26 @@
   },
   "layers": [
     {
-      "id": "carto-light-raster",
+      "id": "carto-light-base-raster",
       "type": "raster",
-      "source": "carto-light",
+      "source": "carto-light-base",
       "paint": {
-        "raster-saturation": -0.18,
-        "raster-contrast": -0.06,
-        "raster-brightness-min": 0.04,
-        "raster-brightness-max": 0.98
+        "raster-saturation": 0.02,
+        "raster-contrast": 0.3,
+        "raster-brightness-min": 0.01,
+        "raster-brightness-max": 0.99
+      }
+    },
+    {
+      "id": "carto-light-labels-raster",
+      "type": "raster",
+      "source": "carto-light-labels",
+      "paint": {
+        "raster-opacity": 0.96,
+        "raster-saturation": 0,
+        "raster-contrast": 0.18,
+        "raster-brightness-min": 0.1,
+        "raster-brightness-max": 1
       }
     }
   ]

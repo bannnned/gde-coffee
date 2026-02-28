@@ -132,10 +132,9 @@ export default function ProfileScreen() {
             ) : !user ? (
               <div className="flex flex-col items-center gap-3 text-center">
                 <div
-                  className="inline-flex h-[120px] w-[120px] items-center justify-center rounded-full border-4 text-[2.2rem] font-bold"
+                  className="inline-flex h-[120px] w-[120px] items-center justify-center rounded-full text-[2.2rem] font-bold"
                   style={{
                     color: "var(--text)",
-                    borderColor: "var(--glass-border)",
                     background:
                       "radial-gradient(circle at 30% 30%, var(--glass-grad-hover-1), var(--surface)), linear-gradient(135deg, var(--accent), var(--glass-grad-hover-1))",
                     boxShadow: "var(--shadow)",
@@ -158,10 +157,9 @@ export default function ProfileScreen() {
                 <div className="grid place-items-center gap-2.5 text-center">
                   <div className="relative inline-block h-[120px] w-[120px] leading-none">
                     <div
-                      className="relative inline-flex h-[120px] w-[120px] items-center justify-center overflow-hidden rounded-full border-4 text-[2.2rem] font-bold"
+                      className="relative inline-flex h-[120px] w-[120px] items-center justify-center overflow-hidden rounded-full text-[2.2rem] font-bold"
                       style={{
                         color: "var(--text)",
-                        borderColor: "var(--glass-border)",
                         background:
                           "radial-gradient(circle at 30% 30%, var(--glass-grad-hover-1), var(--surface)), linear-gradient(135deg, var(--accent), var(--glass-grad-hover-1))",
                         boxShadow: "var(--shadow)",

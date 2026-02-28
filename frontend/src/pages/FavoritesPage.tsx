@@ -1,21 +1,13 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import {
-  ActionIcon,
-  Box,
-  Container,
-  Group,
-  Paper,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
 import { IconArrowLeft, IconHeartFilled } from "@tabler/icons-react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { listFavoriteCafes, removeCafeFromFavorites } from "../api/favorites";
-import type { Cafe } from "../entities/cafe/model/types";
 import { useAuth } from "../components/AuthGate";
+import { Button as UIButton } from "../components/ui";
+import type { Cafe } from "../entities/cafe/model/types";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
+import classes from "./FavoritesPage.module.css";
 
 const CafeDetailsScreen = lazy(() => import("../features/discovery/ui/details/CafeDetailsScreen"));
 
@@ -70,10 +62,10 @@ export default function FavoritesPage() {
         if (cancelled) return;
         setCafes(items);
       })
-      .catch((error: unknown) => {
+      .catch((responseError: unknown) => {
         if (cancelled) return;
         const message = extractFavoritesErrorMessage(
-          error,
+          responseError,
           "Не удалось загрузить избранные кофейни.",
         );
         setError(message);
@@ -94,8 +86,8 @@ export default function FavoritesPage() {
     try {
       await removeCafeFromFavorites(cafeId);
       setCafes((prev) => prev.filter((item) => item.id !== cafeId));
-    } catch (error: unknown) {
-      const message = extractFavoritesErrorMessage(error, "Не удалось обновить избранное.");
+    } catch (responseError: unknown) {
+      const message = extractFavoritesErrorMessage(responseError, "Не удалось обновить избранное.");
       setError(message);
     } finally {
       setBusyCafeId(null);
@@ -103,74 +95,61 @@ export default function FavoritesPage() {
   };
 
   return (
-    <Box className="page-shell" pb="xl">
-      <Container size="sm" py="md">
-        <Stack gap="md">
-          <Group justify="space-between" align="center">
-            <Group>
-              <ActionIcon
-                size={42}
-                variant="transparent"
-                className="glass-action glass-action--square"
-                onClick={() => {
-                  void navigate("/profile");
-                }}
-                aria-label="Назад"
-              >
-                <IconArrowLeft size={18} />
-              </ActionIcon>
-              <Title order={3}>Избранные</Title>
-            </Group>
-            <Group gap="xs" align="center">
-              <Text c="dimmed" size="sm">
-                {title}
-              </Text>
-              <ActionIcon
-                size={42}
-                variant="transparent"
-                className="glass-action glass-action--square glass-action--active"
-                aria-label="Страница избранных кофеен"
-              >
-                <IconHeartFilled size={18} />
-              </ActionIcon>
-            </Group>
-          </Group>
+    <main className={classes.screen} data-ui="favorites-screen">
+      <div className={classes.container}>
+        <header className={classes.header}>
+          <div className={classes.headerGroup}>
+            <UIButton
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={`${classes.iconButton} glass-action glass-action--square`}
+              onClick={() => {
+                void navigate("/profile");
+              }}
+              aria-label="Назад"
+            >
+              <IconArrowLeft size={18} />
+            </UIButton>
+            <h1 className={classes.title}>Избранные</h1>
+          </div>
+          <div className={classes.headerMeta}>
+            <p className={classes.count}>{title}</p>
+            <span
+              className={`${classes.iconButton} ${classes.activeIcon} glass-action glass-action--square glass-action--active`}
+              aria-label="Страница избранных кофеен"
+            >
+              <IconHeartFilled size={18} />
+            </span>
+          </div>
+        </header>
 
-          {isLoading && (
-            <Paper withBorder radius="lg" p="md">
-              <Text c="dimmed">Загружаем избранные кофейни...</Text>
-            </Paper>
-          )}
+        {isLoading && (
+          <section className={classes.notice}>
+            Загружаем избранные кофейни...
+          </section>
+        )}
 
-          {error && (
-            <Paper withBorder radius="lg" p="md" style={{ borderColor: "var(--color-status-error)" }}>
-              <Text c="red.6" size="sm">
-                {error}
-              </Text>
-            </Paper>
-          )}
+        {error && (
+          <section className={`${classes.notice} ${classes.noticeError}`}>
+            {error}
+          </section>
+        )}
 
-          {!isLoading && cafes.length === 0 && !error && (
-            <Paper withBorder radius="lg" p="md">
-              <Text c="dimmed">Пока нет избранных мест. Нажмите сердечко у кофейни.</Text>
-            </Paper>
-          )}
+        {!isLoading && cafes.length === 0 && !error && (
+          <section className={classes.notice}>
+            Пока нет избранных мест. Нажмите сердечко у кофейни.
+          </section>
+        )}
 
+        <div className={classes.list}>
           {cafes.map((cafe) => {
             const cover = cafe.cover_photo_url ?? cafe.photos?.[0]?.url;
+            const isRemoving = busyCafeId === cafe.id;
             return (
-              <Paper
+              <article
                 key={cafe.id}
-                withBorder
-                radius="lg"
-                p="md"
-                style={{
-                  background:
-                    "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-                  border: "1px solid var(--glass-border)",
-                  boxShadow: "var(--shadow)",
-                  cursor: "pointer",
-                }}
+                className={classes.card}
                 role="button"
                 tabIndex={0}
                 onClick={() => {
@@ -184,73 +163,59 @@ export default function FavoritesPage() {
                   setDetailsOpen(true);
                 }}
               >
-                <Stack gap="sm">
+                <div className={classes.cardBody}>
                   {cover && (
-                    <Box
-                      style={{
-                        height: 144,
-                        borderRadius: 12,
-                        overflow: "hidden",
-                        border: "1px solid var(--border)",
-                        background: "var(--surface)",
-                      }}
-                    >
+                    <div className={classes.cover}>
                       <img
                         src={cover}
                         alt={`Фото: ${cafe.name}`}
                         loading="lazy"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          display: "block",
-                        }}
+                        className={classes.coverImage}
                       />
-                    </Box>
+                    </div>
                   )}
-                  <Group justify="space-between" align="flex-start" wrap="nowrap">
-                    <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
-                      <Text fw={700} lineClamp={1}>
-                        {cafe.name}
-                      </Text>
-                      <Text c="dimmed" size="sm" lineClamp={2}>
-                        {cafe.address}
-                      </Text>
-                    </Stack>
-                    <Group gap={6} wrap="nowrap">
-                      <ActionIcon
-                        size="md"
-                        variant="light"
-                        color="red"
-                        aria-label="Убрать из избранного"
-                        loading={busyCafeId === cafe.id}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void handleRemove(cafe.id);
-                        }}
-                      >
+                  <div className={classes.metaRow}>
+                    <div className={classes.meta}>
+                      <p className={classes.name}>{cafe.name}</p>
+                      <p className={classes.address}>{cafe.address}</p>
+                    </div>
+                    <UIButton
+                      type="button"
+                      size="icon"
+                      variant="secondary"
+                      className={classes.removeButton}
+                      aria-label="Убрать из избранного"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleRemove(cafe.id);
+                      }}
+                      disabled={isRemoving}
+                    >
+                      {isRemoving ? (
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
                         <IconHeartFilled size={16} />
-                      </ActionIcon>
-                    </Group>
-                  </Group>
-                </Stack>
-              </Paper>
+                      )}
+                    </UIButton>
+                  </div>
+                </div>
+              </article>
             );
           })}
+        </div>
+      </div>
 
-          {detailsOpen && (
-            <Suspense fallback={null}>
-              <CafeDetailsScreen
-                opened={detailsOpen}
-                cafe={selectedCafe}
-                onClose={() => setDetailsOpen(false)}
-                showDistance={false}
-                showRoutes={false}
-              />
-            </Suspense>
-          )}
-        </Stack>
-      </Container>
-    </Box>
+      {detailsOpen && (
+        <Suspense fallback={null}>
+          <CafeDetailsScreen
+            opened={detailsOpen}
+            cafe={selectedCafe}
+            onClose={() => setDetailsOpen(false)}
+            showDistance={false}
+            showRoutes={false}
+          />
+        </Suspense>
+      )}
+    </main>
   );
 }

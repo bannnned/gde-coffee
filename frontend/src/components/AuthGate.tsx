@@ -1,15 +1,4 @@
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
-  Modal,
-  PasswordInput,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-} from "@mantine/core";
+import { IconBrandGithub, IconBrandYandex } from "@tabler/icons-react";
 import {
   createContext,
   useCallback,
@@ -22,12 +11,14 @@ import {
   type PropsWithChildren,
 } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { IconBrandGithub, IconBrandYandex } from "@tabler/icons-react";
 
 import type { AuthUser, LoginPayload, RegisterPayload } from "../api/auth";
 import * as authApi from "../api/auth";
 import { buildOAuthStartUrl } from "../api/url";
+import { Button as UIButton, Input } from "../components/ui";
+import { AppModal } from "../ui/bridge";
 import TelegramLoginWidget from "./TelegramLoginWidget";
+import classes from "./AuthGate.module.css";
 
 type AuthStatus = "loading" | "authed" | "unauth" | "error";
 type AuthFormMode = "login" | "register";
@@ -221,24 +212,6 @@ export default function AuthGate({ children }: PropsWithChildren) {
     ],
   );
 
-  const inputStyles = useMemo(
-    () => ({
-      input: {
-        borderRadius: 16,
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        boxShadow: "inset 0 0 0 1px var(--color-surface-overlay-soft)",
-        height: 48,
-        fontSize: 14.5,
-      },
-      label: {
-        fontWeight: 600,
-        letterSpacing: 0.2,
-      },
-    }),
-    [],
-  );
-
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
     const target = event.currentTarget;
     window.requestAnimationFrame(() => {
@@ -253,58 +226,36 @@ export default function AuthGate({ children }: PropsWithChildren) {
   const submitLabel = isRegister ? "Создать аккаунт" : "Войти";
   const toggleLabel = isRegister ? "Войти" : "Регистрация";
   const toggleText = isRegister ? "Уже есть аккаунт?" : "Нет аккаунта?";
-  const oauthIconProps = {
-    size: 42,
-    variant: "transparent" as const,
-    className: "oauth-button",
-  };
 
   return (
     <AuthContext.Provider value={ctxValue}>
       {children}
 
-      <Modal
-        opened={isAuthModalOpen}
-        onClose={closeAuthModal}
-        centered
-        withCloseButton
-        size="md"
-        zIndex={4000}
-        title={
-          <Title order={3} style={{ margin: 0 }}>
-            {titleText}
-          </Title>
-        }
-        styles={{
-          content: {
-            background: "var(--glass-bg)",
-            border: "1px solid var(--glass-border)",
-            boxShadow: "var(--shadow)",
-            backdropFilter: "blur(18px) saturate(160%)",
-            WebkitBackdropFilter: "blur(18px) saturate(160%)",
-            borderRadius: 22,
-          },
-          header: {
-            background: "transparent",
-            borderBottom: "1px solid var(--border)",
-            padding: "16px 18px 10px",
-          },
-          body: {
-            padding: "10px 18px 20px",
-          },
-          overlay: {
-            backdropFilter: "blur(8px)",
-            backgroundColor: "var(--color-surface-overlay-strong)",
-          },
+      <AppModal
+        open={isAuthModalOpen}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            setAuthModalOpen(true);
+            return;
+          }
+          closeAuthModal();
         }}
+        title={<span className={classes.title}>{titleText}</span>}
+        centered
+        closeButton
+        implementation="radix"
+        presentation="dialog"
+        contentClassName={classes.modalContent}
+        bodyClassName={classes.modalBody}
+        titleClassName={classes.titleWrapper}
       >
-        <Box
-          component="form"
+        <form
           onSubmit={(event) => {
             void onSubmit(event);
           }}
+          className={classes.form}
         >
-          <Stack gap="md">
+          <div className={classes.fields}>
             <Controller
               name="email"
               control={control}
@@ -316,22 +267,25 @@ export default function AuthGate({ children }: PropsWithChildren) {
                 },
               }}
               render={({ field }) => (
-                <TextInput
-                  label="Email"
-                  placeholder="name@example.com"
-                  autoComplete="email"
-                  size="md"
-                  radius="lg"
-                  styles={inputStyles}
-                  autoFocus
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  onFocus={handleFieldFocus}
-                  name={field.name}
-                  ref={field.ref}
-                  error={errors.email?.message}
-                />
+                <label className={classes.field}>
+                  <span className={classes.label}>Email</span>
+                  <Input
+                    type="email"
+                    placeholder="name@example.com"
+                    autoComplete="email"
+                    autoFocus
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    onFocus={handleFieldFocus}
+                    name={field.name}
+                    ref={field.ref}
+                    className={classes.input}
+                  />
+                  {errors.email?.message ? (
+                    <span className={classes.errorText}>{errors.email.message}</span>
+                  ) : null}
+                </label>
               )}
             />
             <Controller
@@ -347,20 +301,23 @@ export default function AuthGate({ children }: PropsWithChildren) {
                     : "Пароль должен содержать буквы и цифры",
               }}
               render={({ field }) => (
-                <PasswordInput
-                  label="Пароль"
-                  autoComplete={isRegister ? "new-password" : "current-password"}
-                  size="md"
-                  radius="lg"
-                  styles={inputStyles}
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  onFocus={handleFieldFocus}
-                  name={field.name}
-                  ref={field.ref}
-                  error={errors.password?.message}
-                />
+                <label className={classes.field}>
+                  <span className={classes.label}>Пароль</span>
+                  <Input
+                    type="password"
+                    autoComplete={isRegister ? "new-password" : "current-password"}
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    onFocus={handleFieldFocus}
+                    name={field.name}
+                    ref={field.ref}
+                    className={classes.input}
+                  />
+                  {errors.password?.message ? (
+                    <span className={classes.errorText}>{errors.password.message}</span>
+                  ) : null}
+                </label>
               )}
             />
             {isRegister && (
@@ -384,91 +341,92 @@ export default function AuthGate({ children }: PropsWithChildren) {
                   },
                 }}
                 render={({ field }) => (
-                  <TextInput
-                    label="Имя"
-                    placeholder="Ваше имя"
-                    size="md"
-                    radius="lg"
-                    styles={inputStyles}
-                    autoComplete="name"
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    onFocus={handleFieldFocus}
-                    name={field.name}
-                    ref={field.ref}
-                    error={errors.name?.message}
-                  />
+                  <label className={classes.field}>
+                    <span className={classes.label}>Имя</span>
+                    <Input
+                      type="text"
+                      placeholder="Ваше имя"
+                      autoComplete="name"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      onFocus={handleFieldFocus}
+                      name={field.name}
+                      ref={field.ref}
+                      className={classes.input}
+                    />
+                    {errors.name?.message ? (
+                      <span className={classes.errorText}>{errors.name.message}</span>
+                    ) : null}
+                  </label>
                 )}
               />
             )}
 
             {submitError && (
-              <Text size="sm" c="red">
+              <p className={classes.submitError}>
                 {submitError}
-              </Text>
+              </p>
             )}
+          </div>
 
-            <Button
-              type="submit"
-              loading={isSubmitting}
-              radius="lg"
-              size="md"
-              variant="gradient"
-              gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
-              styles={{
-                root: {
-                  height: 48,
-                  boxShadow: "0 12px 24px var(--attention-glow)",
-                },
+          <UIButton
+            type="submit"
+            className={classes.submitButton}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Отправляем...
+              </>
+            ) : (
+              submitLabel
+            )}
+          </UIButton>
+
+          <div className={classes.oauthRow}>
+            <button
+              type="button"
+              className="oauth-button ui-focus-ring"
+              aria-label="Войти через GitHub"
+              title="GitHub"
+              onClick={() => window.location.assign(githubAuthUrl)}
+            >
+              <IconBrandGithub size={22} />
+            </button>
+            <button
+              type="button"
+              className="oauth-button ui-focus-ring"
+              aria-label="Войти через Яндекс"
+              title="Яндекс"
+              onClick={() => window.location.assign(yandexAuthUrl)}
+            >
+              <IconBrandYandex size={22} />
+            </button>
+          </div>
+
+          <div className={classes.telegramRow}>
+            <TelegramLoginWidget flow="login" size="medium" />
+          </div>
+
+          <div className={classes.toggleRow}>
+            <p className={classes.toggleText}>{toggleText}</p>
+            <UIButton
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isSubmitting}
+              onClick={() => {
+                setSubmitError(null);
+                setMode((prev) => (prev === "login" ? "register" : "login"));
               }}
             >
-              {submitLabel}
-            </Button>
-
-            <Group gap="sm" justify="center">
-              <ActionIcon
-                {...oauthIconProps}
-                aria-label="Войти через GitHub"
-                title="GitHub"
-                onClick={() => window.location.assign(githubAuthUrl)}
-              >
-                <IconBrandGithub size={22} />
-              </ActionIcon>
-              <ActionIcon
-                {...oauthIconProps}
-                aria-label="Войти через Яндекс"
-                title="Яндекс"
-                onClick={() => window.location.assign(yandexAuthUrl)}
-              >
-                <IconBrandYandex size={22} />
-              </ActionIcon>
-            </Group>
-
-            <Box style={{ display: "flex", justifyContent: "center" }}>
-              <TelegramLoginWidget flow="login" size="medium" />
-            </Box>
-
-            <Group justify="space-between">
-              <Text size="xs" c="dimmed">
-                {toggleText}
-              </Text>
-              <Button
-                type="button"
-                variant="subtle"
-                size="xs"
-                disabled={isSubmitting}
-                onClick={() => {
-                  setSubmitError(null);
-                  setMode((prev) => (prev === "login" ? "register" : "login"));
-                }}
-              >
-                {toggleLabel}
-              </Button>
-            </Group>
-          </Stack>
-        </Box>
-      </Modal>
+              {toggleLabel}
+            </UIButton>
+          </div>
+        </form>
+      </AppModal>
     </AuthContext.Provider>
   );
 }

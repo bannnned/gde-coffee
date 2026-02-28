@@ -434,3 +434,21 @@ Critical path stack-transition:
 - Артефакт: de-Mantine photo admin modal + styles в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoAdminModal.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoAdminModal.module.css`.
 - Артефакт: de-Mantine cafe proposal modal + map picker + styles в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/modals/CafeProposalModal.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/modals/CafeProposalModal.module.css`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-A · User shell/auth/account de-Mantine (P1, status: done)
+- Цель: убрать прямые импорты `@mantine/core` из пользовательского auth/account контура (login/confirm/reset/favorites/auth-modal/settings theme usage).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/AuthGate.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/LoginPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/VerifyEmailPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ConfirmEmailChangePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ResetPasswordPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/FavoritesPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`.
+- Depends on: `W4-E`.
+- AC: auth modal работает через `AppModal` (`implementation="radix"`) + `components/ui` controls, без прямого Mantine UI.
+- AC: `/login`, `/verify-email`, `/confirm-email-change`, `/reset-password`, `/favorites` используют нативный layout + `components/ui`, без Mantine UI primitives.
+- AC: `SettingsScreen` не импортирует Mantine напрямую; theme control работает через локальный app-hook.
+- Артефакт: de-Mantine auth modal + styles в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/AuthGate.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/AuthGate.module.css`.
+- Артефакт: de-Mantine auth/account pages + styles в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/LoginPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/VerifyEmailPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ConfirmEmailChangePage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ResetPasswordPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/FavoritesPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/FavoritesPage.module.css`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/LoginPage.module.css`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ConfirmPage.module.css`.
+- Артефакт: theme hook abstraction в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/hooks/useAppColorScheme.ts` и применение в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

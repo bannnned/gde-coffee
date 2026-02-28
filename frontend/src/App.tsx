@@ -1,4 +1,3 @@
-import { Box, Loader } from "@mantine/core";
 import { lazy, Suspense } from "react";
 import {
   BrowserRouter,
@@ -29,16 +28,26 @@ const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 
 function RouteLoader() {
   return (
-    <Box
-      h="100dvh"
-      w="100%"
+    <div
       style={{
+        height: "100dvh",
+        width: "100%",
         display: "grid",
         placeItems: "center",
       }}
     >
-      <Loader size="sm" />
-    </Box>
+      <span
+        aria-label="Загрузка"
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 999,
+          border: "2px solid currentColor",
+          borderTopColor: "transparent",
+          animation: "authgate-spin 0.65s linear infinite",
+        }}
+      />
+    </div>
   );
 }
 
@@ -82,10 +91,10 @@ function AppRoutes() {
       </Routes>
 
       {backgroundLocation && (
-        <Box
-          pos="fixed"
-          inset={0}
+        <div
           style={{
+            position: "fixed",
+            inset: 0,
             zIndex: 2000,
             overflowY: "auto",
             overflowX: "hidden",
@@ -97,7 +106,7 @@ function AppRoutes() {
             <Route path="/profile" element={<ProfileScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
           </Routes>
-        </Box>
+        </div>
       )}
     </>
   );

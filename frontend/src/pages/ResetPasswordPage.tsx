@@ -1,15 +1,9 @@
-﻿import {
-  Button,
-  PasswordInput,
-  Stack,
-  Text,
-  Title,
-} from "@mantine/core";
 import { type FormEventHandler, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import * as authApi from "../api/auth";
+import { Button as UIButton, Input } from "../components/ui";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import { extractApiErrorMessage } from "../utils/apiError";
 import classes from "./ConfirmPage.module.css";
@@ -55,40 +49,38 @@ export default function ResetPasswordPage() {
       setSubmitError(extractApiErrorMessage(err, "Не удалось сменить пароль. Ссылка могла устареть."));
     }
   });
+
   const handleFormSubmit: FormEventHandler<HTMLFormElement> = (event) => {
     void submitForm(event);
   };
 
   return (
-    <div className={classes.page}>
-      <div className={classes.card}>
+    <main className={classes.page}>
+      <section className={classes.card}>
         {success ? (
-          <Stack gap="sm">
-            <Title order={2} className={classes.title}>
-              Пароль обновлён
-            </Title>
-            <Text className={classes.muted}>
+          <div className={classes.stack}>
+            <h1 className={classes.title}>Пароль обновлён</h1>
+            <p className={classes.muted}>
               Теперь можно войти с новым паролем.
-            </Text>
+            </p>
             <div className={classes.actions}>
-              <Button
-                variant="gradient"
-                gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
-                onClick={() => void navigate("/")}
+              <UIButton
+                type="button"
+                onClick={() => {
+                  void navigate("/");
+                }}
               >
                 На главную
-              </Button>
+              </UIButton>
             </div>
-          </Stack>
+          </div>
         ) : (
           <form onSubmit={handleFormSubmit}>
-            <Stack gap="sm">
-              <Title order={2} className={classes.title}>
-                Новый пароль
-              </Title>
-              <Text className={classes.muted}>
+            <div className={classes.stack}>
+              <h1 className={classes.title}>Новый пароль</h1>
+              <p className={classes.muted}>
                 Придумайте новый пароль для аккаунта.
-              </Text>
+              </p>
               <Controller
                 name="password"
                 control={control}
@@ -102,14 +94,22 @@ export default function ResetPasswordPage() {
                       : "Пароль должен содержать буквы и цифры",
                 }}
                 render={({ field }) => (
-                  <PasswordInput
-                    label="Новый пароль"
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    ref={field.ref}
-                    error={errors.password?.message}
-                  />
+                  <label className={classes.field}>
+                    <span className={classes.fieldLabel}>Новый пароль</span>
+                    <Input
+                      type="password"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className={classes.fieldInput}
+                    />
+                    {errors.password?.message ? (
+                      <span className={classes.fieldError}>
+                        {String(errors.password.message)}
+                      </span>
+                    ) : null}
+                  </label>
                 )}
               />
               <Controller
@@ -120,39 +120,57 @@ export default function ResetPasswordPage() {
                     value === passwordValue ? true : "Пароли не совпадают",
                 }}
                 render={({ field }) => (
-                  <PasswordInput
-                    label="Повторите пароль"
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    ref={field.ref}
-                    error={errors.confirmPassword?.message}
-                  />
+                  <label className={classes.field}>
+                    <span className={classes.fieldLabel}>Повторите пароль</span>
+                    <Input
+                      type="password"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className={classes.fieldInput}
+                    />
+                    {errors.confirmPassword?.message ? (
+                      <span className={classes.fieldError}>
+                        {String(errors.confirmPassword.message)}
+                      </span>
+                    ) : null}
+                  </label>
                 )}
               />
               {submitError && (
-                <Text c="red" size="sm">
+                <p className={classes.errorText}>
                   {submitError}
-                </Text>
+                </p>
               )}
               <div className={classes.actions}>
-                <Button
+                <UIButton
                   type="submit"
-                  loading={isSubmitting}
                   disabled={submitDisabled}
-                  variant="gradient"
-                  gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
                 >
-                  Сменить пароль
-                </Button>
-                <Button variant="subtle" onClick={() => void navigate("/")}>
+                  {isSubmitting ? (
+                    <>
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Сохраняем...
+                    </>
+                  ) : (
+                    "Сменить пароль"
+                  )}
+                </UIButton>
+                <UIButton
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    void navigate("/");
+                  }}
+                >
                   На главную
-                </Button>
+                </UIButton>
               </div>
-            </Stack>
+            </div>
           </form>
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

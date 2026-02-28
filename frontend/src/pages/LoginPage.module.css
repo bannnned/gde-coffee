@@ -19,7 +19,19 @@
   -webkit-backdrop-filter: blur(18px) saturate(180%);
 }
 
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
 .muted {
+  margin: 0;
   color: var(--muted);
 }
 
@@ -38,12 +50,18 @@
   justify-content: center;
 }
 
+.telegramWrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
 @media (max-width: 720px) {
   .page {
     padding: 12px;
   }
 
-  .actions :global(.mantine-Button-root) {
+  .actions > button {
     width: 100%;
   }
 }

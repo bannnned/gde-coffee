@@ -1,8 +1,8 @@
-﻿import { Button, Stack, Text, Title } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import * as authApi from "../api/auth";
+import { Button as UIButton } from "../components/ui";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import { extractApiErrorMessage } from "../utils/apiError";
 import classes from "./ConfirmPage.module.css";
@@ -41,28 +41,33 @@ export default function ConfirmEmailChangePage() {
   }, [token]);
 
   return (
-    <div className={classes.page}>
-      <div className={classes.card}>
-        <Stack gap="sm">
-          <Title order={2} className={classes.title}>
-            Смена email
-          </Title>
-          <Text className={classes.muted}>{message}</Text>
+    <main className={classes.page}>
+      <section className={classes.card}>
+        <div className={classes.stack}>
+          <h1 className={classes.title}>Смена email</h1>
+          <p className={classes.muted}>{message}</p>
           <div className={classes.actions}>
-              <Button
-                variant="gradient"
-                gradient={{ from: "emerald.6", to: "lime.5", deg: 135 }}
-                onClick={() => void navigate("/settings?email_changed=1")}
-                disabled={status === "loading"}
-              >
-                В настройки
-              </Button>
-            <Button variant="subtle" onClick={() => void navigate("/")}>
+            <UIButton
+              type="button"
+              onClick={() => {
+                void navigate("/settings?email_changed=1");
+              }}
+              disabled={status === "loading"}
+            >
+              В настройки
+            </UIButton>
+            <UIButton
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                void navigate("/");
+              }}
+            >
               На главную
-            </Button>
+            </UIButton>
           </div>
-        </Stack>
-      </div>
-    </div>
+        </div>
+      </section>
+    </main>
   );
 }

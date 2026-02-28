@@ -1,0 +1,156 @@
+.screen {
+  height: var(--app-vh);
+  min-height: var(--app-vh);
+  display: block;
+  padding-inline: var(--page-edge-padding);
+  padding-top: calc(var(--page-edge-padding) + var(--safe-top));
+  padding-bottom: calc(var(--page-edge-padding) + var(--safe-bottom));
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+  background:
+    radial-gradient(circle at top left, var(--bg-accent-1), transparent 45%),
+    radial-gradient(circle at 80% 20%, var(--bg-accent-2), transparent 40%),
+    var(--bg);
+}
+
+.container {
+  width: min(1080px, 100%);
+  margin-inline: auto;
+  display: grid;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.headerGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.headerMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.count {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.iconButton {
+  color: inherit;
+}
+
+.activeIcon {
+  pointer-events: none;
+}
+
+.notice {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.noticeError {
+  border-color: var(--color-status-error);
+  color: var(--color-status-error);
+}
+
+.list {
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2));
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.cardBody {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.cover {
+  height: 144px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.coverImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.metaRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.meta {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.name {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.address {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.removeButton {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 12px;
+}

@@ -1,8 +1,4 @@
 ﻿import {
-  useComputedColorScheme,
-  useMantineColorScheme,
-} from "@mantine/core";
-import {
   IconArrowLeft,
   IconBrandGithub,
   IconBrandTelegram,
@@ -42,6 +38,7 @@ import { useAuth } from "../components/AuthGate";
 import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import { Button as UIButton, Input } from "../components/ui";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
+import useAppColorScheme from "../hooks/useAppColorScheme";
 import useOauthRedirect from "../hooks/useOauthRedirect";
 import classes from "./SettingsScreen.module.css";
 
@@ -84,10 +81,7 @@ export default function SettingsScreen() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user, status, refreshAuth } = useAuth();
-  const { setColorScheme } = useMantineColorScheme();
-  const computedColorScheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
+  const { setColorScheme, colorScheme } = useAppColorScheme();
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [verifySuccess, setVerifySuccess] = useState<string | null>(null);
   const [nameChangeResult, setNameChangeResult] = useState<string | null>(null);
@@ -1055,7 +1049,7 @@ export default function SettingsScreen() {
             <div className={classes.section}>
               <div className={classes.sectionHeader}>
                 <div className={classes.sectionTitleRow}>
-                  {computedColorScheme === "dark" ? (
+                  {colorScheme === "dark" ? (
                     <IconMoon size={18} />
                   ) : (
                     <IconSun size={18} />
@@ -1067,7 +1061,7 @@ export default function SettingsScreen() {
               <div className={classes.actionsRow}>
                 <UIButton
                   type="button"
-                  variant={computedColorScheme === "light" ? "default" : "secondary"}
+                  variant={colorScheme === "light" ? "default" : "secondary"}
                   className={classes.actionButton}
                   onClick={() => setColorScheme("light")}
                 >
@@ -1076,7 +1070,7 @@ export default function SettingsScreen() {
                 </UIButton>
                 <UIButton
                   type="button"
-                  variant={computedColorScheme === "dark" ? "default" : "secondary"}
+                  variant={colorScheme === "dark" ? "default" : "secondary"}
                   className={classes.actionButton}
                   onClick={() => setColorScheme("dark")}
                 >

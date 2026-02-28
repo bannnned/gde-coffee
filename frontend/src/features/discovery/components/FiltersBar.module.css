@@ -29,7 +29,7 @@
   justify-content: center;
   width: var(--control-height-md);
   height: var(--control-height-md);
-  border-radius: var(--radius-md);
+  border-radius: 999px;
   font-size: 1rem;
   font-weight: 700;
   background: linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2));
@@ -52,6 +52,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center center;
+  border-radius: inherit;
   display: block;
 }
 
