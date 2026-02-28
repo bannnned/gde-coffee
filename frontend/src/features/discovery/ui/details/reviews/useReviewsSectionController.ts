@@ -160,10 +160,10 @@ async function waitUntilReviewPhotoReady(photoID: string): Promise<{
 function buildQualityInsight(review: CafeReview | undefined): ReviewQualityInsight | null {
   if (!review) return null;
 
-  const summaryLength = review.summary.trim().length;
-  const hasDrink = review.drink_id.trim().length > 0;
-  const hasTags = review.taste_tags.length > 0;
-  const hasPhoto = review.photos.length > 0;
+  const summaryLength = (review.summary ?? "").trim().length;
+  const hasDrink = (review.drink_id ?? "").trim().length > 0;
+  const hasTags = Array.isArray(review.taste_tags) && review.taste_tags.length > 0;
+  const hasPhoto = Array.isArray(review.photos) && review.photos.length > 0;
   const hasVisitVerification = Boolean(review.visit_verified);
   const noValidAbuseReports = review.confirmed_reports <= 0;
 
@@ -662,13 +662,16 @@ export function useReviewsSectionController({
       setSubmitError(null);
       setSubmitHint(null);
       try {
-        const deletePayload =
-          normalizedReason === ""
-            ? { details: (rawDetails ?? "").trim() }
-            : {
-                reason: normalizedReason as "abuse" | "violation",
-                details: (rawDetails ?? "").trim(),
-              };
+        const deleteReason =
+          normalizedReason === "abuse" || normalizedReason === "violation"
+            ? normalizedReason
+            : undefined;
+        const deletePayload = deleteReason
+          ? {
+              reason: deleteReason,
+              details: (rawDetails ?? "").trim(),
+            }
+          : { details: (rawDetails ?? "").trim() };
         await deleteReview(review.id, {
           ...deletePayload,
         });

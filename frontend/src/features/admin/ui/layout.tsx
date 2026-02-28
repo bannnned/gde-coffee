@@ -12,66 +12,10 @@ import {
 import { Button as UIButton } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 
-type SpaceToken = "xs" | "sm" | "md" | "lg" | "xl";
-type SpaceValue = number | SpaceToken;
-
-const spacingPx: Record<SpaceToken, number> = {
-  xs: 8,
-  sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 24,
-};
-
-type RadiusToken = "xs" | "sm" | "md" | "lg" | "xl";
-type RadiusValue = number | RadiusToken;
-
-const radiusPx: Record<RadiusToken, number> = {
-  xs: 8,
-  sm: 10,
-  md: 12,
-  lg: 16,
-  xl: 22,
-};
-
-function resolveSpace(value?: SpaceValue): number | undefined {
-  if (value == null) return undefined;
-  if (typeof value === "number") return value;
-  return spacingPx[value];
-}
-
-function resolveRadius(value?: RadiusValue): number | undefined {
-  if (value == null) return undefined;
-  if (typeof value === "number") return value;
-  return radiusPx[value];
-}
-
-function withSpacingStyle(props: {
-  p?: SpaceValue;
-  py?: SpaceValue;
-  pb?: SpaceValue;
-  style?: CSSProperties;
-}): CSSProperties {
-  const style: CSSProperties = { ...(props.style ?? {}) };
-  const p = resolveSpace(props.p);
-  const py = resolveSpace(props.py);
-  const pb = resolveSpace(props.pb);
-  if (p != null) style.padding = p;
-  if (py != null) {
-    style.paddingTop = py;
-    style.paddingBottom = py;
-  }
-  if (pb != null) style.paddingBottom = pb;
-  return style;
-}
-
 type BoxProps = {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  p?: SpaceValue;
-  py?: SpaceValue;
-  pb?: SpaceValue;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
@@ -79,9 +23,6 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     children,
     className,
     style,
-    p,
-    py,
-    pb,
     ...rest
   },
   ref,
@@ -90,9 +31,7 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     <div
       ref={ref}
       className={className}
-      style={{
-        ...withSpacingStyle({ p, py, pb, style }),
-      }}
+      style={style}
       {...rest}
     >
       {children}
@@ -105,7 +44,6 @@ type ContainerProps = {
   className?: string;
   style?: CSSProperties;
   size?: "xs" | "sm" | "md" | "lg" | number | string;
-  py?: SpaceValue;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Container({
@@ -113,7 +51,6 @@ export function Container({
   className,
   style,
   size = "md",
-  py,
   ...rest
 }: ContainerProps) {
   const width =
@@ -135,7 +72,7 @@ export function Container({
         width: "min(100%, 100%)",
         maxWidth: width,
         marginInline: "auto",
-        ...withSpacingStyle({ py, style }),
+        ...style,
       }}
       {...rest}
     >
@@ -148,7 +85,6 @@ type GroupProps = {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  gap?: SpaceValue;
   justify?: CSSProperties["justifyContent"];
   align?: CSSProperties["alignItems"];
   wrap?: CSSProperties["flexWrap"];
@@ -158,13 +94,11 @@ export function Group({
   children,
   className,
   style,
-  gap = "sm",
   justify,
   align,
   wrap = "wrap",
   ...rest
 }: GroupProps) {
-  const gapPx = resolveSpace(gap) ?? 0;
   return (
     <div
       className={className}
@@ -173,7 +107,7 @@ export function Group({
         flexWrap: wrap,
         justifyContent: justify,
         alignItems: align,
-        gap: gapPx,
+        gap: 12,
         ...style,
       }}
       {...rest}
@@ -187,7 +121,6 @@ type StackProps = {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  gap?: SpaceValue;
   align?: CSSProperties["alignItems"];
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
@@ -195,17 +128,15 @@ export function Stack({
   children,
   className,
   style,
-  gap = "sm",
   align,
   ...rest
 }: StackProps) {
-  const gapPx = resolveSpace(gap) ?? 0;
   return (
     <div
       className={className}
       style={{
         display: "grid",
-        gap: gapPx,
+        gap: 12,
         alignItems: align,
         ...style,
       }}
@@ -221,9 +152,6 @@ type PaperProps = {
   className?: string;
   style?: CSSProperties;
   withBorder?: boolean;
-  radius?: RadiusValue;
-  p?: SpaceValue;
-  py?: SpaceValue;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Paper({
@@ -231,20 +159,16 @@ export function Paper({
   className,
   style,
   withBorder = false,
-  radius = "md",
-  p,
-  py,
   ...rest
 }: PaperProps) {
-  const radiusValue = resolveRadius(radius) ?? 12;
   return (
     <div
       className={className}
       style={{
-        borderRadius: radiusValue,
+        borderRadius: 12,
         border: withBorder ? "1px solid var(--border)" : "none",
         background: "var(--surface)",
-        ...withSpacingStyle({ p, py, style }),
+        ...style,
       }}
       {...rest}
     >
@@ -330,7 +254,6 @@ type BadgeProps = {
   style?: CSSProperties;
   variant?: "default" | "secondary" | "outline" | "dot";
   color?: "yellow" | "green" | "red" | "orange" | "gray";
-  radius?: RadiusValue;
 } & Omit<HTMLAttributes<HTMLSpanElement>, "style" | "children">;
 
 function badgeTone(color?: BadgeProps["color"]): string {
@@ -346,7 +269,6 @@ export function Badge({
   style,
   variant = "default",
   color,
-  radius = "xl",
   ...rest
 }: BadgeProps) {
   const tone = badgeTone(color);
@@ -371,7 +293,7 @@ export function Badge({
         display: "inline-flex",
         alignItems: "center",
         gap: variant === "dot" ? 6 : 0,
-        borderRadius: resolveRadius(radius) ?? 999,
+        borderRadius: 999,
         border: `1px solid ${tone}`,
         background,
         color: textColor,
@@ -442,7 +364,7 @@ type ActionIconProps = {
   className?: string;
   style?: CSSProperties;
   size?: number;
-  variant?: "transparent" | "light" | "filled";
+  variant?: "default" | "secondary" | "ghost" | "outline" | "destructive";
   loading?: boolean;
   disabled?: boolean;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style" | "children">;
@@ -452,16 +374,15 @@ export function ActionIcon({
   className,
   style,
   size = 36,
-  variant = "transparent",
+  variant = "ghost",
   loading = false,
   disabled = false,
   ...rest
 }: ActionIconProps) {
-  const mappedVariant = variant === "light" ? "secondary" : variant === "filled" ? "default" : "ghost";
   return (
     <UIButton
       size="icon"
-      variant={mappedVariant}
+      variant={variant}
       className={className}
       style={{ width: size, height: size, ...style }}
       disabled={disabled || loading}

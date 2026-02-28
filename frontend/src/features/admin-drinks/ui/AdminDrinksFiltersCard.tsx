@@ -14,8 +14,8 @@ export default function AdminDrinksFiltersCard({
   onIncludeInactiveChange,
 }: AdminDrinksFiltersCardProps) {
   return (
-    <Paper withBorder radius="lg" p="md">
-      <Stack gap="sm">
+    <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+      <Stack style={{ gap: 12 }}>
         <TextInput
           label="Поиск по справочнику"
           placeholder="например, v60 или эспрессо"

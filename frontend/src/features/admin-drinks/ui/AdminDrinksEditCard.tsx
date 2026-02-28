@@ -20,8 +20,8 @@ export default function AdminDrinksEditCard({
   if (!state) return null;
 
   return (
-    <Paper withBorder radius="lg" p="md">
-      <Stack gap="sm">
+    <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+      <Stack style={{ gap: 12 }}>
         <Title order={4}>Редактирование: {drinkID}</Title>
         <TextInput
           label="Название"

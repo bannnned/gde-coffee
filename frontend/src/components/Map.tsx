@@ -171,6 +171,19 @@ const CAFE_CLUSTER_RADIUS_PX = 56;
 const CAFE_CLUSTER_MAX_ZOOM = 13;
 const CAFE_CLUSTER_LAYER_ID = "cafes-clusters";
 const CAFE_CLUSTER_COUNT_LAYER_ID = "cafes-cluster-count";
+const CAFE_SPIDER_SOURCE_ID = "cafes-spider-source";
+const CAFE_SPIDER_LINE_LAYER_ID = "cafes-spider-lines";
+const CAFE_SPIDER_POINT_LAYER_ID = "cafes-spider-points";
+const CAFE_CLUSTER_INTERACTIVE_LAYER_IDS = [
+  CAFE_CLUSTER_LAYER_ID,
+  CAFE_CLUSTER_COUNT_LAYER_ID,
+] as const;
+const CAFE_SPIDER_MAX_LEAVES = 24;
+const CLUSTER_ZOOM_TO_SPIDER_THRESHOLD = 0.7;
+const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = {
+  type: "FeatureCollection",
+  features: [],
+};
 const NON_FATAL_STYLE_MESSAGES = [
   "Expected value to be of type number, but found null instead.",
 ];
@@ -247,6 +260,121 @@ function getGeoJsonSource(map: MLMap, id: string): GeoJSONSource | null {
   return null;
 }
 
+function getCafesClusterSource(map: MLMap): (GeoJSONSource & {
+  getClusterExpansionZoom?: (
+    clusterId: number,
+    callback: (error: Error | null, zoom: number) => void,
+  ) => void;
+  getClusterLeaves?: (
+    clusterId: number,
+    limit: number,
+    offset: number,
+    callback: (
+      error: Error | null,
+      features: Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>,
+    ) => void,
+  ) => void;
+}) | null {
+  return getGeoJsonSource(map, "cafes") as (GeoJSONSource & {
+    getClusterExpansionZoom?: (
+      clusterId: number,
+      callback: (error: Error | null, zoom: number) => void,
+    ) => void;
+    getClusterLeaves?: (
+      clusterId: number,
+      limit: number,
+      offset: number,
+      callback: (
+        error: Error | null,
+        features: Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>,
+      ) => void,
+    ) => void;
+  }) | null;
+}
+
+function clearSpiderfy(map: MLMap) {
+  const source = getGeoJsonSource(map, CAFE_SPIDER_SOURCE_ID);
+  if (!source) return;
+  source.setData(EMPTY_FEATURE_COLLECTION);
+}
+
+function polarOffset(index: number, total: number): { dx: number; dy: number } {
+  if (total <= 8) {
+    const angle = (Math.PI * 2 * index) / total;
+    const radius = 34 + Math.min(8, total) * 1.2;
+    return {
+      dx: Math.cos(angle) * radius,
+      dy: Math.sin(angle) * radius,
+    };
+  }
+
+  const angleStep = 0.62;
+  const radiusStep = 5.8;
+  const angle = index * angleStep;
+  const radius = 26 + radiusStep * angle;
+  return {
+    dx: Math.cos(angle) * radius,
+    dy: Math.sin(angle) * radius,
+  };
+}
+
+function spiderfyClusterLeaves(
+  map: MLMap,
+  center: [number, number],
+  leaves: Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>,
+) {
+  const source = getGeoJsonSource(map, CAFE_SPIDER_SOURCE_ID);
+  if (!source) return;
+
+  const total = Math.min(leaves.length, CAFE_SPIDER_MAX_LEAVES);
+  if (total <= 1) {
+    clearSpiderfy(map);
+    return;
+  }
+
+  const projected = map.project({ lng: center[0], lat: center[1] });
+  const lineFeatures: GeoJSON.Feature<GeoJSON.LineString, GeoJSON.GeoJsonProperties>[] = [];
+  const pointFeatures: GeoJSON.Feature<GeoJSON.Point, GeoJSON.GeoJsonProperties>[] = [];
+
+  for (let idx = 0; idx < total; idx += 1) {
+    const leaf = leaves[idx];
+    if (!leaf) continue;
+    const { dx, dy } = polarOffset(idx, total);
+    const target = map.unproject([projected.x + dx, projected.y + dy]);
+    const targetLngLat: [number, number] = [target.lng, target.lat];
+    const cafeId = typeof leaf.properties?.id === "string" ? leaf.properties.id : "";
+    const cafeName = typeof leaf.properties?.name === "string" ? leaf.properties.name : "";
+
+    lineFeatures.push({
+      type: "Feature",
+      properties: {
+        id: cafeId,
+      },
+      geometry: {
+        type: "LineString",
+        coordinates: [center, targetLngLat],
+      },
+    });
+
+    pointFeatures.push({
+      type: "Feature",
+      properties: {
+        id: cafeId,
+        name: cafeName,
+      },
+      geometry: {
+        type: "Point",
+        coordinates: targetLngLat,
+      },
+    });
+  }
+
+  source.setData({
+    type: "FeatureCollection",
+    features: [...lineFeatures, ...pointFeatures],
+  });
+}
+
 function addSources(map: MLMap, geojson: GeoJSON.FeatureCollection) {
   if (!map.getSource("user")) {
     map.addSource("user", {
@@ -265,6 +393,13 @@ function addSources(map: MLMap, geojson: GeoJSON.FeatureCollection) {
       cluster: true,
       clusterRadius: CAFE_CLUSTER_RADIUS_PX,
       clusterMaxZoom: CAFE_CLUSTER_MAX_ZOOM,
+    });
+  }
+
+  if (!map.getSource(CAFE_SPIDER_SOURCE_ID)) {
+    map.addSource(CAFE_SPIDER_SOURCE_ID, {
+      type: "geojson",
+      data: EMPTY_FEATURE_COLLECTION,
     });
   }
 }
@@ -416,6 +551,36 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
     }
   }
 
+  if (!map.getLayer(CAFE_SPIDER_LINE_LAYER_ID)) {
+    map.addLayer({
+      id: CAFE_SPIDER_LINE_LAYER_ID,
+      type: "line",
+      source: CAFE_SPIDER_SOURCE_ID,
+      filter: ["==", ["geometry-type"], "LineString"],
+      paint: {
+        "line-color": "#E1784F",
+        "line-opacity": 0.84,
+        "line-width": 1.4,
+      },
+    });
+  }
+
+  if (!map.getLayer(CAFE_SPIDER_POINT_LAYER_ID)) {
+    map.addLayer({
+      id: CAFE_SPIDER_POINT_LAYER_ID,
+      type: "circle",
+      source: CAFE_SPIDER_SOURCE_ID,
+      filter: ["==", ["geometry-type"], "Point"],
+      paint: {
+        "circle-radius": 7,
+        "circle-color": "#457E73",
+        "circle-opacity": 0.97,
+        "circle-stroke-color": "rgba(255,255,240,0.95)",
+        "circle-stroke-width": 1.8,
+      },
+    });
+  }
+
   if (!map.getLayer("user-layer")) {
     if (hasUserIcon) {
       map.addLayer({
@@ -448,6 +613,8 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
 }
 
 function rebuildLayers(map: MLMap, selectedCafeId: string | null) {
+  if (map.getLayer(CAFE_SPIDER_POINT_LAYER_ID)) map.removeLayer(CAFE_SPIDER_POINT_LAYER_ID);
+  if (map.getLayer(CAFE_SPIDER_LINE_LAYER_ID)) map.removeLayer(CAFE_SPIDER_LINE_LAYER_ID);
   if (map.getLayer(CAFE_CLUSTER_COUNT_LAYER_ID)) map.removeLayer(CAFE_CLUSTER_COUNT_LAYER_ID);
   if (map.getLayer(CAFE_CLUSTER_LAYER_ID)) map.removeLayer(CAFE_CLUSTER_LAYER_ID);
   if (map.getLayer("cafes-layer")) map.removeLayer("cafes-layer");
@@ -502,30 +669,68 @@ async function expandClusterOnClick(
   if (clusterId == null) return;
   if (feature.geometry.type !== "Point") return;
 
-  const source = getGeoJsonSource(map, "cafes") as GeoJSONSource & {
-    getClusterExpansionZoom?: (
-      clusterId: number,
-      callback: (error: Error | null, zoom: number) => void,
-    ) => void;
-  };
+  const source = getCafesClusterSource(map);
   if (!source || typeof source.getClusterExpansionZoom !== "function") return;
+  clearSpiderfy(map);
 
-  const expansionZoom = await new Promise<number>((resolve, reject) => {
-    source.getClusterExpansionZoom?.(clusterId, (error, zoom) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-      resolve(zoom);
+  try {
+    const expansionZoom = await new Promise<number>((resolve, reject) => {
+      source.getClusterExpansionZoom?.(clusterId, (error, zoom) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(zoom);
+      });
     });
-  });
 
-  const currentZoom = map.getZoom();
-  map.easeTo({
-    center: feature.geometry.coordinates as [number, number],
-    zoom: Math.max(expansionZoom, currentZoom + 1),
-    duration: 260,
-  });
+    const currentZoom = map.getZoom();
+    const center = feature.geometry.coordinates as [number, number];
+    if (expansionZoom - currentZoom >= CLUSTER_ZOOM_TO_SPIDER_THRESHOLD) {
+      map.easeTo({
+        center,
+        zoom: Math.max(expansionZoom, currentZoom + 1),
+        duration: 300,
+        essential: true,
+      });
+      return;
+    }
+
+    if (typeof source.getClusterLeaves !== "function") {
+      map.easeTo({
+        center,
+        zoom: Math.max(expansionZoom, currentZoom + 1),
+        duration: 300,
+        essential: true,
+      });
+      return;
+    }
+
+    const pointCount = Math.max(
+      2,
+      Math.trunc(asFiniteNumber(feature.properties?.point_count) ?? CAFE_SPIDER_MAX_LEAVES),
+    );
+    const leaves = await new Promise<
+      Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>
+    >((resolve, reject) => {
+      source.getClusterLeaves?.(
+        clusterId,
+        Math.min(pointCount, CAFE_SPIDER_MAX_LEAVES),
+        0,
+        (error, nextFeatures) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve(Array.isArray(nextFeatures) ? nextFeatures : []);
+        },
+      );
+    });
+
+    spiderfyClusterLeaves(map, center, leaves);
+  } catch (error) {
+    console.warn("[MapLibre] Failed to expand cluster", error);
+  }
 }
 
 export default function Map({
@@ -548,6 +753,7 @@ export default function Map({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const layerEventsBoundRef = useRef(false);
+  const mapHandlersBoundRef = useRef(false);
   const schemeRef = useRef<"light" | "dark">(scheme);
   const onCafeSelectRef = useRef(onCafeSelect);
   const onMapClickRef = useRef(onMapClick);
@@ -642,11 +848,15 @@ export default function Map({
     const handleClick = (e: maplibregl.MapLayerMouseEvent) => {
       const f = e.features?.[0];
       const id = f?.properties?.id as string | undefined;
+      clearSpiderfy(map);
       if (id && onCafeSelectRef.current) onCafeSelectRef.current(id);
     };
 
     const handleClusterClick = (e: maplibregl.MapLayerMouseEvent) => {
-      const f = e.features?.[0];
+      const renderedFeatures = e.features?.length
+        ? e.features
+        : map.queryRenderedFeatures(e.point, { layers: [...CAFE_CLUSTER_INTERACTIVE_LAYER_IDS] });
+      const f = renderedFeatures[0];
       if (!f) return;
       if ("stopPropagation" in e.originalEvent) {
         e.originalEvent.stopPropagation();
@@ -656,6 +866,16 @@ export default function Map({
 
     const handleMapClick = (e: maplibregl.MapMouseEvent) => {
       if (!onMapClickRef.current) return;
+      const interactiveFeatures = map.queryRenderedFeatures(e.point, {
+        layers: [
+          ...CAFE_CLUSTER_INTERACTIVE_LAYER_IDS,
+          CAFE_SPIDER_POINT_LAYER_ID,
+          "cafes-layer",
+          "cafes-selected",
+        ],
+      });
+      if (interactiveFeatures.length > 0) return;
+      clearSpiderfy(map);
       onMapClickRef.current([e.lngLat.lng, e.lngLat.lat]);
     };
 
@@ -681,6 +901,20 @@ export default function Map({
 
     const handleMouseLeave = () => {
       map.getCanvas().style.cursor = "";
+    };
+
+    const handleSpiderPointClick = (e: maplibregl.MapLayerMouseEvent) => {
+      const feature = e.features?.[0];
+      const id = typeof feature?.properties?.id === "string" ? feature.properties.id : "";
+      if (!id) return;
+      if ("stopPropagation" in e.originalEvent) {
+        e.originalEvent.stopPropagation();
+      }
+      onCafeSelectRef.current?.(id);
+    };
+
+    const handleMoveStart = () => {
+      clearSpiderfy(map);
     };
 
     const handleError = (event: { error?: unknown }) => {
@@ -710,10 +944,16 @@ export default function Map({
       if (!disableCafeClick && !layerEventsBoundRef.current) {
         map.on("click", "cafes-layer", handleClick);
         map.on("click", CAFE_CLUSTER_LAYER_ID, handleClusterClick);
+        map.on("click", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterClick);
+        map.on("click", CAFE_SPIDER_POINT_LAYER_ID, handleSpiderPointClick);
         map.on("mouseenter", "cafes-layer", handleMouseEnter);
         map.on("mouseleave", "cafes-layer", handleMouseLeave);
         map.on("mouseenter", CAFE_CLUSTER_LAYER_ID, handleMouseEnter);
         map.on("mouseleave", CAFE_CLUSTER_LAYER_ID, handleMouseLeave);
+        map.on("mouseenter", CAFE_CLUSTER_COUNT_LAYER_ID, handleMouseEnter);
+        map.on("mouseleave", CAFE_CLUSTER_COUNT_LAYER_ID, handleMouseLeave);
+        map.on("mouseenter", CAFE_SPIDER_POINT_LAYER_ID, handleMouseEnter);
+        map.on("mouseleave", CAFE_SPIDER_POINT_LAYER_ID, handleMouseLeave);
         layerEventsBoundRef.current = true;
       }
 
@@ -734,6 +974,10 @@ export default function Map({
     map.on("click", handleMapClick);
     map.on("moveend", handleMoveEnd);
     map.on("error", handleError);
+    if (!mapHandlersBoundRef.current) {
+      map.on("movestart", handleMoveStart);
+      mapHandlersBoundRef.current = true;
+    }
     mapRef.current = map;
 
     return () => {
@@ -741,13 +985,23 @@ export default function Map({
       map.off("click", handleMapClick);
       map.off("moveend", handleMoveEnd);
       map.off("error", handleError);
+      if (mapHandlersBoundRef.current) {
+        map.off("movestart", handleMoveStart);
+        mapHandlersBoundRef.current = false;
+      }
       if (!disableCafeClick && layerEventsBoundRef.current) {
         map.off("click", "cafes-layer", handleClick);
         map.off("click", CAFE_CLUSTER_LAYER_ID, handleClusterClick);
+        map.off("click", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterClick);
+        map.off("click", CAFE_SPIDER_POINT_LAYER_ID, handleSpiderPointClick);
         map.off("mouseenter", "cafes-layer", handleMouseEnter);
         map.off("mouseleave", "cafes-layer", handleMouseLeave);
         map.off("mouseenter", CAFE_CLUSTER_LAYER_ID, handleMouseEnter);
         map.off("mouseleave", CAFE_CLUSTER_LAYER_ID, handleMouseLeave);
+        map.off("mouseenter", CAFE_CLUSTER_COUNT_LAYER_ID, handleMouseEnter);
+        map.off("mouseleave", CAFE_CLUSTER_COUNT_LAYER_ID, handleMouseLeave);
+        map.off("mouseenter", CAFE_SPIDER_POINT_LAYER_ID, handleMouseEnter);
+        map.off("mouseleave", CAFE_SPIDER_POINT_LAYER_ID, handleMouseLeave);
         layerEventsBoundRef.current = false;
       }
       map.remove();

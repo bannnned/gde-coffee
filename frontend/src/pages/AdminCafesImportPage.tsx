@@ -471,7 +471,7 @@ export default function AdminCafesImportPage() {
 
   if (status === "loading") {
     return (
-      <Box p="lg">
+      <Box style={{ padding: 20 }}>
         <Text>Загрузка...</Text>
       </Box>
     );
@@ -479,8 +479,8 @@ export default function AdminCafesImportPage() {
 
   if (!allowed) {
     return (
-      <Container size="sm" py="xl">
-        <Stack gap="md">
+      <Container size="sm" style={{ paddingTop: 24, paddingBottom: 24 }}>
+        <Stack style={{ gap: 16 }}>
           <Title order={3}>Доступ ограничен</Title>
           <Text style={{ color: "var(--muted)" }}>
             Эта страница доступна только администраторам.
@@ -492,14 +492,13 @@ export default function AdminCafesImportPage() {
   }
 
   return (
-    <Box className="page-shell" pb="xl">
-      <Container size="lg" py="md">
-        <Stack gap="md">
+    <Box className="page-shell" style={{ paddingBottom: 24 }}>
+      <Container size="lg" style={{ paddingTop: 16, paddingBottom: 16 }}>
+        <Stack style={{ gap: 16 }}>
           <Group justify="space-between">
             <Group>
               <ActionIcon
                 size={42}
-                variant="transparent"
                 className="glass-action glass-action--square"
                 onClick={() => void navigate("/settings")}
                 aria-label="Назад"
@@ -657,7 +656,7 @@ export default function AdminCafesImportPage() {
           )}
 
           {result && (
-            <Stack gap="sm">
+            <Stack style={{ gap: 12 }}>
               <Title order={4}>Результат</Title>
               <Group>
                 <Text style={{ fontSize: 13 }}>Всего: {result.summary.total}</Text>

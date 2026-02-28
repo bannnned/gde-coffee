@@ -486,6 +486,54 @@ function asStringArray(value: unknown): string[] {
   return asArray(value).filter((item): item is string => typeof item === "string");
 }
 
+function parseReviewPosition(value: unknown): ReviewPosition | null {
+  if (!isRecord(value)) return null;
+  const drinkID = asString(value.drink_id).trim();
+  const drinkName = asString(value.drink_name).trim();
+  if (!drinkID && !drinkName) return null;
+  return {
+    position: asNumber(value.position),
+    drink_id: drinkID,
+    drink_name: drinkName,
+  };
+}
+
+function parseCafeReview(value: unknown, index: number): CafeReview {
+  const raw = asRecord(value);
+  const positions = asArray(raw.positions)
+    .map(parseReviewPosition)
+    .filter((item): item is ReviewPosition => Boolean(item));
+
+  const tasteTags = asStringArray(raw.taste_tags);
+  const specificTags = asStringArray(raw.specific_tags);
+
+  return {
+    id: asString(raw.id, `review-${index}`),
+    user_id: asString(raw.user_id),
+    author_name: asString(raw.author_name, "Участник"),
+    author_badge: asString(raw.author_badge) || undefined,
+    author_trusted: asBoolean(raw.author_trusted),
+    rating: asNumber(raw.rating),
+    summary: asString(raw.summary),
+    drink_id: asString(raw.drink_id),
+    drink_name: asString(raw.drink_name),
+    positions,
+    taste_tags: tasteTags,
+    specific_tags: specificTags.length > 0 ? specificTags : tasteTags,
+    photos: asStringArray(raw.photos),
+    photo_count: asNumber(raw.photo_count),
+    helpful_votes: asNumber(raw.helpful_votes),
+    helpful_score: asNumber(raw.helpful_score),
+    visit_confidence: asString(raw.visit_confidence, "none"),
+    visit_verified: asBoolean(raw.visit_verified),
+    quality_score: asNumber(raw.quality_score),
+    quality_formula: asString(raw.quality_formula, "quality_v1"),
+    confirmed_reports: asNumber(raw.confirmed_reports),
+    created_at: asString(raw.created_at),
+    updated_at: asString(raw.updated_at),
+  };
+}
+
 function parseFormulaVersions(raw: RawRecord): { rating: string; quality: string } {
   const formulaVersions = asRecord(raw.formula_versions);
   return {
@@ -772,23 +820,7 @@ export async function listCafeReviews(
       positionOptions: [],
     };
   }
-  const reviews = res.data.reviews.map((review) => {
-    const specificTags = Array.isArray((review as { specific_tags?: unknown }).specific_tags)
-      ? ((review as { specific_tags?: unknown[] }).specific_tags ?? []).filter(
-          (item): item is string => typeof item === "string",
-        )
-      : Array.isArray(review.taste_tags)
-        ? review.taste_tags
-        : [];
-    return {
-      ...review,
-      positions: Array.isArray(review.positions) ? review.positions : [],
-      taste_tags: Array.isArray(review.taste_tags) ? review.taste_tags : [],
-      specific_tags: specificTags,
-      quality_formula:
-        typeof review.quality_formula === "string" ? review.quality_formula : "quality_v1",
-    };
-  });
+  const reviews = res.data.reviews.map((review, index) => parseCafeReview(review, index));
   return {
     apiContractVersion:
       typeof res.data?.api_contract_version === "string"

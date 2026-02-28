@@ -725,3 +725,56 @@ Critical path stack-transition:
 - AC: `typecheck/build/tests` проходят без регрессий.
 - Артефакт: упрощенный spacing/radius контракт в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-S · Remove `Select.w` compat prop from admin fields layer (P1, status: done)
+- Цель: убрать mantine-like width alias `w` из admin `Select` и использовать явный `style/className` в usage-слоях.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-R`.
+- AC: `SelectProps` не содержит `w`; layout ширина задается только через `style/className`.
+- AC: в admin usage отсутствует `w={...}` на `Select`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: упрощенный `Select` контракт в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Артефакт: migration `w={180|320}` -> `style={{ width: ... }}` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-T · Remove `ActionIcon` variant aliases (`transparent/light/filled`) from admin layout layer (P1, status: done)
+- Цель: убрать mantine-like alias-варианты `ActionIcon` и оставить только нативные `Button` variants (`default|secondary|ghost|outline|destructive`).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Depends on: `W5-S`.
+- AC: `ActionIconProps.variant` не содержит `transparent/light/filled`.
+- AC: `layout.tsx` не содержит маппинг alias-вариантов `mappedVariant`.
+- AC: в admin usage отсутствует `ActionIcon variant="transparent"`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: упрощенный `ActionIcon` контракт в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration back-button `ActionIcon` usage в перечисленных `Admin*.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-U · Remove remaining layout aliases (`p/py/pb/gap/radius`) from admin layer and usage (P1, status: done)
+- Цель: убрать последние mantine-like layout-алиасы из admin primitives (`Box/Container/Group/Stack/Paper/Badge`) и перевести usage на явные `style/className`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksFiltersCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCreateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksEditCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-T`.
+- AC: `layout.tsx` не содержит контрактов/утилит `p/py/pb/gap/radius`, `resolveSpace/resolveRadius/withSpacingStyle`, token-maps spacing/radius.
+- AC: в admin usage отсутствуют пропсы `p/py/pb/gap/radius` на `Box/Container/Group/Stack/Paper/Badge`.
+- AC: визуальный layout эквивалентен (spacing/radius сохранены через явные `style`).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: упрощенные контракты `Box/Container/Group/Stack/Paper/Badge` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration admin pages/cards на explicit `style` для padding/gap/radius.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

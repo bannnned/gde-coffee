@@ -115,7 +115,7 @@ export default function AdminFeedbackPage() {
 
   if (status === "loading") {
     return (
-      <Box p="lg">
+      <Box style={{ padding: 20 }}>
         <Text>Загрузка...</Text>
       </Box>
     );
@@ -123,8 +123,8 @@ export default function AdminFeedbackPage() {
 
   if (!allowed) {
     return (
-      <Container size="sm" py="xl">
-        <Stack gap="md">
+      <Container size="sm" style={{ paddingTop: 24, paddingBottom: 24 }}>
+        <Stack style={{ gap: 16 }}>
           <Title order={3}>Доступ ограничен</Title>
           <Text style={{ color: "var(--muted)" }}>
             Эта страница доступна только администраторам.
@@ -136,14 +136,13 @@ export default function AdminFeedbackPage() {
   }
 
   return (
-    <Box className="page-shell" pb="xl">
-      <Container size="lg" py="md">
-        <Stack gap="md">
+    <Box className="page-shell" style={{ paddingBottom: 24 }}>
+      <Container size="lg" style={{ paddingTop: 16, paddingBottom: 16 }}>
+        <Stack style={{ gap: 16 }}>
           <Group justify="space-between" align="center">
             <Group>
               <ActionIcon
                 size={42}
-                variant="transparent"
                 className="glass-action glass-action--square"
                 onClick={() => void navigate("/settings")}
                 aria-label="Назад"
@@ -157,8 +156,8 @@ export default function AdminFeedbackPage() {
             </Button>
           </Group>
 
-          <Paper withBorder radius="lg" p="md">
-            <Stack gap="sm">
+          <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+            <Stack style={{ gap: 12 }}>
               <Group>
                 <Box style={{ flex: 1, minWidth: 0 }}>
                   <TextInput
@@ -183,7 +182,7 @@ export default function AdminFeedbackPage() {
               </Group>
               <Group justify="space-between">
                 <Text style={{ fontSize: 13, color: "var(--muted)" }}>{pageLabel}</Text>
-                <Group gap="xs">
+                <Group style={{ gap: 8 }}>
                   <Button
                     variant="default"
                     disabled={loading || !hasPrev}
@@ -217,7 +216,7 @@ export default function AdminFeedbackPage() {
             </Stack>
           </Paper>
 
-          <Paper withBorder radius="lg" p="md">
+          <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
             <Table striped highlightOnHover withTableBorder>
               <Table.Thead>
                 <Table.Tr>

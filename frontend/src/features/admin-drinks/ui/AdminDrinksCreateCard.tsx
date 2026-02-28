@@ -16,8 +16,8 @@ export default function AdminDrinksCreateCard({
   onSubmit,
 }: AdminDrinksCreateCardProps) {
   return (
-    <Paper withBorder radius="lg" p="md">
-      <Stack gap="sm">
+    <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+      <Stack style={{ gap: 12 }}>
         <Title order={4}>Добавить напиток</Title>
         <TextInput
           label="ID (опционально)"

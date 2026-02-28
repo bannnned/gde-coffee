@@ -196,7 +196,7 @@ export default function AdminNorthStarPage() {
 
   if (status === "loading") {
     return (
-      <Box p="lg">
+      <Box style={{ padding: 20 }}>
         <Text>Загрузка...</Text>
       </Box>
     );
@@ -204,8 +204,8 @@ export default function AdminNorthStarPage() {
 
   if (!allowed) {
     return (
-      <Container size="sm" py="xl">
-        <Stack gap="md">
+      <Container size="sm" style={{ paddingTop: 24, paddingBottom: 24 }}>
+        <Stack style={{ gap: 16 }}>
           <Title order={3}>Доступ ограничен</Title>
           <Text style={{ color: "var(--muted)" }}>
             Эта страница доступна модераторам и администраторам.
@@ -217,14 +217,13 @@ export default function AdminNorthStarPage() {
   }
 
   return (
-    <Box className="page-shell" pb="xl">
-      <Container size="lg" py="md">
-        <Stack gap="md">
+    <Box className="page-shell" style={{ paddingBottom: 24 }}>
+      <Container size="lg" style={{ paddingTop: 16, paddingBottom: 16 }}>
+        <Stack style={{ gap: 16 }}>
           <Group justify="space-between" align="center">
             <Group>
               <ActionIcon
                 size={42}
-                variant="transparent"
                 className="glass-action glass-action--square"
                 onClick={() => void navigate("/settings")}
                 aria-label="Назад"
@@ -238,8 +237,8 @@ export default function AdminNorthStarPage() {
             </Button>
           </Group>
 
-          <Paper withBorder radius="lg" p="md">
-            <Stack gap="sm">
+          <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+            <Stack style={{ gap: 12 }}>
               <Group align="flex-end">
                 <Box style={{ flex: 1, minWidth: 0 }}>
                   <SegmentedControl
@@ -298,7 +297,7 @@ export default function AdminNorthStarPage() {
           )}
 
           {scope === "cafe" && !selectedCafeId ? (
-            <Paper withBorder radius="lg" p="md">
+            <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
               <Text style={{ color: "var(--muted)" }}>
                 Выберите кофейню, чтобы посмотреть метрику по конкретному месту.
               </Text>
@@ -308,7 +307,7 @@ export default function AdminNorthStarPage() {
               <Group>
                 {summaryCards.map((card) => (
                   <Box key={card.key} style={{ flex: 1, minWidth: 180 }}>
-                    <Paper withBorder radius="lg" p="md">
+                    <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
                       <Text
                         style={{
                           fontSize: 12,
@@ -327,7 +326,7 @@ export default function AdminNorthStarPage() {
                 ))}
               </Group>
 
-              <Paper withBorder radius="lg" p="md">
+              <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
                 <Table striped highlightOnHover withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
@@ -381,8 +380,8 @@ export default function AdminNorthStarPage() {
                 </Table>
               </Paper>
 
-              <Paper withBorder radius="lg" p="md">
-                <Stack gap="xs">
+              <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+                <Stack style={{ gap: 8 }}>
                   <Group justify="space-between" align="center">
                     <Text style={{ fontWeight: 700 }}>Воронка Journey</Text>
                     <Text style={{ fontSize: 13, color: "var(--muted)" }}>

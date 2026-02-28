@@ -47,6 +47,9 @@
 29. `W5-P` закрыт (`done`): удалены последние spacing-алиасы `mt/mb` из `features/admin/ui/{layout,fields}`; на страницах применены явные `style/className` отступы.
 30. `W5-Q` закрыт (`done`): `Text` в admin-слое очищен от алиасов `c/fw/tt/size`; админские экраны переведены на явные типографические стили через `style/className`.
 31. `W5-R` закрыт (`done`): в admin layout-слое удалены неиспользуемые spacing-алиасы `px/pt`, а `spacing/radius` контракты ужаты до строгих токенизированных типов.
+32. `W5-S` закрыт (`done`): в admin fields-слое удален compat-проп `Select.w`; usage переведен на явный `style={{ width: ... }}`.
+33. `W5-T` закрыт (`done`): `ActionIcon` в admin-слое очищен от alias-вариантов `transparent/light/filled`; usage переведен на нативный `ghost` по умолчанию.
+34. `W5-U` закрыт (`done`): из admin layout-слоя удалены alias-пропсы `p/py/pb/gap/radius`, а admin usage переведен на explicit `style/className` для padding/gap/radius.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

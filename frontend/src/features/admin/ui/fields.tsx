@@ -7,14 +7,12 @@ import { AppSelect, type AppSelectProps } from "../../../ui/bridge";
 type SelectProps = AppSelectProps & {
   label?: ReactNode;
   description?: ReactNode;
-  w?: number;
   style?: CSSProperties;
 };
 
 export function Select({
   label,
   description,
-  w,
   className,
   style,
   styles,
@@ -23,10 +21,7 @@ export function Select({
   return (
     <label
       className={cn("flex min-w-0 flex-col gap-1.5", className)}
-      style={{
-        ...(w ? { width: w } : null),
-        ...style,
-      }}
+      style={style}
     >
       {label ? <span className="text-sm font-medium text-text">{label}</span> : null}
       {description ? <span className="text-xs text-muted">{description}</span> : null}

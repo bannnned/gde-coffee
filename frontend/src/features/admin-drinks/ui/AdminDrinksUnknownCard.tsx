@@ -34,14 +34,14 @@ export default function AdminDrinksUnknownCard({
   onIgnoreUnknown,
 }: AdminDrinksUnknownCardProps) {
   return (
-    <Paper withBorder radius="lg" p="md">
-      <Stack gap="sm">
+    <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+      <Stack style={{ gap: 12 }}>
         <Group justify="space-between">
           <Title order={4}>Неизвестные форматы</Title>
           <Select
             value={status}
             data={UNKNOWN_STATUS_OPTIONS}
-            w={180}
+            style={{ width: 180 }}
             onChange={(value) => onStatusChange((value ?? "") as UnknownStatusOption)}
           />
         </Group>
@@ -50,10 +50,10 @@ export default function AdminDrinksUnknownCard({
         {!loading && unknown.length === 0 && <Text style={{ color: "var(--muted)" }}>Список пуст.</Text>}
 
         {unknown.map((item) => (
-          <Paper key={item.id} withBorder radius="md" p="sm">
-            <Stack gap="xs">
+          <Paper key={item.id} withBorder style={{ borderRadius: 12, padding: 12 }}>
+            <Stack style={{ gap: 8 }}>
               <Group justify="space-between" align="center">
-                <Group gap={8}>
+                <Group style={{ gap: 8 }}>
                   <Text style={{ fontWeight: 600 }}>{item.name}</Text>
                   <Badge variant="secondary">mentions: {item.mentions_count}</Badge>
                   <Badge color={item.status === "new" ? "yellow" : "gray"}>{item.status}</Badge>
@@ -65,7 +65,7 @@ export default function AdminDrinksUnknownCard({
               <Group align="end" wrap="wrap">
                 <Select
                   searchable
-                  w={320}
+                  style={{ width: 320 }}
                   label="Привязать к напитку"
                   placeholder="Выберите напиток"
                   data={drinkOptions}

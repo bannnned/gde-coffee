@@ -18,8 +18,8 @@ export default function AdminDrinksCatalogCard({
   onToggleActive,
 }: AdminDrinksCatalogCardProps) {
   return (
-    <Paper withBorder radius="lg" p="md">
-      <Stack gap="sm">
+    <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+      <Stack style={{ gap: 12 }}>
         <Title order={4}>Каталог</Title>
         {loading && <Text style={{ color: "var(--muted)" }}>Загрузка списка...</Text>}
         {!loading && drinks.length === 0 && <Text style={{ color: "var(--muted)" }}>Ничего не найдено.</Text>}
@@ -33,14 +33,14 @@ export default function AdminDrinksCatalogCard({
               borderColor: item.id === selectedDrinkID ? "var(--color-brand-accent)" : undefined,
             }}
           >
-            <Stack gap={6}>
+            <Stack style={{ gap: 6 }}>
               <Group justify="space-between" align="center">
-                <Group gap={8}>
+                <Group style={{ gap: 8 }}>
                   <Text style={{ fontWeight: 600 }}>{item.name}</Text>
                   <Badge variant="secondary">{item.id}</Badge>
                   {!item.is_active && <Badge variant="secondary" color="gray">hidden</Badge>}
                 </Group>
-                <Group gap={8}>
+                <Group style={{ gap: 8 }}>
                   <Button variant="secondary" size="sm" onClick={() => onSelectDrink(item.id)}>
                     Редактировать
                   </Button>
