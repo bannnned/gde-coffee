@@ -442,6 +442,7 @@ export default function Map({
   const { colorScheme: scheme } = useAppColorScheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
+  const layerEventsBoundRef = useRef(false);
   const onCafeSelectRef = useRef(onCafeSelect);
   const onMapClickRef = useRef(onMapClick);
   const onCenterChangeRef = useRef(onCenterChange);
@@ -582,7 +583,7 @@ export default function Map({
       }
     };
 
-    const runLoad = async () => {
+    const runStyleLoad = async () => {
       addSources(
         map,
         geojsonRef.current ?? geojson,
@@ -595,13 +596,14 @@ export default function Map({
       }
       setIsMapReady(true);
 
-      if (!disableCafeClick) {
+      if (!disableCafeClick && !layerEventsBoundRef.current) {
         map.on("click", "cafes-layer", handleClick);
         map.on("click", CAFE_CLUSTER_LAYER_ID, handleClusterClick);
         map.on("mouseenter", "cafes-layer", handleMouseEnter);
         map.on("mouseleave", "cafes-layer", handleMouseLeave);
         map.on("mouseenter", CAFE_CLUSTER_LAYER_ID, handleMouseEnter);
         map.on("mouseleave", CAFE_CLUSTER_LAYER_ID, handleMouseLeave);
+        layerEventsBoundRef.current = true;
       }
 
       const [userLoaded, cafeLoaded] = await Promise.all([
@@ -613,34 +615,43 @@ export default function Map({
       }
     };
 
-    const handleLoad = () => {
-      void runLoad();
+    const handleStyleLoad = () => {
+      void runStyleLoad();
     };
 
-    map.on("load", handleLoad);
+    map.on("style.load", handleStyleLoad);
     map.on("click", handleMapClick);
     map.on("moveend", handleMoveEnd);
     map.on("error", handleError);
     mapRef.current = map;
 
     return () => {
-      map.off("load", handleLoad);
+      map.off("style.load", handleStyleLoad);
       map.off("click", handleMapClick);
       map.off("moveend", handleMoveEnd);
       map.off("error", handleError);
-      if (!disableCafeClick) {
+      if (!disableCafeClick && layerEventsBoundRef.current) {
         map.off("click", "cafes-layer", handleClick);
         map.off("click", CAFE_CLUSTER_LAYER_ID, handleClusterClick);
         map.off("mouseenter", "cafes-layer", handleMouseEnter);
         map.off("mouseleave", "cafes-layer", handleMouseLeave);
         map.off("mouseenter", CAFE_CLUSTER_LAYER_ID, handleMouseEnter);
         map.off("mouseleave", CAFE_CLUSTER_LAYER_ID, handleMouseLeave);
+        layerEventsBoundRef.current = false;
       }
       map.remove();
       mapRef.current = null;
       setIsMapReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (typeof map.setStyle !== "function") return;
+    setIsMapReady(false);
+    map.setStyle(resolveMapStyleByScheme(scheme));
   }, [scheme]);
 
   useEffect(() => {

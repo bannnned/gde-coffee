@@ -1,4 +1,4 @@
-import { Paper, Stack, Switch, TextInput } from "../../../ui/compat/core";
+import { Paper, Stack, Switch, TextInput } from "../../admin/ui";
 
 type AdminDrinksFiltersCardProps = {
   query: string;

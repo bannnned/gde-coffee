@@ -37,6 +37,9 @@
 19. `W5-F` закрыт (`done`): удалены `@mantine/*` пакеты из `frontend/package.json` и `frontend/package-lock.json` после полного code/runtime выхода.
 20. `W5-G` закрыт (`done`): theme-атрибут нейтрализован с `data-mantine-color-scheme` на `data-theme` во всем frontend CSS/runtime.
 21. `W5-H` закрыт (`done`): удален legacy `WorkScreen/features/work` поток; общий `types.ts` переведен на `entities/cafe` модель.
+22. `W5-I` закрыт (`done`): `ui/compat/core.tsx` ужат до минимального admin-only контракта без лишнего legacy-слоя.
+23. `W5-J` закрыт (`done`): `ui/compat` удален; admin импортирует локальный слой `features/admin/ui/primitives`.
+24. `W5-K` закрыт (`done`): admin UI-layer разделен на `features/admin/ui/{layout,fields,index}`, `primitives.tsx` удален, импорты переведены на barrel `features/admin/ui`.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

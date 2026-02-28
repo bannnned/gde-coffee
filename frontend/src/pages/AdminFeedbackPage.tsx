@@ -12,7 +12,7 @@ import {
   Text,
   TextInput,
   Title,
-} from "../ui/compat/core";
+} from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";

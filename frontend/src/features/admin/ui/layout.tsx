@@ -2,17 +2,19 @@ import {
   Children,
   forwardRef,
   isValidElement,
+  type ButtonHTMLAttributes,
   type CSSProperties,
   type ElementType,
-  type InputHTMLAttributes,
+  type HTMLAttributes,
   type ReactNode,
-  type TextareaHTMLAttributes,
+  type TdHTMLAttributes,
+  type ThHTMLAttributes,
 } from "react";
-import type * as React from "react";
 
-import { AppSelect, type AppSelectProps } from "../bridge";
-import { Button as UIButton, Input } from "../../components/ui";
-import { cn } from "../../lib/utils";
+import { Button as UIButton } from "../../../components/ui";
+import { cn } from "../../../lib/utils";
+
+export { UIButton as Button };
 
 const spacingPx: Record<string, number> = {
   xs: 8,
@@ -88,14 +90,12 @@ type BoxProps = {
   mt?: unknown;
   mb?: unknown;
   pos?: CSSProperties["position"];
-  h?: CSSProperties["height"];
-  w?: CSSProperties["width"];
   left?: CSSProperties["left"];
   right?: CSSProperties["right"];
   top?: CSSProperties["top"];
   bottom?: CSSProperties["bottom"];
   inset?: CSSProperties["inset"];
-} & Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "children">;
+} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
   {
@@ -110,8 +110,6 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     mt,
     mb,
     pos,
-    h,
-    w,
     left,
     right,
     top,
@@ -128,8 +126,6 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
       style={{
         ...withSpacingStyle({ p, px, py, pb, pt, mt, mb, style }),
         position: pos,
-        height: h,
-        width: w,
         left,
         right,
         top,
@@ -150,7 +146,7 @@ type ContainerProps = {
   size?: "xs" | "sm" | "md" | "lg" | number | string;
   py?: unknown;
   px?: unknown;
-} & Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "children">;
+} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Container({
   children,
@@ -200,7 +196,7 @@ type GroupProps = {
   grow?: boolean;
   mt?: unknown;
   mb?: unknown;
-} & Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "children">;
+} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Group({
   children,
@@ -258,7 +254,7 @@ type StackProps = {
   align?: CSSProperties["alignItems"];
   mt?: unknown;
   mb?: unknown;
-} & Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "children">;
+} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Stack({
   children,
@@ -296,7 +292,7 @@ type PaperProps = {
   p?: unknown;
   px?: unknown;
   py?: unknown;
-} & Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "children">;
+} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Paper({
   children,
@@ -338,7 +334,7 @@ type TextProps = {
   lineClamp?: number;
   mt?: unknown;
   mb?: unknown;
-} & Omit<React.HTMLAttributes<HTMLParagraphElement>, "style" | "children">;
+} & Omit<HTMLAttributes<HTMLParagraphElement>, "style" | "children">;
 
 function mapColor(value: string): string {
   if (value === "dimmed") return "var(--muted)";
@@ -407,7 +403,7 @@ type TitleProps = {
   order?: 1 | 2 | 3 | 4 | 5 | 6;
   mt?: unknown;
   mb?: unknown;
-} & Omit<React.HTMLAttributes<HTMLHeadingElement>, "style" | "children">;
+} & Omit<HTMLAttributes<HTMLHeadingElement>, "style" | "children">;
 
 export function Title({
   children,
@@ -444,13 +440,12 @@ type BadgeProps = {
   variant?: "filled" | "light" | "outline" | "dot";
   color?: "yellow" | "green" | "red" | "orange" | "gray";
   radius?: unknown;
-} & Omit<React.HTMLAttributes<HTMLSpanElement>, "style" | "children">;
+} & Omit<HTMLAttributes<HTMLSpanElement>, "style" | "children">;
 
-function badgeColor(color?: BadgeProps["color"]) {
+function badgeTone(color?: BadgeProps["color"]): string {
   if (color === "green") return "var(--color-status-success)";
   if (color === "red") return "var(--color-status-error)";
-  if (color === "orange") return "var(--color-status-warning)";
-  if (color === "yellow") return "var(--color-status-warning)";
+  if (color === "orange" || color === "yellow") return "var(--color-status-warning)";
   return "color-mix(in srgb, var(--muted) 45%, var(--surface))";
 }
 
@@ -463,15 +458,13 @@ export function Badge({
   radius = "xl",
   ...rest
 }: BadgeProps) {
-  const tone = badgeColor(color);
-  const radiusValue = resolveRadius(radius) ?? 999;
+  const tone = badgeTone(color);
   const background =
     variant === "outline"
       ? "transparent"
       : variant === "light" || variant === "dot"
         ? "color-mix(in srgb, var(--surface) 72%, transparent)"
         : tone;
-  const textColor = variant === "filled" ? "var(--color-on-accent)" : "var(--text)";
   return (
     <span
       className={className}
@@ -479,10 +472,10 @@ export function Badge({
         display: "inline-flex",
         alignItems: "center",
         gap: variant === "dot" ? 6 : 0,
-        borderRadius: radiusValue,
+        borderRadius: resolveRadius(radius) ?? 999,
         border: `1px solid ${tone}`,
         background,
-        color: textColor,
+        color: variant === "filled" ? "var(--color-on-accent)" : "var(--text)",
         fontSize: 12,
         fontWeight: 600,
         padding: "2px 8px",
@@ -506,11 +499,7 @@ export function Badge({
   );
 }
 
-type LoaderProps = {
-  size?: number | string;
-};
-
-export function Loader({ size = 16 }: LoaderProps) {
+export function Loader({ size = 16 }: { size?: number | string }) {
   const dim = typeof size === "number" ? size : Number(size) || 16;
   return (
     <span
@@ -518,131 +507,6 @@ export function Loader({ size = 16 }: LoaderProps) {
       className="inline-block animate-spin rounded-full border-2 border-current border-t-transparent"
       style={{ width: dim, height: dim }}
     />
-  );
-}
-
-type ButtonProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-  variant?: "filled" | "light" | "subtle" | "default";
-  color?: string;
-  size?: "xs" | "sm" | "md" | "lg";
-  loading?: boolean;
-  disabled?: boolean;
-  leftSection?: ReactNode;
-  fullWidth?: boolean;
-  component?: ElementType;
-  href?: string;
-  target?: string;
-  rel?: string;
-  mt?: unknown;
-  mb?: unknown;
-} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "style" | "children"> &
-  Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "style" | "children">;
-
-export function Button({
-  children,
-  className,
-  style,
-  variant = "filled",
-  size = "md",
-  loading = false,
-  disabled = false,
-  leftSection,
-  fullWidth = false,
-  component,
-  href,
-  target,
-  rel,
-  color,
-  mt,
-  mb,
-  ...rest
-}: ButtonProps) {
-  const mappedVariant =
-    variant === "light" || variant === "default"
-      ? "secondary"
-      : variant === "subtle"
-        ? "ghost"
-        : "default";
-  const mappedSize = size === "xs" || size === "sm" ? "sm" : size === "lg" ? "lg" : "md";
-  const toneStyle: CSSProperties | undefined = color?.startsWith("red")
-    ? mappedVariant === "default"
-      ? {
-          background: "var(--color-status-error)",
-          borderColor: "var(--color-status-error)",
-          color: "var(--color-on-accent)",
-        }
-      : {
-          borderColor: "var(--color-status-error)",
-          color: "var(--color-status-error)",
-        }
-    : undefined;
-  const mergedStyle = {
-    ...withSpacingStyle({ mt, mb, style }),
-    ...(toneStyle ?? {}),
-  };
-  const content = (
-    <>
-      {loading ? <Loader size={14} /> : leftSection}
-      {children}
-    </>
-  );
-  if (component === "a") {
-    return (
-      <a
-        className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium ui-focus-ring",
-          mappedVariant === "default"
-            ? "bg-accent text-on-accent"
-            : mappedVariant === "secondary"
-              ? "border border-border bg-surface text-text"
-              : "bg-transparent text-text",
-          fullWidth ? "w-full" : "",
-          className,
-        )}
-        style={mergedStyle}
-        href={href}
-        target={target}
-        rel={rel}
-        {...(rest as Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "children">)}
-      >
-        {content}
-      </a>
-    );
-  }
-  if (component === "label") {
-    return (
-      <label
-        className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium ui-focus-ring",
-          mappedVariant === "default"
-            ? "bg-accent text-on-accent"
-            : mappedVariant === "secondary"
-              ? "border border-border bg-surface text-text"
-              : "bg-transparent text-text",
-          fullWidth ? "w-full" : "",
-          className,
-        )}
-        style={mergedStyle}
-        {...(rest as Omit<React.LabelHTMLAttributes<HTMLLabelElement>, "children">)}
-      >
-        {content}
-      </label>
-    );
-  }
-  return (
-    <UIButton
-      className={cn(fullWidth ? "w-full" : "", className)}
-      style={mergedStyle}
-      variant={mappedVariant}
-      size={mappedSize}
-      disabled={disabled || loading}
-      {...(rest as Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">)}
-    >
-      {content}
-    </UIButton>
   );
 }
 
@@ -654,7 +518,7 @@ type ActionIconProps = {
   variant?: "transparent" | "light" | "filled";
   loading?: boolean;
   disabled?: boolean;
-} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "style" | "children">;
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style" | "children">;
 
 export function ActionIcon({
   children,
@@ -673,10 +537,11 @@ export function ActionIcon({
       variant={mappedVariant}
       className={className}
       style={{ width: size, height: size, ...style }}
-      disabled={disabled || loading}
+      disabled={disabled}
+      loading={loading}
       {...rest}
     >
-      {loading ? <Loader size={14} /> : children}
+      {children}
     </UIButton>
   );
 }
@@ -742,136 +607,6 @@ export function SegmentedControl({
   );
 }
 
-type SelectProps = AppSelectProps & {
-  label?: ReactNode;
-  description?: ReactNode;
-  w?: number;
-  style?: CSSProperties;
-  mt?: unknown;
-  mb?: unknown;
-};
-
-export function Select({
-  label,
-  description,
-  w,
-  className,
-  style,
-  mt,
-  mb,
-  styles,
-  ...rest
-}: SelectProps) {
-  return (
-    <label
-      className={cn("flex min-w-0 flex-col gap-1.5", className)}
-      style={{
-        ...(w ? { width: w } : null),
-        ...withSpacingStyle({ mt, mb, style }),
-      }}
-    >
-      {label ? <span className="text-sm font-medium text-text">{label}</span> : null}
-      {description ? <span className="text-xs text-muted">{description}</span> : null}
-      <AppSelect
-        implementation="radix"
-        styles={styles}
-        {...rest}
-      />
-    </label>
-  );
-}
-
-type SwitchProps = {
-  checked: boolean;
-  onChange: (event: { currentTarget: { checked: boolean } }) => void;
-  label?: ReactNode;
-  className?: string;
-};
-
-export function Switch({ checked, onChange, label, className }: SwitchProps) {
-  return (
-    <label className={cn("inline-flex items-center gap-2 text-sm text-text", className)}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange({ currentTarget: { checked: !checked } })}
-        className={cn(
-          "relative inline-flex h-5 w-9 items-center rounded-full border transition ui-focus-ring",
-          checked
-            ? "border-[var(--color-brand-accent)] bg-[var(--color-brand-accent)]"
-            : "border-border bg-surface",
-        )}
-      >
-        <span
-          className={cn(
-            "inline-block h-4 w-4 rounded-full bg-white transition",
-            checked ? "translate-x-[14px]" : "translate-x-[1px]",
-          )}
-        />
-      </button>
-      {label ? <span>{label}</span> : null}
-    </label>
-  );
-}
-
-type TextInputProps = {
-  label?: ReactNode;
-  description?: ReactNode;
-  required?: boolean;
-  className?: string;
-  style?: CSSProperties;
-} & Omit<InputHTMLAttributes<HTMLInputElement>, "size">;
-
-export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
-  function TextInput({ label, description, required, className, style, ...rest }, ref) {
-    return (
-      <label className={cn("flex min-w-0 flex-col gap-1.5", className)} style={style}>
-        {label ? (
-          <span className="text-sm font-medium text-text">
-            {label}
-            {required ? <span className="ml-1 text-danger">*</span> : null}
-          </span>
-        ) : null}
-        {description ? <span className="text-xs text-muted">{description}</span> : null}
-        <Input ref={ref} {...rest} />
-      </label>
-    );
-  },
-);
-
-type TextareaProps = {
-  label?: ReactNode;
-  description?: ReactNode;
-  minRows?: number;
-  autosize?: boolean;
-  className?: string;
-  style?: CSSProperties;
-} & TextareaHTMLAttributes<HTMLTextAreaElement>;
-
-export function Textarea({
-  label,
-  description,
-  minRows = 3,
-  autosize = false,
-  className,
-  style,
-  ...rest
-}: TextareaProps) {
-  return (
-    <label className={cn("flex min-w-0 flex-col gap-1.5", className)} style={style}>
-      {label ? <span className="text-sm font-medium text-text">{label}</span> : null}
-      {description ? <span className="text-xs text-muted">{description}</span> : null}
-      <textarea
-        rows={autosize ? undefined : minRows}
-        className="w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-muted shadow-surface ui-focus-ring"
-        style={autosize ? { minHeight: `${minRows * 22}px` } : undefined}
-        {...rest}
-      />
-    </label>
-  );
-}
-
 type AlertProps = {
   children?: ReactNode;
   className?: string;
@@ -880,7 +615,7 @@ type AlertProps = {
   color?: "red" | "blue" | "orange" | "green";
   variant?: "light" | "filled";
   title?: ReactNode;
-} & Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "children">;
+} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Alert({
   children,
@@ -940,11 +675,11 @@ type TableSectionProps = {
   className?: string;
   style?: CSSProperties;
 };
-type TableTheadProps = TableSectionProps & React.HTMLAttributes<HTMLTableSectionElement>;
-type TableTbodyProps = TableSectionProps & React.HTMLAttributes<HTMLTableSectionElement>;
-type TableTrProps = TableSectionProps & React.HTMLAttributes<HTMLTableRowElement>;
-type TableThProps = TableSectionProps & React.ThHTMLAttributes<HTMLTableCellElement>;
-type TableTdProps = TableSectionProps & React.TdHTMLAttributes<HTMLTableCellElement>;
+type TableTheadProps = TableSectionProps & HTMLAttributes<HTMLTableSectionElement>;
+type TableTbodyProps = TableSectionProps & HTMLAttributes<HTMLTableSectionElement>;
+type TableTrProps = TableSectionProps & HTMLAttributes<HTMLTableRowElement>;
+type TableThProps = TableSectionProps & ThHTMLAttributes<HTMLTableCellElement>;
+type TableTdProps = TableSectionProps & TdHTMLAttributes<HTMLTableCellElement>;
 
 function TableRoot({
   children,

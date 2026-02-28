@@ -31,10 +31,10 @@
       "type": "raster",
       "source": "carto-light-base",
       "paint": {
-        "raster-saturation": -0.18,
-        "raster-contrast": 0.1,
+        "raster-saturation": 0.04,
+        "raster-contrast": 0.2,
         "raster-brightness-min": 0.03,
-        "raster-brightness-max": 0.98
+        "raster-brightness-max": 0.99
       }
     },
     {
@@ -42,10 +42,10 @@
       "type": "raster",
       "source": "carto-light-labels",
       "paint": {
-        "raster-opacity": 0.94,
-        "raster-saturation": -0.08,
-        "raster-contrast": 0.12,
-        "raster-brightness-min": 0.06,
+        "raster-opacity": 0.97,
+        "raster-saturation": 0,
+        "raster-contrast": 0.18,
+        "raster-brightness-min": 0.1,
         "raster-brightness-max": 1
       }
     }

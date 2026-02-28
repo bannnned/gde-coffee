@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, Stack, Text, Title } from "../../../ui/compat/core";
+import { Badge, Button, Group, Paper, Stack, Text, Title } from "../../admin/ui";
 
 import type { AdminDrink } from "../../../api/adminDrinks";
 

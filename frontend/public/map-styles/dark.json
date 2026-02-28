@@ -31,10 +31,10 @@
       "type": "raster",
       "source": "carto-dark-base",
       "paint": {
-        "raster-saturation": -0.42,
-        "raster-contrast": 0.34,
-        "raster-brightness-min": 0.03,
-        "raster-brightness-max": 0.64
+        "raster-saturation": -0.22,
+        "raster-contrast": 0.28,
+        "raster-brightness-min": 0.05,
+        "raster-brightness-max": 0.72
       }
     },
     {
@@ -42,10 +42,10 @@
       "type": "raster",
       "source": "carto-dark-labels",
       "paint": {
-        "raster-opacity": 0.96,
-        "raster-saturation": -0.28,
-        "raster-contrast": 0.2,
-        "raster-brightness-min": 0.38,
+        "raster-opacity": 0.98,
+        "raster-saturation": -0.12,
+        "raster-contrast": 0.24,
+        "raster-brightness-min": 0.44,
         "raster-brightness-max": 1
       }
     }

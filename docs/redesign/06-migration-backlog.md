@@ -566,3 +566,48 @@ Critical path stack-transition:
 - Артефакт: удален legacy flow (`frontend/src/pages/WorkScreen.tsx`, `frontend/src/features/work/**`).
 - Артефакт: `frontend/src/types.ts` переключен на `entities/cafe/model/types`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-I · Shrink `ui/compat` to admin-only minimal contract (P1, status: done)
+- Цель: уменьшить и упростить legacy compatibility-layer, оставив только API, реально используемый admin-экранами.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/compat/core.tsx`.
+- Depends on: `W5-H`.
+- AC: `ui/compat/core.tsx` содержит только минимальные admin primitives (`Box`, `Container`, `Group`, `Stack`, `Paper`, `Text`, `Title`, `Badge`, `Loader`, `Button`, `ActionIcon`, `SegmentedControl`, `Select`, `Switch`, `TextInput`, `Textarea`, `Alert`, `Table`).
+- AC: удалены избыточные ветки/пропсы legacy-layer, не влияющие на текущий admin UX.
+- AC: все admin-страницы и admin-drinks карточки продолжают собираться и работать на этом контракте.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: переписанный compact compat-core в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/compat/core.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-J · Remove `ui/compat` and move admin to local admin primitives (P1, status: done)
+- Цель: убрать legacy `ui/compat` слой и перевести admin-экраны на локальный admin UI-layer, основанный на `components/ui` + `AppSelect`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/primitives.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/Admin*.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/*.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/compat/core.tsx` (delete).
+- Depends on: `W5-I`.
+- AC: в коде нет импортов `ui/compat/core`.
+- AC: admin pages и admin-drinks cards импортируют primitives из `features/admin/ui/primitives`.
+- AC: `ui/compat/core.tsx` удален.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: admin-local primitives layer в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/primitives.tsx`.
+- Артефакт: import migration `Admin*.tsx` и `features/admin-drinks/ui/*.tsx` на новый путь.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-K · Split admin UI layer and drop `primitives.tsx` (P1, status: done)
+- Цель: убрать монолитный admin `primitives` файл и перейти на явные модули `layout/fields` с прямой опорой на `components/ui`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/index.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/primitives.tsx` (delete).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/Admin*.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/*.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/button.tsx`.
+- Depends on: `W5-J`.
+- AC: в `frontend/src` отсутствуют импорты `features/admin/ui/primitives`.
+- AC: admin pages/cards импортируют из `features/admin/ui` (barrel `layout + fields`).
+- AC: `Button` покрывает admin-совместимые пропсы (`loading`, `leftSection`, `fullWidth`, `component`, `color`, `mt/mb`).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: разнесенный admin UI-layer (`layout.tsx`, `fields.tsx`, `index.ts`) в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/`.
+- Артефакт: удален `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/primitives.tsx`.
+- Артефакт: совместимый `Button` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/button.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
