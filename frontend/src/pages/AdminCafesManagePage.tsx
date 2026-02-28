@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   ActionIcon,
-  Alert,
   Button,
   Loader,
   Select,
@@ -293,9 +292,23 @@ export default function AdminCafesManagePage() {
             </Button>
           </div>
 
-          <Alert icon={<IconInfoCircle size={16} />} color="blue">
-            Поиск по названию, редактирование всех полей и удаление кофейни.
-          </Alert>
+          <div
+            className="rounded-[14px] border px-3 py-2"
+            style={{
+              borderColor: "var(--color-status-info)",
+              background: "color-mix(in srgb, var(--surface) 82%, transparent)",
+              color: "var(--text)",
+            }}
+          >
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 shrink-0">
+                <IconInfoCircle size={16} />
+              </span>
+              <div className="min-w-0 text-sm">
+                Поиск по названию, редактирование всех полей и удаление кофейни.
+              </div>
+            </div>
+          </div>
 
           <Select
             label="Найти кофейню по названию"
@@ -323,9 +336,17 @@ export default function AdminCafesManagePage() {
                   Загружаем данные кофейни...
                 </p>
               ) : editLoadState === "error" ? (
-                <Alert color="red" title="Не удалось загрузить кофейню">
-                  Повторите выбор кофейни из списка.
-                </Alert>
+                <div
+                  className="rounded-[14px] border px-3 py-2"
+                  style={{
+                    borderColor: "var(--color-status-error)",
+                    background: "color-mix(in srgb, var(--surface) 82%, transparent)",
+                    color: "var(--text)",
+                  }}
+                >
+                  <p className="m-0 text-sm font-semibold">Не удалось загрузить кофейню</p>
+                  <div className="text-sm">Повторите выбор кофейни из списка.</div>
+                </div>
               ) : (
                 <>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>

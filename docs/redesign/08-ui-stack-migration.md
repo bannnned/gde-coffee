@@ -57,6 +57,7 @@
 39. `W5-Z` закрыт (`done`): из admin layout-слоя удален `Box`; admin страницы переведены на нативные `div` контейнеры с explicit style/className.
 40. `W5-AA` закрыт (`done`): из admin layout-слоя удален `Container`; admin-страницы переведены на нативные wrapper `div` с explicit `maxWidth/margin/padding`.
 41. `W5-AB` закрыт (`done`): из admin layout-слоя удален `Paper`; admin страницы и admin-drinks карточки переведены на нативные `div` с explicit card styles.
+42. `W5-AC` закрыт (`done`): из admin layout-слоя удален `Alert`; admin alerts переведены на explicit inline `div`-блоки с info/error tone.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

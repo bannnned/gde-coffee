@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   ActionIcon,
-  Alert,
   Button,
   Select,
   Switch,
@@ -525,14 +524,36 @@ export default function AdminCafesImportPage() {
             </div>
           </div>
 
-          <Alert icon={<IconInfoCircle size={16} />} color="blue">
-            Фото не загружаются. Импортирует только данные кофейни: name, address, latitude, longitude, description и amenities.
-          </Alert>
+          <div
+            className="rounded-[14px] border px-3 py-2"
+            style={{
+              borderColor: "var(--color-status-info)",
+              background: "color-mix(in srgb, var(--surface) 82%, transparent)",
+              color: "var(--text)",
+            }}
+          >
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 shrink-0">
+                <IconInfoCircle size={16} />
+              </span>
+              <div className="min-w-0 text-sm">
+                Фото не загружаются. Импортирует только данные кофейни: name, address, latitude, longitude, description и amenities.
+              </div>
+            </div>
+          </div>
 
           {preview.fatalError && (
-            <Alert color="red" title="Ошибка формата JSON">
-              {preview.fatalError}
-            </Alert>
+            <div
+              className="rounded-[14px] border px-3 py-2"
+              style={{
+                borderColor: "var(--color-status-error)",
+                background: "color-mix(in srgb, var(--surface) 82%, transparent)",
+                color: "var(--text)",
+              }}
+            >
+              <p className="m-0 text-sm font-semibold">Ошибка формата JSON</p>
+              <div className="text-sm">{preview.fatalError}</div>
+            </div>
           )}
 
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 12 }}>

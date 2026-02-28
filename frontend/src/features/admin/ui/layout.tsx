@@ -214,54 +214,6 @@ export function SegmentedControl({
   );
 }
 
-type AlertProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-  icon?: ReactNode;
-  color?: "red" | "blue" | "orange" | "green";
-  title?: ReactNode;
-} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
-
-export function Alert({
-  children,
-  className,
-  style,
-  icon,
-  color = "blue",
-  title,
-  ...rest
-}: AlertProps) {
-  const tone =
-    color === "red"
-      ? "var(--color-status-error)"
-      : color === "green"
-        ? "var(--color-status-success)"
-        : color === "orange"
-          ? "var(--color-status-warning)"
-          : "var(--color-status-info)";
-  return (
-    <div
-      className={cn("rounded-[14px] border px-3 py-2", className)}
-      style={{
-        borderColor: tone,
-        background: "color-mix(in srgb, var(--surface) 82%, transparent)",
-        color: "var(--text)",
-        ...style,
-      }}
-      {...rest}
-    >
-      <div className="flex items-start gap-2">
-        {icon ? <span className="mt-0.5 shrink-0">{icon}</span> : null}
-        <div className="min-w-0">
-          {title ? <p className="m-0 text-sm font-semibold">{title}</p> : null}
-          <div className="text-sm">{children}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 type TableProps = {
   children?: ReactNode;
   className?: string;

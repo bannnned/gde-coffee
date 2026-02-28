@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
-  Alert,
   Button,
   SegmentedControl,
   Select,
@@ -277,16 +276,35 @@ export default function AdminNorthStarPage() {
                 />
               )}
 
-              <Alert icon={<IconInfoCircle size={16} />}>
-                {scopeLabel}
-              </Alert>
+              <div
+                className="rounded-[14px] border px-3 py-2"
+                style={{
+                  borderColor: "var(--color-status-info)",
+                  background: "color-mix(in srgb, var(--surface) 82%, transparent)",
+                  color: "var(--text)",
+                }}
+              >
+                <div className="flex items-start gap-2">
+                  <span className="mt-0.5 shrink-0">
+                    <IconInfoCircle size={16} />
+                  </span>
+                  <div className="min-w-0 text-sm">{scopeLabel}</div>
+                </div>
+              </div>
             </div>
           </div>
 
           {loadError && (
-            <Alert color="red">
+            <div
+              className="rounded-[14px] border px-3 py-2 text-sm"
+              style={{
+                borderColor: "var(--color-status-error)",
+                background: "color-mix(in srgb, var(--surface) 82%, transparent)",
+                color: "var(--text)",
+              }}
+            >
               {loadError}
-            </Alert>
+            </div>
           )}
 
           {scope === "cafe" && !selectedCafeId ? (
