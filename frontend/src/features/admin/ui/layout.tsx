@@ -10,62 +10,6 @@ import {
 import { Button as UIButton } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 
-type ContainerProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
-
-export function Container({
-  children,
-  className,
-  style,
-  ...rest
-}: ContainerProps) {
-  return (
-    <div
-      className={className}
-      style={{
-        width: "min(100%, 100%)",
-        maxWidth: 860,
-        marginInline: "auto",
-        ...style,
-      }}
-      {...rest}
-    >
-      {children}
-    </div>
-  );
-}
-
-type PaperProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
-
-export function Paper({
-  children,
-  className,
-  style,
-  ...rest
-}: PaperProps) {
-  return (
-    <div
-      className={className}
-      style={{
-        borderRadius: 12,
-        border: "none",
-        background: "var(--surface)",
-        ...style,
-      }}
-      {...rest}
-    >
-      {children}
-    </div>
-  );
-}
-
 type BadgeProps = {
   children?: ReactNode;
   className?: string;

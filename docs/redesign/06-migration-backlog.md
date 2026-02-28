@@ -884,3 +884,41 @@ Critical path stack-transition:
 - Артефакт: удаленный `Box` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
 - Артефакт: migration admin pages на нативные `div` контейнеры.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AA · Remove admin `Container` wrapper and migrate to native wrappers (P1, status: done)
+- Цель: убрать `Container` из admin layout-слоя и перевести usage на нативные `div` с explicit `maxWidth/margin/padding`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Depends on: `W5-Z`.
+- AC: `layout.tsx` не содержит `Container` (контракт + реализация).
+- AC: в admin usage отсутствует импорт/usage `Container`.
+- AC: контейнерный layout сохранен через явные `style` (`maxWidth`, `marginInline`, `paddingTop`, `paddingBottom`).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `Container` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration admin pages на нативные wrapper `div`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AB · Remove admin `Paper` wrapper and migrate to native card containers (P1, status: done)
+- Цель: убрать `Paper` из admin layout-слоя и перевести usage на нативные `div` карточки с explicit border/radius/background styles.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCreateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksEditCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksFiltersCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-AA`.
+- AC: `layout.tsx` не содержит `Paper` (контракт + реализация).
+- AC: в admin usage отсутствует импорт/usage `Paper`.
+- AC: визуальная структура карточек сохранена через explicit `style` на нативных контейнерах.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `Paper` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration admin cards на нативные `div` контейнеры.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

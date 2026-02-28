@@ -178,8 +178,15 @@ const CAFE_CLUSTER_INTERACTIVE_LAYER_IDS = [
   CAFE_CLUSTER_LAYER_ID,
   CAFE_CLUSTER_COUNT_LAYER_ID,
 ] as const;
+const CAFE_MAP_INTERACTIVE_LAYER_IDS = [
+  ...CAFE_CLUSTER_INTERACTIVE_LAYER_IDS,
+  CAFE_SPIDER_POINT_LAYER_ID,
+  "cafes-layer",
+  "cafes-selected",
+] as const;
 const CAFE_SPIDER_MAX_LEAVES = 24;
 const CLUSTER_ZOOM_TO_SPIDER_THRESHOLD = 0.1;
+const MAP_CLUSTER_DEBUG_STORAGE_KEY = "debug.map.cluster";
 const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: [],
@@ -227,6 +234,26 @@ function readMapErrorMessage(error: unknown): string {
     if (typeof message === "string") return message;
   }
   return "";
+}
+
+function isMapClusterDebugEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const value = window.localStorage.getItem(MAP_CLUSTER_DEBUG_STORAGE_KEY);
+    const normalized = (value ?? "").trim().toLowerCase();
+    return normalized === "1" || normalized === "true" || normalized === "on";
+  } catch {
+    return false;
+  }
+}
+
+function logMapClusterDebug(message: string, payload?: Record<string, unknown>) {
+  if (!isMapClusterDebugEnabled()) return;
+  if (payload) {
+    console.info("[MapClusterDebug]", message, payload);
+    return;
+  }
+  console.info("[MapClusterDebug]", message);
 }
 
 function loadImage(map: MLMap, id: string, url: string) {
@@ -686,6 +713,11 @@ async function expandClusterOnClick(
   const source = getCafesClusterSource(map);
   if (!source || typeof source.getClusterExpansionZoom !== "function") return;
   clearSpiderfy(map);
+  logMapClusterDebug("cluster_tap", {
+    clusterId,
+    pointCount: asFiniteNumber(feature.properties?.point_count) ?? null,
+    zoom: map.getZoom(),
+  });
 
   try {
     const expansionZoom = await new Promise<number>((resolve, reject) => {
@@ -700,10 +732,20 @@ async function expandClusterOnClick(
 
     const currentZoom = map.getZoom();
     const center = feature.geometry.coordinates as [number, number];
+    logMapClusterDebug("cluster_expansion_zoom", {
+      clusterId,
+      expansionZoom,
+      currentZoom,
+      delta: expansionZoom - currentZoom,
+    });
     if (
       Number.isFinite(expansionZoom) &&
       expansionZoom - currentZoom > CLUSTER_ZOOM_TO_SPIDER_THRESHOLD
     ) {
+      logMapClusterDebug("cluster_action_zoom", {
+        clusterId,
+        targetZoom: Math.max(expansionZoom, currentZoom + 1),
+      });
       map.easeTo({
         center,
         zoom: Math.max(expansionZoom, currentZoom + 1),
@@ -714,6 +756,10 @@ async function expandClusterOnClick(
     }
 
     if (typeof source.getClusterLeaves !== "function") {
+      logMapClusterDebug("cluster_action_zoom_fallback", {
+        clusterId,
+        targetZoom: Math.max(expansionZoom, currentZoom + 1),
+      });
       map.easeTo({
         center,
         zoom: Math.max(expansionZoom, currentZoom + 1),
@@ -744,8 +790,16 @@ async function expandClusterOnClick(
       );
     });
 
+    logMapClusterDebug("cluster_action_spiderfy", {
+      clusterId,
+      leaves: leaves.length,
+    });
     spiderfyClusterLeaves(map, center, leaves);
   } catch (error) {
+    logMapClusterDebug("cluster_action_error", {
+      clusterId,
+      error: readMapErrorMessage(error),
+    });
     console.warn("[MapLibre] Failed to expand cluster", error);
   }
 }
@@ -862,14 +916,34 @@ export default function Map({
       fadeDuration: 0,
     });
 
-    const handleMapClick = (e: maplibregl.MapMouseEvent) => {
-      const interactiveFeatures = map.queryRenderedFeatures(e.point, {
-        layers: [
-          ...CAFE_CLUSTER_INTERACTIVE_LAYER_IDS,
-          CAFE_SPIDER_POINT_LAYER_ID,
-          "cafes-layer",
-          "cafes-selected",
+    const queryInteractiveFeaturesByPoint = (point: maplibregl.Point) => {
+      const exact = map.queryRenderedFeatures(point, {
+        layers: [...CAFE_MAP_INTERACTIVE_LAYER_IDS],
+      });
+      if (exact.length > 0) {
+        return { features: exact, hitMode: "exact" as const };
+      }
+      const pad = 14;
+      const near = map.queryRenderedFeatures(
+        [
+          [point.x - pad, point.y - pad],
+          [point.x + pad, point.y + pad],
         ],
+        {
+          layers: [...CAFE_MAP_INTERACTIVE_LAYER_IDS],
+        },
+      );
+      return { features: near, hitMode: "padded" as const };
+    };
+
+    const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+      const { features: interactiveFeatures, hitMode } = queryInteractiveFeaturesByPoint(e.point);
+      logMapClusterDebug("map_tap", {
+        x: e.point.x,
+        y: e.point.y,
+        zoom: map.getZoom(),
+        hitMode,
+        layers: interactiveFeatures.map((feature) => feature.layer?.id ?? "unknown"),
       });
       const spiderFeature = interactiveFeatures.find(
         (feature) => feature.layer?.id === CAFE_SPIDER_POINT_LAYER_ID,
@@ -892,6 +966,12 @@ export default function Map({
         return asFiniteNumber(feature.properties?.cluster_id) != null;
       });
       if (clusterFeature) {
+        logMapClusterDebug("map_tap_cluster_feature", {
+          layerId: clusterFeature.layer?.id ?? "unknown",
+          clusterId: asFiniteNumber(clusterFeature.properties?.cluster_id) ?? null,
+          pointCount: asFiniteNumber(clusterFeature.properties?.point_count) ?? null,
+          hitMode,
+        });
         void expandClusterOnClick(
           map,
           clusterFeature as GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>,

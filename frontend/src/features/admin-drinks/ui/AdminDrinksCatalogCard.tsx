@@ -1,4 +1,4 @@
-import { Badge, Button, Paper } from "../../admin/ui";
+import { Badge, Button } from "../../admin/ui";
 
 import type { AdminDrink } from "../../../api/adminDrinks";
 
@@ -18,13 +18,13 @@ export default function AdminDrinksCatalogCard({
   onToggleActive,
 }: AdminDrinksCatalogCardProps) {
   return (
-    <Paper style={{ border: "1px solid var(--border)", borderRadius: 16, padding: 16 }}>
+    <div style={{ border: "1px solid var(--border)", borderRadius: 16, padding: 16 }}>
       <div style={{ display: "grid", gap: 12 }}>
         <h4 className="m-0 text-xl font-bold text-text">Каталог</h4>
         {loading && <p style={{ margin: 0,  color: "var(--muted)" }}>Загрузка списка...</p>}
         {!loading && drinks.length === 0 && <p style={{ margin: 0,  color: "var(--muted)" }}>Ничего не найдено.</p>}
         {drinks.map((item) => (
-          <Paper
+          <div
             key={item.id}
             style={{
               border: "1px solid var(--border)",
@@ -59,9 +59,9 @@ export default function AdminDrinksCatalogCard({
                 </p>
               )}
             </div>
-          </Paper>
+          </div>
         ))}
       </div>
-    </Paper>
+    </div>
   );
 }

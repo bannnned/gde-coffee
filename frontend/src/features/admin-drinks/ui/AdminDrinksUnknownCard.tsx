@@ -1,4 +1,4 @@
-import { Badge, Button, Paper, Select } from "../../admin/ui";
+import { Badge, Button, Select } from "../../admin/ui";
 
 import type { UnknownDrinkFormat } from "../../../api/adminDrinks";
 import type { UnknownStatusOption } from "../model/types";
@@ -34,7 +34,7 @@ export default function AdminDrinksUnknownCard({
   onIgnoreUnknown,
 }: AdminDrinksUnknownCardProps) {
   return (
-    <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
+    <div style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
       <div style={{ display: "grid", gap: 12 }}>
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
           <h4 className="m-0 text-xl font-bold text-text">Неизвестные форматы</h4>
@@ -50,7 +50,7 @@ export default function AdminDrinksUnknownCard({
         {!loading && unknown.length === 0 && <p style={{ margin: 0,  color: "var(--muted)" }}>Список пуст.</p>}
 
         {unknown.map((item) => (
-          <Paper key={item.id} style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12 }}>
+          <div key={item.id} style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12 }}>
             <div style={{ display: "grid", gap: 8 }}>
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -84,9 +84,9 @@ export default function AdminDrinksUnknownCard({
                 </Button>
               </div>
             </div>
-          </Paper>
+          </div>
         ))}
       </div>
-    </Paper>
+    </div>
   );
 }

@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Button,
-  Container,
-  Paper,
   Select,
   Table, 
   TextInput, 
@@ -118,7 +116,7 @@ export default function AdminFeedbackPage() {
 
   if (!allowed) {
     return (
-      <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
+      <div style={{ maxWidth: 640, marginInline: "auto", paddingTop: 24, paddingBottom: 24 }}>
         <div style={{ display: "grid", gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <p style={{ margin: 0,  color: "var(--muted)" }}>
@@ -126,13 +124,13 @@ export default function AdminFeedbackPage() {
           </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </div>
-      </Container>
+      </div>
     );
   }
 
   return (
     <div className="page-shell" style={{ paddingBottom: 24 }}>
-      <Container style={{ maxWidth: 1080,  paddingTop: 16, paddingBottom: 16 }}>
+      <div style={{ maxWidth: 1080, marginInline: "auto", paddingTop: 16, paddingBottom: 16 }}>
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
@@ -151,7 +149,7 @@ export default function AdminFeedbackPage() {
             </Button>
           </div>
 
-          <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
+          <div style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
             <div style={{ display: "grid", gap: 12 }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -209,9 +207,9 @@ export default function AdminFeedbackPage() {
                 </div>
               </div>
             </div>
-          </Paper>
+          </div>
 
-          <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
+          <div style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
             <Table striped highlightOnHover withTableBorder>
               <Table.Thead>
                 <Table.Tr>
@@ -246,9 +244,9 @@ export default function AdminFeedbackPage() {
                 )}
               </Table.Tbody>
             </Table>
-          </Paper>
+          </div>
         </div>
-      </Container>
+      </div>
     </div>
   );
 }

@@ -3,8 +3,6 @@ import {
   ActionIcon,
   Badge,
   Button,
-  Container,
-  Paper,
   SegmentedControl,
   Select,
 } from "../features/admin/ui";
@@ -241,7 +239,7 @@ export default function AdminModerationPage() {
 
   if (!allowed) {
     return (
-      <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
+      <div style={{ maxWidth: 640, marginInline: "auto", paddingTop: 24, paddingBottom: 24 }}>
         <div style={{ display: "grid", gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <p style={{ margin: 0,  color: "var(--muted)" }}>
@@ -249,7 +247,7 @@ export default function AdminModerationPage() {
           </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </div>
-      </Container>
+      </div>
     );
   }
 
@@ -264,7 +262,7 @@ export default function AdminModerationPage() {
         WebkitOverflowScrolling: "touch",
       }}
     >
-      <Container style={{ maxWidth: 640,  paddingTop: 16, paddingBottom: 16 }}>
+      <div style={{ maxWidth: 640, marginInline: "auto", paddingTop: 16, paddingBottom: 16 }}>
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
@@ -283,7 +281,7 @@ export default function AdminModerationPage() {
             </Button>
           </div>
 
-          <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
+          <div style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
             <div style={{ display: "grid", gap: 12 }}>
               <Select
                 label="Статус"
@@ -292,9 +290,9 @@ export default function AdminModerationPage() {
                 onChange={(value) => setFilterStatus((value ?? "") as SubmissionStatus | "")}
               />
             </div>
-          </Paper>
+          </div>
 
-          <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
+          <div style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
             <div className="relative">
               <div
                 style={{
@@ -367,12 +365,12 @@ export default function AdminModerationPage() {
               />
             </div>
             </div>
-          </Paper>
+          </div>
 
           {visibleItems.length === 0 && !loading && (
-            <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
+            <div style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
               <p style={{ margin: 0,  color: "var(--muted)" }}>Заявок по текущему фильтру нет.</p>
-            </Paper>
+            </div>
           )}
 
           {visibleItems.map((item) => {
@@ -406,7 +404,7 @@ export default function AdminModerationPage() {
             const reviewRating = readPayloadNumber(payload, "rating");
             const reviewTags = readStringArrayFromPayload(payload, "taste_tags");
             return (
-              <Paper key={item.id} style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
+              <div key={item.id} style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -422,7 +420,7 @@ export default function AdminModerationPage() {
                   </p>
 
                   {(item.target_id || targetCafeName || previewCandidate) && (
-                    <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
+                    <div style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
                       <div style={{ display: "grid", gap: 6 }}>
                         <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                           Предлагаемая кофейня
@@ -473,11 +471,11 @@ export default function AdminModerationPage() {
                           )}
                         </div>
                       </div>
-                    </Paper>
+                    </div>
                   )}
 
                   {description && (
-                    <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
+                    <div style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
                       <div style={{ display: "grid", gap: 4 }}>
                         <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                           {item.entity_type === "cafe_description"
@@ -486,7 +484,7 @@ export default function AdminModerationPage() {
                         </p>
                         <p style={{ margin: 0,  fontSize: 13 }}>{description}</p>
                       </div>
-                    </Paper>
+                    </div>
                   )}
 
                   {amenities.length > 0 && (
@@ -505,7 +503,7 @@ export default function AdminModerationPage() {
                   )}
 
                   {(reviewSummary || reviewDrink || reviewRating != null || reviewTags.length > 0) && (
-                    <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
+                    <div style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
                       <div style={{ display: "grid", gap: 6 }}>
                         <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                           Данные отзыва
@@ -529,7 +527,7 @@ export default function AdminModerationPage() {
                         )}
                         {reviewSummary && <p style={{ margin: 0,  fontSize: 13 }}>{reviewSummary}</p>}
                       </div>
-                    </Paper>
+                    </div>
                   )}
 
                   {photoUrls.length > 0 && (
@@ -545,7 +543,7 @@ export default function AdminModerationPage() {
                         }}
                       >
                         {photoUrls.map((url, index) => (
-                          <Paper
+                          <div
                             key={`${item.id}-photo-${index}`}
                             style={{
                               border: "1px solid var(--border)",
@@ -564,7 +562,7 @@ export default function AdminModerationPage() {
                                 display: "block",
                               }}
                             />
-                          </Paper>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -583,7 +581,7 @@ export default function AdminModerationPage() {
                         }}
                       >
                         {menuPhotoUrls.map((url, index) => (
-                          <Paper
+                          <div
                             key={`${item.id}-menu-${index}`}
                             style={{
                               border: "1px solid var(--border)",
@@ -602,7 +600,7 @@ export default function AdminModerationPage() {
                                 display: "block",
                               }}
                             />
-                          </Paper>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -647,7 +645,7 @@ export default function AdminModerationPage() {
                     </Button>
                   )}
                 </div>
-              </Paper>
+              </div>
             );
           })}
         </div>
@@ -663,7 +661,7 @@ export default function AdminModerationPage() {
             />
           </Suspense>
         )}
-      </Container>
+      </div>
     </div>
   );
 }

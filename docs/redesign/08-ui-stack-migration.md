@@ -55,6 +55,8 @@
 37. `W5-X` закрыт (`done`): из admin layout-слоя удален text wrapper `Text`; admin текстовые узлы переведены на нативные `p/span` с explicit style/className.
 38. `W5-Y` закрыт (`done`): из admin layout-слоя удалены layout wrappers `Group/Stack`; admin страницы и карточки переведены на нативные `div` (`flex/grid`) с explicit layout styles.
 39. `W5-Z` закрыт (`done`): из admin layout-слоя удален `Box`; admin страницы переведены на нативные `div` контейнеры с explicit style/className.
+40. `W5-AA` закрыт (`done`): из admin layout-слоя удален `Container`; admin-страницы переведены на нативные wrapper `div` с explicit `maxWidth/margin/padding`.
+41. `W5-AB` закрыт (`done`): из admin layout-слоя удален `Paper`; admin страницы и admin-drinks карточки переведены на нативные `div` с explicit card styles.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

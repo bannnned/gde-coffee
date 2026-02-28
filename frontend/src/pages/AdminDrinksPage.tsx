@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Button,
-  Container,
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
@@ -257,7 +256,7 @@ export default function AdminDrinksPage() {
 
   if (!allowed) {
     return (
-      <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
+      <div style={{ maxWidth: 640, marginInline: "auto", paddingTop: 24, paddingBottom: 24 }}>
         <div style={{ display: "grid", gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <p style={{ margin: 0,  color: "var(--muted)" }}>
@@ -265,13 +264,13 @@ export default function AdminDrinksPage() {
           </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </div>
-      </Container>
+      </div>
     );
   }
 
   return (
     <div className="page-shell" style={{ paddingBottom: 24 }}>
-      <Container style={{ maxWidth: 1080,  paddingTop: 16, paddingBottom: 16 }}>
+      <div style={{ maxWidth: 1080, marginInline: "auto", paddingTop: 16, paddingBottom: 16 }}>
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
@@ -342,7 +341,7 @@ export default function AdminDrinksPage() {
             onIgnoreUnknown={(item) => void handleIgnoreUnknown(item)}
           />
         </div>
-      </Container>
+      </div>
     </div>
   );
 }

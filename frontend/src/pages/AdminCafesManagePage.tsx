@@ -3,7 +3,6 @@ import {
   ActionIcon,
   Alert,
   Button,
-  Container,
   Loader,
   Select,
   TextInput,
@@ -261,7 +260,7 @@ export default function AdminCafesManagePage() {
 
   if (!allowed) {
     return (
-      <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
+      <div style={{ maxWidth: 640, marginInline: "auto", paddingTop: 24, paddingBottom: 24 }}>
         <div style={{ display: "grid", gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <p style={{ margin: 0,  color: "var(--muted)" }}>
@@ -269,13 +268,13 @@ export default function AdminCafesManagePage() {
           </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </div>
-      </Container>
+      </div>
     );
   }
 
   return (
     <div className="page-shell" style={{ paddingBottom: 24 }}>
-      <Container style={{ maxWidth: 1080,  paddingTop: 16, paddingBottom: 16 }}>
+      <div style={{ maxWidth: 1080, marginInline: "auto", paddingTop: 16, paddingBottom: 16 }}>
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
@@ -398,7 +397,7 @@ export default function AdminCafesManagePage() {
             </div>
           )}
         </div>
-      </Container>
+      </div>
     </div>
   );
 }

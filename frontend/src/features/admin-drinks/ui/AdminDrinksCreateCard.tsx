@@ -1,4 +1,4 @@
-import { Button, Paper, Switch, TextInput, Textarea } from "../../admin/ui";
+import { Button, Switch, TextInput, Textarea } from "../../admin/ui";
 
 import type { DrinkEditorState } from "../model/types";
 
@@ -16,7 +16,7 @@ export default function AdminDrinksCreateCard({
   onSubmit,
 }: AdminDrinksCreateCardProps) {
   return (
-    <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
+    <div style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
       <div style={{ display: "grid", gap: 12 }}>
         <h4 className="m-0 text-xl font-bold text-text">Добавить напиток</h4>
         <TextInput
@@ -65,6 +65,6 @@ export default function AdminDrinksCreateCard({
           Добавить
         </Button>
       </div>
-    </Paper>
+    </div>
   );
 }
