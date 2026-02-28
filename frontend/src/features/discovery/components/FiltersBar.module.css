@@ -57,7 +57,7 @@
   display: block;
 }
 
-:global([data-mantine-color-scheme="dark"]) .userBadge {
+:global([data-theme="dark"]) .userBadge {
   border-color: var(--glass-border);
   color: var(--text);
   box-shadow: var(--shadow-1);

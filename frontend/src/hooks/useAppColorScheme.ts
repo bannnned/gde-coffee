@@ -40,7 +40,7 @@ function readStoredColorScheme(): ColorScheme | null {
 function applyColorSchemeToDocument(value: ColorScheme) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  root.setAttribute("data-mantine-color-scheme", value);
+  root.setAttribute("data-theme", value);
   root.style.colorScheme = value;
 }
 
@@ -83,7 +83,7 @@ export default function useAppColorScheme(): AppColorSchemeContextValue {
   return {
     colorScheme:
       (typeof document !== "undefined" &&
-      document.documentElement.getAttribute("data-mantine-color-scheme") === "dark")
+      document.documentElement.getAttribute("data-theme") === "dark")
         ? "dark"
         : "light",
     setColorScheme: (value: ColorScheme) => {

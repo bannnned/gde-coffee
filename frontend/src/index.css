@@ -167,7 +167,7 @@
   --control-height-lg: 48px;
 }
 
-:root[data-mantine-color-scheme='dark'] {
+:root[data-theme='dark'] {
   --color-brand-accent: #FF6B3A;
   --color-brand-accent-soft: rgba(255, 107, 58, 0.34);
   --color-brand-accent-strong: #FF8A5F;
@@ -356,19 +356,19 @@
   background-color: transparent;
 }
 
-:root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group {
+:root[data-theme='dark'] .map-shell .maplibregl-ctrl-group {
   /* Keep built-in dark SVG icons readable inside MapLibre controls. */
   background: rgba(255, 248, 242, 0.9);
   border-color: rgba(255, 248, 242, 0.74);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
-:root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button + button {
+:root[data-theme='dark'] .map-shell .maplibregl-ctrl-group button + button {
   border-top-color: rgba(29, 23, 21, 0.16);
 }
 
-:root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button:not(:disabled):hover,
-:root[data-mantine-color-scheme='dark'] .map-shell .maplibregl-ctrl-group button:not(:disabled):active {
+:root[data-theme='dark'] .map-shell .maplibregl-ctrl-group button:not(:disabled):hover,
+:root[data-theme='dark'] .map-shell .maplibregl-ctrl-group button:not(:disabled):active {
   background-color: rgba(29, 23, 21, 0.1);
 }
 
@@ -457,7 +457,7 @@
   animation: review-submit-pulse 0.9s ease-in-out infinite;
 }
 
-:root[data-mantine-color-scheme='dark'] .glass-action {
+:root[data-theme='dark'] .glass-action {
   border-color: var(--glass-border);
   box-shadow:
     var(--glass-shadow),
@@ -465,7 +465,7 @@
   color: var(--text);
 }
 
-:root[data-mantine-color-scheme='dark'] .glass-action::before {
+:root[data-theme='dark'] .glass-action::before {
   background: linear-gradient(
     135deg,
     var(--glass-grad-1),
@@ -473,7 +473,7 @@
   );
 }
 
-:root[data-mantine-color-scheme='dark'] .glass-action--active {
+:root[data-theme='dark'] .glass-action--active {
   color: var(--color-on-accent);
   border-color: color-mix(in srgb, var(--color-brand-accent) 65%, var(--glass-border));
   box-shadow:
@@ -481,7 +481,7 @@
     0 14px 30px color-mix(in srgb, var(--color-brand-accent-soft) 52%, transparent);
 }
 
-:root[data-mantine-color-scheme='dark'] .glass-action--active::before {
+:root[data-theme='dark'] .glass-action--active::before {
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--color-brand-accent) 92%, white 8%),
@@ -584,7 +584,7 @@
   shape-rendering: geometricPrecision;
 }
 
-:root[data-mantine-color-scheme='dark'] .map-zoom-button {
+:root[data-theme='dark'] .map-zoom-button {
   border-color: var(--glass-border);
   box-shadow:
     var(--glass-shadow),
@@ -611,20 +611,20 @@
   background: var(--color-brand-accent-soft);
 }
 
-:root[data-mantine-color-scheme='dark'] .oauth-button {
+:root[data-theme='dark'] .oauth-button {
   border-color: var(--glass-border);
   color: var(--text);
 }
 
-:root[data-mantine-color-scheme='dark'] .oauth-button svg {
+:root[data-theme='dark'] .oauth-button svg {
   color: currentColor;
 }
 
-:root[data-mantine-color-scheme='dark'] .oauth-button:hover {
+:root[data-theme='dark'] .oauth-button:hover {
   background: var(--color-surface-main);
 }
 
-:root[data-mantine-color-scheme='dark'] .map-zoom-button::before {
+:root[data-theme='dark'] .map-zoom-button::before {
   background: linear-gradient(
     135deg,
     var(--glass-grad-1),

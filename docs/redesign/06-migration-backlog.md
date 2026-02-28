@@ -536,3 +536,33 @@ Critical path stack-transition:
 - Артефакт: обновленный dependency set в `/Users/a1/Desktop/Prog/gde-coffee/frontend/package.json`.
 - Артефакт: обновленный lockfile без Mantine в `/Users/a1/Desktop/Prog/gde-coffee/frontend/package-lock.json`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-G · Theme attribute neutralization (`data-theme`) (P1, status: done)
+- Цель: убрать legacy-привязку темы к `data-mantine-color-scheme` и перейти на нейтральный атрибут `data-theme`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/hooks/useAppColorScheme.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/index.css`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.module.css`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/work/components/FiltersBar.module.css`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.module.css`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafeList.module.css`.
+- Depends on: `W5-F`.
+- AC: в `frontend/src` отсутствуют упоминания `data-mantine-color-scheme`.
+- AC: provider темы выставляет `data-theme="light|dark"` на `documentElement`.
+- AC: dark-theme селекторы работают через `data-theme`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: app theme provider с `data-theme` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/hooks/useAppColorScheme.ts`.
+- Артефакт: обновленные dark-mode CSS selectors в перечисленных style-файлах.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-H · Remove legacy `features/work` flow (P1, status: done)
+- Цель: удалить неиспользуемый legacy flow (`WorkScreen` + `features/work`) после завершения пользовательского редизайна Discovery.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/WorkScreen.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/work/**`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/types.ts`.
+- Depends on: `W5-G`.
+- AC: в `frontend/src` отсутствуют ссылки на `features/work` и `WorkScreen`.
+- AC: общий экспорт типов (`types.ts`) не зависит от legacy work layer.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удален legacy flow (`frontend/src/pages/WorkScreen.tsx`, `frontend/src/features/work/**`).
+- Артефакт: `frontend/src/types.ts` переключен на `entities/cafe/model/types`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

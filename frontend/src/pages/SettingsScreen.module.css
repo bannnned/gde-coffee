@@ -522,7 +522,7 @@
   align-items: center;
 }
 
-:global([data-mantine-color-scheme="dark"]) .card {
+:global([data-theme="dark"]) .card {
   background: transparent;
 }
 

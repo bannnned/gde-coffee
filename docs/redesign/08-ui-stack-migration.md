@@ -35,6 +35,8 @@
 17. `W5-D` закрыт (`done`): de-Mantine migration для admin surfaces (Admin pages + `features/admin-drinks/ui/*`) через локальный compat core layer.
 18. `W5-E` закрыт (`done`): de-Mantine migration для global shell/theme/notifications (`main.tsx`, `useAppColorScheme`, локальный notifications store + viewport).
 19. `W5-F` закрыт (`done`): удалены `@mantine/*` пакеты из `frontend/package.json` и `frontend/package-lock.json` после полного code/runtime выхода.
+20. `W5-G` закрыт (`done`): theme-атрибут нейтрализован с `data-mantine-color-scheme` на `data-theme` во всем frontend CSS/runtime.
+21. `W5-H` закрыт (`done`): удален legacy `WorkScreen/features/work` поток; общий `types.ts` переведен на `entities/cafe` модель.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.
