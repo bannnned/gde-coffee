@@ -10,8 +10,7 @@ import {
   SegmentedControl,
   Select,
   Stack,
-  Table,
-  Text, 
+  Table,  
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
@@ -196,7 +195,7 @@ export default function AdminNorthStarPage() {
   if (status === "loading") {
     return (
       <Box style={{ padding: 20 }}>
-        <Text>Загрузка...</Text>
+        <p className="m-0 text-sm text-text">Загрузка...</p>
       </Box>
     );
   }
@@ -206,9 +205,9 @@ export default function AdminNorthStarPage() {
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
-          <Text style={{ color: "var(--muted)" }}>
+          <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна модераторам и администраторам.
-          </Text>
+          </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
@@ -279,7 +278,7 @@ export default function AdminNorthStarPage() {
                     value: item.id,
                     label: buildCafeOptionLabel(item),
                   }))}
-                  rightSection={searchLoading ? <Text style={{ fontSize: 12 }}>...</Text> : null}
+                  rightSection={searchLoading ? <p style={{ margin: 0,  fontSize: 12 }}>...</p> : null}
                 />
               )}
 
@@ -297,9 +296,9 @@ export default function AdminNorthStarPage() {
 
           {scope === "cafe" && !selectedCafeId ? (
             <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-              <Text style={{ color: "var(--muted)" }}>
+              <p style={{ margin: 0,  color: "var(--muted)" }}>
                 Выберите кофейню, чтобы посмотреть метрику по конкретному месту.
-              </Text>
+              </p>
             </Paper>
           ) : (
             <>
@@ -307,8 +306,7 @@ export default function AdminNorthStarPage() {
                 {summaryCards.map((card) => (
                   <Box key={card.key} style={{ flex: 1, minWidth: 180 }}>
                     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-                      <Text
-                        style={{
+                      <p style={{ margin: 0, 
                           fontSize: 12,
                           color: "var(--muted)",
                           textTransform: "uppercase",
@@ -316,10 +314,10 @@ export default function AdminNorthStarPage() {
                         }}
                       >
                         {card.label}
-                      </Text>
-                      <Text style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>
+                      </p>
+                      <p style={{ margin: 0,  fontSize: 28, fontWeight: 800, marginTop: 4 }}>
                         {card.value}
-                      </Text>
+                      </p>
                     </Paper>
                   </Box>
                 ))}
@@ -369,9 +367,9 @@ export default function AdminNorthStarPage() {
                     {(report?.daily.length ?? 0) === 0 && (
                       <Table.Tr>
                         <Table.Td colSpan={5}>
-                          <Text style={{ color: "var(--muted)" }}>
+                          <p style={{ margin: 0,  color: "var(--muted)" }}>
                             За выбранный период данных пока нет.
-                          </Text>
+                          </p>
                         </Table.Td>
                       </Table.Tr>
                     )}
@@ -382,10 +380,10 @@ export default function AdminNorthStarPage() {
               <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
                 <Stack style={{ gap: 8 }}>
                   <Group justify="space-between" align="center">
-                    <Text style={{ fontWeight: 700 }}>Воронка Journey</Text>
-                    <Text style={{ fontSize: 13, color: "var(--muted)" }}>
+                    <p style={{ margin: 0,  fontWeight: 700 }}>Воронка Journey</p>
+                    <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>
                       Карточка → отзыв → маршрут → check-in → отзыв
-                    </Text>
+                    </p>
                   </Group>
                   <Table striped highlightOnHover withTableBorder>
                     <Table.Thead>
@@ -408,9 +406,9 @@ export default function AdminNorthStarPage() {
                       {(funnelReport?.stages.length ?? 0) === 0 && (
                         <Table.Tr>
                           <Table.Td colSpan={4}>
-                            <Text style={{ color: "var(--muted)" }}>
+                            <p style={{ margin: 0,  color: "var(--muted)" }}>
                               По воронке пока нет данных.
-                            </Text>
+                            </p>
                           </Table.Td>
                         </Table.Tr>
                       )}

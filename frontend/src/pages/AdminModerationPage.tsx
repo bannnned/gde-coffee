@@ -9,8 +9,7 @@ import {
   Paper,
   SegmentedControl,
   Select,
-  Stack,
-  Text, 
+  Stack,  
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconCheck, IconX } from "@tabler/icons-react";
@@ -238,7 +237,7 @@ export default function AdminModerationPage() {
   if (status === "loading") {
     return (
       <Box style={{ padding: 20 }}>
-        <Text>Загрузка...</Text>
+        <p className="m-0 text-sm text-text">Загрузка...</p>
       </Box>
     );
   }
@@ -248,9 +247,9 @@ export default function AdminModerationPage() {
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
-          <Text style={{ color: "var(--muted)" }}>
+          <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна только модераторам и администраторам.
-          </Text>
+          </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
@@ -375,7 +374,7 @@ export default function AdminModerationPage() {
 
           {visibleItems.length === 0 && !loading && (
             <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-              <Text style={{ color: "var(--muted)" }}>Заявок по текущему фильтру нет.</Text>
+              <p style={{ margin: 0,  color: "var(--muted)" }}>Заявок по текущему фильтру нет.</p>
             </Paper>
           )}
 
@@ -421,16 +420,16 @@ export default function AdminModerationPage() {
                     </Group>
                     <Badge color={statusMeta.color}>{statusMeta.label}</Badge>
                   </Group>
-                  <Text style={{ fontSize: 13, color: "var(--muted)" }}>
+                  <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>
                     {item.author_label || item.author_user_id} • {formatModerationDate(item.created_at)}
-                  </Text>
+                  </p>
 
                   {(item.target_id || targetCafeName || previewCandidate) && (
                     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
                       <Stack style={{ gap: 6 }}>
-                        <Text style={{ fontSize: 13, fontWeight: 600 }}>
+                        <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                           Предлагаемая кофейня
-                        </Text>
+                        </p>
                         <Group
                           justify="space-between"
                           align="flex-start"
@@ -438,16 +437,26 @@ export default function AdminModerationPage() {
                           style={{ gap: 8 }}
                         >
                           <Stack style={{ gap: 2, minWidth: 0 }}>
-                            <Text style={{ fontSize: 13 }}>{candidateName}</Text>
+                            <p style={{ margin: 0,  fontSize: 13 }}>{candidateName}</p>
                             {candidateAddress && (
-                              <Text style={{ fontSize: 12, color: "var(--muted)" }} lineClamp={2}>
+                              <p
+                                style={{
+                                  margin: 0,
+                                  fontSize: 12,
+                                  color: "var(--muted)",
+                                  display: "-webkit-box",
+                                  WebkitBoxOrient: "vertical",
+                                  WebkitLineClamp: 2,
+                                  overflow: "hidden",
+                                }}
+                              >
                                 {candidateAddress}
-                              </Text>
+                              </p>
                             )}
                             {item.target_id && (
-                              <Text style={{ fontSize: 12, color: "var(--muted)" }}>
+                              <p style={{ margin: 0,  fontSize: 12, color: "var(--muted)" }}>
                                 ID: {item.target_id}
-                              </Text>
+                              </p>
                             )}
                           </Stack>
                           {targetCafeMapUrl && (
@@ -470,21 +479,21 @@ export default function AdminModerationPage() {
                   {description && (
                     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
                       <Stack style={{ gap: 4 }}>
-                        <Text style={{ fontSize: 13, fontWeight: 600 }}>
+                        <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                           {item.entity_type === "cafe_description"
                             ? "Предложенное описание"
                             : "Описание"}
-                        </Text>
-                        <Text style={{ fontSize: 13 }}>{description}</Text>
+                        </p>
+                        <p style={{ margin: 0,  fontSize: 13 }}>{description}</p>
                       </Stack>
                     </Paper>
                   )}
 
                   {amenities.length > 0 && (
                     <Stack style={{ gap: 6 }}>
-                      <Text style={{ fontSize: 13, fontWeight: 600 }}>
+                      <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                         Удобства
-                      </Text>
+                      </p>
                       <Group style={{ gap: 6 }}>
                         {amenities.map((amenity) => (
                           <Badge key={`${item.id}-amenity-${amenity}`} variant="secondary" style={{ borderRadius: 10 }}>
@@ -498,9 +507,9 @@ export default function AdminModerationPage() {
                   {(reviewSummary || reviewDrink || reviewRating != null || reviewTags.length > 0) && (
                     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
                       <Stack style={{ gap: 6 }}>
-                        <Text style={{ fontSize: 13, fontWeight: 600 }}>
+                        <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                           Данные отзыва
-                        </Text>
+                        </p>
                         <Group style={{ gap: 8 }}>
                           {reviewRating != null && (
                             <Badge variant="secondary">Оценка: {reviewRating}</Badge>
@@ -518,16 +527,16 @@ export default function AdminModerationPage() {
                             ))}
                           </Group>
                         )}
-                        {reviewSummary && <Text style={{ fontSize: 13 }}>{reviewSummary}</Text>}
+                        {reviewSummary && <p style={{ margin: 0,  fontSize: 13 }}>{reviewSummary}</p>}
                       </Stack>
                     </Paper>
                   )}
 
                   {photoUrls.length > 0 && (
                     <Stack style={{ gap: 6 }}>
-                      <Text style={{ fontSize: 13, fontWeight: 600 }}>
+                      <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                         Фото заявки
-                      </Text>
+                      </p>
                       <Box
                         style={{
                           display: "grid",
@@ -563,9 +572,9 @@ export default function AdminModerationPage() {
 
                   {menuPhotoUrls.length > 0 && (
                     <Stack style={{ gap: 6 }}>
-                      <Text style={{ fontSize: 13, fontWeight: 600 }}>
+                      <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                         Фото меню
-                      </Text>
+                      </p>
                       <Box
                         style={{
                           display: "grid",
@@ -600,9 +609,9 @@ export default function AdminModerationPage() {
                   )}
 
                   {item.moderator_comment && (
-                    <Text style={{ fontSize: 13, color: "var(--muted)" }}>
+                    <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>
                       Комментарий модератора: {item.moderator_comment}
-                    </Text>
+                    </p>
                   )}
                   {isPending && (
                     <Group>

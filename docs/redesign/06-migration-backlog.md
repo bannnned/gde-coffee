@@ -823,3 +823,23 @@ Critical path stack-transition:
 - Артефакт: de-bridge typographic слой `Title` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
 - Артефакт: migration admin headings на `h3/h4` с explicit classes в перечисленных файлах.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-X · Remove admin `Text` wrapper and migrate to native text elements (P1, status: done)
+- Цель: убрать `Text` из admin layout-слоя и перейти на нативные `p`/`span` с explicit style/className.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-W`.
+- AC: `layout.tsx` не содержит `Text` (контракт + реализация).
+- AC: в admin usage отсутствует импорт/usage `Text`.
+- AC: сценарий `lineClamp` сохранен через explicit CSS (`-webkit-line-clamp`) в модерации.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `Text` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration admin text nodes на `p` с explicit style/className.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

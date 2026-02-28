@@ -570,7 +570,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
       id: CAFE_SPIDER_LINE_LAYER_ID,
       type: "line",
       source: CAFE_SPIDER_SOURCE_ID,
-      filter: ["==", ["geometry-type"], "LineString"],
+      filter: ["==", "$type", "LineString"],
       paint: {
         "line-color": "#E1784F",
         "line-opacity": 0.84,
@@ -584,7 +584,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
       id: CAFE_SPIDER_POINT_LAYER_ID,
       type: "circle",
       source: CAFE_SPIDER_SOURCE_ID,
-      filter: ["==", ["geometry-type"], "Point"],
+      filter: ["==", "$type", "Point"],
       paint: {
         "circle-radius": 7,
         "circle-color": "#457E73",

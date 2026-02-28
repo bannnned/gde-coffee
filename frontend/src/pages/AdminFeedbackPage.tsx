@@ -8,8 +8,7 @@ import {
   Paper,
   Select,
   Stack,
-  Table,
-  Text,
+  Table, 
   TextInput, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
@@ -115,7 +114,7 @@ export default function AdminFeedbackPage() {
   if (status === "loading") {
     return (
       <Box style={{ padding: 20 }}>
-        <Text>Загрузка...</Text>
+        <p className="m-0 text-sm text-text">Загрузка...</p>
       </Box>
     );
   }
@@ -125,9 +124,9 @@ export default function AdminFeedbackPage() {
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
-          <Text style={{ color: "var(--muted)" }}>
+          <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна только администраторам.
-          </Text>
+          </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
@@ -180,7 +179,7 @@ export default function AdminFeedbackPage() {
                 </Box>
               </Group>
               <Group justify="space-between">
-                <Text style={{ fontSize: 13, color: "var(--muted)" }}>{pageLabel}</Text>
+                <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>{pageLabel}</p>
                 <Group style={{ gap: 8 }}>
                   <Button
                     variant="default"
@@ -232,11 +231,11 @@ export default function AdminFeedbackPage() {
                     <Table.Td>{renderUserLabel(item)}</Table.Td>
                     <Table.Td>{item.contact || "—"}</Table.Td>
                     <Table.Td>
-                      <Text style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{item.message}</Text>
+                      <p style={{ margin: 0,  whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{item.message}</p>
                       {item.user_agent && (
-                        <Text style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
+                        <p style={{ margin: 0,  fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
                           UA: {item.user_agent}
-                        </Text>
+                        </p>
                       )}
                     </Table.Td>
                   </Table.Tr>
@@ -244,7 +243,7 @@ export default function AdminFeedbackPage() {
                 {items.length === 0 && (
                   <Table.Tr>
                     <Table.Td colSpan={4}>
-                      <Text style={{ color: "var(--muted)" }}>Отзывы не найдены.</Text>
+                      <p style={{ margin: 0,  color: "var(--muted)" }}>Отзывы не найдены.</p>
                     </Table.Td>
                   </Table.Tr>
                 )}

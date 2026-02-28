@@ -8,8 +8,7 @@ import {
   Group,
   Loader,
   Select,
-  Stack,
-  Text,
+  Stack, 
   TextInput,
   Textarea, 
 } from "../features/admin/ui";
@@ -258,7 +257,7 @@ export default function AdminCafesManagePage() {
   if (status === "loading") {
     return (
       <Box style={{ padding: 20 }}>
-        <Text>Загрузка...</Text>
+        <p className="m-0 text-sm text-text">Загрузка...</p>
       </Box>
     );
   }
@@ -268,9 +267,9 @@ export default function AdminCafesManagePage() {
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
-          <Text style={{ color: "var(--muted)" }}>
+          <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна только администраторам.
-          </Text>
+          </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
@@ -324,9 +323,9 @@ export default function AdminCafesManagePage() {
           {selectedCafeID && (
             <Stack style={{ gap: 8 }}>
               {editLoadState === "loading" ? (
-                <Text style={{ fontSize: 13, color: "var(--muted)" }}>
+                <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>
                   Загружаем данные кофейни...
-                </Text>
+                </p>
               ) : editLoadState === "error" ? (
                 <Alert color="red" title="Не удалось загрузить кофейню">
                   Повторите выбор кофейни из списка.

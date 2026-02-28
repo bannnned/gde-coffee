@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, Stack, Text } from "../../admin/ui";
+import { Badge, Button, Group, Paper, Stack } from "../../admin/ui";
 
 import type { AdminDrink } from "../../../api/adminDrinks";
 
@@ -21,8 +21,8 @@ export default function AdminDrinksCatalogCard({
     <Paper style={{ border: "1px solid var(--border)", borderRadius: 16, padding: 16 }}>
       <Stack style={{ gap: 12 }}>
         <h4 className="m-0 text-xl font-bold text-text">Каталог</h4>
-        {loading && <Text style={{ color: "var(--muted)" }}>Загрузка списка...</Text>}
-        {!loading && drinks.length === 0 && <Text style={{ color: "var(--muted)" }}>Ничего не найдено.</Text>}
+        {loading && <p style={{ margin: 0,  color: "var(--muted)" }}>Загрузка списка...</p>}
+        {!loading && drinks.length === 0 && <p style={{ margin: 0,  color: "var(--muted)" }}>Ничего не найдено.</p>}
         {drinks.map((item) => (
           <Paper
             key={item.id}
@@ -36,7 +36,7 @@ export default function AdminDrinksCatalogCard({
             <Stack style={{ gap: 6 }}>
               <Group justify="space-between" align="center">
                 <Group style={{ gap: 8 }}>
-                  <Text style={{ fontWeight: 600 }}>{item.name}</Text>
+                  <p style={{ margin: 0,  fontWeight: 600 }}>{item.name}</p>
                   <Badge variant="secondary">{item.id}</Badge>
                   {!item.is_active && <Badge variant="secondary" color="gray">hidden</Badge>}
                 </Group>
@@ -54,9 +54,9 @@ export default function AdminDrinksCatalogCard({
                 </Group>
               </Group>
               {item.aliases.length > 0 && (
-                <Text style={{ fontSize: 12, color: "var(--muted)" }}>
+                <p style={{ margin: 0,  fontSize: 12, color: "var(--muted)" }}>
                   Алиасы: {item.aliases.join(", ")}
-                </Text>
+                </p>
               )}
             </Stack>
           </Paper>

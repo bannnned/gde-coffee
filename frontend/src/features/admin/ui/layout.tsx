@@ -160,44 +160,6 @@ export function Paper({
   );
 }
 
-type TextProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-  lineClamp?: number;
-} & Omit<HTMLAttributes<HTMLParagraphElement>, "style" | "children">;
-
-export function Text({
-  children,
-  className,
-  style,
-  lineClamp,
-  ...rest
-}: TextProps) {
-  return (
-    <p
-      className={className}
-      style={{
-        margin: 0,
-        fontSize: 14,
-        color: "var(--text)",
-        ...(lineClamp
-          ? {
-              display: "-webkit-box",
-              WebkitBoxOrient: "vertical" as const,
-              WebkitLineClamp: lineClamp,
-              overflow: "hidden",
-            }
-          : null),
-        ...style,
-      }}
-      {...rest}
-    >
-      {children}
-    </p>
-  );
-}
-
 type BadgeProps = {
   children?: ReactNode;
   className?: string;

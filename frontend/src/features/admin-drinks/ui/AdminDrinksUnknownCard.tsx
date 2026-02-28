@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, Select, Stack, Text } from "../../admin/ui";
+import { Badge, Button, Group, Paper, Select, Stack } from "../../admin/ui";
 
 import type { UnknownDrinkFormat } from "../../../api/adminDrinks";
 import type { UnknownStatusOption } from "../model/types";
@@ -46,21 +46,21 @@ export default function AdminDrinksUnknownCard({
           />
         </Group>
 
-        {loading && <Text style={{ color: "var(--muted)" }}>Загрузка форматов...</Text>}
-        {!loading && unknown.length === 0 && <Text style={{ color: "var(--muted)" }}>Список пуст.</Text>}
+        {loading && <p style={{ margin: 0,  color: "var(--muted)" }}>Загрузка форматов...</p>}
+        {!loading && unknown.length === 0 && <p style={{ margin: 0,  color: "var(--muted)" }}>Список пуст.</p>}
 
         {unknown.map((item) => (
           <Paper key={item.id} style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12 }}>
             <Stack style={{ gap: 8 }}>
               <Group justify="space-between" align="center">
                 <Group style={{ gap: 8 }}>
-                  <Text style={{ fontWeight: 600 }}>{item.name}</Text>
+                  <p style={{ margin: 0,  fontWeight: 600 }}>{item.name}</p>
                   <Badge variant="secondary">mentions: {item.mentions_count}</Badge>
                   <Badge color={item.status === "new" ? "yellow" : "gray"}>{item.status}</Badge>
                 </Group>
-                <Text style={{ fontSize: 12, color: "var(--muted)" }}>
+                <p style={{ margin: 0,  fontSize: 12, color: "var(--muted)" }}>
                   last: {new Date(item.last_seen_at).toLocaleDateString("ru-RU")}
-                </Text>
+                </p>
               </Group>
               <Group align="end" wrap="wrap">
                 <Select

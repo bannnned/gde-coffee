@@ -9,8 +9,7 @@ import {
   Select,
   Stack,
   Switch,
-  Table,
-  Text,
+  Table, 
   Textarea, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
@@ -471,7 +470,7 @@ export default function AdminCafesImportPage() {
   if (status === "loading") {
     return (
       <Box style={{ padding: 20 }}>
-        <Text>Загрузка...</Text>
+        <p className="m-0 text-sm text-text">Загрузка...</p>
       </Box>
     );
   }
@@ -481,9 +480,9 @@ export default function AdminCafesImportPage() {
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
-          <Text style={{ color: "var(--muted)" }}>
+          <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна только администраторам.
-          </Text>
+          </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
@@ -576,9 +575,9 @@ export default function AdminCafesImportPage() {
           />
 
           <Group justify="space-between">
-            <Text style={{ fontSize: 13, color: "var(--muted)" }}>
+            <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>
               Всего строк: {preview.rawTotal}. Валидных: {preview.validItems.length}. Ошибок: {preview.issues.length}
-            </Text>
+            </p>
             <Button
               loading={loading}
               disabled={
@@ -614,9 +613,9 @@ export default function AdminCafesImportPage() {
 
           {preview.rows.length > 0 && (
             <Box>
-              <Text style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+              <p style={{ margin: 0,  fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 Предпросмотр перед импортом (первые {Math.min(preview.rows.length, maxPreviewRows)} строк)
-              </Text>
+              </p>
               <Table striped withTableBorder withColumnBorders>
                 <Table.Thead>
                   <Table.Tr>
@@ -632,8 +631,7 @@ export default function AdminCafesImportPage() {
                     <Table.Tr key={`preview-${row.index}`}>
                       <Table.Td>{row.index}</Table.Td>
                       <Table.Td>
-                        <Text
-                          style={{
+                        <p style={{ margin: 0, 
                             fontSize: 13,
                             color:
                               row.status === "ok"
@@ -642,7 +640,7 @@ export default function AdminCafesImportPage() {
                           }}
                         >
                           {row.status}
-                        </Text>
+                        </p>
                       </Table.Td>
                       <Table.Td>{row.name || "—"}</Table.Td>
                       <Table.Td>{row.address || "—"}</Table.Td>
@@ -658,16 +656,16 @@ export default function AdminCafesImportPage() {
             <Stack style={{ gap: 12 }}>
               <h4 className="m-0 text-xl font-bold text-text">Результат</h4>
               <Group>
-                <Text style={{ fontSize: 13 }}>Всего: {result.summary.total}</Text>
-                <Text style={{ fontSize: 13 }}>Создано: {result.summary.created}</Text>
-                <Text style={{ fontSize: 13 }}>Обновлено: {result.summary.updated}</Text>
-                <Text style={{ fontSize: 13 }}>Пропущено: {result.summary.skipped}</Text>
-                <Text style={{ fontSize: 13 }}>Невалидно: {result.summary.invalid}</Text>
-                <Text style={{ fontSize: 13 }}>Ошибок: {result.summary.failed}</Text>
+                <p style={{ margin: 0,  fontSize: 13 }}>Всего: {result.summary.total}</p>
+                <p style={{ margin: 0,  fontSize: 13 }}>Создано: {result.summary.created}</p>
+                <p style={{ margin: 0,  fontSize: 13 }}>Обновлено: {result.summary.updated}</p>
+                <p style={{ margin: 0,  fontSize: 13 }}>Пропущено: {result.summary.skipped}</p>
+                <p style={{ margin: 0,  fontSize: 13 }}>Невалидно: {result.summary.invalid}</p>
+                <p style={{ margin: 0,  fontSize: 13 }}>Ошибок: {result.summary.failed}</p>
                 {lastClientSkippedInvalid > 0 && (
-                  <Text style={{ fontSize: 13 }}>
+                  <p style={{ margin: 0,  fontSize: 13 }}>
                     Локально пропущено невалидных: {lastClientSkippedInvalid}
-                  </Text>
+                  </p>
                 )}
               </Group>
 
@@ -689,9 +687,9 @@ export default function AdminCafesImportPage() {
                       Скачать ошибки backend (CSV)
                     </Button>
                   </Group>
-                  <Text style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                  <p style={{ margin: 0,  fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                     Проблемы (первые {Math.min(result.issues.length, 12)}):
-                  </Text>
+                  </p>
                   <Table striped withTableBorder withColumnBorders>
                     <Table.Thead>
                       <Table.Tr>
@@ -714,9 +712,9 @@ export default function AdminCafesImportPage() {
               )}
 
               <Box>
-                <Text style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                <p style={{ margin: 0,  fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                   Последние статусы:
-                </Text>
+                </p>
                 <Table striped withTableBorder withColumnBorders>
                   <Table.Thead>
                     <Table.Tr>

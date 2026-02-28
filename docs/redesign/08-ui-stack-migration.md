@@ -52,6 +52,7 @@
 34. `W5-U` закрыт (`done`): из admin layout-слоя удалены alias-пропсы `p/py/pb/gap/radius`, а admin usage переведен на explicit `style/className` для padding/gap/radius.
 35. `W5-V` закрыт (`done`): из admin layout-слоя удалены compat-пропсы `Container.size` и `Paper.withBorder`; usage переведен на explicit `maxWidth`/`border` стили.
 36. `W5-W` закрыт (`done`): из admin layout-слоя удален typographic wrapper `Title`; admin заголовки переведены на нативные `h3/h4` с explicit className.
+37. `W5-X` закрыт (`done`): из admin layout-слоя удален text wrapper `Text`; admin текстовые узлы переведены на нативные `p/span` с explicit style/className.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.
