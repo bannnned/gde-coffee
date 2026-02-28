@@ -1,4 +1,4 @@
-import { Button, Paper, Stack, Switch, TextInput, Textarea, Title } from "@mantine/core";
+import { Button, Paper, Stack, Switch, TextInput, Textarea, Title } from "../../../ui/compat/core";
 
 import type { DrinkEditorState } from "../model/types";
 

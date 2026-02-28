@@ -13,7 +13,7 @@ import {
   Table,
   Text,
   Title,
-} from "@mantine/core";
+} from "../ui/compat/core";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";

@@ -1,4 +1,4 @@
-import { Paper, Stack, Switch, TextInput } from "@mantine/core";
+import { Paper, Stack, Switch, TextInput } from "../../../ui/compat/core";
 
 type AdminDrinksFiltersCardProps = {
   query: string;

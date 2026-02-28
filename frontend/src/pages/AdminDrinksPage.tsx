@@ -8,7 +8,7 @@ import {
   Stack,
   Text,
   Title,
-} from "@mantine/core";
+} from "../ui/compat/core";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";

@@ -32,6 +32,7 @@
 14. `W5-A` закрыт (`done`): de-Mantine migration для user shell/auth/account flow (`AuthGate`, `LoginPage`, `VerifyEmailPage`, `ConfirmEmailChangePage`, `ResetPasswordPage`, `FavoritesPage`, `SettingsScreen` theme hook usage).
 15. `W5-B` закрыт (`done`): de-Mantine cleanup shared user-layer (`Map`, `ColorSchemeToggle`, `ui/bridge/overlay` Radix-only runtime path).
 16. `W5-C` закрыт (`done`): de-Mantine migration для bridge input layer (`AppSelect`, `AppTagsInput`) и legacy `WorkScreen/features/work` потока.
+17. `W5-D` закрыт (`done`): de-Mantine migration для admin surfaces (Admin pages + `features/admin-drinks/ui/*`) через локальный compat core layer.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

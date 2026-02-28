@@ -486,3 +486,22 @@ Critical path stack-transition:
 - Артефакт: Radix/native bridge tags input in `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/tags-input.tsx`.
 - Артефакт: de-Mantine legacy work flow in `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/WorkScreen.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/work/components/*`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-D · Admin surfaces de-Mantine (P1, status: done)
+- Цель: убрать прямые импорты `@mantine/core` из admin/moderation/metrics/feedback/administrative drinks UI, сохранив текущую UX-логику.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/compat/core.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/*.tsx`.
+- Depends on: `W5-C`.
+- AC: перечисленные admin-файлы не импортируют `@mantine/core`.
+- AC: compat-слой покрывает используемые admin-контракты (`Box` ref, `Button` component/spacing, `Table` colSpan, `Select/Switch/Alert`).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: расширенный compat UI-layer в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/compat/core.tsx`.
+- Артефакт: de-Mantine admin pages в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/Admin*.tsx`.
+- Артефакт: de-Mantine admin drinks cards в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/*.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

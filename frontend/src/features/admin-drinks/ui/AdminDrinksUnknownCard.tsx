@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, Select, Stack, Text, Title } from "@mantine/core";
+import { Badge, Button, Group, Paper, Select, Stack, Text, Title } from "../../../ui/compat/core";
 
 import type { UnknownDrinkFormat } from "../../../api/adminDrinks";
 import type { UnknownStatusOption } from "../model/types";

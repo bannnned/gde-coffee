@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, Stack, Text, Title } from "@mantine/core";
+import { Badge, Button, Group, Paper, Stack, Text, Title } from "../../../ui/compat/core";
 
 import type { AdminDrink } from "../../../api/adminDrinks";
 

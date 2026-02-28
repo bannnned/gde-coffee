@@ -1,4 +1,4 @@
-const CACHE_NAME = "coffee-quest-v5";
+const CACHE_NAME = "coffee-quest-v6";
 const SHELL_ASSETS = [
   "/manifest.webmanifest",
   "/icon-192.png",

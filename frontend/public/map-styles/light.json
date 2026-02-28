@@ -5,10 +5,10 @@
     "carto-light-base": {
       "type": "raster",
       "tiles": [
-        "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
-        "https://d.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"
+        "https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png"
       ],
       "tileSize": 256,
       "attribution": "© OpenStreetMap contributors © CARTO"
@@ -16,10 +16,10 @@
     "carto-light-labels": {
       "type": "raster",
       "tiles": [
-        "https://a.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png",
-        "https://b.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png",
-        "https://c.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png",
-        "https://d.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png"
+        "https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png"
       ],
       "tileSize": 256,
       "attribution": "© OpenStreetMap contributors © CARTO"
@@ -31,10 +31,10 @@
       "type": "raster",
       "source": "carto-light-base",
       "paint": {
-        "raster-saturation": -0.02,
-        "raster-contrast": 0.12,
-        "raster-brightness-min": 0.02,
-        "raster-brightness-max": 0.97
+        "raster-saturation": -0.18,
+        "raster-contrast": 0.1,
+        "raster-brightness-min": 0.03,
+        "raster-brightness-max": 0.98
       }
     },
     {
@@ -42,10 +42,10 @@
       "type": "raster",
       "source": "carto-light-labels",
       "paint": {
-        "raster-opacity": 0.92,
-        "raster-saturation": -0.02,
-        "raster-contrast": 0.08,
-        "raster-brightness-min": 0.02,
+        "raster-opacity": 0.94,
+        "raster-saturation": -0.08,
+        "raster-contrast": 0.12,
+        "raster-brightness-min": 0.06,
         "raster-brightness-max": 1
       }
     }
