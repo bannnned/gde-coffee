@@ -4,27 +4,11 @@ import { Input } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 import { AppSelect, type AppSelectProps } from "../../../ui/bridge";
 
-const spacingPx: Record<string, number> = {
-  xs: 8,
-  sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 24,
-};
-
-function resolveSpace(value: unknown): number | undefined {
-  if (typeof value === "number") return value;
-  if (typeof value === "string" && value in spacingPx) return spacingPx[value];
-  return undefined;
-}
-
 type SelectProps = AppSelectProps & {
   label?: ReactNode;
   description?: ReactNode;
   w?: number;
   style?: CSSProperties;
-  mt?: unknown;
-  mb?: unknown;
 };
 
 export function Select({
@@ -33,20 +17,14 @@ export function Select({
   w,
   className,
   style,
-  mt,
-  mb,
   styles,
   ...rest
 }: SelectProps) {
-  const marginTop = resolveSpace(mt);
-  const marginBottom = resolveSpace(mb);
   return (
     <label
       className={cn("flex min-w-0 flex-col gap-1.5", className)}
       style={{
         ...(w ? { width: w } : null),
-        ...(marginTop != null ? { marginTop } : null),
-        ...(marginBottom != null ? { marginBottom } : null),
         ...style,
       }}
     >

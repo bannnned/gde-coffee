@@ -680,3 +680,17 @@ Critical path stack-transition:
 - Артефакт: упрощенные `Box/Group/Text` контракты в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
 - Артефакт: explicit-layout migration в перечисленных `Admin*.tsx`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-P · Remove remaining spacing aliases (`mt/mb`) from admin layout/fields layer (P1, status: done)
+- Цель: убрать последние spacing-алиасы (`mt/mb`) из admin bridge-примитивов и использовать явные `style/className` в местах вызова.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Depends on: `W5-O`.
+- AC: в admin usage отсутствуют пропсы `mt/mb`.
+- AC: `layout.tsx` не содержит `mt/mb` в `Box/Group/Stack/Title` и `withSpacingStyle`.
+- AC: `fields.tsx` не содержит `mt/mb` в `Select`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: упрощенные spacing-контракты в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Артефакт: migration `Group mb={...}` -> `style={{ marginBottom: ... }}` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

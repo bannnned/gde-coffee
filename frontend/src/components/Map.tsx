@@ -15,11 +15,11 @@ const MAP_STYLE_URL_RAW =
 const MAP_STYLE_LIGHT_URL_RAW =
   (import.meta.env.VITE_MAP_STYLE_URL_LIGHT as string | undefined)?.trim() ||
   MAP_STYLE_URL_RAW ||
-  "/map-styles/light.json";
+  "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
 const MAP_STYLE_DARK_URL_RAW =
   (import.meta.env.VITE_MAP_STYLE_URL_DARK as string | undefined)?.trim() ||
   MAP_STYLE_URL_RAW ||
-  "/map-styles/dark.json";
+  "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
 function normalizeMapStyleUrl(raw: string): string {
   return /tiles\.openfreemap\.org/i.test(raw) ? "" : raw;
@@ -59,6 +59,55 @@ function resolveMapStyleByScheme(scheme: "light" | "dark") {
   }
   return MAP_STYLE_LIGHT_URL || createFallbackMapStyle();
 }
+
+const DARK_LABEL_LAYER_IDS = [
+  "waterway_label",
+  "place_hamlet",
+  "place_suburbs",
+  "place_villages",
+  "place_town",
+  "place_country_2",
+  "place_country_1",
+  "place_state",
+  "place_continent",
+  "place_city_r6",
+  "place_city_r5",
+  "roadname_minor",
+  "roadname_sec",
+  "roadname_pri",
+  "roadname_major",
+  "housenumber",
+] as const;
+
+function applyBaseStyleTweaks(map: MLMap, scheme: "light" | "dark") {
+  if (scheme !== "dark") {
+    return;
+  }
+
+  for (const layerID of DARK_LABEL_LAYER_IDS) {
+    const layer = map.getLayer(layerID);
+    if (!layer || layer.type !== "symbol") continue;
+    try {
+      map.setPaintProperty(layerID, "text-color", "#F4F6FA");
+      map.setPaintProperty(layerID, "text-halo-color", "rgba(0, 0, 0, 0.84)");
+      map.setPaintProperty(layerID, "text-halo-width", layerID === "housenumber" ? 1 : 0.85);
+    } catch {
+      // Some third-party styles may not expose all text paint properties.
+    }
+  }
+
+  if (map.getLayer("housenumber")) {
+    try {
+      map.setLayerZoomRange("housenumber", 16, 24);
+      map.setPaintProperty("housenumber", "text-color", "#FFFFFF");
+      map.setPaintProperty("housenumber", "text-halo-color", "rgba(0, 0, 0, 0.9)");
+      map.setPaintProperty("housenumber", "text-halo-width", 1);
+    } catch {
+      // Ignore style incompatibilities and keep default style behavior.
+    }
+  }
+}
+
 const USER_ICON_ID = "user-pin";
 const CAFE_ICON_ID = "cafe-cup";
 const MARKER_FALLBACK = { user: "#FFFFF0", cafe: "#457E73" };
@@ -443,6 +492,7 @@ export default function Map({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const layerEventsBoundRef = useRef(false);
+  const schemeRef = useRef<"light" | "dark">(scheme);
   const onCafeSelectRef = useRef(onCafeSelect);
   const onMapClickRef = useRef(onMapClick);
   const onCenterChangeRef = useRef(onCenterChange);
@@ -476,6 +526,10 @@ export default function Map({
   useEffect(() => {
     selectedCafeRef.current = selectedCafeId ?? null;
   }, [selectedCafeId]);
+
+  useEffect(() => {
+    schemeRef.current = scheme;
+  }, [scheme]);
 
   const geojson = useMemo(() => {
     const features = cafes.flatMap((cafe) => {
@@ -584,6 +638,7 @@ export default function Map({
     };
 
     const runStyleLoad = async () => {
+      applyBaseStyleTweaks(map, schemeRef.current);
       addSources(
         map,
         geojsonRef.current ?? geojson,

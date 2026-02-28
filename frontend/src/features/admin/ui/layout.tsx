@@ -46,8 +46,6 @@ function withSpacingStyle(props: {
   py?: unknown;
   pb?: unknown;
   pt?: unknown;
-  mt?: unknown;
-  mb?: unknown;
   style?: CSSProperties;
 }): CSSProperties {
   const style: CSSProperties = { ...(props.style ?? {}) };
@@ -56,8 +54,6 @@ function withSpacingStyle(props: {
   const py = resolveSpace(props.py);
   const pb = resolveSpace(props.pb);
   const pt = resolveSpace(props.pt);
-  const mt = resolveSpace(props.mt);
-  const mb = resolveSpace(props.mb);
   if (p != null) style.padding = p;
   if (px != null) {
     style.paddingLeft = px;
@@ -69,8 +65,6 @@ function withSpacingStyle(props: {
   }
   if (pt != null) style.paddingTop = pt;
   if (pb != null) style.paddingBottom = pb;
-  if (mt != null) style.marginTop = mt;
-  if (mb != null) style.marginBottom = mb;
   return style;
 }
 
@@ -83,8 +77,6 @@ type BoxProps = {
   py?: unknown;
   pb?: unknown;
   pt?: unknown;
-  mt?: unknown;
-  mb?: unknown;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
@@ -97,8 +89,6 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     py,
     pb,
     pt,
-    mt,
-    mb,
     ...rest
   },
   ref,
@@ -108,7 +98,7 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
       ref={ref}
       className={className}
       style={{
-        ...withSpacingStyle({ p, px, py, pb, pt, mt, mb, style }),
+        ...withSpacingStyle({ p, px, py, pb, pt, style }),
       }}
       {...rest}
     >
@@ -171,8 +161,6 @@ type GroupProps = {
   justify?: CSSProperties["justifyContent"];
   align?: CSSProperties["alignItems"];
   wrap?: CSSProperties["flexWrap"];
-  mt?: unknown;
-  mb?: unknown;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Group({
@@ -183,8 +171,6 @@ export function Group({
   justify,
   align,
   wrap = "wrap",
-  mt,
-  mb,
   ...rest
 }: GroupProps) {
   const gapPx = resolveSpace(gap) ?? 0;
@@ -197,7 +183,7 @@ export function Group({
         justifyContent: justify,
         alignItems: align,
         gap: gapPx,
-        ...withSpacingStyle({ mt, mb, style }),
+        ...style,
       }}
       {...rest}
     >
@@ -212,8 +198,6 @@ type StackProps = {
   style?: CSSProperties;
   gap?: unknown;
   align?: CSSProperties["alignItems"];
-  mt?: unknown;
-  mb?: unknown;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Stack({
@@ -222,8 +206,6 @@ export function Stack({
   style,
   gap = "sm",
   align,
-  mt,
-  mb,
   ...rest
 }: StackProps) {
   const gapPx = resolveSpace(gap) ?? 0;
@@ -234,7 +216,7 @@ export function Stack({
         display: "grid",
         gap: gapPx,
         alignItems: align,
-        ...withSpacingStyle({ mt, mb, style }),
+        ...style,
       }}
       {...rest}
     >
@@ -357,8 +339,6 @@ type TitleProps = {
   className?: string;
   style?: CSSProperties;
   order?: 1 | 2 | 3 | 4 | 5 | 6;
-  mt?: unknown;
-  mb?: unknown;
 } & Omit<HTMLAttributes<HTMLHeadingElement>, "style" | "children">;
 
 export function Title({
@@ -366,8 +346,6 @@ export function Title({
   className,
   style,
   order = 3,
-  mt,
-  mb,
   ...rest
 }: TitleProps) {
   const Tag = `h${order}` as ElementType;
@@ -380,7 +358,7 @@ export function Title({
         color: "var(--text)",
         fontWeight: 700,
         fontSize: fontSizeMap[order] ?? 24,
-        ...withSpacingStyle({ mt, mb, style }),
+        ...style,
       }}
       {...rest}
     >

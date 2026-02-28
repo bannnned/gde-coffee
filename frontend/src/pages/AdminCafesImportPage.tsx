@@ -663,7 +663,7 @@ export default function AdminCafesImportPage() {
 
               {Array.isArray(result.issues) && result.issues.length > 0 && (
                 <Box>
-                  <Group mb={6}>
+                  <Group style={{ marginBottom: 6 }}>
                     <Button
                       size="sm"
                       variant="secondary"
