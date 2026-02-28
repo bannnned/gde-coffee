@@ -249,7 +249,7 @@ export default function AdminModerationPage() {
       <Container size="sm" py="xl">
         <Stack gap="md">
           <Title order={3}>Доступ ограничен</Title>
-          <Text c="dimmed">
+          <Text style={{ color: "var(--muted)" }}>
             Эта страница доступна только модераторам и администраторам.
           </Text>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
@@ -377,7 +377,7 @@ export default function AdminModerationPage() {
 
           {visibleItems.length === 0 && !loading && (
             <Paper withBorder radius="lg" p="md">
-              <Text c="dimmed">Заявок по текущему фильтру нет.</Text>
+              <Text style={{ color: "var(--muted)" }}>Заявок по текущему фильтру нет.</Text>
             </Paper>
           )}
 
@@ -423,26 +423,26 @@ export default function AdminModerationPage() {
                     </Group>
                     <Badge color={statusMeta.color}>{statusMeta.label}</Badge>
                   </Group>
-                  <Text size="sm" c="dimmed">
+                  <Text style={{ fontSize: 13, color: "var(--muted)" }}>
                     {item.author_label || item.author_user_id} • {formatModerationDate(item.created_at)}
                   </Text>
 
                   {(item.target_id || targetCafeName || previewCandidate) && (
                     <Paper withBorder radius="md" p="sm" style={{ background: "var(--surface)" }}>
                       <Stack gap={6}>
-                        <Text size="sm" fw={600}>
+                        <Text style={{ fontSize: 13, fontWeight: 600 }}>
                           Предлагаемая кофейня
                         </Text>
                         <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
                           <Stack gap={2} style={{ minWidth: 0 }}>
-                            <Text size="sm">{candidateName}</Text>
+                            <Text style={{ fontSize: 13 }}>{candidateName}</Text>
                             {candidateAddress && (
-                              <Text size="xs" c="dimmed" lineClamp={2}>
+                              <Text style={{ fontSize: 12, color: "var(--muted)" }} lineClamp={2}>
                                 {candidateAddress}
                               </Text>
                             )}
                             {item.target_id && (
-                              <Text size="xs" c="dimmed">
+                              <Text style={{ fontSize: 12, color: "var(--muted)" }}>
                                 ID: {item.target_id}
                               </Text>
                             )}
@@ -467,19 +467,19 @@ export default function AdminModerationPage() {
                   {description && (
                     <Paper withBorder radius="md" p="sm" style={{ background: "var(--surface)" }}>
                       <Stack gap={4}>
-                        <Text size="sm" fw={600}>
+                        <Text style={{ fontSize: 13, fontWeight: 600 }}>
                           {item.entity_type === "cafe_description"
                             ? "Предложенное описание"
                             : "Описание"}
                         </Text>
-                        <Text size="sm">{description}</Text>
+                        <Text style={{ fontSize: 13 }}>{description}</Text>
                       </Stack>
                     </Paper>
                   )}
 
                   {amenities.length > 0 && (
                     <Stack gap={6}>
-                      <Text size="sm" fw={600}>
+                      <Text style={{ fontSize: 13, fontWeight: 600 }}>
                         Удобства
                       </Text>
                       <Group gap={6}>
@@ -495,7 +495,7 @@ export default function AdminModerationPage() {
                   {(reviewSummary || reviewDrink || reviewRating != null || reviewTags.length > 0) && (
                     <Paper withBorder radius="md" p="sm" style={{ background: "var(--surface)" }}>
                       <Stack gap={6}>
-                        <Text size="sm" fw={600}>
+                        <Text style={{ fontSize: 13, fontWeight: 600 }}>
                           Данные отзыва
                         </Text>
                         <Group gap="xs">
@@ -515,14 +515,14 @@ export default function AdminModerationPage() {
                             ))}
                           </Group>
                         )}
-                        {reviewSummary && <Text size="sm">{reviewSummary}</Text>}
+                        {reviewSummary && <Text style={{ fontSize: 13 }}>{reviewSummary}</Text>}
                       </Stack>
                     </Paper>
                   )}
 
                   {photoUrls.length > 0 && (
                     <Stack gap={6}>
-                      <Text size="sm" fw={600}>
+                      <Text style={{ fontSize: 13, fontWeight: 600 }}>
                         Фото заявки
                       </Text>
                       <Box
@@ -558,7 +558,7 @@ export default function AdminModerationPage() {
 
                   {menuPhotoUrls.length > 0 && (
                     <Stack gap={6}>
-                      <Text size="sm" fw={600}>
+                      <Text style={{ fontSize: 13, fontWeight: 600 }}>
                         Фото меню
                       </Text>
                       <Box
@@ -593,7 +593,7 @@ export default function AdminModerationPage() {
                   )}
 
                   {item.moderator_comment && (
-                    <Text size="sm" c="dimmed">
+                    <Text style={{ fontSize: 13, color: "var(--muted)" }}>
                       Комментарий модератора: {item.moderator_comment}
                     </Text>
                   )}

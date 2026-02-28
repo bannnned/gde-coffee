@@ -79,7 +79,35 @@ const DARK_LABEL_LAYER_IDS = [
   "housenumber",
 ] as const;
 
+const ROAD_LABEL_ZOOM_RANGES: ReadonlyArray<{
+  id: "roadname_minor" | "roadname_sec" | "roadname_pri" | "roadname_major";
+  minzoom: number;
+  maxzoom: number;
+}> = [
+  { id: "roadname_minor", minzoom: 13.5, maxzoom: 24 },
+  { id: "roadname_sec", minzoom: 12.5, maxzoom: 24 },
+  { id: "roadname_pri", minzoom: 11.5, maxzoom: 24 },
+  { id: "roadname_major", minzoom: 10.5, maxzoom: 24 },
+];
+
 function applyBaseStyleTweaks(map: MLMap, scheme: "light" | "dark") {
+  for (const range of ROAD_LABEL_ZOOM_RANGES) {
+    if (!map.getLayer(range.id)) continue;
+    try {
+      map.setLayerZoomRange(range.id, range.minzoom, range.maxzoom);
+    } catch {
+      // Ignore style incompatibilities and keep original zoom ranges.
+    }
+  }
+
+  if (map.getLayer("housenumber")) {
+    try {
+      map.setLayerZoomRange("housenumber", 14.3, 24);
+    } catch {
+      // Ignore style incompatibilities and keep original zoom range.
+    }
+  }
+
   if (scheme !== "dark") {
     return;
   }
@@ -88,22 +116,50 @@ function applyBaseStyleTweaks(map: MLMap, scheme: "light" | "dark") {
     const layer = map.getLayer(layerID);
     if (!layer || layer.type !== "symbol") continue;
     try {
-      map.setPaintProperty(layerID, "text-color", "#F4F6FA");
-      map.setPaintProperty(layerID, "text-halo-color", "rgba(0, 0, 0, 0.84)");
-      map.setPaintProperty(layerID, "text-halo-width", layerID === "housenumber" ? 1 : 0.85);
+      map.setPaintProperty(layerID, "text-color", "#FFFFFF");
+      map.setPaintProperty(layerID, "text-halo-color", "rgba(0, 0, 0, 0.88)");
+      map.setPaintProperty(layerID, "text-halo-width", layerID === "housenumber" ? 0.75 : 0.65);
     } catch {
       // Some third-party styles may not expose all text paint properties.
     }
   }
 
-  if (map.getLayer("housenumber")) {
+  if (map.getLayer("building")) {
     try {
-      map.setLayerZoomRange("housenumber", 16, 24);
-      map.setPaintProperty("housenumber", "text-color", "#FFFFFF");
-      map.setPaintProperty("housenumber", "text-halo-color", "rgba(0, 0, 0, 0.9)");
-      map.setPaintProperty("housenumber", "text-halo-width", 1);
+      map.setPaintProperty("building", "fill-color", "#8793A2");
+      map.setPaintProperty("building", "fill-opacity", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        13.5,
+        0,
+        14.8,
+        0.42,
+        16,
+        0.68,
+      ]);
     } catch {
-      // Ignore style incompatibilities and keep default style behavior.
+      // Keep default style if layer is not paint-compatible.
+    }
+  }
+
+  if (map.getLayer("building-top")) {
+    try {
+      map.setPaintProperty("building-top", "fill-color", "#A2ADBC");
+      map.setPaintProperty("building-top", "fill-outline-color", "#3A4551");
+      map.setPaintProperty("building-top", "fill-opacity", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12.8,
+        0,
+        14.6,
+        0.58,
+        16,
+        0.84,
+      ]);
+    } catch {
+      // Keep default style if layer is not paint-compatible.
     }
   }
 }

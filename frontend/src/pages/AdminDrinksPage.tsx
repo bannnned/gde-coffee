@@ -265,7 +265,9 @@ export default function AdminDrinksPage() {
       <Container size="sm" py="xl">
         <Stack gap="md">
           <Title order={3}>Доступ ограничен</Title>
-          <Text c="dimmed">Эта страница доступна только модераторам и администраторам.</Text>
+          <Text style={{ color: "var(--muted)" }}>
+            Эта страница доступна только модераторам и администраторам.
+          </Text>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>

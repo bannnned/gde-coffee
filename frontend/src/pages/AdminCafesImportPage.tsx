@@ -482,7 +482,9 @@ export default function AdminCafesImportPage() {
       <Container size="sm" py="xl">
         <Stack gap="md">
           <Title order={3}>Доступ ограничен</Title>
-          <Text c="dimmed">Эта страница доступна только администраторам.</Text>
+          <Text style={{ color: "var(--muted)" }}>
+            Эта страница доступна только администраторам.
+          </Text>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
@@ -576,7 +578,7 @@ export default function AdminCafesImportPage() {
           />
 
           <Group justify="space-between">
-            <Text size="sm" c="dimmed">
+            <Text style={{ fontSize: 13, color: "var(--muted)" }}>
               Всего строк: {preview.rawTotal}. Валидных: {preview.validItems.length}. Ошибок: {preview.issues.length}
             </Text>
             <Button
@@ -614,7 +616,7 @@ export default function AdminCafesImportPage() {
 
           {preview.rows.length > 0 && (
             <Box>
-              <Text fw={600} size="sm" style={{ marginBottom: 6 }}>
+              <Text style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 Предпросмотр перед импортом (первые {Math.min(preview.rows.length, maxPreviewRows)} строк)
               </Text>
               <Table striped withTableBorder withColumnBorders>
@@ -632,7 +634,15 @@ export default function AdminCafesImportPage() {
                     <Table.Tr key={`preview-${row.index}`}>
                       <Table.Td>{row.index}</Table.Td>
                       <Table.Td>
-                        <Text size="sm" c={row.status === "ok" ? "green" : "red"}>
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            color:
+                              row.status === "ok"
+                                ? "var(--color-status-success)"
+                                : "var(--color-status-error)",
+                          }}
+                        >
                           {row.status}
                         </Text>
                       </Table.Td>
@@ -650,14 +660,16 @@ export default function AdminCafesImportPage() {
             <Stack gap="sm">
               <Title order={4}>Результат</Title>
               <Group>
-                <Text size="sm">Всего: {result.summary.total}</Text>
-                <Text size="sm">Создано: {result.summary.created}</Text>
-                <Text size="sm">Обновлено: {result.summary.updated}</Text>
-                <Text size="sm">Пропущено: {result.summary.skipped}</Text>
-                <Text size="sm">Невалидно: {result.summary.invalid}</Text>
-                <Text size="sm">Ошибок: {result.summary.failed}</Text>
+                <Text style={{ fontSize: 13 }}>Всего: {result.summary.total}</Text>
+                <Text style={{ fontSize: 13 }}>Создано: {result.summary.created}</Text>
+                <Text style={{ fontSize: 13 }}>Обновлено: {result.summary.updated}</Text>
+                <Text style={{ fontSize: 13 }}>Пропущено: {result.summary.skipped}</Text>
+                <Text style={{ fontSize: 13 }}>Невалидно: {result.summary.invalid}</Text>
+                <Text style={{ fontSize: 13 }}>Ошибок: {result.summary.failed}</Text>
                 {lastClientSkippedInvalid > 0 && (
-                  <Text size="sm">Локально пропущено невалидных: {lastClientSkippedInvalid}</Text>
+                  <Text style={{ fontSize: 13 }}>
+                    Локально пропущено невалидных: {lastClientSkippedInvalid}
+                  </Text>
                 )}
               </Group>
 
@@ -679,7 +691,7 @@ export default function AdminCafesImportPage() {
                       Скачать ошибки backend (CSV)
                     </Button>
                   </Group>
-                  <Text fw={600} size="sm" style={{ marginBottom: 6 }}>
+                  <Text style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                     Проблемы (первые {Math.min(result.issues.length, 12)}):
                   </Text>
                   <Table striped withTableBorder withColumnBorders>
@@ -704,7 +716,7 @@ export default function AdminCafesImportPage() {
               )}
 
               <Box>
-                <Text fw={600} size="sm" style={{ marginBottom: 6 }}>
+                <Text style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                   Последние статусы:
                 </Text>
                 <Table striped withTableBorder withColumnBorders>

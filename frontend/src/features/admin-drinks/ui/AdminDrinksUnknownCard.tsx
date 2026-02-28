@@ -46,19 +46,19 @@ export default function AdminDrinksUnknownCard({
           />
         </Group>
 
-        {loading && <Text c="dimmed">Загрузка форматов...</Text>}
-        {!loading && unknown.length === 0 && <Text c="dimmed">Список пуст.</Text>}
+        {loading && <Text style={{ color: "var(--muted)" }}>Загрузка форматов...</Text>}
+        {!loading && unknown.length === 0 && <Text style={{ color: "var(--muted)" }}>Список пуст.</Text>}
 
         {unknown.map((item) => (
           <Paper key={item.id} withBorder radius="md" p="sm">
             <Stack gap="xs">
               <Group justify="space-between" align="center">
                 <Group gap={8}>
-                  <Text fw={600}>{item.name}</Text>
+                  <Text style={{ fontWeight: 600 }}>{item.name}</Text>
                   <Badge variant="secondary">mentions: {item.mentions_count}</Badge>
                   <Badge color={item.status === "new" ? "yellow" : "gray"}>{item.status}</Badge>
                 </Group>
-                <Text size="xs" c="dimmed">
+                <Text style={{ fontSize: 12, color: "var(--muted)" }}>
                   last: {new Date(item.last_seen_at).toLocaleDateString("ru-RU")}
                 </Text>
               </Group>

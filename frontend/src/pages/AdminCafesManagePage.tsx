@@ -269,7 +269,9 @@ export default function AdminCafesManagePage() {
       <Container size="sm" py="xl">
         <Stack gap="md">
           <Title order={3}>Доступ ограничен</Title>
-          <Text c="dimmed">Эта страница доступна только администраторам.</Text>
+          <Text style={{ color: "var(--muted)" }}>
+            Эта страница доступна только администраторам.
+          </Text>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
@@ -324,7 +326,7 @@ export default function AdminCafesManagePage() {
           {selectedCafeID && (
             <Stack gap="xs">
               {editLoadState === "loading" ? (
-                <Text size="sm" c="dimmed">
+                <Text style={{ fontSize: 13, color: "var(--muted)" }}>
                   Загружаем данные кофейни...
                 </Text>
               ) : editLoadState === "error" ? (

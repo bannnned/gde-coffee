@@ -694,3 +694,34 @@ Critical path stack-transition:
 - Артефакт: упрощенные spacing-контракты в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
 - Артефакт: migration `Group mb={...}` -> `style={{ marginBottom: ... }}` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-Q · Remove `Text` typography aliases (`c/fw/tt/size`) from admin layer (P1, status: done)
+- Цель: убрать из admin bridge-примитива `Text` mantine-like алиасы (`c`, `fw`, `tt`, `size`) и перейти на явные `className/style` в местах использования.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-P`.
+- AC: в admin usage отсутствуют `Text`-алиасы `c/fw/tt/size`.
+- AC: `layout.tsx::Text` не содержит контракт `c/fw/tt/size`.
+- AC: визуально эквивалентные стили заданы через `style`/`className` на уровне страниц.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: упрощенный `Text` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration `Text` usage в перечисленных `Admin*.tsx` и admin-drinks карточках.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-R · Prune unused admin spacing aliases and harden space/radius types (P1, status: done)
+- Цель: убрать неиспользуемые compat-алиасы spacing в admin layout-слое (`px`, `pt`) и сузить типы `spacing/radius` до явных токенов вместо `unknown`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Depends on: `W5-Q`.
+- AC: `withSpacingStyle` больше не поддерживает `px/pt`; контракты `Box/Container/Paper` синхронизированы с этим.
+- AC: `resolveSpace` и `resolveRadius` используют строгие типы (`SpaceValue`, `RadiusValue`) вместо `unknown`.
+- AC: admin usage не требует миграции и продолжает собираться без регрессий.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: упрощенный spacing/radius контракт в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

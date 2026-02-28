@@ -45,6 +45,8 @@
 27. `W5-N` закрыт (`done`): admin `Badge/Alert/SegmentedControl` нормализованы до нового контракта (без `light/filled/fullWidth`), usage на admin-экранах синхронизирован.
 28. `W5-O` закрыт (`done`): из admin layout-слоя убраны compat-пропсы `Group.grow`, `Text.mt/mb`, `Box.pos/*`; страницы переведены на явные `Box`-обертки и className/style layout.
 29. `W5-P` закрыт (`done`): удалены последние spacing-алиасы `mt/mb` из `features/admin/ui/{layout,fields}`; на страницах применены явные `style/className` отступы.
+30. `W5-Q` закрыт (`done`): `Text` в admin-слое очищен от алиасов `c/fw/tt/size`; админские экраны переведены на явные типографические стили через `style/className`.
+31. `W5-R` закрыт (`done`): в admin layout-слое удалены неиспользуемые spacing-алиасы `px/pt`, а `spacing/radius` контракты ужаты до строгих токенизированных типов.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

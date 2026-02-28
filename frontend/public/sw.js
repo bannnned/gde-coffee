@@ -1,4 +1,4 @@
-const CACHE_NAME = "coffee-quest-v8";
+const CACHE_NAME = "coffee-quest-v9";
 const SHELL_ASSETS = [
   "/manifest.webmanifest",
   "/icon-192.png",
@@ -17,6 +17,28 @@ function isStaticAssetPath(pathname) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isCacheableAssetResponse(request, response) {
+  if (!response || response.status !== 200) return false;
+  const contentType = (response.headers.get("content-type") || "").toLowerCase();
+  if (contentType.includes("text/html")) return false;
+
+  const pathname = new URL(request.url).pathname.toLowerCase();
+  if (pathname.endsWith(".js") || pathname.endsWith(".mjs")) {
+    return (
+      contentType.includes("javascript") ||
+      contentType.includes("ecmascript") ||
+      contentType.includes("octet-stream")
+    );
+  }
+  if (pathname.endsWith(".css")) {
+    return contentType.includes("text/css");
+  }
+  if (pathname.endsWith(".webmanifest")) {
+    return contentType.includes("manifest+json") || contentType.includes("application/json");
+  }
+  return true;
 }
 
 async function fetchWithTooEarlyRetry(request, init) {
@@ -77,9 +99,12 @@ async function staleWhileRevalidate(request) {
 
   const networkPromise = fetchWithTooEarlyRetry(request)
     .then((response) => {
-      if (response && response.status === 200) {
+      if (isCacheableAssetResponse(request, response)) {
         cache.put(request, response.clone());
         return response;
+      }
+      if (response && response.status === 200) {
+        return undefined;
       }
       return response?.status === 425 ? undefined : response;
     })

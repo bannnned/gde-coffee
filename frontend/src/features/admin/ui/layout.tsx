@@ -12,7 +12,10 @@ import {
 import { Button as UIButton } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
 
-const spacingPx: Record<string, number> = {
+type SpaceToken = "xs" | "sm" | "md" | "lg" | "xl";
+type SpaceValue = number | SpaceToken;
+
+const spacingPx: Record<SpaceToken, number> = {
   xs: 8,
   sm: 12,
   md: 16,
@@ -20,7 +23,10 @@ const spacingPx: Record<string, number> = {
   xl: 24,
 };
 
-const radiusPx: Record<string, number> = {
+type RadiusToken = "xs" | "sm" | "md" | "lg" | "xl";
+type RadiusValue = number | RadiusToken;
+
+const radiusPx: Record<RadiusToken, number> = {
   xs: 8,
   sm: 10,
   md: 12,
@@ -28,42 +34,33 @@ const radiusPx: Record<string, number> = {
   xl: 22,
 };
 
-function resolveSpace(value: unknown): number | undefined {
+function resolveSpace(value?: SpaceValue): number | undefined {
+  if (value == null) return undefined;
   if (typeof value === "number") return value;
-  if (typeof value === "string" && value in spacingPx) return spacingPx[value];
-  return undefined;
+  return spacingPx[value];
 }
 
-function resolveRadius(value: unknown): number | undefined {
+function resolveRadius(value?: RadiusValue): number | undefined {
+  if (value == null) return undefined;
   if (typeof value === "number") return value;
-  if (typeof value === "string" && value in radiusPx) return radiusPx[value];
-  return undefined;
+  return radiusPx[value];
 }
 
 function withSpacingStyle(props: {
-  p?: unknown;
-  px?: unknown;
-  py?: unknown;
-  pb?: unknown;
-  pt?: unknown;
+  p?: SpaceValue;
+  py?: SpaceValue;
+  pb?: SpaceValue;
   style?: CSSProperties;
 }): CSSProperties {
   const style: CSSProperties = { ...(props.style ?? {}) };
   const p = resolveSpace(props.p);
-  const px = resolveSpace(props.px);
   const py = resolveSpace(props.py);
   const pb = resolveSpace(props.pb);
-  const pt = resolveSpace(props.pt);
   if (p != null) style.padding = p;
-  if (px != null) {
-    style.paddingLeft = px;
-    style.paddingRight = px;
-  }
   if (py != null) {
     style.paddingTop = py;
     style.paddingBottom = py;
   }
-  if (pt != null) style.paddingTop = pt;
   if (pb != null) style.paddingBottom = pb;
   return style;
 }
@@ -72,11 +69,9 @@ type BoxProps = {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  p?: unknown;
-  px?: unknown;
-  py?: unknown;
-  pb?: unknown;
-  pt?: unknown;
+  p?: SpaceValue;
+  py?: SpaceValue;
+  pb?: SpaceValue;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
@@ -85,10 +80,8 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     className,
     style,
     p,
-    px,
     py,
     pb,
-    pt,
     ...rest
   },
   ref,
@@ -98,7 +91,7 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
       ref={ref}
       className={className}
       style={{
-        ...withSpacingStyle({ p, px, py, pb, pt, style }),
+        ...withSpacingStyle({ p, py, pb, style }),
       }}
       {...rest}
     >
@@ -112,8 +105,7 @@ type ContainerProps = {
   className?: string;
   style?: CSSProperties;
   size?: "xs" | "sm" | "md" | "lg" | number | string;
-  py?: unknown;
-  px?: unknown;
+  py?: SpaceValue;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Container({
@@ -122,7 +114,6 @@ export function Container({
   style,
   size = "md",
   py,
-  px,
   ...rest
 }: ContainerProps) {
   const width =
@@ -144,7 +135,7 @@ export function Container({
         width: "min(100%, 100%)",
         maxWidth: width,
         marginInline: "auto",
-        ...withSpacingStyle({ py, px, style }),
+        ...withSpacingStyle({ py, style }),
       }}
       {...rest}
     >
@@ -157,7 +148,7 @@ type GroupProps = {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  gap?: unknown;
+  gap?: SpaceValue;
   justify?: CSSProperties["justifyContent"];
   align?: CSSProperties["alignItems"];
   wrap?: CSSProperties["flexWrap"];
@@ -196,7 +187,7 @@ type StackProps = {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  gap?: unknown;
+  gap?: SpaceValue;
   align?: CSSProperties["alignItems"];
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
@@ -230,10 +221,9 @@ type PaperProps = {
   className?: string;
   style?: CSSProperties;
   withBorder?: boolean;
-  radius?: unknown;
-  p?: unknown;
-  px?: unknown;
-  py?: unknown;
+  radius?: RadiusValue;
+  p?: SpaceValue;
+  py?: SpaceValue;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Paper({
@@ -243,7 +233,6 @@ export function Paper({
   withBorder = false,
   radius = "md",
   p,
-  px,
   py,
   ...rest
 }: PaperProps) {
@@ -255,7 +244,7 @@ export function Paper({
         borderRadius: radiusValue,
         border: withBorder ? "1px solid var(--border)" : "none",
         background: "var(--surface)",
-        ...withSpacingStyle({ p, px, py, style }),
+        ...withSpacingStyle({ p, py, style }),
       }}
       {...rest}
     >
@@ -268,55 +257,23 @@ type TextProps = {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  c?: string;
-  fw?: number;
-  size?: string | number;
-  ta?: CSSProperties["textAlign"];
-  tt?: "uppercase" | "lowercase" | "capitalize";
   lineClamp?: number;
 } & Omit<HTMLAttributes<HTMLParagraphElement>, "style" | "children">;
-
-function mapColor(value: string): string {
-  if (value === "dimmed") return "var(--muted)";
-  if (value === "red") return "var(--color-status-error)";
-  if (value === "green") return "var(--color-status-success)";
-  if (value === "orange") return "var(--color-status-warning)";
-  if (value.startsWith("red")) return "var(--color-status-error)";
-  return "var(--text)";
-}
 
 export function Text({
   children,
   className,
   style,
-  c,
-  fw,
-  size,
-  ta,
-  tt,
   lineClamp,
   ...rest
 }: TextProps) {
-  const fontSize =
-    typeof size === "number"
-      ? size
-      : size === "xs"
-        ? 12
-        : size === "sm"
-          ? 13
-          : size === "xl"
-            ? 28
-            : 14;
   return (
     <p
       className={className}
       style={{
         margin: 0,
-        color: c ? mapColor(c) : "var(--text)",
-        fontWeight: fw,
-        fontSize,
-        textAlign: ta,
-        textTransform: tt,
+        fontSize: 14,
+        color: "var(--text)",
         ...(lineClamp
           ? {
               display: "-webkit-box",
@@ -373,7 +330,7 @@ type BadgeProps = {
   style?: CSSProperties;
   variant?: "default" | "secondary" | "outline" | "dot";
   color?: "yellow" | "green" | "red" | "orange" | "gray";
-  radius?: unknown;
+  radius?: RadiusValue;
 } & Omit<HTMLAttributes<HTMLSpanElement>, "style" | "children">;
 
 function badgeTone(color?: BadgeProps["color"]): string {

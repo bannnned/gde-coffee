@@ -70,6 +70,67 @@ const queryClient = new QueryClient({
   },
 })
 
+const CHUNK_RELOAD_STORAGE_KEY = "gdeCoffeeChunkReloaded"
+
+function readErrorMessage(reason: unknown): string {
+  if (typeof reason === "string") return reason
+  if (reason instanceof Error) return reason.message
+  if (reason && typeof reason === "object" && "message" in reason) {
+    const message = (reason as { message?: unknown }).message
+    if (typeof message === "string") return message
+  }
+  return ""
+}
+
+function isChunkLoadLikeError(reason: unknown): boolean {
+  const message = readErrorMessage(reason).toLowerCase()
+  if (!message) return false
+  return (
+    message.includes("failed to fetch dynamically imported module") ||
+    message.includes("importing a module script failed") ||
+    message.includes("loading chunk") ||
+    message.includes("chunkloaderror") ||
+    message.includes("module script") ||
+    message.includes("mime type")
+  )
+}
+
+function triggerChunkRecoveryReload(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    const alreadyReloaded = window.sessionStorage.getItem(CHUNK_RELOAD_STORAGE_KEY) === "1"
+    if (alreadyReloaded) return false
+    window.sessionStorage.setItem(CHUNK_RELOAD_STORAGE_KEY, "1")
+  } catch {
+    // Ignore storage issues and still try a hard refresh.
+  }
+  window.location.reload()
+  return true
+}
+
+function bindChunkLoadRecovery() {
+  if (typeof window === "undefined") return
+
+  const handleVitePreloadError = (event: Event) => {
+    const payloadEvent = event as Event & { payload?: unknown; detail?: unknown }
+    const reason = payloadEvent.payload ?? payloadEvent.detail
+    if (!isChunkLoadLikeError(reason)) return
+    if (triggerChunkRecoveryReload() && "preventDefault" in payloadEvent) {
+      payloadEvent.preventDefault()
+    }
+  }
+
+  const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+    if (!isChunkLoadLikeError(event.reason)) return
+    if (triggerChunkRecoveryReload()) {
+      event.preventDefault()
+    }
+  }
+
+  window.addEventListener("vite:preloadError", handleVitePreloadError as EventListener)
+  window.addEventListener("unhandledrejection", handleUnhandledRejection)
+}
+
 function PaletteSync() {
   const { colorScheme } = useAppColorScheme()
 
@@ -131,6 +192,11 @@ const hideSplash = () => {
       done = true
       splash.classList.add('splash-hidden')
       splash.remove()
+      try {
+        window.sessionStorage.removeItem(CHUNK_RELOAD_STORAGE_KEY)
+      } catch {
+        // no-op
+      }
     }
 
     const handleTransitionEnd = (event: TransitionEvent) => {
@@ -156,6 +222,7 @@ if (document.readyState === 'complete') {
 }
 
 bindViewportInsetsSync()
+bindChunkLoadRecovery()
 
 if ('serviceWorker' in navigator) {
   window.addEventListener(

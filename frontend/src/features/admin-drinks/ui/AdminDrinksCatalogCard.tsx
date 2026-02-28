@@ -21,8 +21,8 @@ export default function AdminDrinksCatalogCard({
     <Paper withBorder radius="lg" p="md">
       <Stack gap="sm">
         <Title order={4}>Каталог</Title>
-        {loading && <Text c="dimmed">Загрузка списка...</Text>}
-        {!loading && drinks.length === 0 && <Text c="dimmed">Ничего не найдено.</Text>}
+        {loading && <Text style={{ color: "var(--muted)" }}>Загрузка списка...</Text>}
+        {!loading && drinks.length === 0 && <Text style={{ color: "var(--muted)" }}>Ничего не найдено.</Text>}
         {drinks.map((item) => (
           <Paper
             key={item.id}
@@ -36,7 +36,7 @@ export default function AdminDrinksCatalogCard({
             <Stack gap={6}>
               <Group justify="space-between" align="center">
                 <Group gap={8}>
-                  <Text fw={600}>{item.name}</Text>
+                  <Text style={{ fontWeight: 600 }}>{item.name}</Text>
                   <Badge variant="secondary">{item.id}</Badge>
                   {!item.is_active && <Badge variant="secondary" color="gray">hidden</Badge>}
                 </Group>
@@ -54,7 +54,7 @@ export default function AdminDrinksCatalogCard({
                 </Group>
               </Group>
               {item.aliases.length > 0 && (
-                <Text size="xs" c="dimmed">
+                <Text style={{ fontSize: 12, color: "var(--muted)" }}>
                   Алиасы: {item.aliases.join(", ")}
                 </Text>
               )}

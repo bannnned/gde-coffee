@@ -126,7 +126,9 @@ export default function AdminFeedbackPage() {
       <Container size="sm" py="xl">
         <Stack gap="md">
           <Title order={3}>Доступ ограничен</Title>
-          <Text c="dimmed">Эта страница доступна только администраторам.</Text>
+          <Text style={{ color: "var(--muted)" }}>
+            Эта страница доступна только администраторам.
+          </Text>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
@@ -180,7 +182,7 @@ export default function AdminFeedbackPage() {
                 </Box>
               </Group>
               <Group justify="space-between">
-                <Text size="sm" c="dimmed">{pageLabel}</Text>
+                <Text style={{ fontSize: 13, color: "var(--muted)" }}>{pageLabel}</Text>
                 <Group gap="xs">
                   <Button
                     variant="default"
@@ -234,7 +236,7 @@ export default function AdminFeedbackPage() {
                     <Table.Td>
                       <Text style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{item.message}</Text>
                       {item.user_agent && (
-                        <Text size="xs" c="dimmed" style={{ marginTop: 6 }}>
+                        <Text style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
                           UA: {item.user_agent}
                         </Text>
                       )}
@@ -244,7 +246,7 @@ export default function AdminFeedbackPage() {
                 {items.length === 0 && (
                   <Table.Tr>
                     <Table.Td colSpan={4}>
-                      <Text c="dimmed">Отзывы не найдены.</Text>
+                      <Text style={{ color: "var(--muted)" }}>Отзывы не найдены.</Text>
                     </Table.Td>
                   </Table.Tr>
                 )}

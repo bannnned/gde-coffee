@@ -207,7 +207,9 @@ export default function AdminNorthStarPage() {
       <Container size="sm" py="xl">
         <Stack gap="md">
           <Title order={3}>Доступ ограничен</Title>
-          <Text c="dimmed">Эта страница доступна модераторам и администраторам.</Text>
+          <Text style={{ color: "var(--muted)" }}>
+            Эта страница доступна модераторам и администраторам.
+          </Text>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
         </Stack>
       </Container>
@@ -279,7 +281,7 @@ export default function AdminNorthStarPage() {
                     value: item.id,
                     label: buildCafeOptionLabel(item),
                   }))}
-                  rightSection={searchLoading ? <Text size="xs">...</Text> : null}
+                  rightSection={searchLoading ? <Text style={{ fontSize: 12 }}>...</Text> : null}
                 />
               )}
 
@@ -297,7 +299,9 @@ export default function AdminNorthStarPage() {
 
           {scope === "cafe" && !selectedCafeId ? (
             <Paper withBorder radius="lg" p="md">
-              <Text c="dimmed">Выберите кофейню, чтобы посмотреть метрику по конкретному месту.</Text>
+              <Text style={{ color: "var(--muted)" }}>
+                Выберите кофейню, чтобы посмотреть метрику по конкретному месту.
+              </Text>
             </Paper>
           ) : (
             <>
@@ -305,10 +309,17 @@ export default function AdminNorthStarPage() {
                 {summaryCards.map((card) => (
                   <Box key={card.key} style={{ flex: 1, minWidth: 180 }}>
                     <Paper withBorder radius="lg" p="md">
-                      <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: "var(--muted)",
+                          textTransform: "uppercase",
+                          fontWeight: 700,
+                        }}
+                      >
                         {card.label}
                       </Text>
-                      <Text size="xl" fw={800} style={{ marginTop: 4 }}>
+                      <Text style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>
                         {card.value}
                       </Text>
                     </Paper>
@@ -360,7 +371,9 @@ export default function AdminNorthStarPage() {
                     {(report?.daily.length ?? 0) === 0 && (
                       <Table.Tr>
                         <Table.Td colSpan={5}>
-                          <Text c="dimmed">За выбранный период данных пока нет.</Text>
+                          <Text style={{ color: "var(--muted)" }}>
+                            За выбранный период данных пока нет.
+                          </Text>
                         </Table.Td>
                       </Table.Tr>
                     )}
@@ -371,8 +384,8 @@ export default function AdminNorthStarPage() {
               <Paper withBorder radius="lg" p="md">
                 <Stack gap="xs">
                   <Group justify="space-between" align="center">
-                    <Text fw={700}>Воронка Journey</Text>
-                    <Text size="sm" c="dimmed">
+                    <Text style={{ fontWeight: 700 }}>Воронка Journey</Text>
+                    <Text style={{ fontSize: 13, color: "var(--muted)" }}>
                       Карточка → отзыв → маршрут → check-in → отзыв
                     </Text>
                   </Group>
@@ -397,7 +410,9 @@ export default function AdminNorthStarPage() {
                       {(funnelReport?.stages.length ?? 0) === 0 && (
                         <Table.Tr>
                           <Table.Td colSpan={4}>
-                            <Text c="dimmed">По воронке пока нет данных.</Text>
+                            <Text style={{ color: "var(--muted)" }}>
+                              По воронке пока нет данных.
+                            </Text>
                           </Table.Td>
                         </Table.Tr>
                       )}
