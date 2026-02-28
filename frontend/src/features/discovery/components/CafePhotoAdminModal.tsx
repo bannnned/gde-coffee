@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { notifications } from "@mantine/notifications";
+import { notifications } from "../../../lib/notifications";
 import {
   IconArrowsSort,
   IconChevronDown,

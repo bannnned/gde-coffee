@@ -505,3 +505,34 @@ Critical path stack-transition:
 - Артефакт: de-Mantine admin pages в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/Admin*.tsx`.
 - Артефакт: de-Mantine admin drinks cards в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/*.tsx`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-E · Global shell/theme/notifications de-Mantine (P1, status: done)
+- Цель: убрать последние runtime-зависимости `@mantine/core/@mantine/notifications` из пользовательского старта приложения.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/main.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/hooks/useAppColorScheme.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/lib/notifications.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/App.home.smoke.test.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/Admin*.tsx` и discovery/auth files с `notifications.show(...)`.
+- Depends on: `W5-D`.
+- AC: в `frontend/src` отсутствуют импорты `@mantine/core` и `@mantine/notifications`.
+- AC: color scheme работает через локальный app-provider (`data-mantine-color-scheme` сохраняется для CSS-совместимости).
+- AC: уведомления работают через локальный `notifications` store + viewport без Mantine provider.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: de-Mantine app shell bootstrap в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/main.tsx`.
+- Артефакт: app color-scheme provider/hook в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/hooks/useAppColorScheme.ts`.
+- Артефакт: локальная система уведомлений в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/lib/notifications.tsx`.
+- Артефакт: import migration `notifications.show(...)` в `frontend/src`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-F · Remove Mantine packages from dependency graph (P1, status: done)
+- Цель: физически удалить `@mantine/*` пакеты из frontend dependency graph после полной миграции кода.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/package.json`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/package-lock.json`.
+- Depends on: `W5-E`.
+- AC: в `frontend/src` нет импортов `@mantine/core` и `@mantine/notifications`.
+- AC: в `frontend/package.json` отсутствуют `@mantine/core`, `@mantine/form`, `@mantine/hooks`, `@mantine/modals`, `@mantine/notifications`.
+- AC: `npm install` graph не содержит `@mantine/*`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: обновленный dependency set в `/Users/a1/Desktop/Prog/gde-coffee/frontend/package.json`.
+- Артефакт: обновленный lockfile без Mantine в `/Users/a1/Desktop/Prog/gde-coffee/frontend/package-lock.json`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

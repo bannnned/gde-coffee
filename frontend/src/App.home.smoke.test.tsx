@@ -1,7 +1,7 @@
 /* @vitest-environment jsdom */
 import { render, waitFor } from "@testing-library/react";
-import { MantineProvider } from "@mantine/core";
 import { describe, expect, it, vi } from "vitest";
+import { AppColorSchemeProvider } from "./hooks/useAppColorScheme";
 
 if (!window.matchMedia) {
   Object.defineProperty(window, "matchMedia", {
@@ -232,9 +232,9 @@ describe("App home route", () => {
     let renderError: unknown;
     try {
       render(
-        <MantineProvider>
+        <AppColorSchemeProvider>
           <App />
-        </MantineProvider>,
+        </AppColorSchemeProvider>,
       );
     } catch (error) {
       renderError = error;

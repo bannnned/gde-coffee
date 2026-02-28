@@ -9,7 +9,7 @@ import {
   Text,
   Title,
 } from "../ui/compat/core";
-import { notifications } from "@mantine/notifications";
+import { notifications } from "../lib/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 

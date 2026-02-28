@@ -2,16 +2,12 @@ import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 
-import '@mantine/core/styles.css'
-import '@mantine/notifications/styles.css'
-
-import { MantineProvider, useComputedColorScheme, type MantineColorsTuple, type MantineThemeOverride } from '@mantine/core'
-import { Notifications } from '@mantine/notifications'
-
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 import './index.css'
+import { AppNotifications } from './lib/notifications'
+import useAppColorScheme, { AppColorSchemeProvider } from './hooks/useAppColorScheme'
 import {
   applyPalette,
   getStoredPalette,
@@ -74,31 +70,12 @@ const queryClient = new QueryClient({
   },
 })
 
-const emerald: MantineColorsTuple = [
-  'var(--color-brand-accent-soft)',
-  'var(--color-brand-accent-soft)',
-  'var(--color-brand-accent-soft)',
-  'var(--color-brand-accent)',
-  'var(--color-brand-accent)',
-  'var(--color-brand-accent)',
-  'var(--color-brand-accent)',
-  'var(--color-brand-accent-strong)',
-  'var(--color-brand-accent-strong)',
-  'var(--color-brand-accent-strong)',
-];
-
-const theme: MantineThemeOverride = {
-  colors: { emerald },
-  primaryColor: 'emerald',
-  primaryShade: { light: 6, dark: 8 },
-};
-
 function PaletteSync() {
-  const computed = useComputedColorScheme('light', { getInitialValueInEffect: true })
+  const { colorScheme } = useAppColorScheme()
 
   useEffect(() => {
-    applyPalette(getStoredPalette(), computed)
-  }, [computed])
+    applyPalette(getStoredPalette(), colorScheme)
+  }, [colorScheme])
 
   useEffect(() => {
     const api = {
@@ -106,14 +83,14 @@ function PaletteSync() {
       list: () => listPalettes(),
       set: (name: PaletteName) => {
         setStoredPalette(name)
-        applyPalette(name, computed)
+        applyPalette(name, colorScheme)
       },
     }
     ;(window as Window & { gdeCoffeePalette?: typeof api }).gdeCoffeePalette = api
     return () => {
       delete (window as Window & { gdeCoffeePalette?: typeof api }).gdeCoffeePalette
     }
-  }, [computed])
+  }, [colorScheme])
 
   return null
 }
@@ -121,12 +98,12 @@ function PaletteSync() {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <MantineProvider defaultColorScheme="auto" theme={theme}>
+      <AppColorSchemeProvider>
         <PaletteSync />
-        <Notifications />
+        <AppNotifications />
         <App />
         <ReactQueryDevtools initialIsOpen={false} />
-      </MantineProvider>
+      </AppColorSchemeProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 )

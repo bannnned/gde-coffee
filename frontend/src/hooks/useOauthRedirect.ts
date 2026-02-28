@@ -1,4 +1,4 @@
-﻿import { notifications } from "@mantine/notifications";
+﻿import { notifications } from "../lib/notifications";
 import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { notifications } from "@mantine/notifications";
+import { notifications } from "../../../../lib/notifications";
 import { IconMapPinFilled, IconPhotoPlus, IconTrash } from "@tabler/icons-react";
 
 import { uploadCafePhotoByPresignedUrl } from "../../../../api/cafePhotos";

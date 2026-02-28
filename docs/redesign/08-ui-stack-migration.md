@@ -33,6 +33,8 @@
 15. `W5-B` закрыт (`done`): de-Mantine cleanup shared user-layer (`Map`, `ColorSchemeToggle`, `ui/bridge/overlay` Radix-only runtime path).
 16. `W5-C` закрыт (`done`): de-Mantine migration для bridge input layer (`AppSelect`, `AppTagsInput`) и legacy `WorkScreen/features/work` потока.
 17. `W5-D` закрыт (`done`): de-Mantine migration для admin surfaces (Admin pages + `features/admin-drinks/ui/*`) через локальный compat core layer.
+18. `W5-E` закрыт (`done`): de-Mantine migration для global shell/theme/notifications (`main.tsx`, `useAppColorScheme`, локальный notifications store + viewport).
+19. `W5-F` закрыт (`done`): удалены `@mantine/*` пакеты из `frontend/package.json` и `frontend/package-lock.json` после полного code/runtime выхода.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

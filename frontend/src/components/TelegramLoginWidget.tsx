@@ -1,4 +1,4 @@
-import { notifications } from "@mantine/notifications";
+import { notifications } from "../lib/notifications";
 import { useEffect, useRef, useState } from "react";
 
 import {

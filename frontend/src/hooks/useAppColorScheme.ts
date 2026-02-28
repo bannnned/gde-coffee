@@ -1,20 +1,96 @@
-import { useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
+import {
+  createElement,
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 type ColorScheme = "light" | "dark";
 
-type UseAppColorSchemeResult = {
+type AppColorSchemeContextValue = {
   colorScheme: ColorScheme;
   setColorScheme: (value: ColorScheme) => void;
 };
 
-export default function useAppColorScheme(): UseAppColorSchemeResult {
-  const { setColorScheme } = useMantineColorScheme();
-  const computedColorScheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
+const STORAGE_KEY = "gdeCoffeeColorScheme";
 
+const AppColorSchemeContext = createContext<AppColorSchemeContextValue | null>(null);
+
+function getSystemColorScheme(): ColorScheme {
+  if (typeof window === "undefined") {
+    return "light";
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function readStoredColorScheme(): ColorScheme | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const value = window.localStorage.getItem(STORAGE_KEY);
+  if (value === "light" || value === "dark") {
+    return value;
+  }
+  return null;
+}
+
+function applyColorSchemeToDocument(value: ColorScheme) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.setAttribute("data-mantine-color-scheme", value);
+  root.style.colorScheme = value;
+}
+
+export function AppColorSchemeProvider({ children }: { children: ReactNode }) {
+  const [colorScheme, setColorScheme] = useState<ColorScheme>(() => readStoredColorScheme() ?? getSystemColorScheme());
+
+  useEffect(() => {
+    applyColorSchemeToDocument(colorScheme);
+    window.localStorage.setItem(STORAGE_KEY, colorScheme);
+  }, [colorScheme]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => {
+      if (readStoredColorScheme() !== null) return;
+      setColorScheme(mediaQuery.matches ? "dark" : "light");
+    };
+    mediaQuery.addEventListener("change", handleChange);
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+    };
+  }, []);
+
+  const value = useMemo<AppColorSchemeContextValue>(
+    () => ({
+      colorScheme,
+      setColorScheme,
+    }),
+    [colorScheme],
+  );
+
+  return createElement(AppColorSchemeContext.Provider, { value }, children);
+}
+
+export default function useAppColorScheme(): AppColorSchemeContextValue {
+  const context = useContext(AppColorSchemeContext);
+  if (context) {
+    return context;
+  }
   return {
-    colorScheme: computedColorScheme === "dark" ? "dark" : "light",
-    setColorScheme,
+    colorScheme:
+      (typeof document !== "undefined" &&
+      document.documentElement.getAttribute("data-mantine-color-scheme") === "dark")
+        ? "dark"
+        : "light",
+    setColorScheme: (value: ColorScheme) => {
+      applyColorSchemeToDocument(value);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(STORAGE_KEY, value);
+      }
+    },
   };
 }
