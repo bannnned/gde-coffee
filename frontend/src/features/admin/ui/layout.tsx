@@ -43,34 +43,20 @@ type ContainerProps = {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  size?: "xs" | "sm" | "md" | "lg" | number | string;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Container({
   children,
   className,
   style,
-  size = "md",
   ...rest
 }: ContainerProps) {
-  const width =
-    typeof size === "number"
-      ? `${size}px`
-      : size === "xs"
-        ? "420px"
-        : size === "sm"
-          ? "640px"
-          : size === "lg"
-            ? "1080px"
-            : size === "md"
-              ? "860px"
-              : size;
   return (
     <div
       className={className}
       style={{
         width: "min(100%, 100%)",
-        maxWidth: width,
+        maxWidth: 860,
         marginInline: "auto",
         ...style,
       }}
@@ -151,14 +137,12 @@ type PaperProps = {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  withBorder?: boolean;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export function Paper({
   children,
   className,
   style,
-  withBorder = false,
   ...rest
 }: PaperProps) {
   return (
@@ -166,7 +150,7 @@ export function Paper({
       className={className}
       style={{
         borderRadius: 12,
-        border: withBorder ? "1px solid var(--border)" : "none",
+        border: "none",
         background: "var(--surface)",
         ...style,
       }}

@@ -123,7 +123,7 @@ export default function AdminFeedbackPage() {
 
   if (!allowed) {
     return (
-      <Container size="sm" style={{ paddingTop: 24, paddingBottom: 24 }}>
+      <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
           <Title order={3}>Доступ ограничен</Title>
           <Text style={{ color: "var(--muted)" }}>
@@ -137,7 +137,7 @@ export default function AdminFeedbackPage() {
 
   return (
     <Box className="page-shell" style={{ paddingBottom: 24 }}>
-      <Container size="lg" style={{ paddingTop: 16, paddingBottom: 16 }}>
+      <Container style={{ maxWidth: 1080,  paddingTop: 16, paddingBottom: 16 }}>
         <Stack style={{ gap: 16 }}>
           <Group justify="space-between" align="center">
             <Group>
@@ -156,7 +156,7 @@ export default function AdminFeedbackPage() {
             </Button>
           </Group>
 
-          <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+          <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
             <Stack style={{ gap: 12 }}>
               <Group>
                 <Box style={{ flex: 1, minWidth: 0 }}>
@@ -216,7 +216,7 @@ export default function AdminFeedbackPage() {
             </Stack>
           </Paper>
 
-          <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+          <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
             <Table striped highlightOnHover withTableBorder>
               <Table.Thead>
                 <Table.Tr>

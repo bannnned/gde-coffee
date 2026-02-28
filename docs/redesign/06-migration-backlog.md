@@ -778,3 +778,27 @@ Critical path stack-transition:
 - Артефакт: упрощенные контракты `Box/Container/Group/Stack/Paper/Badge` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
 - Артефакт: migration admin pages/cards на explicit `style` для padding/gap/radius.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-V · Remove remaining container/border compat (`Container.size`, `Paper.withBorder`) from admin layer (P1, status: done)
+- Цель: убрать финальные compat-пропсы `Container.size` и `Paper.withBorder` из admin layout-слоя и перевести usage на explicit `style` (`maxWidth`, `border`).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksFiltersCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCreateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksEditCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-U`.
+- AC: `layout.tsx::Container` не содержит контракт `size`.
+- AC: `layout.tsx::Paper` не содержит контракт `withBorder`.
+- AC: в admin usage отсутствуют `Container size=...` и `Paper withBorder`.
+- AC: ширина/рамки сохранены через explicit `style` (`maxWidth`/`border`).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: упрощенные `Container/Paper` контракты в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration admin pages/cards на explicit `maxWidth`/`border`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

@@ -18,7 +18,7 @@ export default function AdminDrinksCatalogCard({
   onToggleActive,
 }: AdminDrinksCatalogCardProps) {
   return (
-    <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+    <Paper style={{ border: "1px solid var(--border)", borderRadius: 16, padding: 16 }}>
       <Stack style={{ gap: 12 }}>
         <Title order={4}>Каталог</Title>
         {loading && <Text style={{ color: "var(--muted)" }}>Загрузка списка...</Text>}
@@ -26,10 +26,10 @@ export default function AdminDrinksCatalogCard({
         {drinks.map((item) => (
           <Paper
             key={item.id}
-            withBorder
-            radius="md"
-            p="sm"
             style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: 12,
               borderColor: item.id === selectedDrinkID ? "var(--color-brand-accent)" : undefined,
             }}
           >

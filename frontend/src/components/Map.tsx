@@ -179,7 +179,7 @@ const CAFE_CLUSTER_INTERACTIVE_LAYER_IDS = [
   CAFE_CLUSTER_COUNT_LAYER_ID,
 ] as const;
 const CAFE_SPIDER_MAX_LEAVES = 24;
-const CLUSTER_ZOOM_TO_SPIDER_THRESHOLD = 0.7;
+const CLUSTER_ZOOM_TO_SPIDER_THRESHOLD = 0.9;
 const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: [],
@@ -298,24 +298,35 @@ function clearSpiderfy(map: MLMap) {
   source.setData(EMPTY_FEATURE_COLLECTION);
 }
 
-function polarOffset(index: number, total: number): { dx: number; dy: number } {
-  if (total <= 8) {
-    const angle = (Math.PI * 2 * index) / total;
-    const radius = 34 + Math.min(8, total) * 1.2;
-    return {
-      dx: Math.cos(angle) * radius,
-      dy: Math.sin(angle) * radius,
-    };
+function buildSpiderOffsets(total: number): Array<{ dx: number; dy: number }> {
+  if (total <= 0) return [];
+  const spacing = 22;
+  const baseRadius = 34;
+  const ringStep = 20;
+  const offsets: Array<{ dx: number; dy: number }> = [];
+
+  let placed = 0;
+  let ring = 0;
+  while (placed < total) {
+    const radius = baseRadius + ring * ringStep;
+    const circumference = 2 * Math.PI * radius;
+    const capacity = ring === 0 ? 8 : Math.max(8, Math.floor(circumference / spacing));
+    const count = Math.min(capacity, total - placed);
+    const startAngle = -Math.PI / 2 + (ring % 2 === 0 ? 0 : Math.PI / count);
+
+    for (let idx = 0; idx < count; idx += 1) {
+      const angle = startAngle + (Math.PI * 2 * idx) / count;
+      offsets.push({
+        dx: Math.cos(angle) * radius,
+        dy: Math.sin(angle) * radius,
+      });
+    }
+
+    placed += count;
+    ring += 1;
   }
 
-  const angleStep = 0.62;
-  const radiusStep = 5.8;
-  const angle = index * angleStep;
-  const radius = 26 + radiusStep * angle;
-  return {
-    dx: Math.cos(angle) * radius,
-    dy: Math.sin(angle) * radius,
-  };
+  return offsets;
 }
 
 function spiderfyClusterLeaves(
@@ -335,11 +346,14 @@ function spiderfyClusterLeaves(
   const projected = map.project({ lng: center[0], lat: center[1] });
   const lineFeatures: GeoJSON.Feature<GeoJSON.LineString, GeoJSON.GeoJsonProperties>[] = [];
   const pointFeatures: GeoJSON.Feature<GeoJSON.Point, GeoJSON.GeoJsonProperties>[] = [];
+  const offsets = buildSpiderOffsets(total);
 
   for (let idx = 0; idx < total; idx += 1) {
     const leaf = leaves[idx];
     if (!leaf) continue;
-    const { dx, dy } = polarOffset(idx, total);
+    const offset = offsets[idx];
+    if (!offset) continue;
+    const { dx, dy } = offset;
     const target = map.unproject([projected.x + dx, projected.y + dy]);
     const targetLngLat: [number, number] = [target.lng, target.lat];
     const cafeId = typeof leaf.properties?.id === "string" ? leaf.properties.id : "";
@@ -1126,6 +1140,7 @@ export default function Map({
     const map = mapRef.current;
     if (!map || !isMapReady) return;
     updateCafes(map, geojson);
+    clearSpiderfy(map);
   }, [geojson, isMapReady]);
 
   useEffect(() => {

@@ -50,6 +50,7 @@
 32. `W5-S` закрыт (`done`): в admin fields-слое удален compat-проп `Select.w`; usage переведен на явный `style={{ width: ... }}`.
 33. `W5-T` закрыт (`done`): `ActionIcon` в admin-слое очищен от alias-вариантов `transparent/light/filled`; usage переведен на нативный `ghost` по умолчанию.
 34. `W5-U` закрыт (`done`): из admin layout-слоя удалены alias-пропсы `p/py/pb/gap/radius`, а admin usage переведен на explicit `style/className` для padding/gap/radius.
+35. `W5-V` закрыт (`done`): из admin layout-слоя удалены compat-пропсы `Container.size` и `Paper.withBorder`; usage переведен на explicit `maxWidth`/`border` стили.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

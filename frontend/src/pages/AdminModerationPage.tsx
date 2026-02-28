@@ -246,7 +246,7 @@ export default function AdminModerationPage() {
 
   if (!allowed) {
     return (
-      <Container size="sm" style={{ paddingTop: 24, paddingBottom: 24 }}>
+      <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
           <Title order={3}>Доступ ограничен</Title>
           <Text style={{ color: "var(--muted)" }}>
@@ -269,7 +269,7 @@ export default function AdminModerationPage() {
         WebkitOverflowScrolling: "touch",
       }}
     >
-      <Container size="sm" style={{ paddingTop: 16, paddingBottom: 16 }}>
+      <Container style={{ maxWidth: 640,  paddingTop: 16, paddingBottom: 16 }}>
         <Stack style={{ gap: 16 }}>
           <Group justify="space-between" align="center">
             <Group>
@@ -288,7 +288,7 @@ export default function AdminModerationPage() {
             </Button>
           </Group>
 
-          <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+          <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
             <Stack style={{ gap: 12 }}>
               <Select
                 label="Статус"
@@ -299,7 +299,7 @@ export default function AdminModerationPage() {
             </Stack>
           </Paper>
 
-          <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+          <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
             <Box className="relative">
               <Box
                 style={{
@@ -375,7 +375,7 @@ export default function AdminModerationPage() {
           </Paper>
 
           {visibleItems.length === 0 && !loading && (
-            <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+            <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
               <Text style={{ color: "var(--muted)" }}>Заявок по текущему фильтру нет.</Text>
             </Paper>
           )}
@@ -411,7 +411,7 @@ export default function AdminModerationPage() {
             const reviewRating = readPayloadNumber(payload, "rating");
             const reviewTags = readStringArrayFromPayload(payload, "taste_tags");
             return (
-              <Paper key={item.id} withBorder style={{ borderRadius: 16, padding: 16 }}>
+              <Paper key={item.id} style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
                 <Stack style={{ gap: 12 }}>
                   <Group justify="space-between" align="center">
                     <Group style={{ gap: 8 }}>
@@ -427,7 +427,7 @@ export default function AdminModerationPage() {
                   </Text>
 
                   {(item.target_id || targetCafeName || previewCandidate) && (
-                    <Paper withBorder style={{ borderRadius: 12, padding: 12, background: "var(--surface)" }}>
+                    <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
                       <Stack style={{ gap: 6 }}>
                         <Text style={{ fontSize: 13, fontWeight: 600 }}>
                           Предлагаемая кофейня
@@ -469,7 +469,7 @@ export default function AdminModerationPage() {
                   )}
 
                   {description && (
-                    <Paper withBorder style={{ borderRadius: 12, padding: 12, background: "var(--surface)" }}>
+                    <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
                       <Stack style={{ gap: 4 }}>
                         <Text style={{ fontSize: 13, fontWeight: 600 }}>
                           {item.entity_type === "cafe_description"
@@ -497,7 +497,7 @@ export default function AdminModerationPage() {
                   )}
 
                   {(reviewSummary || reviewDrink || reviewRating != null || reviewTags.length > 0) && (
-                    <Paper withBorder style={{ borderRadius: 12, padding: 12, background: "var(--surface)" }}>
+                    <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
                       <Stack style={{ gap: 6 }}>
                         <Text style={{ fontSize: 13, fontWeight: 600 }}>
                           Данные отзыва
@@ -539,9 +539,11 @@ export default function AdminModerationPage() {
                         {photoUrls.map((url, index) => (
                           <Paper
                             key={`${item.id}-photo-${index}`}
-                            withBorder
-                            radius="sm"
-                            style={{ overflow: "hidden" }}
+                            style={{
+                              border: "1px solid var(--border)",
+                              borderRadius: 10,
+                              overflow: "hidden",
+                            }}
                           >
                             <img
                               src={url}
@@ -575,9 +577,11 @@ export default function AdminModerationPage() {
                         {menuPhotoUrls.map((url, index) => (
                           <Paper
                             key={`${item.id}-menu-${index}`}
-                            withBorder
-                            radius="sm"
-                            style={{ overflow: "hidden" }}
+                            style={{
+                              border: "1px solid var(--border)",
+                              borderRadius: 10,
+                              overflow: "hidden",
+                            }}
                           >
                             <img
                               src={url}

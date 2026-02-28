@@ -34,7 +34,7 @@ export default function AdminDrinksUnknownCard({
   onIgnoreUnknown,
 }: AdminDrinksUnknownCardProps) {
   return (
-    <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+    <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
       <Stack style={{ gap: 12 }}>
         <Group justify="space-between">
           <Title order={4}>Неизвестные форматы</Title>
@@ -50,7 +50,7 @@ export default function AdminDrinksUnknownCard({
         {!loading && unknown.length === 0 && <Text style={{ color: "var(--muted)" }}>Список пуст.</Text>}
 
         {unknown.map((item) => (
-          <Paper key={item.id} withBorder style={{ borderRadius: 12, padding: 12 }}>
+          <Paper key={item.id} style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12 }}>
             <Stack style={{ gap: 8 }}>
               <Group justify="space-between" align="center">
                 <Group style={{ gap: 8 }}>

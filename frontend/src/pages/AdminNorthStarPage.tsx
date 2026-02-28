@@ -204,7 +204,7 @@ export default function AdminNorthStarPage() {
 
   if (!allowed) {
     return (
-      <Container size="sm" style={{ paddingTop: 24, paddingBottom: 24 }}>
+      <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
           <Title order={3}>Доступ ограничен</Title>
           <Text style={{ color: "var(--muted)" }}>
@@ -218,7 +218,7 @@ export default function AdminNorthStarPage() {
 
   return (
     <Box className="page-shell" style={{ paddingBottom: 24 }}>
-      <Container size="lg" style={{ paddingTop: 16, paddingBottom: 16 }}>
+      <Container style={{ maxWidth: 1080,  paddingTop: 16, paddingBottom: 16 }}>
         <Stack style={{ gap: 16 }}>
           <Group justify="space-between" align="center">
             <Group>
@@ -237,7 +237,7 @@ export default function AdminNorthStarPage() {
             </Button>
           </Group>
 
-          <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+          <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
             <Stack style={{ gap: 12 }}>
               <Group align="flex-end">
                 <Box style={{ flex: 1, minWidth: 0 }}>
@@ -297,7 +297,7 @@ export default function AdminNorthStarPage() {
           )}
 
           {scope === "cafe" && !selectedCafeId ? (
-            <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+            <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
               <Text style={{ color: "var(--muted)" }}>
                 Выберите кофейню, чтобы посмотреть метрику по конкретному месту.
               </Text>
@@ -307,7 +307,7 @@ export default function AdminNorthStarPage() {
               <Group>
                 {summaryCards.map((card) => (
                   <Box key={card.key} style={{ flex: 1, minWidth: 180 }}>
-                    <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+                    <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
                       <Text
                         style={{
                           fontSize: 12,
@@ -326,7 +326,7 @@ export default function AdminNorthStarPage() {
                 ))}
               </Group>
 
-              <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+              <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
                 <Table striped highlightOnHover withTableBorder>
                   <Table.Thead>
                     <Table.Tr>
@@ -380,7 +380,7 @@ export default function AdminNorthStarPage() {
                 </Table>
               </Paper>
 
-              <Paper withBorder style={{ borderRadius: 16, padding: 16 }}>
+              <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
                 <Stack style={{ gap: 8 }}>
                   <Group justify="space-between" align="center">
                     <Text style={{ fontWeight: 700 }}>Воронка Journey</Text>
