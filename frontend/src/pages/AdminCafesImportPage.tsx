@@ -11,8 +11,7 @@ import {
   Switch,
   Table,
   Text,
-  Textarea,
-  Title,
+  Textarea, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
@@ -481,7 +480,7 @@ export default function AdminCafesImportPage() {
     return (
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
-          <Title order={3}>Доступ ограничен</Title>
+          <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <Text style={{ color: "var(--muted)" }}>
             Эта страница доступна только администраторам.
           </Text>
@@ -505,7 +504,7 @@ export default function AdminCafesImportPage() {
               >
                 <IconArrowLeft size={18} />
               </ActionIcon>
-              <Title order={3}>Импорт кофеен из JSON</Title>
+              <h3 className="m-0 text-2xl font-bold text-text">Импорт кофеен из JSON</h3>
             </Group>
             <Group>
               <Button variant="secondary" onClick={() => void navigate("/admin/cafes/manage")}>
@@ -657,7 +656,7 @@ export default function AdminCafesImportPage() {
 
           {result && (
             <Stack style={{ gap: 12 }}>
-              <Title order={4}>Результат</Title>
+              <h4 className="m-0 text-xl font-bold text-text">Результат</h4>
               <Group>
                 <Text style={{ fontSize: 13 }}>Всего: {result.summary.total}</Text>
                 <Text style={{ fontSize: 13 }}>Создано: {result.summary.created}</Text>

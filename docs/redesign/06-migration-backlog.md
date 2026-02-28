@@ -802,3 +802,24 @@ Critical path stack-transition:
 - Артефакт: упрощенные `Container/Paper` контракты в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
 - Артефакт: migration admin pages/cards на explicit `maxWidth`/`border`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-W · Remove admin `Title` wrapper and migrate to native headings (P1, status: done)
+- Цель: убрать последний typographic compat-компонент `Title` из admin layout-слоя и перейти на нативные `h3/h4` с явными классами.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCreateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksEditCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-V`.
+- AC: `layout.tsx` не содержит `Title` (контракт + реализация).
+- AC: в admin usage отсутствует импорт/usage `Title`; заголовки рендерятся как нативные `h3/h4`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: de-bridge typographic слой `Title` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration admin headings на `h3/h4` с explicit classes в перечисленных файлах.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

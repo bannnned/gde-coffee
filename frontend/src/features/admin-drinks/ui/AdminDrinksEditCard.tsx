@@ -1,4 +1,4 @@
-import { Button, Paper, Stack, Switch, TextInput, Textarea, Title } from "../../admin/ui";
+import { Button, Paper, Stack, Switch, TextInput, Textarea } from "../../admin/ui";
 
 import type { DrinkEditorState } from "../model/types";
 
@@ -22,7 +22,7 @@ export default function AdminDrinksEditCard({
   return (
     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
       <Stack style={{ gap: 12 }}>
-        <Title order={4}>Редактирование: {drinkID}</Title>
+        <h4 className="m-0 text-xl font-bold text-text">Редактирование: {drinkID}</h4>
         <TextInput
           label="Название"
           value={state.name}

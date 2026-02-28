@@ -1,4 +1,4 @@
-import { Button, Paper, Stack, Switch, TextInput, Textarea, Title } from "../../admin/ui";
+import { Button, Paper, Stack, Switch, TextInput, Textarea } from "../../admin/ui";
 
 import type { DrinkEditorState } from "../model/types";
 
@@ -18,7 +18,7 @@ export default function AdminDrinksCreateCard({
   return (
     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
       <Stack style={{ gap: 12 }}>
-        <Title order={4}>Добавить напиток</Title>
+        <h4 className="m-0 text-xl font-bold text-text">Добавить напиток</h4>
         <TextInput
           label="ID (опционально)"
           placeholder="pour-over"

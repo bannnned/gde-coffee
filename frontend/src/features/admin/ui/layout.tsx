@@ -2,7 +2,6 @@ import {
   forwardRef,
   type ButtonHTMLAttributes,
   type CSSProperties,
-  type ElementType,
   type HTMLAttributes,
   type ReactNode,
   type TdHTMLAttributes,
@@ -196,39 +195,6 @@ export function Text({
     >
       {children}
     </p>
-  );
-}
-
-type TitleProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-  order?: 1 | 2 | 3 | 4 | 5 | 6;
-} & Omit<HTMLAttributes<HTMLHeadingElement>, "style" | "children">;
-
-export function Title({
-  children,
-  className,
-  style,
-  order = 3,
-  ...rest
-}: TitleProps) {
-  const Tag = `h${order}` as ElementType;
-  const fontSizeMap: Record<number, number> = { 1: 36, 2: 30, 3: 24, 4: 20, 5: 18, 6: 16 };
-  return (
-    <Tag
-      className={className}
-      style={{
-        margin: 0,
-        color: "var(--text)",
-        fontWeight: 700,
-        fontSize: fontSizeMap[order] ?? 24,
-        ...style,
-      }}
-      {...rest}
-    >
-      {children}
-    </Tag>
   );
 }
 

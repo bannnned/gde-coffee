@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, Select, Stack, Text, Title } from "../../admin/ui";
+import { Badge, Button, Group, Paper, Select, Stack, Text } from "../../admin/ui";
 
 import type { UnknownDrinkFormat } from "../../../api/adminDrinks";
 import type { UnknownStatusOption } from "../model/types";
@@ -37,7 +37,7 @@ export default function AdminDrinksUnknownCard({
     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
       <Stack style={{ gap: 12 }}>
         <Group justify="space-between">
-          <Title order={4}>Неизвестные форматы</Title>
+          <h4 className="m-0 text-xl font-bold text-text">Неизвестные форматы</h4>
           <Select
             value={status}
             data={UNKNOWN_STATUS_OPTIONS}

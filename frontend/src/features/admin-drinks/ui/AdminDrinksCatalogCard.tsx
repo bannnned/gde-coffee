@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, Stack, Text, Title } from "../../admin/ui";
+import { Badge, Button, Group, Paper, Stack, Text } from "../../admin/ui";
 
 import type { AdminDrink } from "../../../api/adminDrinks";
 
@@ -20,7 +20,7 @@ export default function AdminDrinksCatalogCard({
   return (
     <Paper style={{ border: "1px solid var(--border)", borderRadius: 16, padding: 16 }}>
       <Stack style={{ gap: 12 }}>
-        <Title order={4}>Каталог</Title>
+        <h4 className="m-0 text-xl font-bold text-text">Каталог</h4>
         {loading && <Text style={{ color: "var(--muted)" }}>Загрузка списка...</Text>}
         {!loading && drinks.length === 0 && <Text style={{ color: "var(--muted)" }}>Ничего не найдено.</Text>}
         {drinks.map((item) => (

@@ -11,8 +11,7 @@ import {
   Select,
   Stack,
   Table,
-  Text,
-  Title,
+  Text, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
@@ -206,7 +205,7 @@ export default function AdminNorthStarPage() {
     return (
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
-          <Title order={3}>Доступ ограничен</Title>
+          <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <Text style={{ color: "var(--muted)" }}>
             Эта страница доступна модераторам и администраторам.
           </Text>
@@ -230,7 +229,7 @@ export default function AdminNorthStarPage() {
               >
                 <IconArrowLeft size={18} />
               </ActionIcon>
-              <Title order={3}>North Star метрика</Title>
+              <h3 className="m-0 text-2xl font-bold text-text">North Star метрика</h3>
             </Group>
             <Button variant="secondary" onClick={() => void loadReport()} loading={loading}>
               Обновить

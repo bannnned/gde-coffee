@@ -10,8 +10,7 @@ import {
   Stack,
   Table,
   Text,
-  TextInput,
-  Title,
+  TextInput, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
@@ -125,7 +124,7 @@ export default function AdminFeedbackPage() {
     return (
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
         <Stack style={{ gap: 16 }}>
-          <Title order={3}>Доступ ограничен</Title>
+          <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <Text style={{ color: "var(--muted)" }}>
             Эта страница доступна только администраторам.
           </Text>
@@ -149,7 +148,7 @@ export default function AdminFeedbackPage() {
               >
                 <IconArrowLeft size={18} />
               </ActionIcon>
-              <Title order={3}>Отзывы о приложении</Title>
+              <h3 className="m-0 text-2xl font-bold text-text">Отзывы о приложении</h3>
             </Group>
             <Button variant="secondary" onClick={() => void load()} loading={loading}>
               Обновить
