@@ -231,31 +231,35 @@ export default function AdminNorthStarPage() {
               </ActionIcon>
               <Title order={3}>North Star метрика</Title>
             </Group>
-            <Button variant="light" onClick={() => void loadReport()} loading={loading}>
+            <Button variant="secondary" onClick={() => void loadReport()} loading={loading}>
               Обновить
             </Button>
           </Group>
 
           <Paper withBorder radius="lg" p="md">
             <Stack gap="sm">
-              <Group grow align="flex-end">
-                <SegmentedControl
-                  value={scope}
-                  onChange={(value) => setScope(value as ScopeMode)}
-                  data={[
-                    { label: "В целом", value: "overall" },
-                    { label: "По кофейне", value: "cafe" },
-                  ]}
-                />
-                <Select
-                  label="Период"
-                  data={RANGE_OPTIONS}
-                  value={String(days)}
-                  onChange={(value) => {
-                    const parsed = Number(value ?? "14");
-                    setDays(Number.isFinite(parsed) ? parsed : 14);
-                  }}
-                />
+              <Group align="flex-end">
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <SegmentedControl
+                    value={scope}
+                    onChange={(value) => setScope(value as ScopeMode)}
+                    data={[
+                      { label: "В целом", value: "overall" },
+                      { label: "По кофейне", value: "cafe" },
+                    ]}
+                  />
+                </Box>
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Select
+                    label="Период"
+                    data={RANGE_OPTIONS}
+                    value={String(days)}
+                    onChange={(value) => {
+                      const parsed = Number(value ?? "14");
+                      setDays(Number.isFinite(parsed) ? parsed : 14);
+                    }}
+                  />
+                </Box>
               </Group>
 
               {scope === "cafe" && (
@@ -279,14 +283,14 @@ export default function AdminNorthStarPage() {
                 />
               )}
 
-              <Alert variant="light" icon={<IconInfoCircle size={16} />}>
+              <Alert icon={<IconInfoCircle size={16} />}>
                 {scopeLabel}
               </Alert>
             </Stack>
           </Paper>
 
           {loadError && (
-            <Alert color="red" variant="light">
+            <Alert color="red">
               {loadError}
             </Alert>
           )}
@@ -297,16 +301,18 @@ export default function AdminNorthStarPage() {
             </Paper>
           ) : (
             <>
-              <Group grow>
+              <Group>
                 {summaryCards.map((card) => (
-                  <Paper key={card.key} withBorder radius="lg" p="md">
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-                      {card.label}
-                    </Text>
-                    <Text size="xl" fw={800} mt={4}>
-                      {card.value}
-                    </Text>
-                  </Paper>
+                  <Box key={card.key} style={{ flex: 1, minWidth: 180 }}>
+                    <Paper withBorder radius="lg" p="md">
+                      <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                        {card.label}
+                      </Text>
+                      <Text size="xl" fw={800} style={{ marginTop: 4 }}>
+                        {card.value}
+                      </Text>
+                    </Paper>
+                  </Box>
                 ))}
               </Group>
 

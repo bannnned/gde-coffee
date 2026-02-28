@@ -40,6 +40,10 @@
 22. `W5-I` закрыт (`done`): `ui/compat/core.tsx` ужат до минимального admin-only контракта без лишнего legacy-слоя.
 23. `W5-J` закрыт (`done`): `ui/compat` удален; admin импортирует локальный слой `features/admin/ui/primitives`.
 24. `W5-K` закрыт (`done`): admin UI-layer разделен на `features/admin/ui/{layout,fields,index}`, `primitives.tsx` удален, импорты переведены на barrel `features/admin/ui`.
+25. `W5-L` закрыт (`done`): admin-совместимость `Button` изолирована в `features/admin/ui/layout.tsx`, базовый `components/ui/button` возвращен к строгому шадкн-контракту.
+26. `W5-M` закрыт (`done`): admin-экраны/карточки переведены на нативные button-variants (`secondary/ghost/destructive`), legacy button-паттерны убраны, admin `Button` wrapper упрощен до актуального API.
+27. `W5-N` закрыт (`done`): admin `Badge/Alert/SegmentedControl` нормализованы до нового контракта (без `light/filled/fullWidth`), usage на admin-экранах синхронизирован.
+28. `W5-O` закрыт (`done`): из admin layout-слоя убраны compat-пропсы `Group.grow`, `Text.mt/mb`, `Box.pos/*`; страницы переведены на явные `Box`-обертки и className/style layout.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

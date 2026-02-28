@@ -284,7 +284,7 @@ export default function AdminModerationPage() {
               </ActionIcon>
               <Title order={3}>Модерация</Title>
             </Group>
-            <Button variant="light" onClick={() => void refresh()} loading={loading}>
+            <Button variant="secondary" onClick={() => void refresh()} loading={loading}>
               Обновить
             </Button>
           </Group>
@@ -301,7 +301,7 @@ export default function AdminModerationPage() {
           </Paper>
 
           <Paper withBorder radius="lg" p="md">
-            <Box pos="relative">
+            <Box className="relative">
               <Box
                 style={{
                   position: "absolute",
@@ -341,7 +341,6 @@ export default function AdminModerationPage() {
               }}
             >
               <SegmentedControl
-                fullWidth={false}
                 value={activeTab}
                 onChange={(value) => setActiveTab((value as ModerationTabKey) ?? "all")}
                 data={tabsData}
@@ -417,7 +416,7 @@ export default function AdminModerationPage() {
                 <Stack gap="sm">
                   <Group justify="space-between" align="center">
                     <Group gap="xs">
-                      <Badge variant="light">{entityLabel(item.entity_type)}</Badge>
+                      <Badge variant="secondary">{entityLabel(item.entity_type)}</Badge>
                       <Badge variant="dot" color="gray">
                         {actionLabel}
                       </Badge>
@@ -450,12 +449,12 @@ export default function AdminModerationPage() {
                           </Stack>
                           {targetCafeMapUrl && (
                             <Button
-                              size="xs"
-                              variant="light"
-                              component="a"
-                              href={targetCafeMapUrl}
-                              target="_blank"
-                              rel="noreferrer noopener"
+                              size="sm"
+                              variant="secondary"
+                              type="button"
+                              onClick={() => {
+                                window.open(targetCafeMapUrl, "_blank", "noopener,noreferrer");
+                              }}
                             >
                               На карте
                             </Button>
@@ -485,7 +484,7 @@ export default function AdminModerationPage() {
                       </Text>
                       <Group gap={6}>
                         {amenities.map((amenity) => (
-                          <Badge key={`${item.id}-amenity-${amenity}`} variant="light" radius="sm">
+                          <Badge key={`${item.id}-amenity-${amenity}`} variant="secondary" radius="sm">
                             {amenity}
                           </Badge>
                         ))}
@@ -501,10 +500,10 @@ export default function AdminModerationPage() {
                         </Text>
                         <Group gap="xs">
                           {reviewRating != null && (
-                            <Badge variant="light">Оценка: {reviewRating}</Badge>
+                            <Badge variant="secondary">Оценка: {reviewRating}</Badge>
                           )}
                           {reviewDrink && (
-                            <Badge variant="light">Напиток: {reviewDrink}</Badge>
+                            <Badge variant="secondary">Напиток: {reviewDrink}</Badge>
                           )}
                         </Group>
                         {reviewTags.length > 0 && (
@@ -599,30 +598,30 @@ export default function AdminModerationPage() {
                     </Text>
                   )}
                   {isPending && (
-                    <Group grow>
+                    <Group>
                       <Button
-                        leftSection={<IconCheck size={16} />}
+                        className="flex-1"
                         onClick={() => void handleApprove(item.id)}
                         loading={isProcessing}
                       >
+                        <IconCheck size={16} />
                         Одобрить
                       </Button>
                       <Button
-                        color="red"
-                        variant="light"
-                        leftSection={<IconX size={16} />}
+                        variant="destructive"
+                        className="flex-1"
                         onClick={() => void handleReject(item.id)}
                         loading={isProcessing}
                       >
+                        <IconX size={16} />
                         Отклонить
                       </Button>
                     </Group>
                   )}
                   {previewCandidate && (
                     <Button
-                      mt="xs"
-                      variant="light"
-                      fullWidth
+                      className="mt-2 w-full"
+                      variant="secondary"
                       onClick={() => {
                         setPreviewCafe(previewCandidate);
                         setPreviewOpen(true);

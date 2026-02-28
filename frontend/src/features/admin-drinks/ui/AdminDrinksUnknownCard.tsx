@@ -55,7 +55,7 @@ export default function AdminDrinksUnknownCard({
               <Group justify="space-between" align="center">
                 <Group gap={8}>
                   <Text fw={600}>{item.name}</Text>
-                  <Badge variant="light">mentions: {item.mentions_count}</Badge>
+                  <Badge variant="secondary">mentions: {item.mentions_count}</Badge>
                   <Badge color={item.status === "new" ? "yellow" : "gray"}>{item.status}</Badge>
                 </Group>
                 <Text size="xs" c="dimmed">
@@ -76,8 +76,7 @@ export default function AdminDrinksUnknownCard({
                   Map + alias
                 </Button>
                 <Button
-                  variant="subtle"
-                  color="gray"
+                  variant="ghost"
                   onClick={() => onIgnoreUnknown(item)}
                   disabled={item.status === "ignored"}
                 >

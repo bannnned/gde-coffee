@@ -611,3 +611,72 @@ Critical path stack-transition:
 - Артефакт: удален `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/primitives.tsx`.
 - Артефакт: совместимый `Button` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/button.tsx`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-L · Isolate admin button compatibility from core `components/ui/button` (P1, status: done)
+- Цель: убрать admin-совместимые расширения из общего `components/ui/button` и локализовать их в admin UI-layer.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/button.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Depends on: `W5-K`.
+- AC: `components/ui/button.tsx` содержит только базовый шадкн-контракт (`asChild`, базовые variants/sizes) без admin-специфичных props (`loading`, `leftSection`, `component`, `fullWidth`, `mt/mb`, `color`).
+- AC: admin pages/cards сохраняют поведение через локальный wrapper `features/admin/ui/layout.tsx::Button`.
+- AC: `ActionIcon` в admin UI-layer не использует несуществующие пропсы базового `Button`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: строгий базовый `Button` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/button.tsx`.
+- Артефакт: admin-совместимый wrapper `Button` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-M · Remove legacy admin button usage patterns from admin pages/cards (P1, status: done)
+- Цель: убрать из admin-экранов legacy-использование кнопки (`light/subtle/xs/component/color/leftSection/fullWidth/mt`) и перейти на нативный контракт `default|secondary|ghost|outline|destructive`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Depends on: `W5-L`.
+- AC: в перечисленных admin-файлах отсутствуют legacy-пропсы `Button` (`variant="light|subtle|filled"`, `size="xs"`, `component`, `leftSection`, `fullWidth`, `color`, `mt/mb`).
+- AC: загрузка файла JSON в admin import продолжает работать без `component="label"` (через hidden file input + trigger button).
+- AC: admin `Button` wrapper в `layout.tsx` поддерживает только актуальный контракт (`variant`, `size`, `loading`) и не содержит legacy-веток.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: migration admin button usage в перечисленных `Admin*.tsx` + `admin-drinks` карточках.
+- Артефакт: упрощенный admin button wrapper в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-N · Normalize admin `Badge/Alert/SegmentedControl` contracts and usage (P1, status: done)
+- Цель: убрать legacy-паттерны (`light/filled`, `fullWidth`) из admin usage и сузить контракты в admin layout-слое до актуального API.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-M`.
+- AC: `Badge` usage в admin файлах переведен на `default|secondary|outline|dot` (без `variant="light|filled"`).
+- AC: `Alert` usage в admin файлах не использует `variant` (базовый light-style по умолчанию).
+- AC: `SegmentedControl` usage не использует `fullWidth`; ширина управляется стилями root.
+- AC: `layout.tsx` не содержит legacy-контракты `Badge variant="light|filled"`, `Alert variant`, `SegmentedControl fullWidth`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: обновленные контракты `Badge/Alert/SegmentedControl` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: import/manage/moderation/north-star/admin-drinks usage migration на новый контракт.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-O · Remove `Group.grow`, `Text.mt/mb`, `Box.pos/*` compat from admin layout layer (P1, status: done)
+- Цель: убрать дополнительные mantine-like совместимости в layout-примитивах и перейти на явную верстку через `Box style/className` в admin-экранах.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Depends on: `W5-N`.
+- AC: в admin usage отсутствуют `Group grow`, `Text mt/mb`, `Box pos/*` пропсы.
+- AC: `layout.tsx` не содержит `Group.grow` ветку, `Text.mt/mb`, `Box.pos/left/right/top/bottom/inset`.
+- AC: layout эквивалентен по поведению (двухколоночные группы реализованы через `Box` wrappers с `flex:1`).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: упрощенные `Box/Group/Text` контракты в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: explicit-layout migration в перечисленных `Admin*.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

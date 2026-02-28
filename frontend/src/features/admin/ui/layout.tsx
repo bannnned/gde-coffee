@@ -1,7 +1,5 @@
 import {
-  Children,
   forwardRef,
-  isValidElement,
   type ButtonHTMLAttributes,
   type CSSProperties,
   type ElementType,
@@ -13,8 +11,6 @@ import {
 
 import { Button as UIButton } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
-
-export { UIButton as Button };
 
 const spacingPx: Record<string, number> = {
   xs: 8,
@@ -89,12 +85,6 @@ type BoxProps = {
   pt?: unknown;
   mt?: unknown;
   mb?: unknown;
-  pos?: CSSProperties["position"];
-  left?: CSSProperties["left"];
-  right?: CSSProperties["right"];
-  top?: CSSProperties["top"];
-  bottom?: CSSProperties["bottom"];
-  inset?: CSSProperties["inset"];
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
@@ -109,12 +99,6 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     pt,
     mt,
     mb,
-    pos,
-    left,
-    right,
-    top,
-    bottom,
-    inset,
     ...rest
   },
   ref,
@@ -125,12 +109,6 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
       className={className}
       style={{
         ...withSpacingStyle({ p, px, py, pb, pt, mt, mb, style }),
-        position: pos,
-        left,
-        right,
-        top,
-        bottom,
-        inset,
       }}
       {...rest}
     >
@@ -193,7 +171,6 @@ type GroupProps = {
   justify?: CSSProperties["justifyContent"];
   align?: CSSProperties["alignItems"];
   wrap?: CSSProperties["flexWrap"];
-  grow?: boolean;
   mt?: unknown;
   mb?: unknown;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
@@ -206,12 +183,10 @@ export function Group({
   justify,
   align,
   wrap = "wrap",
-  grow = false,
   mt,
   mb,
   ...rest
 }: GroupProps) {
-  const items = Children.toArray(children);
   const gapPx = resolveSpace(gap) ?? 0;
   return (
     <div
@@ -226,22 +201,7 @@ export function Group({
       }}
       {...rest}
     >
-      {grow
-        ? items.map((child, index) => {
-            if (!isValidElement(child)) {
-              return (
-                <div key={`group-item-${index}`} style={{ flex: 1, minWidth: 0 }}>
-                  {child}
-                </div>
-              );
-            }
-            return (
-              <div key={child.key ?? `group-item-${index}`} style={{ flex: 1, minWidth: 0 }}>
-                {child}
-              </div>
-            );
-          })
-        : items}
+      {children}
     </div>
   );
 }
@@ -332,8 +292,6 @@ type TextProps = {
   ta?: CSSProperties["textAlign"];
   tt?: "uppercase" | "lowercase" | "capitalize";
   lineClamp?: number;
-  mt?: unknown;
-  mb?: unknown;
 } & Omit<HTMLAttributes<HTMLParagraphElement>, "style" | "children">;
 
 function mapColor(value: string): string {
@@ -355,8 +313,6 @@ export function Text({
   ta,
   tt,
   lineClamp,
-  mt,
-  mb,
   ...rest
 }: TextProps) {
   const fontSize =
@@ -387,7 +343,7 @@ export function Text({
               overflow: "hidden",
             }
           : null),
-        ...withSpacingStyle({ mt, mb, style }),
+        ...style,
       }}
       {...rest}
     >
@@ -437,7 +393,7 @@ type BadgeProps = {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  variant?: "filled" | "light" | "outline" | "dot";
+  variant?: "default" | "secondary" | "outline" | "dot";
   color?: "yellow" | "green" | "red" | "orange" | "gray";
   radius?: unknown;
 } & Omit<HTMLAttributes<HTMLSpanElement>, "style" | "children">;
@@ -453,16 +409,24 @@ export function Badge({
   children,
   className,
   style,
-  variant = "filled",
+  variant = "default",
   color,
   radius = "xl",
   ...rest
 }: BadgeProps) {
   const tone = badgeTone(color);
+  const isSoft = variant === "secondary" || variant === "dot";
+  const isSolid = variant === "default";
+  const isLowContrastTone = color === "yellow" || color === "gray";
+  const textColor = isSolid
+    ? isLowContrastTone
+      ? "var(--text)"
+      : "var(--color-on-accent)"
+    : "var(--text)";
   const background =
     variant === "outline"
       ? "transparent"
-      : variant === "light" || variant === "dot"
+      : isSoft
         ? "color-mix(in srgb, var(--surface) 72%, transparent)"
         : tone;
   return (
@@ -475,7 +439,7 @@ export function Badge({
         borderRadius: resolveRadius(radius) ?? 999,
         border: `1px solid ${tone}`,
         background,
-        color: variant === "filled" ? "var(--color-on-accent)" : "var(--text)",
+        color: textColor,
         fontSize: 12,
         fontWeight: 600,
         padding: "2px 8px",
@@ -510,6 +474,34 @@ export function Loader({ size = 16 }: { size?: number | string }) {
   );
 }
 
+type ButtonProps = {
+  children?: ReactNode;
+  variant?: "default" | "secondary" | "ghost" | "outline" | "destructive";
+  size?: "sm" | "md" | "lg" | "icon";
+  loading?: boolean;
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">;
+
+export function Button({
+  children,
+  variant = "default",
+  size = "md",
+  loading = false,
+  disabled,
+  ...rest
+}: ButtonProps) {
+  return (
+    <UIButton
+      variant={variant}
+      size={size}
+      disabled={disabled || loading}
+      {...rest}
+    >
+      {loading ? <Loader size={14} /> : null}
+      {children}
+    </UIButton>
+  );
+}
+
 type ActionIconProps = {
   children?: ReactNode;
   className?: string;
@@ -537,11 +529,10 @@ export function ActionIcon({
       variant={mappedVariant}
       className={className}
       style={{ width: size, height: size, ...style }}
-      disabled={disabled}
-      loading={loading}
+      disabled={disabled || loading}
       {...rest}
     >
-      {children}
+      {loading ? <Loader size={14} /> : children}
     </UIButton>
   );
 }
@@ -550,7 +541,6 @@ type SegmentedControlProps = {
   value: string;
   onChange: (value: string) => void;
   data: Array<{ value: string; label: string }>;
-  fullWidth?: boolean;
   styles?: {
     root?: CSSProperties;
     indicator?: CSSProperties;
@@ -562,14 +552,13 @@ export function SegmentedControl({
   value,
   onChange,
   data,
-  fullWidth = true,
   styles,
 }: SegmentedControlProps) {
   return (
     <div
       style={{
         display: "flex",
-        width: fullWidth ? "100%" : "max-content",
+        width: "100%",
         padding: 4,
         borderRadius: 12,
         border: "1px solid var(--border)",
@@ -613,7 +602,6 @@ type AlertProps = {
   style?: CSSProperties;
   icon?: ReactNode;
   color?: "red" | "blue" | "orange" | "green";
-  variant?: "light" | "filled";
   title?: ReactNode;
 } & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
 
@@ -623,7 +611,6 @@ export function Alert({
   style,
   icon,
   color = "blue",
-  variant = "light",
   title,
   ...rest
 }: AlertProps) {
@@ -640,11 +627,8 @@ export function Alert({
       className={cn("rounded-[14px] border px-3 py-2", className)}
       style={{
         borderColor: tone,
-        background:
-          variant === "filled"
-            ? tone
-            : "color-mix(in srgb, var(--surface) 82%, transparent)",
-        color: variant === "filled" ? "var(--color-on-accent)" : "var(--text)",
+        background: "color-mix(in srgb, var(--surface) 82%, transparent)",
+        color: "var(--text)",
         ...style,
       }}
       {...rest}

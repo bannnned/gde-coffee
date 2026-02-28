@@ -289,7 +289,7 @@ export default function AdminDrinksPage() {
               </ActionIcon>
               <Title order={3}>Справочник напитков</Title>
             </Group>
-            <Button variant="light" onClick={() => void Promise.all([loadDrinks(), loadUnknown()])}>
+            <Button variant="secondary" onClick={() => void Promise.all([loadDrinks(), loadUnknown()])}>
               Обновить
             </Button>
           </Group>

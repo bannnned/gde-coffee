@@ -150,30 +150,34 @@ export default function AdminFeedbackPage() {
               </ActionIcon>
               <Title order={3}>Отзывы о приложении</Title>
             </Group>
-            <Button variant="light" onClick={() => void load()} loading={loading}>
+            <Button variant="secondary" onClick={() => void load()} loading={loading}>
               Обновить
             </Button>
           </Group>
 
           <Paper withBorder radius="lg" p="md">
             <Stack gap="sm">
-              <Group grow>
-                <TextInput
-                  label="Поиск"
-                  placeholder="Текст отзыва, контакт, email, имя"
-                  value={queryDraft}
-                  onChange={(event) => setQueryDraft(event.currentTarget.value)}
-                />
-                <Select
-                  label="Лимит"
-                  data={LIMIT_OPTIONS}
-                  value={String(limit)}
-                  onChange={(value) => {
-                    const next = Number(value ?? "30");
-                    setLimit(Number.isFinite(next) && next > 0 ? next : 30);
-                    setOffset(0);
-                  }}
-                />
+              <Group>
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <TextInput
+                    label="Поиск"
+                    placeholder="Текст отзыва, контакт, email, имя"
+                    value={queryDraft}
+                    onChange={(event) => setQueryDraft(event.currentTarget.value)}
+                  />
+                </Box>
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Select
+                    label="Лимит"
+                    data={LIMIT_OPTIONS}
+                    value={String(limit)}
+                    onChange={(value) => {
+                      const next = Number(value ?? "30");
+                      setLimit(Number.isFinite(next) && next > 0 ? next : 30);
+                      setOffset(0);
+                    }}
+                  />
+                </Box>
               </Group>
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">{pageLabel}</Text>
@@ -197,7 +201,7 @@ export default function AdminFeedbackPage() {
                     Вперед
                   </Button>
                   <Button
-                    variant="light"
+                    variant="secondary"
                     disabled={loading}
                     onClick={() => {
                       setOffset(0);
@@ -230,7 +234,7 @@ export default function AdminFeedbackPage() {
                     <Table.Td>
                       <Text style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{item.message}</Text>
                       {item.user_agent && (
-                        <Text size="xs" c="dimmed" mt={6}>
+                        <Text size="xs" c="dimmed" style={{ marginTop: 6 }}>
                           UA: {item.user_agent}
                         </Text>
                       )}

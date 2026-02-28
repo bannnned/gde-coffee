@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   ActionIcon,
   Alert,
@@ -338,6 +338,7 @@ export default function AdminCafesImportPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AdminCafeImportResponse | null>(null);
   const [lastClientSkippedInvalid, setLastClientSkippedInvalid] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const preview = useMemo(() => buildPreview(jsonText), [jsonText]);
 
@@ -506,44 +507,58 @@ export default function AdminCafesImportPage() {
               <Title order={3}>Импорт кофеен из JSON</Title>
             </Group>
             <Group>
-              <Button variant="light" onClick={() => void navigate("/admin/cafes/manage")}>
+              <Button variant="secondary" onClick={() => void navigate("/admin/cafes/manage")}>
                 Управление кофейнями
               </Button>
-              <Button variant="light" onClick={() => setJsonText(sampleJSON)}>
+              <Button variant="secondary" onClick={() => setJsonText(sampleJSON)}>
                 Подставить пример
               </Button>
-              <Button component="label" variant="light">
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 Загрузить .json
-                <input type="file" accept=".json,application/json" hidden onChange={(event) => void handleLoadFile(event)} />
               </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                hidden
+                onChange={(event) => void handleLoadFile(event)}
+              />
             </Group>
           </Group>
 
-          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+          <Alert icon={<IconInfoCircle size={16} />} color="blue">
             Фото не загружаются. Импортирует только данные кофейни: name, address, latitude, longitude, description и amenities.
           </Alert>
 
           {preview.fatalError && (
-            <Alert color="red" variant="light" title="Ошибка формата JSON">
+            <Alert color="red" title="Ошибка формата JSON">
               {preview.fatalError}
             </Alert>
           )}
 
-          <Group grow align="end">
-            <Select
-              label="Режим дубликатов"
-              data={[
-                { value: "skip_existing", label: "skip_existing (пропускать)" },
-                { value: "upsert", label: "upsert (обновлять)" },
-              ]}
-              value={mode}
-              onChange={(value) => setMode(value === "upsert" ? "upsert" : "skip_existing")}
-            />
-            <Switch
-              label="Dry run (без записи в БД)"
-              checked={dryRun}
-              onChange={(event) => setDryRun(event.currentTarget.checked)}
-            />
+          <Group align="end">
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              <Select
+                label="Режим дубликатов"
+                data={[
+                  { value: "skip_existing", label: "skip_existing (пропускать)" },
+                  { value: "upsert", label: "upsert (обновлять)" },
+                ]}
+                value={mode}
+                onChange={(value) => setMode(value === "upsert" ? "upsert" : "skip_existing")}
+              />
+            </Box>
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              <Switch
+                label="Dry run (без записи в БД)"
+                checked={dryRun}
+                onChange={(event) => setDryRun(event.currentTarget.checked)}
+              />
+            </Box>
           </Group>
           <Switch
             label="Импортировать только валидные строки (невалидные пропускать локально)"
@@ -581,15 +596,15 @@ export default function AdminCafesImportPage() {
           {preview.issues.length > 0 && (
             <Group>
               <Button
-                size="xs"
-                variant="light"
+                size="sm"
+                variant="secondary"
                 onClick={() => downloadIssuesJSON("preview", previewIssuesForDownload)}
               >
                 Скачать ошибки предпроверки (JSON)
               </Button>
               <Button
-                size="xs"
-                variant="light"
+                size="sm"
+                variant="secondary"
                 onClick={() => downloadIssuesCSV("preview", previewIssuesForDownload)}
               >
                 Скачать ошибки предпроверки (CSV)
@@ -599,7 +614,7 @@ export default function AdminCafesImportPage() {
 
           {preview.rows.length > 0 && (
             <Box>
-              <Text fw={600} size="sm" mb={6}>
+              <Text fw={600} size="sm" style={{ marginBottom: 6 }}>
                 Предпросмотр перед импортом (первые {Math.min(preview.rows.length, maxPreviewRows)} строк)
               </Text>
               <Table striped withTableBorder withColumnBorders>
@@ -650,21 +665,21 @@ export default function AdminCafesImportPage() {
                 <Box>
                   <Group mb={6}>
                     <Button
-                      size="xs"
-                      variant="light"
+                      size="sm"
+                      variant="secondary"
                       onClick={() => downloadIssuesJSON("backend", backendIssuesForDownload)}
                     >
                       Скачать ошибки backend (JSON)
                     </Button>
                     <Button
-                      size="xs"
-                      variant="light"
+                      size="sm"
+                      variant="secondary"
                       onClick={() => downloadIssuesCSV("backend", backendIssuesForDownload)}
                     >
                       Скачать ошибки backend (CSV)
                     </Button>
                   </Group>
-                  <Text fw={600} size="sm" mb={6}>
+                  <Text fw={600} size="sm" style={{ marginBottom: 6 }}>
                     Проблемы (первые {Math.min(result.issues.length, 12)}):
                   </Text>
                   <Table striped withTableBorder withColumnBorders>
@@ -689,7 +704,7 @@ export default function AdminCafesImportPage() {
               )}
 
               <Box>
-                <Text fw={600} size="sm" mb={6}>
+                <Text fw={600} size="sm" style={{ marginBottom: 6 }}>
                   Последние статусы:
                 </Text>
                 <Table striped withTableBorder withColumnBorders>

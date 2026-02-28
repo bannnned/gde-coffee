@@ -293,12 +293,12 @@ export default function AdminCafesManagePage() {
               </ActionIcon>
               <Title order={3}>Управление кофейнями</Title>
             </Group>
-            <Button variant="light" onClick={() => void navigate("/admin/cafes/import")}>
+            <Button variant="secondary" onClick={() => void navigate("/admin/cafes/import")}>
               Импорт JSON
             </Button>
           </Group>
 
-          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+          <Alert icon={<IconInfoCircle size={16} />} color="blue">
             Поиск по названию, редактирование всех полей и удаление кофейни.
           </Alert>
 
@@ -328,42 +328,50 @@ export default function AdminCafesManagePage() {
                   Загружаем данные кофейни...
                 </Text>
               ) : editLoadState === "error" ? (
-                <Alert color="red" variant="light" title="Не удалось загрузить кофейню">
+                <Alert color="red" title="Не удалось загрузить кофейню">
                   Повторите выбор кофейни из списка.
                 </Alert>
               ) : (
                 <>
-                  <Group grow>
-                    <TextInput
-                      label="Название"
-                      value={editForm.name}
-                      onChange={(event) =>
-                        setEditForm((prev) => ({ ...prev, name: event.currentTarget.value }))
-                      }
-                    />
-                    <TextInput
-                      label="Адрес"
-                      value={editForm.address}
-                      onChange={(event) =>
-                        setEditForm((prev) => ({ ...prev, address: event.currentTarget.value }))
-                      }
-                    />
+                  <Group>
+                    <Box style={{ flex: 1, minWidth: 0 }}>
+                      <TextInput
+                        label="Название"
+                        value={editForm.name}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, name: event.currentTarget.value }))
+                        }
+                      />
+                    </Box>
+                    <Box style={{ flex: 1, minWidth: 0 }}>
+                      <TextInput
+                        label="Адрес"
+                        value={editForm.address}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, address: event.currentTarget.value }))
+                        }
+                      />
+                    </Box>
                   </Group>
-                  <Group grow>
-                    <TextInput
-                      label="Latitude"
-                      value={editForm.latitude}
-                      onChange={(event) =>
-                        setEditForm((prev) => ({ ...prev, latitude: event.currentTarget.value }))
-                      }
-                    />
-                    <TextInput
-                      label="Longitude"
-                      value={editForm.longitude}
-                      onChange={(event) =>
-                        setEditForm((prev) => ({ ...prev, longitude: event.currentTarget.value }))
-                      }
-                    />
+                  <Group>
+                    <Box style={{ flex: 1, minWidth: 0 }}>
+                      <TextInput
+                        label="Latitude"
+                        value={editForm.latitude}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, latitude: event.currentTarget.value }))
+                        }
+                      />
+                    </Box>
+                    <Box style={{ flex: 1, minWidth: 0 }}>
+                      <TextInput
+                        label="Longitude"
+                        value={editForm.longitude}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, longitude: event.currentTarget.value }))
+                        }
+                      />
+                    </Box>
                   </Group>
                   <Textarea
                     label="Описание"
@@ -385,7 +393,7 @@ export default function AdminCafesManagePage() {
                     <Button loading={saveLoading} onClick={() => void handleSave()}>
                       Сохранить изменения
                     </Button>
-                    <Button color="red" variant="light" loading={deleteLoading} onClick={() => void handleDelete()}>
+                    <Button variant="destructive" loading={deleteLoading} onClick={() => void handleDelete()}>
                       Удалить кофейню
                     </Button>
                   </Group>

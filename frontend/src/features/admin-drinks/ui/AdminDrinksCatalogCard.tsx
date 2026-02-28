@@ -37,16 +37,16 @@ export default function AdminDrinksCatalogCard({
               <Group justify="space-between" align="center">
                 <Group gap={8}>
                   <Text fw={600}>{item.name}</Text>
-                  <Badge variant="light">{item.id}</Badge>
-                  {!item.is_active && <Badge color="gray">hidden</Badge>}
+                  <Badge variant="secondary">{item.id}</Badge>
+                  {!item.is_active && <Badge variant="secondary" color="gray">hidden</Badge>}
                 </Group>
                 <Group gap={8}>
-                  <Button variant="light" size="xs" onClick={() => onSelectDrink(item.id)}>
+                  <Button variant="secondary" size="sm" onClick={() => onSelectDrink(item.id)}>
                     Редактировать
                   </Button>
                   <Button
-                    variant="subtle"
-                    size="xs"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => onToggleActive(item, !item.is_active)}
                   >
                     {item.is_active ? "Скрыть" : "Показать"}
