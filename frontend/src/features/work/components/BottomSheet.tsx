@@ -1,4 +1,3 @@
-import { Box, Paper, Text, useComputedColorScheme } from "@mantine/core";
 import {
   animate,
   motion,
@@ -13,7 +12,7 @@ import type {
 } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import classes from "./BottomSheet.module.css";
+import useAppColorScheme from "../../../hooks/useAppColorScheme";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
 
 type BottomSheetProps = PropsWithChildren<{
@@ -30,7 +29,7 @@ const SWIPE_VELOCITY = 900;
 const PEEK_HEIGHT_PX = 64;
 const SHEET_PADDING_PX = 12;
 
-const MotionPaper = motion(Paper);
+const MotionSheet = motion.div;
 
 export default function BottomSheet({
   sheetRef,
@@ -40,9 +39,7 @@ export default function BottomSheet({
   isListEmpty,
   children,
 }: BottomSheetProps) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
+  const { colorScheme: scheme } = useAppColorScheme();
   const {
     filtersBarHeight,
     safeViewportHeight,
@@ -187,21 +184,18 @@ export default function BottomSheet({
   };
 
   return (
-    <Box
-      pos="absolute"
+    <div
       ref={sheetRef}
-      bottom={0}
-      left={0}
-      right={0}
-      px="sm"
-      pb="sm"
-      className={classes.wrapper}
+      style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: "0 12px 12px",
+        pointerEvents: "none",
+      }}
     >
-      <MotionPaper
-        withBorder
-        radius="lg"
-        p="sm"
-        className={classes.sheet}
+      <MotionSheet
         data-state={sheetState}
         drag="y"
         dragControls={dragControls}
@@ -230,29 +224,85 @@ export default function BottomSheet({
               ? "0 18px 45px rgba(0,0,0,0.6)"
               : "0 18px 45px rgba(26,26,26,0.16)",
           backdropFilter: "blur(14px)",
+          borderRadius: 16,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          position: "relative",
+          pointerEvents: "auto",
         }}
       >
         <div
           ref={headerRef}
-          className={classes.header}
           onPointerDown={handleHeaderPointerDown}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            width: "100%",
+            flexShrink: 0,
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: 0,
+            zIndex: 3,
+            padding: 10,
+            background: "linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, transparent), color-mix(in srgb, var(--surface) 74%, transparent))",
+          }}
         >
-          <div className={classes.grabber} />
-          {isError && (
-            <Text c="red" size="sm">
+          <div
+            style={{
+              width: 72,
+              height: 16,
+              position: "relative",
+              cursor: "grab",
+              touchAction: "none",
+              userSelect: "none",
+              margin: "0 auto",
+            }}
+          >
+            <span
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: "50%",
+                height: 4,
+                transform: "translateY(-50%)",
+                borderRadius: 999,
+                background:
+                  "linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.65), rgba(255,255,255,0.15))",
+                boxShadow: "0 1px 0 var(--glass-border), 0 6px 14px var(--color-surface-overlay-soft)",
+              }}
+            />
+          </div>
+          {isError ? (
+            <p style={{ margin: 0, color: "var(--color-status-error)", fontSize: "0.82rem" }}>
               {errorText}
-            </Text>
-          )}
+            </p>
+          ) : null}
           {header}
         </div>
         <div
-          className={classes.list}
           data-empty={isListEmpty ? "true" : "false"}
           aria-hidden={sheetState === "peek"}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            width: "100%",
+            overflowY: isListEmpty ? "hidden" : "auto",
+            WebkitOverflowScrolling: "touch",
+            padding: "calc(var(--sheet-header-height, 0px) + 12px) 8px 12px",
+            opacity: sheetState === "peek" ? 0 : 1,
+            visibility: sheetState === "peek" ? "hidden" : "visible",
+            transform: sheetState === "peek" ? "translateY(-8px)" : "translateY(0)",
+            transition: "opacity 140ms ease, transform 140ms ease",
+            pointerEvents: sheetState === "peek" ? "none" : "auto",
+          }}
         >
           {children}
         </div>
-      </MotionPaper>
-    </Box>
+      </MotionSheet>
+    </div>
   );
 }

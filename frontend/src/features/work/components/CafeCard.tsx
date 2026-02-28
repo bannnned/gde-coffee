@@ -1,14 +1,5 @@
-﻿import {
-  Badge,
-  Box,
-  Button,
-  Group,
-  Paper,
-  Stack,
-  Text,
-  useComputedColorScheme,
-} from "@mantine/core";
-
+import { Button as UIButton } from "../../../components/ui";
+import useAppColorScheme from "../../../hooks/useAppColorScheme";
 import type { Cafe } from "../types";
 import { AMENITY_LABELS, WORK_UI_TEXT } from "../constants";
 import { formatDistance } from "../utils";
@@ -24,9 +15,7 @@ export default function CafeCard({
   onOpen2gis,
   onOpenYandex,
 }: CafeCardProps) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
+  const { colorScheme: scheme } = useAppColorScheme();
 
   const cardStyles = {
     zIndex: 1,
@@ -44,65 +33,104 @@ export default function CafeCard({
         : "0 18px 40px rgba(26, 26, 26, 0.14), 0 8px 18px rgba(26, 26, 26, 0.12)",
     backdropFilter: "blur(18px) saturate(160%)",
     WebkitBackdropFilter: "blur(18px) saturate(160%)",
+    borderRadius: 16,
+    padding: 10,
   } as const;
 
   const badgeStyles = {
-    root: {
-      background:
-        scheme === "dark"
-          ? "rgba(255, 255, 240, 0.08)"
-          : "rgba(255, 255, 240, 0.7)",
-      border:
-        scheme === "dark"
-          ? "1px solid rgba(255, 255, 240, 0.18)"
-          : "1px solid rgba(26, 26, 26, 0.12)",
-      color: scheme === "dark" ? "rgba(255, 255, 240, 0.95)" : "#1A1A1A",
-      backdropFilter: "blur(12px)",
-      WebkitBackdropFilter: "blur(12px)",
-    },
+    background:
+      scheme === "dark"
+        ? "rgba(255, 255, 240, 0.08)"
+        : "rgba(255, 255, 240, 0.7)",
+    border:
+      scheme === "dark"
+        ? "1px solid rgba(255, 255, 240, 0.18)"
+        : "1px solid rgba(26, 26, 26, 0.12)",
+    color: scheme === "dark" ? "rgba(255, 255, 240, 0.95)" : "#1A1A1A",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
   } as const;
 
   return (
-    <Paper withBorder radius="lg" p="sm" style={cardStyles}>
-      <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
-        <Box style={{ minWidth: 0, flex: 1 }}>
-          <Text fw={700} c="text" size="md" lineClamp={1} title={cafe.name}>
-            {cafe.name}
-          </Text>
-          <Text c="dimmed" size="sm" lineClamp={1} title={cafe.address}>
-            {cafe.address}
-          </Text>
-          <Text size="sm" mt={6}>
-            {formatDistance(cafe.distance_m)} В· {WORK_UI_TEXT.workScorePrefix}{" "}
-            {Math.round(cafe.work_score)}
-          </Text>
-          <Group
-            gap={6}
-            mt={8}
-            wrap="nowrap"
+    <div style={cardStyles}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          flexWrap: "nowrap",
+        }}
+      >
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p
             style={{
+              margin: 0,
+              fontWeight: 700,
+              color: "var(--text)",
+              fontSize: "1rem",
+              lineHeight: 1.25,
+              whiteSpace: "nowrap",
               overflow: "hidden",
-              WebkitMaskImage: "linear-gradient(90deg, #000 85%, transparent)",
+              textOverflow: "ellipsis",
+            }}
+            title={cafe.name}
+          >
+            {cafe.name}
+          </p>
+          <p
+            style={{
+              margin: "2px 0 0",
+              color: "var(--muted)",
+              fontSize: "0.86rem",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+            title={cafe.address}
+          >
+            {cafe.address}
+          </p>
+          <p style={{ margin: "6px 0 0", fontSize: "0.82rem", color: "var(--text)" }}>
+            {formatDistance(cafe.distance_m)} · {WORK_UI_TEXT.workScorePrefix} {Math.round(cafe.work_score)}
+          </p>
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              marginTop: 8,
+              overflow: "hidden",
               maskImage: "linear-gradient(90deg, #000 85%, transparent)",
+              WebkitMaskImage: "linear-gradient(90deg, #000 85%, transparent)",
             }}
           >
-            {cafe.amenities.map((a) => (
-              <Badge key={a} variant="light" styles={badgeStyles}>
-                {AMENITY_LABELS[a] ?? a}
-              </Badge>
+            {cafe.amenities.map((amenity) => (
+              <span
+                key={amenity}
+                style={{
+                  ...badgeStyles,
+                  borderRadius: 999,
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  padding: "3px 8px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {AMENITY_LABELS[amenity] ?? amenity}
+              </span>
             ))}
-          </Group>
-        </Box>
+          </div>
+        </div>
 
-        <Stack gap={6} miw={160} style={{ flexShrink: 0 }}>
-          <Button size="xs" onClick={() => onOpen2gis(cafe)}>
+        <div style={{ display: "grid", gap: 6, minWidth: 130, flexShrink: 0 }}>
+          <UIButton size="sm" onClick={() => onOpen2gis(cafe)}>
             {WORK_UI_TEXT.route2gis}
-          </Button>
-          <Button size="xs" variant="light" onClick={() => onOpenYandex(cafe)}>
+          </UIButton>
+          <UIButton size="sm" variant="secondary" onClick={() => onOpenYandex(cafe)}>
             {WORK_UI_TEXT.routeYandex}
-          </Button>
-        </Stack>
-      </Group>
-    </Paper>
+          </UIButton>
+        </div>
+      </div>
+    </div>
   );
 }

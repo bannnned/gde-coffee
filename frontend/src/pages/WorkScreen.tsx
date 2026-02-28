@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { Box } from "@mantine/core";
 
 import Map from "../components/Map";
 import type { Amenity, Cafe } from "../types";
@@ -75,15 +74,17 @@ export default function WorkScreen() {
   }
 
   return (
-    <Box
-      pos="relative"
-      h="100dvh"
-      w="100%"
+    <div
       data-sheet-state={sheetState}
-      style={{ ["--sheet-height" as string]: `${sheetHeight}px` }}
+      style={{
+        position: "relative",
+        height: "100dvh",
+        width: "100%",
+        ["--sheet-height" as string]: `${sheetHeight}px`,
+      }}
     >
       {/* MAP full screen */}
-      <Box pos="absolute" inset={0}>
+      <div style={{ position: "absolute", inset: 0 }}>
         <Map
           center={userCenter}
           zoom={13}
@@ -94,7 +95,7 @@ export default function WorkScreen() {
           focusLngLat={focusLngLat}
           onCafeSelect={selectCafe}
         />
-      </Box>
+      </div>
 
       <FiltersBar
         selectedAmenities={selectedAmenities}
@@ -144,6 +145,6 @@ export default function WorkScreen() {
         selectedAmenities={selectedAmenities}
         onChangeAmenities={setSelectedAmenities}
       />
-    </Box>
+    </div>
   );
 }

@@ -1,5 +1,4 @@
-import { ActionIcon, Box } from "@mantine/core";
-
+import { Button as UIButton } from "../../../components/ui";
 import { WORK_ICONS } from "../constants";
 
 type FloatingControlsProps = {
@@ -12,25 +11,29 @@ export default function FloatingControls({
   isLocating = false,
 }: FloatingControlsProps) {
   return (
-    <Box
-      pos="absolute"
+    <div
       style={{
+        position: "absolute",
         right: 12,
         bottom: "calc(var(--sheet-height) + 12px)",
         zIndex: 8,
       }}
     >
-      <ActionIcon
-        size={42}
-        variant="transparent"
+      <UIButton
+        type="button"
+        size="icon"
+        variant="ghost"
         className="glass-action glass-action--square"
         aria-label="Найти меня"
         onClick={onLocate}
-        loading={isLocating}
         disabled={isLocating}
       >
-        <WORK_ICONS.locate size={18} />
-      </ActionIcon>
-    </Box>
+        {isLocating ? (
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        ) : (
+          <WORK_ICONS.locate size={18} />
+        )}
+      </UIButton>
+    </div>
   );
 }

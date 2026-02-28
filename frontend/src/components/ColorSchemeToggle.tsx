@@ -1,21 +1,23 @@
-import { ActionIcon, useComputedColorScheme, useMantineColorScheme } from '@mantine/core'
-import { IconSun, IconMoon } from '@tabler/icons-react'
+import { IconMoon, IconSun } from "@tabler/icons-react";
+
+import useAppColorScheme from "../hooks/useAppColorScheme";
+import { Button as UIButton } from "./ui";
 
 export function ColorSchemeToggle() {
-  const { setColorScheme } = useMantineColorScheme()
-  const computed = useComputedColorScheme('light', { getInitialValueInEffect: true })
+  const { setColorScheme, colorScheme } = useAppColorScheme();
 
-  const next = computed === 'light' ? 'dark' : 'light'
+  const next = colorScheme === "light" ? "dark" : "light";
 
   return (
-    <ActionIcon
-      variant="transparent"
-      size={42}
+    <UIButton
+      type="button"
+      variant="ghost"
+      size="icon"
       className="glass-action glass-action--square"
       aria-label="Toggle color scheme"
       onClick={() => setColorScheme(next)}
     >
-      {computed === 'light' ? <IconMoon size={18} /> : <IconSun size={18} />}
-    </ActionIcon>
-  )
+      {colorScheme === "light" ? <IconMoon size={18} /> : <IconSun size={18} />}
+    </UIButton>
+  );
 }

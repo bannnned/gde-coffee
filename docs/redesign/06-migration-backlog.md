@@ -452,3 +452,37 @@ Critical path stack-transition:
 - Артефакт: de-Mantine auth/account pages + styles в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/LoginPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/VerifyEmailPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ConfirmEmailChangePage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ResetPasswordPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/FavoritesPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/FavoritesPage.module.css`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/LoginPage.module.css`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ConfirmPage.module.css`.
 - Артефакт: theme hook abstraction в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/hooks/useAppColorScheme.ts` и применение в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/SettingsScreen.tsx`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-B · Shared user-layer de-Mantine cleanup (P1, status: done)
+- Цель: дочистить shared пользовательский слой от прямых импортов Mantine и закрепить Radix-only runtime path для overlay-bridge.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/Map.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ColorSchemeToggle.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx`.
+- Depends on: `W5-A`.
+- AC: `Map` больше не импортирует `@mantine/core`; color-scheme берется через app theme-hook.
+- AC: `ColorSchemeToggle` использует `components/ui/Button`, без Mantine `ActionIcon`.
+- AC: `AppModal`/`AppSheet` не имеют runtime fallback на Mantine (`overlay` bridge работает через Radix path), API-совместимость вызовов сохранена.
+- Артефакт: de-Mantine map theme usage в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/Map.tsx`.
+- Артефакт: de-Mantine color toggle control в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ColorSchemeToggle.tsx`.
+- Артефакт: Radix-only overlay bridge runtime в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-C · Bridge inputs + legacy work-flow de-Mantine (P1, status: done)
+- Цель: убрать remaining Mantine из bridge input-контрактов и legacy work flow, сохранив рабочие пользовательские сценарии фильтрации/навигации/отзывов.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/select.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/tags-input.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/WorkScreen.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/work/components/BottomSheet.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/work/components/CafeCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/work/components/CafeList.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/work/components/FloatingControls.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/work/components/FiltersBar.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/work/components/SettingsDrawer.tsx`.
+- Depends on: `W5-B`.
+- AC: `AppSelect` работает без Mantine runtime и поддерживает текущие сценарии (`searchable`, `clearable`, `searchValue/onSearchChange`, placeholder, option pick).
+- AC: `AppTagsInput` работает без Mantine runtime и поддерживает текущие сценарии (`value/onChange`, suggestions, split chars, max tags, clearable).
+- AC: `WorkScreen` и `features/work/components/*` не используют `@mantine/core`.
+- Артефакт: Radix/native bridge select in `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/select.tsx`.
+- Артефакт: Radix/native bridge tags input in `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/tags-input.tsx`.
+- Артефакт: de-Mantine legacy work flow in `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/WorkScreen.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/work/components/*`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

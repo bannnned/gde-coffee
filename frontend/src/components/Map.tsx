@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IconMinus, IconPlus } from "@tabler/icons-react";
-import { useComputedColorScheme } from "@mantine/core";
 import maplibregl, {
   GeoJSONSource,
   Map as MLMap,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import useAppColorScheme from "../hooks/useAppColorScheme";
 import type { Cafe } from "../types";
 import pinUrl from "../assets/pin.png";
 import cupUrl from "../assets/cup.png";
@@ -439,9 +439,7 @@ export default function Map({
   filtersBarHeight = 0,
   controlsHidden = false,
 }: Props) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
+  const { colorScheme: scheme } = useAppColorScheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const onCafeSelectRef = useRef(onCafeSelect);

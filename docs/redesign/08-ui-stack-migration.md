@@ -30,6 +30,8 @@
 12. `W4-D` закрыт (`done`): de-Mantine migration для selected-card hero и rating/admin-diagnostics panels (`CafeCardHero`, `RatingPanel`, `AdminDiagnosticsPanel`).
 13. `W4-E` закрыт (`done`): de-Mantine migration для photo/proposal модалок (`CafePhotoSubmissionModal`, `CafePhotoAdminModal`, `CafeProposalModal`).
 14. `W5-A` закрыт (`done`): de-Mantine migration для user shell/auth/account flow (`AuthGate`, `LoginPage`, `VerifyEmailPage`, `ConfirmEmailChangePage`, `ResetPasswordPage`, `FavoritesPage`, `SettingsScreen` theme hook usage).
+15. `W5-B` закрыт (`done`): de-Mantine cleanup shared user-layer (`Map`, `ColorSchemeToggle`, `ui/bridge/overlay` Radix-only runtime path).
+16. `W5-C` закрыт (`done`): de-Mantine migration для bridge input layer (`AppSelect`, `AppTagsInput`) и legacy `WorkScreen/features/work` потока.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

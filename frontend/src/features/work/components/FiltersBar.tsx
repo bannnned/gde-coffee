@@ -1,17 +1,9 @@
-﻿import {
-  ActionIcon,
-  Badge,
-  Box,
-  Chip,
-  Group,
-  Title,
-  useComputedColorScheme,
-  useMantineTheme,
-} from "@mantine/core";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { ColorSchemeToggle } from "../../../components/ColorSchemeToggle";
 import logoUrl from "../../../assets/logo.png";
+import { Button as UIButton } from "../../../components/ui";
+import useAppColorScheme from "../../../hooks/useAppColorScheme";
+import { ColorSchemeToggle } from "../../../components/ColorSchemeToggle";
 import type { Amenity } from "../types";
 import { AMENITY_LABELS, WORK_ICONS, WORK_UI_TEXT } from "../constants";
 import classes from "./FiltersBar.module.css";
@@ -32,10 +24,7 @@ export default function FiltersBar({
   onOpenSettings,
   showFetchingBadge,
 }: FiltersBarProps) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
-  const theme = useMantineTheme();
+  const { colorScheme: scheme } = useAppColorScheme();
   const chipsScrollerRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const chipMeasureRefs = useRef<Record<string, HTMLSpanElement | null>>({});
@@ -52,13 +41,13 @@ export default function FiltersBar({
   const { setFiltersBarHeight } = useLayoutMetrics();
 
   const amenityChipLabelBaseStyles = {
-    boxSizing: "border-box",
+    boxSizing: "border-box" as const,
     minWidth: 72,
     display: "inline-flex",
     justifyContent: "center",
     alignItems: "center",
     fontWeight: 500,
-    fontSize: theme.fontSizes.xs,
+    fontSize: 12,
     lineHeight: 1,
     letterSpacing: 0,
     transform: "none",
@@ -80,10 +69,9 @@ export default function FiltersBar({
         ? "0 6px 18px rgba(0, 0, 0, 0.5)"
         : "0 6px 16px rgba(26, 26, 26, 0.14)",
     outline: "none",
-    "&:active": {
-      transform: "none",
-    },
-  } as const;
+    borderRadius: 999,
+    color: scheme === "dark" ? "rgba(255,255,240,0.95)" : "#1A1A1A",
+  };
 
   const amenityChipLabelCheckedStyles = {
     background:
@@ -127,7 +115,7 @@ export default function FiltersBar({
       setVisibleAmenities((prev) => {
         if (
           prev.length === next.length &&
-          prev.every((v, i) => v === next[i])
+          prev.every((value, idx) => value === next[idx])
         ) {
           return prev;
         }
@@ -148,7 +136,7 @@ export default function FiltersBar({
       observer.disconnect();
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [allAmenities, selectedKey, scheme, theme.fontSizes.xs]);
+  }, [allAmenities, selectedKey, scheme]);
 
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -173,128 +161,115 @@ export default function FiltersBar({
   }, [setFiltersBarHeight]);
 
   return (
-    <Box
-      pos="absolute"
-      top={0}
-      left={0}
-      right={0}
-      px="sm"
-      pb="sm"
-      pt="calc(var(--safe-top) + var(--mantine-spacing-sm))"
+    <div
       className={classes.root}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        padding: "calc(var(--safe-top) + 12px) 12px 12px",
+      }}
       data-ui="filters-bar"
     >
-      <Group
-        justify="space-between"
+      <div
         className={classes.header}
         data-ui="filters-bar-header"
         ref={headerRef}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}
       >
-        <Title order={4} className={classes.logo} style={{ margin: 0 }}>
+        <div className={classes.logo}>
           <img src={logoUrl} alt="" className={classes.logoMark} />
           <span>{WORK_UI_TEXT.title}</span>
-        </Title>
+        </div>
 
-        <Group gap="xs">
-          <ActionIcon
-            variant="transparent"
-            size={42}
+        <div style={{ display: "flex", gap: 8 }}>
+          <UIButton
+            type="button"
+            variant="ghost"
+            size="icon"
             className="glass-action glass-action--square"
             aria-label={WORK_UI_TEXT.settingsAria}
             onClick={onOpenSettings}
           >
             <WORK_ICONS.settings size={18} />
-          </ActionIcon>
+          </UIButton>
 
           <ColorSchemeToggle />
-        </Group>
-      </Group>
+        </div>
+      </div>
 
-      <Group mt="xs" gap="xs" wrap="nowrap" className={classes.chipsRow}>
+      <div className={classes.chipsRow} style={{ marginTop: 8, gap: 8 }}>
         <div
           className={classes.chipsScroller}
           ref={chipsScrollerRef}
-          style={{ display: "flex", justifyContent: "center", gap: '4px' }}
+          style={{ display: "flex", justifyContent: "center", gap: 4 }}
         >
-          <Chip.Group
-            className={classes.chipsGroup}
-            multiple
-            value={selectedAmenities}
-            onChange={(v) => onChangeAmenities(v as Amenity[])}
-          >
-            {visibleAmenities.map((a) => {
-              const isChecked = selectedAmenities.includes(a);
-              return (
-                <Chip
-                  className="main-filters"
-                  key={a}
-                  value={a}
-                  size="xs"
-                  radius="xl"
-                  variant="filled"
-                  icon={null}
-                  styles={{
-                    iconWrapper: { display: "none" },
-                    label: {
-                      ...amenityChipLabelBaseStyles,
-                      ...(isChecked ? amenityChipLabelCheckedStyles : null),
-                    },
-                  }}
-                >
-                  {AMENITY_LABELS[a]}
-                </Chip>
-              );
-            })}
-          </Chip.Group>
+          {visibleAmenities.map((amenity) => {
+            const isChecked = selectedAmenities.includes(amenity);
+            return (
+              <button
+                key={amenity}
+                type="button"
+                className="ui-focus-ring"
+                onClick={() => {
+                  if (isChecked) {
+                    onChangeAmenities(selectedAmenities.filter((value) => value !== amenity));
+                  } else {
+                    onChangeAmenities([...selectedAmenities, amenity]);
+                  }
+                }}
+                style={{
+                  ...amenityChipLabelBaseStyles,
+                  ...(isChecked ? amenityChipLabelCheckedStyles : null),
+                }}
+              >
+                {AMENITY_LABELS[amenity]}
+              </button>
+            );
+          })}
         </div>
 
-        {showFetchingBadge && (
-          <Badge
+        {showFetchingBadge ? (
+          <span
             className={classes.fetchBadge}
-            variant="filled"
-            styles={{
-              root: {
-                backdropFilter: "blur(8px)",
-                background: "rgba(0,0,0,0.65)",
-              },
+            style={{
+              borderRadius: 999,
+              padding: "4px 10px",
+              fontSize: "0.75rem",
+              color: "#fff",
+              backdropFilter: "blur(8px)",
+              background: "rgba(0,0,0,0.65)",
             }}
           >
             {WORK_UI_TEXT.fetching}
-          </Badge>
-        )}
-      </Group>
+          </span>
+        ) : null}
+      </div>
 
       <div className={classes.chipsMeasure} aria-hidden="true">
-        {allAmenities.map((a) => {
-          const isChecked = selectedAmenities.includes(a);
+        {allAmenities.map((amenity) => {
+          const isChecked = selectedAmenities.includes(amenity);
           return (
             <span
-              key={a}
-              ref={(el) => {
-                chipMeasureRefs.current[a] = el;
+              key={amenity}
+              ref={(node) => {
+                chipMeasureRefs.current[amenity] = node;
               }}
               className={classes.chipMeasureItem}
             >
-              <Chip
-                value={a}
-                size="xs"
-                radius="xl"
-                variant="filled"
-                icon={null}
-                styles={{
-                  iconWrapper: { display: "none" },
-                  label: {
-                    ...amenityChipLabelBaseStyles,
-                    ...(isChecked ? amenityChipLabelCheckedStyles : null),
-                  },
+              <span
+                style={{
+                  ...amenityChipLabelBaseStyles,
+                  ...(isChecked ? amenityChipLabelCheckedStyles : null),
                 }}
               >
-                {AMENITY_LABELS[a]}
-              </Chip>
+                {AMENITY_LABELS[amenity]}
+              </span>
             </span>
           );
         })}
       </div>
-    </Box>
+    </div>
   );
 }

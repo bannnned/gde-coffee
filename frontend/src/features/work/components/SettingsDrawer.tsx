@@ -1,14 +1,6 @@
-import {
-  Button,
-  Chip,
-  Drawer,
-  Group,
-  Stack,
-  Text,
-  useComputedColorScheme,
-  useMantineTheme,
-} from "@mantine/core";
-
+import { Button as UIButton } from "../../../components/ui";
+import useAppColorScheme from "../../../hooks/useAppColorScheme";
+import { AppModal } from "../../../ui/bridge";
 import type { Amenity } from "../types";
 import { AMENITY_LABELS, WORK_UI_TEXT } from "../constants";
 
@@ -23,6 +15,12 @@ type SettingsDrawerProps = {
 
 const RADIUS_OPTIONS = [1000, 2500, 5000, 0] as const;
 
+function formatRadiusLabel(value: number): string {
+  if (value === 0) return WORK_UI_TEXT.radiusAll;
+  if (value === 2500) return "2.5 км";
+  return `${value / 1000} км`;
+}
+
 export default function SettingsDrawer({
   opened,
   onClose,
@@ -31,105 +29,9 @@ export default function SettingsDrawer({
   selectedAmenities,
   onChangeAmenities,
 }: SettingsDrawerProps) {
-  const scheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
-  const theme = useMantineTheme();
+  const { colorScheme: scheme } = useAppColorScheme();
 
-  const drawerStyles = {
-    content: {
-      background:
-        scheme === "dark"
-          ? "rgba(26, 26, 26, 0.78)"
-          : "rgba(255, 255, 240, 0.82)",
-      backdropFilter: "blur(18px) saturate(180%)",
-      WebkitBackdropFilter: "blur(18px) saturate(180%)",
-      borderTopLeftRadius: theme.radius.xl,
-      borderTopRightRadius: theme.radius.xl,
-      border: `1px solid ${
-        scheme === "dark"
-          ? "rgba(255, 255, 240, 0.18)"
-          : "rgba(255, 255, 240, 0.8)"
-      }`,
-      boxShadow:
-        scheme === "dark"
-          ? "0 -18px 40px rgba(0, 0, 0, 0.7)"
-          : "0 -18px 40px rgba(26, 26, 26, 0.18)",
-    },
-    header: {
-      background: "transparent",
-      borderBottom: `1px solid ${
-        scheme === "dark"
-          ? "rgba(255, 255, 240, 0.12)"
-          : "rgba(255, 255, 240, 0.6)"
-      }`,
-    },
-    body: {
-      paddingTop: theme.spacing.sm,
-    },
-    overlay: {
-      backdropFilter: "blur(2px)",
-      backgroundColor:
-        scheme === "dark"
-          ? "rgba(26, 26, 26, 0.45)"
-          : "rgba(26, 26, 26, 0.12)",
-    },
-  } as const;
-
-  const glassButtonBase = {
-    background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(26,26,26,0.7), rgba(26,26,26,0.5))"
-        : "linear-gradient(135deg, rgba(255,255,240,0.9), rgba(255,255,240,0.65))",
-    border: `1px solid ${
-      scheme === "dark"
-        ? "rgba(255, 255, 240, 0.2)"
-        : "rgba(255, 255, 240, 0.75)"
-    }`,
-    boxShadow:
-      scheme === "dark"
-        ? "0 6px 18px rgba(0, 0, 0, 0.55)"
-        : "0 6px 16px rgba(26, 26, 26, 0.14)",
-    backdropFilter: "blur(16px) saturate(180%)",
-    WebkitBackdropFilter: "blur(16px) saturate(180%)",
-    color: scheme === "dark" ? "#FFFFF0" : "#1A1A1A",
-  } as const;
-
-  const glassButtonActive = {
-    background:
-      scheme === "dark"
-        ? "linear-gradient(135deg, rgba(69,126,115,0.45), rgba(69,126,115,0.3))"
-        : "linear-gradient(135deg, rgba(69,126,115,0.35), rgba(69,126,115,0.22))",
-    border: `1px solid ${
-      scheme === "dark" ? "rgba(69,126,115,0.55)" : "rgba(69,126,115,0.45)"
-    }`,
-    color: scheme === "dark" ? "#FFFFF0" : "#1A1A1A",
-    boxShadow:
-      scheme === "dark"
-        ? "0 8px 20px rgba(69, 126, 115, 0.35)"
-        : "0 8px 18px rgba(69, 126, 115, 0.25)",
-  } as const;
-
-  const glassButtonStyles = (active: boolean) => ({
-    root: {
-      ...(glassButtonBase as object),
-      ...(active ? (glassButtonActive as object) : null),
-    },
-  });
-
-  const amenityChipLabelBaseStyles = {
-    boxSizing: "border-box",
-    minWidth: 72,
-    display: "inline-flex",
-    justifyContent: "center",
-    alignItems: "center",
-    fontWeight: 500,
-    fontSize: theme.fontSizes.xs,
-    lineHeight: 1,
-    letterSpacing: 0,
-    transform: "none",
-    paddingInline: 10,
-    paddingBlock: 6,
+  const chipBaseStyles = {
     border: `1px solid ${
       scheme === "dark"
         ? "rgba(255, 255, 240, 0.18)"
@@ -145,13 +47,10 @@ export default function SettingsDrawer({
       scheme === "dark"
         ? "0 6px 18px rgba(0, 0, 0, 0.5)"
         : "0 6px 16px rgba(26, 26, 26, 0.14)",
-    outline: "none",
-    "&:active": {
-      transform: "none",
-    },
+    color: scheme === "dark" ? "rgba(255,255,240,0.95)" : "#1A1A1A",
   } as const;
 
-  const amenityChipLabelCheckedStyles = {
+  const chipActiveStyles = {
     background:
       scheme === "dark"
         ? "linear-gradient(135deg, rgba(69,126,115,0.45), rgba(69,126,115,0.3))"
@@ -162,84 +61,82 @@ export default function SettingsDrawer({
       scheme === "dark"
         ? "0 8px 20px rgba(69, 126, 115, 0.35)"
         : "0 8px 18px rgba(69, 126, 115, 0.25)",
-    transform: "none",
   } as const;
 
   return (
-    <Drawer
-      opened={opened}
-      onClose={onClose}
-      position="bottom"
-      size="sm"
-      title={WORK_UI_TEXT.settingsAria}
-      styles={drawerStyles}
+    <AppModal
+      open={opened}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+      title={<span style={{ fontWeight: 700 }}>{WORK_UI_TEXT.settingsAria}</span>}
+      implementation="radix"
+      presentation="sheet"
+      contentClassName="w-full"
+      bodyClassName="px-4 pb-5 pt-3"
     >
-      <Stack gap="md">
-        <Stack gap="xs">
-          <Text>{WORK_UI_TEXT.filtersTitle}</Text>
-          <Chip.Group
-            multiple
-            value={selectedAmenities}
-            onChange={(v) => onChangeAmenities(v as Amenity[])}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 4,
-                alignItems: "center",
-              }}
-            >
-              {(Object.keys(AMENITY_LABELS) as Amenity[]).map((a) => {
-                const isChecked = selectedAmenities.includes(a);
-                return (
-                  <Chip
-                    key={a}
-                    value={a}
-                    size="xs"
-                    radius="xl"
-                    variant="filled"
-                    icon={null}
-                    styles={{
-                      iconWrapper: { display: "none" },
-                      label: {
-                        ...amenityChipLabelBaseStyles,
-                        ...(isChecked ? amenityChipLabelCheckedStyles : null),
-                      },
-                    }}
-                  >
-                    {AMENITY_LABELS[a]}
-                  </Chip>
-                );
-              })}
-            </div>
-          </Chip.Group>
-        </Stack>
+      <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gap: 8 }}>
+          <p style={{ margin: 0, fontSize: "0.92rem", fontWeight: 600, color: "var(--text)" }}>
+            {WORK_UI_TEXT.filtersTitle}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {(Object.keys(AMENITY_LABELS) as Amenity[]).map((amenity) => {
+              const isChecked = selectedAmenities.includes(amenity);
+              return (
+                <button
+                  key={amenity}
+                  type="button"
+                  className="ui-focus-ring"
+                  onClick={() => {
+                    if (isChecked) {
+                      onChangeAmenities(selectedAmenities.filter((value) => value !== amenity));
+                    } else {
+                      onChangeAmenities([...selectedAmenities, amenity]);
+                    }
+                  }}
+                  style={{
+                    ...chipBaseStyles,
+                    ...(isChecked ? chipActiveStyles : null),
+                    borderRadius: 999,
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    padding: "6px 10px",
+                  }}
+                >
+                  {AMENITY_LABELS[amenity]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-        <Group justify="space-between">
-          <Text>{WORK_UI_TEXT.radiusTitle}</Text>
-          <Group gap="xs">
-            {RADIUS_OPTIONS.map((value) => (
-              <Button
-                key={value}
-                variant="transparent"
-                size="xs"
-                styles={glassButtonStyles(radiusM === value)}
-                onClick={() => onRadiusChange(value)}
-              >
-                {value === 0
-                  ? WORK_UI_TEXT.radiusAll
-                  : `${value / 1000}${value === 2500 ? "2.5" : ""}`.includes(
-                        "2.5",
-                      )
-                    ? "2.5 км"
-                    : `${value / 1000} км`}
-              </Button>
-            ))}
-          </Group>
-        </Group>
-
-      </Stack>
-    </Drawer>
+        <div style={{ display: "grid", gap: 8 }}>
+          <p style={{ margin: 0, fontSize: "0.92rem", fontWeight: 600, color: "var(--text)" }}>
+            {WORK_UI_TEXT.radiusTitle}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {RADIUS_OPTIONS.map((value) => {
+              const isActive = radiusM === value;
+              return (
+                <UIButton
+                  key={value}
+                  type="button"
+                  size="sm"
+                  variant={isActive ? "default" : "secondary"}
+                  onClick={() => onRadiusChange(value)}
+                  style={{
+                    ...(isActive ? chipActiveStyles : chipBaseStyles),
+                    borderRadius: 12,
+                  }}
+                >
+                  {formatRadiusLabel(value)}
+                </UIButton>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </AppModal>
   );
 }
