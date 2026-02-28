@@ -2,14 +2,11 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import {
   ActionIcon,
   Badge,
-  Box,
   Button,
   Container,
-  Group,
   Paper,
   SegmentedControl,
   Select,
-  Stack,  
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconCheck, IconX } from "@tabler/icons-react";
@@ -236,28 +233,28 @@ export default function AdminModerationPage() {
 
   if (status === "loading") {
     return (
-      <Box style={{ padding: 20 }}>
+      <div style={{ padding: 20 }}>
         <p className="m-0 text-sm text-text">Загрузка...</p>
-      </Box>
+      </div>
     );
   }
 
   if (!allowed) {
     return (
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
-        <Stack style={{ gap: 16 }}>
+        <div style={{ display: "grid", gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна только модераторам и администраторам.
           </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
-        </Stack>
+        </div>
       </Container>
     );
   }
 
   return (
-    <Box
+    <div
       className="page-shell"
       style={{
         paddingBottom: 24,
@@ -268,9 +265,9 @@ export default function AdminModerationPage() {
       }}
     >
       <Container style={{ maxWidth: 640,  paddingTop: 16, paddingBottom: 16 }}>
-        <Stack style={{ gap: 16 }}>
-          <Group justify="space-between" align="center">
-            <Group>
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <ActionIcon
                 size={42}
                 className="glass-action glass-action--square"
@@ -280,26 +277,26 @@ export default function AdminModerationPage() {
                 <IconArrowLeft size={18} />
               </ActionIcon>
               <h3 className="m-0 text-2xl font-bold text-text">Модерация</h3>
-            </Group>
+            </div>
             <Button variant="secondary" onClick={() => void refresh()} loading={loading}>
               Обновить
             </Button>
-          </Group>
+          </div>
 
           <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-            <Stack style={{ gap: 12 }}>
+            <div style={{ display: "grid", gap: 12 }}>
               <Select
                 label="Статус"
                 data={STATUS_OPTIONS}
                 value={filterStatus}
                 onChange={(value) => setFilterStatus((value ?? "") as SubmissionStatus | "")}
               />
-            </Stack>
+            </div>
           </Paper>
 
           <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-            <Box className="relative">
-              <Box
+            <div className="relative">
+              <div
                 style={{
                   position: "absolute",
                   left: 0,
@@ -314,7 +311,7 @@ export default function AdminModerationPage() {
                     "linear-gradient(90deg, color-mix(in srgb, var(--surface) 88%, transparent), transparent)",
                 }}
               />
-              <Box
+              <div
                 style={{
                   position: "absolute",
                   right: 0,
@@ -329,7 +326,7 @@ export default function AdminModerationPage() {
                     "linear-gradient(270deg, color-mix(in srgb, var(--surface) 88%, transparent), transparent)",
                 }}
               />
-              <Box
+              <div
                 ref={tabsScrollRef}
               style={{
                 overflowX: "auto",
@@ -368,8 +365,8 @@ export default function AdminModerationPage() {
                   },
                 }}
               />
-            </Box>
-            </Box>
+            </div>
+            </div>
           </Paper>
 
           {visibleItems.length === 0 && !loading && (
@@ -410,33 +407,36 @@ export default function AdminModerationPage() {
             const reviewTags = readStringArrayFromPayload(payload, "taste_tags");
             return (
               <Paper key={item.id} style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-                <Stack style={{ gap: 12 }}>
-                  <Group justify="space-between" align="center">
-                    <Group style={{ gap: 8 }}>
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       <Badge variant="secondary">{entityLabel(item.entity_type)}</Badge>
                       <Badge variant="dot" color="gray">
                         {actionLabel}
                       </Badge>
-                    </Group>
+                    </div>
                     <Badge color={statusMeta.color}>{statusMeta.label}</Badge>
-                  </Group>
+                  </div>
                   <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>
                     {item.author_label || item.author_user_id} • {formatModerationDate(item.created_at)}
                   </p>
 
                   {(item.target_id || targetCafeName || previewCandidate) && (
                     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
-                      <Stack style={{ gap: 6 }}>
+                      <div style={{ display: "grid", gap: 6 }}>
                         <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                           Предлагаемая кофейня
                         </p>
-                        <Group
-                          justify="space-between"
-                          align="flex-start"
-                          wrap="nowrap"
-                          style={{ gap: 8 }}
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "nowrap",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            gap: 8,
+                          }}
                         >
-                          <Stack style={{ gap: 2, minWidth: 0 }}>
+                          <div style={{ display: "grid", gap: 2, minWidth: 0 }}>
                             <p style={{ margin: 0,  fontSize: 13 }}>{candidateName}</p>
                             {candidateAddress && (
                               <p
@@ -458,7 +458,7 @@ export default function AdminModerationPage() {
                                 ID: {item.target_id}
                               </p>
                             )}
-                          </Stack>
+                          </div>
                           {targetCafeMapUrl && (
                             <Button
                               size="sm"
@@ -471,73 +471,73 @@ export default function AdminModerationPage() {
                               На карте
                             </Button>
                           )}
-                        </Group>
-                      </Stack>
+                        </div>
+                      </div>
                     </Paper>
                   )}
 
                   {description && (
                     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
-                      <Stack style={{ gap: 4 }}>
+                      <div style={{ display: "grid", gap: 4 }}>
                         <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                           {item.entity_type === "cafe_description"
                             ? "Предложенное описание"
                             : "Описание"}
                         </p>
                         <p style={{ margin: 0,  fontSize: 13 }}>{description}</p>
-                      </Stack>
+                      </div>
                     </Paper>
                   )}
 
                   {amenities.length > 0 && (
-                    <Stack style={{ gap: 6 }}>
+                    <div style={{ display: "grid", gap: 6 }}>
                       <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                         Удобства
                       </p>
-                      <Group style={{ gap: 6 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {amenities.map((amenity) => (
                           <Badge key={`${item.id}-amenity-${amenity}`} variant="secondary" style={{ borderRadius: 10 }}>
                             {amenity}
                           </Badge>
                         ))}
-                      </Group>
-                    </Stack>
+                      </div>
+                    </div>
                   )}
 
                   {(reviewSummary || reviewDrink || reviewRating != null || reviewTags.length > 0) && (
                     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12, background: "var(--surface)" }}>
-                      <Stack style={{ gap: 6 }}>
+                      <div style={{ display: "grid", gap: 6 }}>
                         <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                           Данные отзыва
                         </p>
-                        <Group style={{ gap: 8 }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                           {reviewRating != null && (
                             <Badge variant="secondary">Оценка: {reviewRating}</Badge>
                           )}
                           {reviewDrink && (
                             <Badge variant="secondary">Напиток: {reviewDrink}</Badge>
                           )}
-                        </Group>
+                        </div>
                         {reviewTags.length > 0 && (
-                          <Group style={{ gap: 6 }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                             {reviewTags.map((tag) => (
                               <Badge key={`${item.id}-tag-${tag}`} variant="outline" style={{ borderRadius: 10 }}>
                                 {tag}
                               </Badge>
                             ))}
-                          </Group>
+                          </div>
                         )}
                         {reviewSummary && <p style={{ margin: 0,  fontSize: 13 }}>{reviewSummary}</p>}
-                      </Stack>
+                      </div>
                     </Paper>
                   )}
 
                   {photoUrls.length > 0 && (
-                    <Stack style={{ gap: 6 }}>
+                    <div style={{ display: "grid", gap: 6 }}>
                       <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                         Фото заявки
                       </p>
-                      <Box
+                      <div
                         style={{
                           display: "grid",
                           gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
@@ -566,16 +566,16 @@ export default function AdminModerationPage() {
                             />
                           </Paper>
                         ))}
-                      </Box>
-                    </Stack>
+                      </div>
+                    </div>
                   )}
 
                   {menuPhotoUrls.length > 0 && (
-                    <Stack style={{ gap: 6 }}>
+                    <div style={{ display: "grid", gap: 6 }}>
                       <p style={{ margin: 0,  fontSize: 13, fontWeight: 600 }}>
                         Фото меню
                       </p>
-                      <Box
+                      <div
                         style={{
                           display: "grid",
                           gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
@@ -604,8 +604,8 @@ export default function AdminModerationPage() {
                             />
                           </Paper>
                         ))}
-                      </Box>
-                    </Stack>
+                      </div>
+                    </div>
                   )}
 
                   {item.moderator_comment && (
@@ -614,7 +614,7 @@ export default function AdminModerationPage() {
                     </p>
                   )}
                   {isPending && (
-                    <Group>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                       <Button
                         className="flex-1"
                         onClick={() => void handleApprove(item.id)}
@@ -632,7 +632,7 @@ export default function AdminModerationPage() {
                         <IconX size={16} />
                         Отклонить
                       </Button>
-                    </Group>
+                    </div>
                   )}
                   {previewCandidate && (
                     <Button
@@ -646,11 +646,11 @@ export default function AdminModerationPage() {
                       Предпросмотр карточки кофейни
                     </Button>
                   )}
-                </Stack>
+                </div>
               </Paper>
             );
           })}
-        </Stack>
+        </div>
 
         {previewOpen && (
           <Suspense fallback={null}>
@@ -664,6 +664,6 @@ export default function AdminModerationPage() {
           </Suspense>
         )}
       </Container>
-    </Box>
+    </div>
   );
 }

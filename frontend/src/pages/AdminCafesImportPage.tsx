@@ -2,12 +2,9 @@ import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   ActionIcon,
   Alert,
-  Box,
   Button,
   Container,
-  Group,
   Select,
-  Stack,
   Switch,
   Table, 
   Textarea, 
@@ -469,32 +466,32 @@ export default function AdminCafesImportPage() {
 
   if (status === "loading") {
     return (
-      <Box style={{ padding: 20 }}>
+      <div style={{ padding: 20 }}>
         <p className="m-0 text-sm text-text">Загрузка...</p>
-      </Box>
+      </div>
     );
   }
 
   if (!allowed) {
     return (
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
-        <Stack style={{ gap: 16 }}>
+        <div style={{ display: "grid", gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна только администраторам.
           </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
-        </Stack>
+        </div>
       </Container>
     );
   }
 
   return (
-    <Box className="page-shell" style={{ paddingBottom: 24 }}>
+    <div className="page-shell" style={{ paddingBottom: 24 }}>
       <Container style={{ maxWidth: 1080,  paddingTop: 16, paddingBottom: 16 }}>
-        <Stack style={{ gap: 16 }}>
-          <Group justify="space-between">
-            <Group>
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <ActionIcon
                 size={42}
                 className="glass-action glass-action--square"
@@ -504,8 +501,8 @@ export default function AdminCafesImportPage() {
                 <IconArrowLeft size={18} />
               </ActionIcon>
               <h3 className="m-0 text-2xl font-bold text-text">Импорт кофеен из JSON</h3>
-            </Group>
-            <Group>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <Button variant="secondary" onClick={() => void navigate("/admin/cafes/manage")}>
                 Управление кофейнями
               </Button>
@@ -526,8 +523,8 @@ export default function AdminCafesImportPage() {
                 hidden
                 onChange={(event) => void handleLoadFile(event)}
               />
-            </Group>
-          </Group>
+            </div>
+          </div>
 
           <Alert icon={<IconInfoCircle size={16} />} color="blue">
             Фото не загружаются. Импортирует только данные кофейни: name, address, latitude, longitude, description и amenities.
@@ -539,8 +536,8 @@ export default function AdminCafesImportPage() {
             </Alert>
           )}
 
-          <Group align="end">
-            <Box style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <Select
                 label="Режим дубликатов"
                 data={[
@@ -550,15 +547,15 @@ export default function AdminCafesImportPage() {
                 value={mode}
                 onChange={(value) => setMode(value === "upsert" ? "upsert" : "skip_existing")}
               />
-            </Box>
-            <Box style={{ flex: 1, minWidth: 0 }}>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <Switch
                 label="Dry run (без записи в БД)"
                 checked={dryRun}
                 onChange={(event) => setDryRun(event.currentTarget.checked)}
               />
-            </Box>
-          </Group>
+            </div>
+          </div>
           <Switch
             label="Импортировать только валидные строки (невалидные пропускать локально)"
             checked={partialImportEnabled}
@@ -574,7 +571,7 @@ export default function AdminCafesImportPage() {
             placeholder='[{ "name": "...", "address": "...", "latitude": 0, "longitude": 0 }]'
           />
 
-          <Group justify="space-between">
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
             <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>
               Всего строк: {preview.rawTotal}. Валидных: {preview.validItems.length}. Ошибок: {preview.issues.length}
             </p>
@@ -590,10 +587,10 @@ export default function AdminCafesImportPage() {
             >
               {dryRun ? "Проверить импорт" : "Импортировать"}
             </Button>
-          </Group>
+          </div>
 
           {preview.issues.length > 0 && (
-            <Group>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <Button
                 size="sm"
                 variant="secondary"
@@ -608,11 +605,11 @@ export default function AdminCafesImportPage() {
               >
                 Скачать ошибки предпроверки (CSV)
               </Button>
-            </Group>
+            </div>
           )}
 
           {preview.rows.length > 0 && (
-            <Box>
+            <div>
               <p style={{ margin: 0,  fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 Предпросмотр перед импортом (первые {Math.min(preview.rows.length, maxPreviewRows)} строк)
               </p>
@@ -649,13 +646,13 @@ export default function AdminCafesImportPage() {
                   ))}
                 </Table.Tbody>
               </Table>
-            </Box>
+            </div>
           )}
 
           {result && (
-            <Stack style={{ gap: 12 }}>
+            <div style={{ display: "grid", gap: 12 }}>
               <h4 className="m-0 text-xl font-bold text-text">Результат</h4>
-              <Group>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                 <p style={{ margin: 0,  fontSize: 13 }}>Всего: {result.summary.total}</p>
                 <p style={{ margin: 0,  fontSize: 13 }}>Создано: {result.summary.created}</p>
                 <p style={{ margin: 0,  fontSize: 13 }}>Обновлено: {result.summary.updated}</p>
@@ -667,11 +664,11 @@ export default function AdminCafesImportPage() {
                     Локально пропущено невалидных: {lastClientSkippedInvalid}
                   </p>
                 )}
-              </Group>
+              </div>
 
               {Array.isArray(result.issues) && result.issues.length > 0 && (
-                <Box>
-                  <Group style={{ marginBottom: 6 }}>
+                <div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 6 }}>
                     <Button
                       size="sm"
                       variant="secondary"
@@ -686,7 +683,7 @@ export default function AdminCafesImportPage() {
                     >
                       Скачать ошибки backend (CSV)
                     </Button>
-                  </Group>
+                  </div>
                   <p style={{ margin: 0,  fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                     Проблемы (первые {Math.min(result.issues.length, 12)}):
                   </p>
@@ -708,10 +705,10 @@ export default function AdminCafesImportPage() {
                       ))}
                     </Table.Tbody>
                   </Table>
-                </Box>
+                </div>
               )}
 
-              <Box>
+              <div>
                 <p style={{ margin: 0,  fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                   Последние статусы:
                 </p>
@@ -735,11 +732,11 @@ export default function AdminCafesImportPage() {
                     ))}
                   </Table.Tbody>
                 </Table>
-              </Box>
-            </Stack>
+              </div>
+            </div>
           )}
-        </Stack>
+        </div>
       </Container>
-    </Box>
+    </div>
   );
 }

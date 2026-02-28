@@ -1,4 +1,4 @@
-import { Badge, Button, Group, Paper, Select, Stack } from "../../admin/ui";
+import { Badge, Button, Paper, Select } from "../../admin/ui";
 
 import type { UnknownDrinkFormat } from "../../../api/adminDrinks";
 import type { UnknownStatusOption } from "../model/types";
@@ -35,8 +35,8 @@ export default function AdminDrinksUnknownCard({
 }: AdminDrinksUnknownCardProps) {
   return (
     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-      <Stack style={{ gap: 12 }}>
-        <Group justify="space-between">
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
           <h4 className="m-0 text-xl font-bold text-text">Неизвестные форматы</h4>
           <Select
             value={status}
@@ -44,25 +44,25 @@ export default function AdminDrinksUnknownCard({
             style={{ width: 180 }}
             onChange={(value) => onStatusChange((value ?? "") as UnknownStatusOption)}
           />
-        </Group>
+        </div>
 
         {loading && <p style={{ margin: 0,  color: "var(--muted)" }}>Загрузка форматов...</p>}
         {!loading && unknown.length === 0 && <p style={{ margin: 0,  color: "var(--muted)" }}>Список пуст.</p>}
 
         {unknown.map((item) => (
           <Paper key={item.id} style={{ border: "1px solid var(--border)",  borderRadius: 12, padding: 12 }}>
-            <Stack style={{ gap: 8 }}>
-              <Group justify="space-between" align="center">
-                <Group style={{ gap: 8 }}>
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <p style={{ margin: 0,  fontWeight: 600 }}>{item.name}</p>
                   <Badge variant="secondary">mentions: {item.mentions_count}</Badge>
                   <Badge color={item.status === "new" ? "yellow" : "gray"}>{item.status}</Badge>
-                </Group>
+                </div>
                 <p style={{ margin: 0,  fontSize: 12, color: "var(--muted)" }}>
                   last: {new Date(item.last_seen_at).toLocaleDateString("ru-RU")}
                 </p>
-              </Group>
-              <Group align="end" wrap="wrap">
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 12 }}>
                 <Select
                   searchable
                   style={{ width: 320 }}
@@ -82,11 +82,11 @@ export default function AdminDrinksUnknownCard({
                 >
                   Ignore
                 </Button>
-              </Group>
-            </Stack>
+              </div>
+            </div>
           </Paper>
         ))}
-      </Stack>
+      </div>
     </Paper>
   );
 }

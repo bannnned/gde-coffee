@@ -1,4 +1,4 @@
-import { Paper, Stack, Switch, TextInput } from "../../admin/ui";
+import { Paper, Switch, TextInput } from "../../admin/ui";
 
 type AdminDrinksFiltersCardProps = {
   query: string;
@@ -15,7 +15,7 @@ export default function AdminDrinksFiltersCard({
 }: AdminDrinksFiltersCardProps) {
   return (
     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-      <Stack style={{ gap: 12 }}>
+      <div style={{ display: "grid", gap: 12 }}>
         <TextInput
           label="Поиск по справочнику"
           placeholder="например, v60 или эспрессо"
@@ -27,7 +27,7 @@ export default function AdminDrinksFiltersCard({
           onChange={(event) => onIncludeInactiveChange(event.currentTarget.checked)}
           label="Показывать скрытые напитки"
         />
-      </Stack>
+      </div>
     </Paper>
   );
 }

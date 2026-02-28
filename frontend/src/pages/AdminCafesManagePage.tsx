@@ -2,13 +2,10 @@ import { useEffect, useState } from "react";
 import {
   ActionIcon,
   Alert,
-  Box,
   Button,
   Container,
-  Group,
   Loader,
   Select,
-  Stack, 
   TextInput,
   Textarea, 
 } from "../features/admin/ui";
@@ -256,32 +253,32 @@ export default function AdminCafesManagePage() {
 
   if (status === "loading") {
     return (
-      <Box style={{ padding: 20 }}>
+      <div style={{ padding: 20 }}>
         <p className="m-0 text-sm text-text">Загрузка...</p>
-      </Box>
+      </div>
     );
   }
 
   if (!allowed) {
     return (
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
-        <Stack style={{ gap: 16 }}>
+        <div style={{ display: "grid", gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна только администраторам.
           </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
-        </Stack>
+        </div>
       </Container>
     );
   }
 
   return (
-    <Box className="page-shell" style={{ paddingBottom: 24 }}>
+    <div className="page-shell" style={{ paddingBottom: 24 }}>
       <Container style={{ maxWidth: 1080,  paddingTop: 16, paddingBottom: 16 }}>
-        <Stack style={{ gap: 16 }}>
-          <Group justify="space-between">
-            <Group>
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <ActionIcon
                 size={42}
                 className="glass-action glass-action--square"
@@ -291,11 +288,11 @@ export default function AdminCafesManagePage() {
                 <IconArrowLeft size={18} />
               </ActionIcon>
               <h3 className="m-0 text-2xl font-bold text-text">Управление кофейнями</h3>
-            </Group>
+            </div>
             <Button variant="secondary" onClick={() => void navigate("/admin/cafes/import")}>
               Импорт JSON
             </Button>
-          </Group>
+          </div>
 
           <Alert icon={<IconInfoCircle size={16} />} color="blue">
             Поиск по названию, редактирование всех полей и удаление кофейни.
@@ -321,7 +318,7 @@ export default function AdminCafesManagePage() {
           />
 
           {selectedCafeID && (
-            <Stack style={{ gap: 8 }}>
+            <div style={{ display: "grid", gap: 8 }}>
               {editLoadState === "loading" ? (
                 <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>
                   Загружаем данные кофейни...
@@ -332,8 +329,8 @@ export default function AdminCafesManagePage() {
                 </Alert>
               ) : (
                 <>
-                  <Group>
-                    <Box style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <TextInput
                         label="Название"
                         value={editForm.name}
@@ -341,8 +338,8 @@ export default function AdminCafesManagePage() {
                           setEditForm((prev) => ({ ...prev, name: event.currentTarget.value }))
                         }
                       />
-                    </Box>
-                    <Box style={{ flex: 1, minWidth: 0 }}>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <TextInput
                         label="Адрес"
                         value={editForm.address}
@@ -350,10 +347,10 @@ export default function AdminCafesManagePage() {
                           setEditForm((prev) => ({ ...prev, address: event.currentTarget.value }))
                         }
                       />
-                    </Box>
-                  </Group>
-                  <Group>
-                    <Box style={{ flex: 1, minWidth: 0 }}>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <TextInput
                         label="Latitude"
                         value={editForm.latitude}
@@ -361,8 +358,8 @@ export default function AdminCafesManagePage() {
                           setEditForm((prev) => ({ ...prev, latitude: event.currentTarget.value }))
                         }
                       />
-                    </Box>
-                    <Box style={{ flex: 1, minWidth: 0 }}>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <TextInput
                         label="Longitude"
                         value={editForm.longitude}
@@ -370,8 +367,8 @@ export default function AdminCafesManagePage() {
                           setEditForm((prev) => ({ ...prev, longitude: event.currentTarget.value }))
                         }
                       />
-                    </Box>
-                  </Group>
+                    </div>
+                  </div>
                   <Textarea
                     label="Описание"
                     minRows={4}
@@ -388,20 +385,20 @@ export default function AdminCafesManagePage() {
                       setEditForm((prev) => ({ ...prev, amenities: event.currentTarget.value }))
                     }
                   />
-                  <Group justify="space-between">
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
                     <Button loading={saveLoading} onClick={() => void handleSave()}>
                       Сохранить изменения
                     </Button>
                     <Button variant="destructive" loading={deleteLoading} onClick={() => void handleDelete()}>
                       Удалить кофейню
                     </Button>
-                  </Group>
+                  </div>
                 </>
               )}
-            </Stack>
+            </div>
           )}
-        </Stack>
+        </div>
       </Container>
-    </Box>
+    </div>
   );
 }

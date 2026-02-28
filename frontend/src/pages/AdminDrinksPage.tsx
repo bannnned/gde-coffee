@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
-  Box,
   Button,
   Container,
-  Group,
-  Stack,  
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
@@ -252,32 +249,32 @@ export default function AdminDrinksPage() {
 
   if (status === "loading") {
     return (
-      <Box style={{ padding: 20 }}>
+      <div style={{ padding: 20 }}>
         <p className="m-0 text-sm text-text">Загрузка...</p>
-      </Box>
+      </div>
     );
   }
 
   if (!allowed) {
     return (
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
-        <Stack style={{ gap: 16 }}>
+        <div style={{ display: "grid", gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна только модераторам и администраторам.
           </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
-        </Stack>
+        </div>
       </Container>
     );
   }
 
   return (
-    <Box className="page-shell" style={{ paddingBottom: 24 }}>
+    <div className="page-shell" style={{ paddingBottom: 24 }}>
       <Container style={{ maxWidth: 1080,  paddingTop: 16, paddingBottom: 16 }}>
-        <Stack style={{ gap: 16 }}>
-          <Group justify="space-between">
-            <Group>
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <ActionIcon
                 size={42}
                 className="glass-action glass-action--square"
@@ -287,11 +284,11 @@ export default function AdminDrinksPage() {
                 <IconArrowLeft size={18} />
               </ActionIcon>
               <h3 className="m-0 text-2xl font-bold text-text">Справочник напитков</h3>
-            </Group>
+            </div>
             <Button variant="secondary" onClick={() => void Promise.all([loadDrinks(), loadUnknown()])}>
               Обновить
             </Button>
-          </Group>
+          </div>
 
           <AdminDrinksFiltersCard
             query={query}
@@ -344,8 +341,8 @@ export default function AdminDrinksPage() {
             onMapUnknown={(item) => void handleMapUnknown(item)}
             onIgnoreUnknown={(item) => void handleIgnoreUnknown(item)}
           />
-        </Stack>
+        </div>
       </Container>
-    </Box>
+    </div>
   );
 }

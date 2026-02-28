@@ -1,5 +1,4 @@
 import {
-  forwardRef,
   type ButtonHTMLAttributes,
   type CSSProperties,
   type HTMLAttributes,
@@ -10,33 +9,6 @@ import {
 
 import { Button as UIButton } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
-
-type BoxProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
-
-export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
-  {
-    children,
-    className,
-    style,
-    ...rest
-  },
-  ref,
-) {
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={style}
-      {...rest}
-    >
-      {children}
-    </div>
-  );
-});
 
 type ContainerProps = {
   children?: ReactNode;
@@ -57,72 +29,6 @@ export function Container({
         width: "min(100%, 100%)",
         maxWidth: 860,
         marginInline: "auto",
-        ...style,
-      }}
-      {...rest}
-    >
-      {children}
-    </div>
-  );
-}
-
-type GroupProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-  justify?: CSSProperties["justifyContent"];
-  align?: CSSProperties["alignItems"];
-  wrap?: CSSProperties["flexWrap"];
-} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
-
-export function Group({
-  children,
-  className,
-  style,
-  justify,
-  align,
-  wrap = "wrap",
-  ...rest
-}: GroupProps) {
-  return (
-    <div
-      className={className}
-      style={{
-        display: "flex",
-        flexWrap: wrap,
-        justifyContent: justify,
-        alignItems: align,
-        gap: 12,
-        ...style,
-      }}
-      {...rest}
-    >
-      {children}
-    </div>
-  );
-}
-
-type StackProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-  align?: CSSProperties["alignItems"];
-} & Omit<HTMLAttributes<HTMLDivElement>, "style" | "children">;
-
-export function Stack({
-  children,
-  className,
-  style,
-  align,
-  ...rest
-}: StackProps) {
-  return (
-    <div
-      className={className}
-      style={{
-        display: "grid",
-        gap: 12,
-        alignItems: align,
         ...style,
       }}
       {...rest}

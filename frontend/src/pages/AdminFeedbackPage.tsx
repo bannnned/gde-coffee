@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
-  Box,
   Button,
   Container,
-  Group,
   Paper,
   Select,
-  Stack,
   Table, 
   TextInput, 
 } from "../features/admin/ui";
@@ -113,32 +110,32 @@ export default function AdminFeedbackPage() {
 
   if (status === "loading") {
     return (
-      <Box style={{ padding: 20 }}>
+      <div style={{ padding: 20 }}>
         <p className="m-0 text-sm text-text">Загрузка...</p>
-      </Box>
+      </div>
     );
   }
 
   if (!allowed) {
     return (
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
-        <Stack style={{ gap: 16 }}>
+        <div style={{ display: "grid", gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна только администраторам.
           </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
-        </Stack>
+        </div>
       </Container>
     );
   }
 
   return (
-    <Box className="page-shell" style={{ paddingBottom: 24 }}>
+    <div className="page-shell" style={{ paddingBottom: 24 }}>
       <Container style={{ maxWidth: 1080,  paddingTop: 16, paddingBottom: 16 }}>
-        <Stack style={{ gap: 16 }}>
-          <Group justify="space-between" align="center">
-            <Group>
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <ActionIcon
                 size={42}
                 className="glass-action glass-action--square"
@@ -148,24 +145,24 @@ export default function AdminFeedbackPage() {
                 <IconArrowLeft size={18} />
               </ActionIcon>
               <h3 className="m-0 text-2xl font-bold text-text">Отзывы о приложении</h3>
-            </Group>
+            </div>
             <Button variant="secondary" onClick={() => void load()} loading={loading}>
               Обновить
             </Button>
-          </Group>
+          </div>
 
           <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-            <Stack style={{ gap: 12 }}>
-              <Group>
-                <Box style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <TextInput
                     label="Поиск"
                     placeholder="Текст отзыва, контакт, email, имя"
                     value={queryDraft}
                     onChange={(event) => setQueryDraft(event.currentTarget.value)}
                   />
-                </Box>
-                <Box style={{ flex: 1, minWidth: 0 }}>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <Select
                     label="Лимит"
                     data={LIMIT_OPTIONS}
@@ -176,11 +173,11 @@ export default function AdminFeedbackPage() {
                       setOffset(0);
                     }}
                   />
-                </Box>
-              </Group>
-              <Group justify="space-between">
+                </div>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
                 <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>{pageLabel}</p>
-                <Group style={{ gap: 8 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <Button
                     variant="default"
                     disabled={loading || !hasPrev}
@@ -206,12 +203,12 @@ export default function AdminFeedbackPage() {
                       setOffset(0);
                       setQuery(queryDraft.trim());
                     }}
-                  >
+                    >
                     Применить
                   </Button>
-                </Group>
-              </Group>
-            </Stack>
+                </div>
+              </div>
+            </div>
           </Paper>
 
           <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
@@ -250,8 +247,8 @@ export default function AdminFeedbackPage() {
               </Table.Tbody>
             </Table>
           </Paper>
-        </Stack>
+        </div>
       </Container>
-    </Box>
+    </div>
   );
 }

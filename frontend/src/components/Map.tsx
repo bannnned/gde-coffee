@@ -862,27 +862,7 @@ export default function Map({
       fadeDuration: 0,
     });
 
-    const handleClick = (e: maplibregl.MapLayerMouseEvent) => {
-      const f = e.features?.[0];
-      const id = f?.properties?.id as string | undefined;
-      clearSpiderfy(map);
-      if (id && onCafeSelectRef.current) onCafeSelectRef.current(id);
-    };
-
-    const handleClusterClick = (e: maplibregl.MapLayerMouseEvent) => {
-      const renderedFeatures = e.features?.length
-        ? e.features
-        : map.queryRenderedFeatures(e.point, { layers: [...CAFE_CLUSTER_INTERACTIVE_LAYER_IDS] });
-      const f = renderedFeatures[0];
-      if (!f) return;
-      if ("stopPropagation" in e.originalEvent) {
-        e.originalEvent.stopPropagation();
-      }
-      void expandClusterOnClick(map, f);
-    };
-
     const handleMapClick = (e: maplibregl.MapMouseEvent) => {
-      if (!onMapClickRef.current) return;
       const interactiveFeatures = map.queryRenderedFeatures(e.point, {
         layers: [
           ...CAFE_CLUSTER_INTERACTIVE_LAYER_IDS,
@@ -891,7 +871,45 @@ export default function Map({
           "cafes-selected",
         ],
       });
-      if (interactiveFeatures.length > 0) return;
+      const spiderFeature = interactiveFeatures.find(
+        (feature) => feature.layer?.id === CAFE_SPIDER_POINT_LAYER_ID,
+      );
+      const spiderCafeId =
+        typeof spiderFeature?.properties?.id === "string" ? spiderFeature.properties.id : "";
+      if (spiderCafeId) {
+        clearSpiderfy(map);
+        onCafeSelectRef.current?.(spiderCafeId);
+        return;
+      }
+
+      const clusterFeature = interactiveFeatures.find((feature) => {
+        if (
+          feature.layer?.id !== CAFE_CLUSTER_LAYER_ID &&
+          feature.layer?.id !== CAFE_CLUSTER_COUNT_LAYER_ID
+        ) {
+          return false;
+        }
+        return asFiniteNumber(feature.properties?.cluster_id) != null;
+      });
+      if (clusterFeature) {
+        void expandClusterOnClick(
+          map,
+          clusterFeature as GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>,
+        );
+        return;
+      }
+
+      const cafeFeature = interactiveFeatures.find(
+        (feature) => feature.layer?.id === "cafes-layer" || feature.layer?.id === "cafes-selected",
+      );
+      const cafeId = typeof cafeFeature?.properties?.id === "string" ? cafeFeature.properties.id : "";
+      if (cafeId) {
+        clearSpiderfy(map);
+        onCafeSelectRef.current?.(cafeId);
+        return;
+      }
+
+      if (!onMapClickRef.current) return;
       clearSpiderfy(map);
       onMapClickRef.current([e.lngLat.lng, e.lngLat.lat]);
     };
@@ -918,16 +936,6 @@ export default function Map({
 
     const handleMouseLeave = () => {
       map.getCanvas().style.cursor = "";
-    };
-
-    const handleSpiderPointClick = (e: maplibregl.MapLayerMouseEvent) => {
-      const feature = e.features?.[0];
-      const id = typeof feature?.properties?.id === "string" ? feature.properties.id : "";
-      if (!id) return;
-      if ("stopPropagation" in e.originalEvent) {
-        e.originalEvent.stopPropagation();
-      }
-      onCafeSelectRef.current?.(id);
     };
 
     const handleMoveStart = () => {
@@ -959,10 +967,6 @@ export default function Map({
       setIsMapReady(true);
 
       if (!disableCafeClick && !layerEventsBoundRef.current) {
-        map.on("click", "cafes-layer", handleClick);
-        map.on("click", CAFE_CLUSTER_LAYER_ID, handleClusterClick);
-        map.on("click", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterClick);
-        map.on("click", CAFE_SPIDER_POINT_LAYER_ID, handleSpiderPointClick);
         map.on("mouseenter", "cafes-layer", handleMouseEnter);
         map.on("mouseleave", "cafes-layer", handleMouseLeave);
         map.on("mouseenter", CAFE_CLUSTER_LAYER_ID, handleMouseEnter);
@@ -1007,10 +1011,6 @@ export default function Map({
         mapHandlersBoundRef.current = false;
       }
       if (!disableCafeClick && layerEventsBoundRef.current) {
-        map.off("click", "cafes-layer", handleClick);
-        map.off("click", CAFE_CLUSTER_LAYER_ID, handleClusterClick);
-        map.off("click", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterClick);
-        map.off("click", CAFE_SPIDER_POINT_LAYER_ID, handleSpiderPointClick);
         map.off("mouseenter", "cafes-layer", handleMouseEnter);
         map.off("mouseleave", "cafes-layer", handleMouseLeave);
         map.off("mouseenter", CAFE_CLUSTER_LAYER_ID, handleMouseEnter);

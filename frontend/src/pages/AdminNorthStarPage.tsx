@@ -2,14 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Alert,
-  Box,
   Button,
   Container,
-  Group,
   Paper,
   SegmentedControl,
   Select,
-  Stack,
   Table,  
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
@@ -194,32 +191,32 @@ export default function AdminNorthStarPage() {
 
   if (status === "loading") {
     return (
-      <Box style={{ padding: 20 }}>
+      <div style={{ padding: 20 }}>
         <p className="m-0 text-sm text-text">Загрузка...</p>
-      </Box>
+      </div>
     );
   }
 
   if (!allowed) {
     return (
       <Container style={{ maxWidth: 640,  paddingTop: 24, paddingBottom: 24 }}>
-        <Stack style={{ gap: 16 }}>
+        <div style={{ display: "grid", gap: 16 }}>
           <h3 className="m-0 text-2xl font-bold text-text">Доступ ограничен</h3>
           <p style={{ margin: 0,  color: "var(--muted)" }}>
             Эта страница доступна модераторам и администраторам.
           </p>
           <Button onClick={() => void navigate("/settings")}>Назад</Button>
-        </Stack>
+        </div>
       </Container>
     );
   }
 
   return (
-    <Box className="page-shell" style={{ paddingBottom: 24 }}>
+    <div className="page-shell" style={{ paddingBottom: 24 }}>
       <Container style={{ maxWidth: 1080,  paddingTop: 16, paddingBottom: 16 }}>
-        <Stack style={{ gap: 16 }}>
-          <Group justify="space-between" align="center">
-            <Group>
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
               <ActionIcon
                 size={42}
                 className="glass-action glass-action--square"
@@ -229,16 +226,16 @@ export default function AdminNorthStarPage() {
                 <IconArrowLeft size={18} />
               </ActionIcon>
               <h3 className="m-0 text-2xl font-bold text-text">North Star метрика</h3>
-            </Group>
+            </div>
             <Button variant="secondary" onClick={() => void loadReport()} loading={loading}>
               Обновить
             </Button>
-          </Group>
+          </div>
 
           <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-            <Stack style={{ gap: 12 }}>
-              <Group align="flex-end">
-                <Box style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <SegmentedControl
                     value={scope}
                     onChange={(value) => setScope(value as ScopeMode)}
@@ -247,8 +244,8 @@ export default function AdminNorthStarPage() {
                       { label: "По кофейне", value: "cafe" },
                     ]}
                   />
-                </Box>
-                <Box style={{ flex: 1, minWidth: 0 }}>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <Select
                     label="Период"
                     data={RANGE_OPTIONS}
@@ -258,8 +255,8 @@ export default function AdminNorthStarPage() {
                       setDays(Number.isFinite(parsed) ? parsed : 14);
                     }}
                   />
-                </Box>
-              </Group>
+                </div>
+              </div>
 
               {scope === "cafe" && (
                 <Select
@@ -285,7 +282,7 @@ export default function AdminNorthStarPage() {
               <Alert icon={<IconInfoCircle size={16} />}>
                 {scopeLabel}
               </Alert>
-            </Stack>
+            </div>
           </Paper>
 
           {loadError && (
@@ -302,9 +299,9 @@ export default function AdminNorthStarPage() {
             </Paper>
           ) : (
             <>
-              <Group>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                 {summaryCards.map((card) => (
-                  <Box key={card.key} style={{ flex: 1, minWidth: 180 }}>
+                  <div key={card.key} style={{ flex: 1, minWidth: 180 }}>
                     <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
                       <p style={{ margin: 0, 
                           fontSize: 12,
@@ -319,9 +316,9 @@ export default function AdminNorthStarPage() {
                         {card.value}
                       </p>
                     </Paper>
-                  </Box>
+                  </div>
                 ))}
-              </Group>
+              </div>
 
               <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
                 <Table striped highlightOnHover withTableBorder>
@@ -342,7 +339,7 @@ export default function AdminNorthStarPage() {
                         <Table.Td>{point.north_star_journeys}</Table.Td>
                         <Table.Td>{formatPercent(point.rate)}</Table.Td>
                         <Table.Td>
-                          <Box
+                          <div
                             style={{
                               width: 120,
                               height: 8,
@@ -351,7 +348,7 @@ export default function AdminNorthStarPage() {
                               overflow: "hidden",
                             }}
                           >
-                            <Box
+                            <div
                               style={{
                                 width: `${Math.max(0, Math.min(100, point.rate * 100))}%`,
                                 height: "100%",
@@ -360,7 +357,7 @@ export default function AdminNorthStarPage() {
                                   "linear-gradient(90deg, var(--color-brand-accent), color-mix(in srgb, var(--color-brand-accent) 70%, var(--color-brand-accent-soft)))",
                               }}
                             />
-                          </Box>
+                          </div>
                         </Table.Td>
                       </Table.Tr>
                     ))}
@@ -378,13 +375,13 @@ export default function AdminNorthStarPage() {
               </Paper>
 
               <Paper style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
-                <Stack style={{ gap: 8 }}>
-                  <Group justify="space-between" align="center">
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                     <p style={{ margin: 0,  fontWeight: 700 }}>Воронка Journey</p>
                     <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>
                       Карточка → отзыв → маршрут → check-in → отзыв
                     </p>
-                  </Group>
+                  </div>
                   <Table striped highlightOnHover withTableBorder>
                     <Table.Thead>
                       <Table.Tr>
@@ -414,12 +411,12 @@ export default function AdminNorthStarPage() {
                       )}
                     </Table.Tbody>
                   </Table>
-                </Stack>
+                </div>
               </Paper>
             </>
           )}
-        </Stack>
+        </div>
       </Container>
-    </Box>
+    </div>
   );
 }
