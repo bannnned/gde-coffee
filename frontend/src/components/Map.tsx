@@ -179,7 +179,7 @@ const CAFE_CLUSTER_INTERACTIVE_LAYER_IDS = [
   CAFE_CLUSTER_COUNT_LAYER_ID,
 ] as const;
 const CAFE_SPIDER_MAX_LEAVES = 24;
-const CLUSTER_ZOOM_TO_SPIDER_THRESHOLD = 0.9;
+const CLUSTER_ZOOM_TO_SPIDER_THRESHOLD = 0.1;
 const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: [],
@@ -700,7 +700,10 @@ async function expandClusterOnClick(
 
     const currentZoom = map.getZoom();
     const center = feature.geometry.coordinates as [number, number];
-    if (expansionZoom - currentZoom >= CLUSTER_ZOOM_TO_SPIDER_THRESHOLD) {
+    if (
+      Number.isFinite(expansionZoom) &&
+      expansionZoom - currentZoom > CLUSTER_ZOOM_TO_SPIDER_THRESHOLD
+    ) {
       map.easeTo({
         center,
         zoom: Math.max(expansionZoom, currentZoom + 1),
