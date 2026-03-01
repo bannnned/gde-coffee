@@ -188,6 +188,26 @@ Current:
 - `000015_reviews_stage1` (reviews/reputation/rating snapshots + idempotency keys + domain events queue)
 - `000026_product_metrics_events` (North Star telemetry events)
 
+## Server lifecycle
+The backend supports graceful shutdown via `SIGINT`/`SIGTERM`.
+
+Shutdown sequence:
+1. HTTP server stops accepting new connections, in-flight requests drain (15 s timeout).
+2. Background workers receive context cancellation and finish current iteration.
+3. `sync.WaitGroup` waits for all goroutines to exit.
+4. DB connection pool is closed.
+
+Background workers tracked by the WaitGroup:
+- Session cleanup (every 6 h)
+- Token cleanup (every 24 h)
+- Reviews outbox dispatcher (every 2 s)
+- Reviews inbox/reputation processor (every 2 s)
+- Review photo cleanup (every 15 min)
+- Cafe rating rebuild (every 15 min)
+- Mailer stats logger (every 1 h)
+
+All workers accept a shared `context.Context`; cancelling it causes each worker to log its stop message and return.
+
 ## Notes
 - Sessions are stored server-side in Postgres with HttpOnly cookies.
 - `/api/cafes` uses PostGIS `geography` (requires `postgis` extension).

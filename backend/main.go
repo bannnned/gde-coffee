@@ -2,12 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -154,7 +158,6 @@ func main() {
 	if pool == nil {
 		log.Fatal("db connect failed for DATABASE_URL, DATABASE_URL_2, and DATABASE_URL_3")
 	}
-	defer pool.Close()
 
 	if err := dbmigrations.Run(selectedDBURL); err != nil {
 		log.Fatalf("db migrations failed: %v", err)
@@ -190,8 +193,21 @@ func main() {
 		}
 	}()
 
-	auth.StartSessionCleanup(pool, 6*time.Hour)
-	auth.StartTokenCleanup(pool, 24*time.Hour)
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	defer workerCancel()
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		auth.StartSessionCleanup(workerCtx, pool, 6*time.Hour)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		auth.StartTokenCleanup(workerCtx, pool, 24*time.Hour)
+	}()
 
 	mediaService, err := media.NewS3Service(context.Background(), media.Config{
 		Enabled:         cfg.Media.S3Enabled,
@@ -216,10 +232,11 @@ func main() {
 	tagsHandler := tags.NewDefaultHandler(pool)
 	metricsHandler := metrics.NewDefaultHandler(pool)
 
-	go reviewsHandler.Service().StartEventWorker(context.Background(), 2*time.Second)
-	go reviewsHandler.Service().StartInboxWorker(context.Background(), 2*time.Second)
-	go reviewsHandler.Service().StartPhotoCleanupWorker(context.Background(), 15*time.Minute)
-	go reviewsHandler.Service().StartRatingRebuildWorker(context.Background(), 15*time.Minute)
+	wg.Add(4)
+	go func() { defer wg.Done(); reviewsHandler.Service().StartEventWorker(workerCtx, 2*time.Second) }()
+	go func() { defer wg.Done(); reviewsHandler.Service().StartInboxWorker(workerCtx, 2*time.Second) }()
+	go func() { defer wg.Done(); reviewsHandler.Service().StartPhotoCleanupWorker(workerCtx, 15*time.Minute) }()
+	go func() { defer wg.Done(); reviewsHandler.Service().StartRatingRebuildWorker(workerCtx, 15*time.Minute) }()
 
 	api := r.Group("/api")
 	api.GET("/geocode", cafesHandler.GeocodeLookup)
@@ -361,12 +378,20 @@ func main() {
 		AvatarMaxUploadBytes: cfg.Media.S3MaxUploadBytes,
 	}
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
-		for range ticker.C {
-			sent, failed := mailerClient.Stats()
-			log.Printf("mailer stats: sent=%d failed=%d", sent, failed)
+		for {
+			select {
+			case <-workerCtx.Done():
+				log.Println("mailer stats worker stopped")
+				return
+			case <-ticker.C:
+				sent, failed := mailerClient.Stats()
+				log.Printf("mailer stats: sent=%d failed=%d", sent, failed)
+			}
 		}
 	}()
 
@@ -407,6 +432,35 @@ func main() {
 		serveStaticOrIndex(c, cfg.PublicDir)
 	})
 
-	log.Printf("listening on 0.0.0.0:%s", cfg.Port)
-	r.Run("0.0.0.0:" + cfg.Port)
+	srv := &http.Server{
+		Addr:    "0.0.0.0:" + cfg.Port,
+		Handler: r,
+	}
+
+	go func() {
+		log.Printf("listening on %s", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("server listen failed: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("shutdown signal received: %v", sig)
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("http server shutdown error: %v", err)
+	}
+	log.Println("http server stopped")
+
+	workerCancel()
+	wg.Wait()
+	log.Println("all workers stopped")
+
+	pool.Close()
+	log.Println("db pool closed, shutdown complete")
 }
