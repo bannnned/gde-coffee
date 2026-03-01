@@ -937,3 +937,36 @@ Critical path stack-transition:
 - Артефакт: удаленный `Alert` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
 - Артефакт: migration alert-blocks в admin pages на явную разметку.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AD · Remove admin `SegmentedControl` wrapper and migrate to explicit segmented buttons (P1, status: done)
+- Цель: убрать `SegmentedControl` из admin layout-слоя и перевести usage на явные сегмент-кнопки в экранах.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Depends on: `W5-AC`.
+- AC: `layout.tsx` не содержит `SegmentedControl` (контракт + реализация).
+- AC: в admin usage отсутствует импорт/usage `SegmentedControl`.
+- AC: visual behavior сегментов сохранен через explicit button-group markup/styles (включая styling активного сегмента и scrollable tabs в moderation).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `SegmentedControl` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration segmented controls в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AE · Remove admin `Select` wrapper and migrate to direct `AppSelect` usage (P1, status: done)
+- Цель: убрать admin wrapper `Select` из `fields`-слоя и перейти на прямой `AppSelect` с явной label-разметкой на страницах.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-AD`.
+- AC: `fields.tsx` не содержит `Select` wrapper (контракт + реализация).
+- AC: в admin usage отсутствует импорт/usage `Select` из `features/admin/ui`.
+- AC: сценарии `searchable/clearable/nothingFound/rightSection` сохранены через прямой `AppSelect`.
+- AC: label/description layout сохранен через явные `label` контейнеры в местах usage.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `Select` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Артефакт: migration admin select controls на `AppSelect` в перечисленных страницах/карточках.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

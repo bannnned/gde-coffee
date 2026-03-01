@@ -2,7 +2,6 @@ import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   ActionIcon,
   Button,
-  Select,
   Switch,
   Table, 
   Textarea, 
@@ -10,6 +9,7 @@ import {
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
+import { AppSelect } from "../ui/bridge";
 
 import { importAdminCafesJSON, type AdminCafeImportItem, type AdminCafeImportResponse } from "../api/adminCafes";
 import { useAuth } from "../components/AuthGate";
@@ -558,15 +558,18 @@ export default function AdminCafesImportPage() {
 
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <Select
-                label="Режим дубликатов"
-                data={[
-                  { value: "skip_existing", label: "skip_existing (пропускать)" },
-                  { value: "upsert", label: "upsert (обновлять)" },
-                ]}
-                value={mode}
-                onChange={(value) => setMode(value === "upsert" ? "upsert" : "skip_existing")}
-              />
+              <label className="flex min-w-0 flex-col gap-1.5">
+                <span className="text-sm font-medium text-text">Режим дубликатов</span>
+                <AppSelect
+                  implementation="radix"
+                  data={[
+                    { value: "skip_existing", label: "skip_existing (пропускать)" },
+                    { value: "upsert", label: "upsert (обновлять)" },
+                  ]}
+                  value={mode}
+                  onChange={(value) => setMode(value === "upsert" ? "upsert" : "skip_existing")}
+                />
+              </label>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <Switch

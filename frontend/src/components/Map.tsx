@@ -824,6 +824,7 @@ export default function Map({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MLMap | null>(null);
   const layerEventsBoundRef = useRef(false);
+  const clusterTapEventsBoundRef = useRef(false);
   const mapHandlersBoundRef = useRef(false);
   const schemeRef = useRef<"light" | "dark">(scheme);
   const onCafeSelectRef = useRef(onCafeSelect);
@@ -915,6 +916,7 @@ export default function Map({
       attributionControl: false,
       fadeDuration: 0,
     });
+    let suppressNextMapClick = false;
 
     const queryInteractiveFeaturesByPoint = (point: maplibregl.Point) => {
       const exact = map.queryRenderedFeatures(point, {
@@ -936,7 +938,97 @@ export default function Map({
       return { features: near, hitMode: "padded" as const };
     };
 
+    const queryClusterFeaturesByPoint = (point: maplibregl.Point) => {
+      const exact = map.queryRenderedFeatures(point, {
+        layers: [...CAFE_CLUSTER_INTERACTIVE_LAYER_IDS],
+      });
+      if (exact.length > 0) return exact;
+      const pad = 14;
+      return map.queryRenderedFeatures(
+        [
+          [point.x - pad, point.y - pad],
+          [point.x + pad, point.y + pad],
+        ],
+        {
+          layers: [...CAFE_CLUSTER_INTERACTIVE_LAYER_IDS],
+        },
+      );
+    };
+
+    const resolveEventPoint = (
+      event:
+        | maplibregl.MapLayerMouseEvent
+        | maplibregl.MapLayerTouchEvent
+        | maplibregl.MapMouseEvent,
+    ): maplibregl.Point => {
+      if ("point" in event && event.point) {
+        return event.point;
+      }
+      const points = (event as { points?: maplibregl.Point[] }).points;
+      if (Array.isArray(points) && points.length > 0 && points[0]) {
+        return points[0];
+      }
+      return map.project(event.lngLat);
+    };
+
+    const handleClusterLayerTap = (
+      event: maplibregl.MapLayerMouseEvent | maplibregl.MapLayerTouchEvent,
+    ) => {
+      if ("originalEvent" in event && "stopPropagation" in event.originalEvent) {
+        event.originalEvent.stopPropagation();
+      }
+      suppressNextMapClick = true;
+      window.setTimeout(() => {
+        suppressNextMapClick = false;
+      }, 0);
+
+      const featureFromLayer = event.features?.find(
+        (feature) =>
+          (feature.layer?.id === CAFE_CLUSTER_LAYER_ID ||
+            feature.layer?.id === CAFE_CLUSTER_COUNT_LAYER_ID) &&
+          asFiniteNumber(feature.properties?.cluster_id) != null,
+      );
+      if (featureFromLayer) {
+        logMapClusterDebug("cluster_layer_tap", {
+          layerId: featureFromLayer.layer?.id ?? "unknown",
+          clusterId: asFiniteNumber(featureFromLayer.properties?.cluster_id) ?? null,
+          pointCount: asFiniteNumber(featureFromLayer.properties?.point_count) ?? null,
+        });
+        void expandClusterOnClick(
+          map,
+          featureFromLayer as GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>,
+        );
+        return;
+      }
+
+      const point = resolveEventPoint(event);
+      const clusterFeature = queryClusterFeaturesByPoint(point).find(
+        (feature) => asFiniteNumber(feature.properties?.cluster_id) != null,
+      );
+      if (!clusterFeature) {
+        logMapClusterDebug("cluster_layer_tap_miss", {
+          x: point.x,
+          y: point.y,
+        });
+        return;
+      }
+
+      logMapClusterDebug("cluster_layer_tap_fallback", {
+        layerId: clusterFeature.layer?.id ?? "unknown",
+        clusterId: asFiniteNumber(clusterFeature.properties?.cluster_id) ?? null,
+        pointCount: asFiniteNumber(clusterFeature.properties?.point_count) ?? null,
+      });
+      void expandClusterOnClick(
+        map,
+        clusterFeature as GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>,
+      );
+    };
+
     const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+      if (suppressNextMapClick) {
+        suppressNextMapClick = false;
+        return;
+      }
       const { features: interactiveFeatures, hitMode } = queryInteractiveFeaturesByPoint(e.point);
       logMapClusterDebug("map_tap", {
         x: e.point.x,
@@ -1046,6 +1138,14 @@ export default function Map({
       }
       setIsMapReady(true);
 
+      if (!clusterTapEventsBoundRef.current) {
+        map.on("click", CAFE_CLUSTER_LAYER_ID, handleClusterLayerTap);
+        map.on("click", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterLayerTap);
+        map.on("touchend", CAFE_CLUSTER_LAYER_ID, handleClusterLayerTap);
+        map.on("touchend", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterLayerTap);
+        clusterTapEventsBoundRef.current = true;
+      }
+
       if (!disableCafeClick && !layerEventsBoundRef.current) {
         map.on("mouseenter", "cafes-layer", handleMouseEnter);
         map.on("mouseleave", "cafes-layer", handleMouseLeave);
@@ -1086,6 +1186,13 @@ export default function Map({
       map.off("click", handleMapClick);
       map.off("moveend", handleMoveEnd);
       map.off("error", handleError);
+      if (clusterTapEventsBoundRef.current) {
+        map.off("click", CAFE_CLUSTER_LAYER_ID, handleClusterLayerTap);
+        map.off("click", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterLayerTap);
+        map.off("touchend", CAFE_CLUSTER_LAYER_ID, handleClusterLayerTap);
+        map.off("touchend", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterLayerTap);
+        clusterTapEventsBoundRef.current = false;
+      }
       if (mapHandlersBoundRef.current) {
         map.off("movestart", handleMoveStart);
         mapHandlersBoundRef.current = false;

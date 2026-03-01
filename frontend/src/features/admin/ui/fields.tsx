@@ -2,33 +2,6 @@ import { forwardRef, type CSSProperties, type InputHTMLAttributes, type ReactNod
 
 import { Input } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
-import { AppSelect, type AppSelectProps } from "../../../ui/bridge";
-
-type SelectProps = AppSelectProps & {
-  label?: ReactNode;
-  description?: ReactNode;
-  style?: CSSProperties;
-};
-
-export function Select({
-  label,
-  description,
-  className,
-  style,
-  styles,
-  ...rest
-}: SelectProps) {
-  return (
-    <label
-      className={cn("flex min-w-0 flex-col gap-1.5", className)}
-      style={style}
-    >
-      {label ? <span className="text-sm font-medium text-text">{label}</span> : null}
-      {description ? <span className="text-xs text-muted">{description}</span> : null}
-      <AppSelect implementation="radix" styles={styles} {...rest} />
-    </label>
-  );
-}
 
 type SwitchProps = {
   checked: boolean;

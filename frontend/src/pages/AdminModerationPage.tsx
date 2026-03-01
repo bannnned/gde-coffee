@@ -3,12 +3,11 @@ import {
   ActionIcon,
   Badge,
   Button,
-  SegmentedControl,
-  Select,
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
+import { AppSelect } from "../ui/bridge";
 
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
@@ -283,12 +282,15 @@ export default function AdminModerationPage() {
 
           <div style={{ border: "1px solid var(--border)",  borderRadius: 16, padding: 16 }}>
             <div style={{ display: "grid", gap: 12 }}>
-              <Select
-                label="Статус"
-                data={STATUS_OPTIONS}
-                value={filterStatus}
-                onChange={(value) => setFilterStatus((value ?? "") as SubmissionStatus | "")}
-              />
+              <label className="flex min-w-0 flex-col gap-1.5">
+                <span className="text-sm font-medium text-text">Статус</span>
+                <AppSelect
+                  implementation="radix"
+                  data={STATUS_OPTIONS}
+                  value={filterStatus}
+                  onChange={(value) => setFilterStatus((value ?? "") as SubmissionStatus | "")}
+                />
+              </label>
             </div>
           </div>
 
@@ -332,37 +334,54 @@ export default function AdminModerationPage() {
                 scrollbarWidth: "thin",
               }}
             >
-              <SegmentedControl
-                value={activeTab}
-                onChange={(value) => setActiveTab((value as ModerationTabKey) ?? "all")}
-                data={tabsData}
-                styles={{
-                  root: {
-                    width: "max-content",
-                    minWidth: "100%",
-                    background:
-                      "linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
-                    border: "1px solid var(--glass-border)",
-                    boxShadow: "var(--glass-shadow)",
-                    backdropFilter: "blur(14px) saturate(140%)",
-                    WebkitBackdropFilter: "blur(14px) saturate(140%)",
-                    transition: "background 220ms ease, box-shadow 220ms ease",
-                  },
-                  indicator: {
-                    background:
-                      "linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong))",
-                    border: "1px solid var(--color-border-soft)",
-                    boxShadow: "0 6px 16px var(--color-brand-accent-soft)",
-                    transition: "all 220ms ease",
-                  },
-                  label: {
-                    color: "var(--text)",
-                    fontWeight: 600,
-                    transition: "color 180ms ease",
-                    whiteSpace: "nowrap",
-                  },
+              <div
+                style={{
+                  display: "flex",
+                  width: "max-content",
+                  minWidth: "100%",
+                  padding: 4,
+                  borderRadius: 12,
+                  border: "1px solid var(--glass-border)",
+                  background:
+                    "linear-gradient(135deg, var(--glass-grad-hover-1), var(--glass-grad-hover-2))",
+                  boxShadow: "var(--glass-shadow)",
+                  backdropFilter: "blur(14px) saturate(140%)",
+                  WebkitBackdropFilter: "blur(14px) saturate(140%)",
+                  transition: "background 220ms ease, box-shadow 220ms ease",
                 }}
-              />
+              >
+                {tabsData.map((item) => {
+                  const active = item.value === activeTab;
+                  return (
+                    <button
+                      key={item.value}
+                      type="button"
+                      className="ui-focus-ring"
+                      onClick={() => setActiveTab((item.value as ModerationTabKey) ?? "all")}
+                      style={{
+                        border: active
+                          ? "1px solid var(--color-border-soft)"
+                          : "1px solid transparent",
+                        background: active
+                          ? "linear-gradient(135deg, var(--color-brand-accent), var(--color-brand-accent-strong))"
+                          : "transparent",
+                        color: "var(--text)",
+                        fontWeight: 600,
+                        transition: "all 220ms ease",
+                        whiteSpace: "nowrap",
+                        borderRadius: 10,
+                        padding: "8px 10px",
+                        cursor: "pointer",
+                        boxShadow: active
+                          ? "0 6px 16px var(--color-brand-accent-soft)"
+                          : "none",
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             </div>
           </div>

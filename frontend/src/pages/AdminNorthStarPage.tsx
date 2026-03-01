@@ -2,13 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Button,
-  SegmentedControl,
-  Select,
   Table,  
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
+import { AppSelect } from "../ui/bridge";
 
 import {
   getAdminFunnel,
@@ -233,47 +232,84 @@ export default function AdminNorthStarPage() {
             <div style={{ display: "grid", gap: 12 }}>
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <SegmentedControl
-                    value={scope}
-                    onChange={(value) => setScope(value as ScopeMode)}
-                    data={[
+                  <div
+                    style={{
+                      display: "flex",
+                      width: "100%",
+                      padding: 4,
+                      borderRadius: 12,
+                      border: "1px solid var(--border)",
+                      background: "var(--surface)",
+                    }}
+                  >
+                    {[
                       { label: "В целом", value: "overall" },
                       { label: "По кофейне", value: "cafe" },
-                    ]}
-                  />
+                    ].map((item) => {
+                      const active = item.value === scope;
+                      return (
+                        <button
+                          key={item.value}
+                          type="button"
+                          className="ui-focus-ring"
+                          onClick={() => setScope(item.value as ScopeMode)}
+                          style={{
+                            flex: 1,
+                            border: "none",
+                            background: active
+                              ? "var(--color-brand-accent)"
+                              : "transparent",
+                            color: active ? "var(--color-on-accent)" : "var(--text)",
+                            fontWeight: 600,
+                            borderRadius: 10,
+                            padding: "8px 10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <Select
-                    label="Период"
-                    data={RANGE_OPTIONS}
-                    value={String(days)}
-                    onChange={(value) => {
-                      const parsed = Number(value ?? "14");
-                      setDays(Number.isFinite(parsed) ? parsed : 14);
-                    }}
-                  />
+                  <label className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-sm font-medium text-text">Период</span>
+                    <AppSelect
+                      implementation="radix"
+                      data={RANGE_OPTIONS}
+                      value={String(days)}
+                      onChange={(value) => {
+                        const parsed = Number(value ?? "14");
+                        setDays(Number.isFinite(parsed) ? parsed : 14);
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
 
               {scope === "cafe" && (
-                <Select
-                  label="Кофейня"
-                  searchable
-                  clearable
-                  placeholder="Начните вводить название"
-                  value={selectedCafeId}
-                  searchValue={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  onChange={(value) => {
-                    setSelectedCafeId(value || null);
-                  }}
-                  nothingFoundMessage={searchTerm.trim().length < 2 ? "Введите минимум 2 символа" : "Ничего не найдено"}
-                  data={searchOptions.map((item) => ({
-                    value: item.id,
-                    label: buildCafeOptionLabel(item),
-                  }))}
-                  rightSection={searchLoading ? <p style={{ margin: 0,  fontSize: 12 }}>...</p> : null}
-                />
+                <label className="flex min-w-0 flex-col gap-1.5">
+                  <span className="text-sm font-medium text-text">Кофейня</span>
+                  <AppSelect
+                    implementation="radix"
+                    searchable
+                    clearable
+                    placeholder="Начните вводить название"
+                    value={selectedCafeId}
+                    searchValue={searchTerm}
+                    onSearchChange={setSearchTerm}
+                    onChange={(value) => {
+                      setSelectedCafeId(value || null);
+                    }}
+                    nothingFoundMessage={searchTerm.trim().length < 2 ? "Введите минимум 2 символа" : "Ничего не найдено"}
+                    data={searchOptions.map((item) => ({
+                      value: item.id,
+                      label: buildCafeOptionLabel(item),
+                    }))}
+                    rightSection={searchLoading ? <p style={{ margin: 0,  fontSize: 12 }}>...</p> : null}
+                  />
+                </label>
               )}
 
               <div

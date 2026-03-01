@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Button,
-  Select,
   Table, 
   TextInput, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
+import { AppSelect } from "../ui/bridge";
 
 import {
   listAdminFeedback,
@@ -161,16 +161,19 @@ export default function AdminFeedbackPage() {
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <Select
-                    label="Лимит"
-                    data={LIMIT_OPTIONS}
-                    value={String(limit)}
-                    onChange={(value) => {
-                      const next = Number(value ?? "30");
-                      setLimit(Number.isFinite(next) && next > 0 ? next : 30);
-                      setOffset(0);
-                    }}
-                  />
+                  <label className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-sm font-medium text-text">Лимит</span>
+                    <AppSelect
+                      implementation="radix"
+                      data={LIMIT_OPTIONS}
+                      value={String(limit)}
+                      onChange={(value) => {
+                        const next = Number(value ?? "30");
+                        setLimit(Number.isFinite(next) && next > 0 ? next : 30);
+                        setOffset(0);
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>

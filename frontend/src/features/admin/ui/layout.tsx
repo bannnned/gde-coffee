@@ -155,65 +155,6 @@ export function ActionIcon({
   );
 }
 
-type SegmentedControlProps = {
-  value: string;
-  onChange: (value: string) => void;
-  data: Array<{ value: string; label: string }>;
-  styles?: {
-    root?: CSSProperties;
-    indicator?: CSSProperties;
-    label?: CSSProperties;
-  };
-};
-
-export function SegmentedControl({
-  value,
-  onChange,
-  data,
-  styles,
-}: SegmentedControlProps) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        width: "100%",
-        padding: 4,
-        borderRadius: 12,
-        border: "1px solid var(--border)",
-        background: "var(--surface)",
-        ...styles?.root,
-      }}
-    >
-      {data.map((item) => {
-        const active = item.value === value;
-        return (
-          <button
-            key={item.value}
-            type="button"
-            className="ui-focus-ring"
-            onClick={() => onChange(item.value)}
-            style={{
-              border: "none",
-              background: active
-                ? "var(--color-brand-accent)"
-                : "transparent",
-              color: active ? "var(--color-on-accent)" : "var(--text)",
-              fontWeight: 600,
-              borderRadius: 10,
-              padding: "8px 10px",
-              cursor: "pointer",
-              ...styles?.label,
-              ...(active ? styles?.indicator : null),
-            }}
-          >
-            {item.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 type TableProps = {
   children?: ReactNode;
   className?: string;

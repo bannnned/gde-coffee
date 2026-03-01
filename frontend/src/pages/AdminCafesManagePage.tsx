@@ -3,13 +3,13 @@ import {
   ActionIcon,
   Button,
   Loader,
-  Select,
   TextInput,
   Textarea, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
+import { AppSelect } from "../ui/bridge";
 
 import {
   deleteAdminCafeByID,
@@ -310,24 +310,27 @@ export default function AdminCafesManagePage() {
             </div>
           </div>
 
-          <Select
-            label="Найти кофейню по названию"
-            placeholder="Введите минимум 2 символа"
-            searchable
-            clearable
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            value={selectedCafeID}
-            onChange={(value) => {
-              void handleSelectCafe(value);
-            }}
-            rightSection={searchLoading ? <Loader size={16} /> : null}
-            data={searchItems.map((item) => ({
-              value: item.id,
-              label: `${item.name} — ${item.address || "без адреса"}`,
-            }))}
-            nothingFoundMessage={searchQuery.trim().length < 2 ? "Введите минимум 2 символа" : "Ничего не найдено"}
-          />
+          <label className="flex min-w-0 flex-col gap-1.5">
+            <span className="text-sm font-medium text-text">Найти кофейню по названию</span>
+            <AppSelect
+              implementation="radix"
+              placeholder="Введите минимум 2 символа"
+              searchable
+              clearable
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              value={selectedCafeID}
+              onChange={(value) => {
+                void handleSelectCafe(value);
+              }}
+              rightSection={searchLoading ? <Loader size={16} /> : null}
+              data={searchItems.map((item) => ({
+                value: item.id,
+                label: `${item.name} — ${item.address || "без адреса"}`,
+              }))}
+              nothingFoundMessage={searchQuery.trim().length < 2 ? "Введите минимум 2 символа" : "Ничего не найдено"}
+            />
+          </label>
 
           {selectedCafeID && (
             <div style={{ display: "grid", gap: 8 }}>
