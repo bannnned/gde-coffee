@@ -320,8 +320,6 @@ const CAFE_MAP_INTERACTIVE_LAYER_IDS = [
   "cafes-layer",
   "cafes-selected",
 ] as const;
-const CAFE_SPIDER_MAX_LEAVES = 24;
-const CLUSTER_ZOOM_TO_SPIDER_THRESHOLD = 0.1;
 const CLUSTER_ZOOM_DURATION_MS = 520;
 const MAP_CLUSTER_DEBUG_STORAGE_KEY = "debug.map.cluster";
 const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = {
@@ -544,150 +542,10 @@ async function readClusterExpansionZoom(
   });
 }
 
-async function readClusterLeaves(
-  source: GeoJSONSource & {
-    getClusterLeaves?: (
-      clusterId: number,
-      limit: number,
-      offset: number,
-      callback?: (
-        error: Error | null,
-        features: Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>,
-      ) => void,
-    ) => Promise<Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>> | void;
-  },
-  clusterId: number,
-  limit: number,
-  offset: number,
-): Promise<Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>> {
-  const method = source.getClusterLeaves;
-  if (typeof method !== "function") {
-    return [];
-  }
-
-  const maybePromise = method.call(source, clusterId, limit, offset);
-  if (
-    maybePromise &&
-    typeof maybePromise === "object" &&
-    "then" in maybePromise &&
-    typeof maybePromise.then === "function"
-  ) {
-    const features = await maybePromise;
-    return Array.isArray(features) ? features : [];
-  }
-
-  return await new Promise<Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>>((resolve, reject) => {
-    try {
-      void method.call(source, clusterId, limit, offset, (error, features) => {
-        if (error) {
-          reject(error instanceof Error ? error : new Error(String(error)));
-          return;
-        }
-        resolve(Array.isArray(features) ? features : []);
-      });
-    } catch (error) {
-      reject(error instanceof Error ? error : new Error(String(error)));
-    }
-  });
-}
-
 function clearSpiderfy(map: MLMap) {
   const source = getGeoJsonSource(map, CAFE_SPIDER_SOURCE_ID);
   if (!source) return;
   source.setData(EMPTY_FEATURE_COLLECTION);
-}
-
-function buildSpiderOffsets(total: number): Array<{ dx: number; dy: number }> {
-  if (total <= 0) return [];
-  const spacing = 22;
-  const baseRadius = 34;
-  const ringStep = 20;
-  const offsets: Array<{ dx: number; dy: number }> = [];
-
-  let placed = 0;
-  let ring = 0;
-  while (placed < total) {
-    const radius = baseRadius + ring * ringStep;
-    const circumference = 2 * Math.PI * radius;
-    const capacity = ring === 0 ? 8 : Math.max(8, Math.floor(circumference / spacing));
-    const count = Math.min(capacity, total - placed);
-    const startAngle = -Math.PI / 2 + (ring % 2 === 0 ? 0 : Math.PI / count);
-
-    for (let idx = 0; idx < count; idx += 1) {
-      const angle = startAngle + (Math.PI * 2 * idx) / count;
-      offsets.push({
-        dx: Math.cos(angle) * radius,
-        dy: Math.sin(angle) * radius,
-      });
-    }
-
-    placed += count;
-    ring += 1;
-  }
-
-  return offsets;
-}
-
-function spiderfyClusterLeaves(
-  map: MLMap,
-  center: [number, number],
-  leaves: Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>,
-) {
-  const source = getGeoJsonSource(map, CAFE_SPIDER_SOURCE_ID);
-  if (!source) return;
-
-  const total = Math.min(leaves.length, CAFE_SPIDER_MAX_LEAVES);
-  if (total <= 1) {
-    clearSpiderfy(map);
-    return;
-  }
-
-  const projected = map.project({ lng: center[0], lat: center[1] });
-  const lineFeatures: GeoJSON.Feature<GeoJSON.LineString, GeoJSON.GeoJsonProperties>[] = [];
-  const pointFeatures: GeoJSON.Feature<GeoJSON.Point, GeoJSON.GeoJsonProperties>[] = [];
-  const offsets = buildSpiderOffsets(total);
-
-  for (let idx = 0; idx < total; idx += 1) {
-    const leaf = leaves[idx];
-    if (!leaf) continue;
-    const offset = offsets[idx];
-    if (!offset) continue;
-    const { dx, dy } = offset;
-    const target = map.unproject([projected.x + dx, projected.y + dy]);
-    const targetLngLat: [number, number] = [target.lng, target.lat];
-    const cafeId = typeof leaf.properties?.id === "string" ? leaf.properties.id : "";
-    const cafeName = typeof leaf.properties?.name === "string" ? leaf.properties.name : "";
-
-    lineFeatures.push({
-      type: "Feature",
-      properties: {
-        id: cafeId,
-        spider_kind: "line",
-      },
-      geometry: {
-        type: "LineString",
-        coordinates: [center, targetLngLat],
-      },
-    });
-
-    pointFeatures.push({
-      type: "Feature",
-      properties: {
-        id: cafeId,
-        name: cafeName,
-        spider_kind: "point",
-      },
-      geometry: {
-        type: "Point",
-        coordinates: targetLngLat,
-      },
-    });
-  }
-
-  source.setData({
-    type: "FeatureCollection",
-    features: [...lineFeatures, ...pointFeatures],
-  });
 }
 
 function addSources(map: MLMap, geojson: GeoJSON.FeatureCollection) {
@@ -995,7 +853,6 @@ async function expandClusterOnClick(
 
   try {
     const expansionZoom = await readClusterExpansionZoom(source, clusterId);
-
     const currentZoom = map.getZoom();
     const center = feature.geometry.coordinates as [number, number];
     logMapClusterDebug("cluster_expansion_zoom", {
@@ -1004,55 +861,20 @@ async function expandClusterOnClick(
       currentZoom,
       delta: expansionZoom - currentZoom,
     });
-    if (
-      Number.isFinite(expansionZoom) &&
-      expansionZoom - currentZoom > CLUSTER_ZOOM_TO_SPIDER_THRESHOLD
-    ) {
-      logMapClusterDebug("cluster_action_zoom", {
-        clusterId,
-        targetZoom: Math.max(expansionZoom, currentZoom + 1),
-      });
-      map.easeTo({
-        center,
-        zoom: Math.max(expansionZoom, currentZoom + 1),
-        duration: CLUSTER_ZOOM_DURATION_MS,
-        easing: CLUSTER_ZOOM_EASING,
-        essential: true,
-      });
-      return;
-    }
-
-    if (typeof source.getClusterLeaves !== "function") {
-      logMapClusterDebug("cluster_action_zoom_fallback", {
-        clusterId,
-        targetZoom: Math.max(expansionZoom, currentZoom + 1),
-      });
-      map.easeTo({
-        center,
-        zoom: Math.max(expansionZoom, currentZoom + 1),
-        duration: CLUSTER_ZOOM_DURATION_MS,
-        easing: CLUSTER_ZOOM_EASING,
-        essential: true,
-      });
-      return;
-    }
-
-    const pointCount = Math.max(
-      2,
-      Math.trunc(asFiniteNumber(feature.properties?.point_count) ?? CAFE_SPIDER_MAX_LEAVES),
-    );
-    const leaves = await readClusterLeaves(
-      source,
+    const targetZoom = Number.isFinite(expansionZoom)
+      ? Math.max(expansionZoom, currentZoom + 1)
+      : currentZoom + 1;
+    logMapClusterDebug("cluster_action_zoom_only", {
       clusterId,
-      Math.min(pointCount, CAFE_SPIDER_MAX_LEAVES),
-      0,
-    );
-
-    logMapClusterDebug("cluster_action_spiderfy", {
-      clusterId,
-      leaves: leaves.length,
+      targetZoom,
     });
-    spiderfyClusterLeaves(map, center, leaves);
+    map.easeTo({
+      center,
+      zoom: targetZoom,
+      duration: CLUSTER_ZOOM_DURATION_MS,
+      easing: CLUSTER_ZOOM_EASING,
+      essential: true,
+    });
   } catch (error) {
     logMapClusterDebug("cluster_action_error", {
       clusterId,
