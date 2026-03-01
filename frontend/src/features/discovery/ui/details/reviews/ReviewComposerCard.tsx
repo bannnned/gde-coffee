@@ -16,9 +16,9 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  TagsInput,
 } from "../../../../../components/ui";
 import { cn } from "../../../../../lib/utils";
-import { AppTagsInput } from "../../../../../ui/bridge";
 import type { CafeReview } from "../../../../../api/reviews";
 import { type FormPhoto, type ReviewFormValues } from "./reviewForm";
 import type { ReviewQualityInsight } from "./useReviewsSectionController";
@@ -186,8 +186,7 @@ export function ReviewComposerCard({
                 <p className="text-xs text-[var(--muted)]">
                   Можно выбрать из подсказок или добавить свой формат
                 </p>
-                <AppTagsInput
-                  implementation="radix"
+                <TagsInput
                   placeholder="Добавьте позиции: эспрессо, воронка v60, фильтр"
                   value={field.value}
                   data={normalizedPositionInputData}

@@ -4,7 +4,7 @@ import { IconMapPin, IconPlus } from "@tabler/icons-react";
 import { Button, Select } from "../../../../components/ui";
 import { cn } from "../../../../lib/utils";
 import { DISCOVERY_UI_TEXT } from "../../constants";
-import { AppSheet, FormActions, FormField } from "../../../../ui/bridge";
+import { AppSheet } from "../../../../ui/bridge";
 import {
   discoveryGlassSelectStyles,
 } from "../styles/glass";
@@ -229,7 +229,8 @@ export default function SettingsDrawer({
               {locationLabel}
             </p>
           </div>
-          <FormField label="Город">
+          <label className="flex min-w-0 flex-col gap-1.5">
+            <span className="text-sm font-medium text-text">Город</span>
             <div className="relative">
               <select
                 value={pendingLocationId}
@@ -267,7 +268,7 @@ export default function SettingsDrawer({
                 ▾
               </span>
             </div>
-          </FormField>
+          </label>
           <Button
             type="button"
             variant="secondary"
@@ -281,7 +282,8 @@ export default function SettingsDrawer({
         </div>
 
         <div className="flex flex-col gap-3">
-          <FormField label={DISCOVERY_UI_TEXT.radiusTitle}>
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span className="text-sm font-medium text-text">{DISCOVERY_UI_TEXT.radiusTitle}</span>
             <div className="flex flex-wrap gap-2">
               {RADIUS_OPTIONS.map((value) => (
                 <Button
@@ -301,11 +303,12 @@ export default function SettingsDrawer({
                 </Button>
               ))}
             </div>
-          </FormField>
+          </div>
 
           <div className="flex flex-col gap-2">
-            <FormField label="Теги на главной">
-              <FormActions className="justify-between">
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <span className="text-sm font-medium text-text">Теги на главной</span>
+              <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-[var(--muted)]">Популярные теги для вашего контекста</p>
                 <Button
                   type="button"
@@ -323,8 +326,8 @@ export default function SettingsDrawer({
                 >
                   <IconPlus size={16} />
                 </Button>
-              </FormActions>
-            </FormField>
+              </div>
+            </div>
 
             {topTagsLoading && (
               <p className="text-sm text-[var(--muted)]">

@@ -73,6 +73,8 @@
 55. `W5-AP` закрыт (`done`): admin-зоны переведены с `AppSelect` (`ui/bridge`) на `components/ui/Select`; добавлен новый shared `Select` primitive и обновлены admin pages/cards.
 56. `W5-AQ` закрыт (`done`): discovery-зоны (location/settings/empty-state/reviews) переведены на `components/ui/Select`; usage `AppSelect` остался только в bridge-файле.
 57. `W5-AR` закрыт (`done`): удален устаревший `ui/bridge/select.tsx`, а `ui/bridge/index.ts` очищен от реэкспорта `./select`; `AppSelect` полностью выведен из кода.
+58. `W5-AS` закрыт (`done`): из discovery settings удалены bridge-обертки `FormField/FormActions`, после чего удален `ui/bridge/form.tsx` и очищен bridge barrel.
+59. `W5-AT` закрыт (`done`): composer отзывов переведен с `AppTagsInput` на `components/ui/TagsInput`; удален `ui/bridge/tags-input.tsx` и очищен bridge barrel.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

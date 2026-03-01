@@ -9,13 +9,11 @@ import {
 
 import { cn } from "../../lib/utils";
 
-type BridgeEngine = "mantine" | "radix";
-
 type TagsInputStyles = {
   input?: CSSProperties;
 };
 
-export type AppTagsInputProps = {
+export type TagsInputProps = {
   value: string[];
   onChange: (value: string[]) => void;
   data?: string[];
@@ -31,14 +29,15 @@ export type AppTagsInputProps = {
   className?: string;
   nothingFoundMessage?: string;
   onSearchChange?: (value: string) => void;
-  implementation?: BridgeEngine;
+  // Kept for backward compatibility while migrating from bridge layer.
+  implementation?: unknown;
 };
 
 function normalizeTag(tag: string): string {
   return tag.trim().replace(/\s+/g, " ");
 }
 
-export function AppTagsInput({
+export function TagsInput({
   value,
   onChange,
   data = [],
@@ -54,8 +53,7 @@ export function AppTagsInput({
   className,
   nothingFoundMessage = "Ничего не найдено",
   onSearchChange,
-  implementation: _implementation = "radix",
-}: AppTagsInputProps) {
+}: TagsInputProps) {
   const [query, setQuery] = useState("");
   const normalizedSelected = useMemo(() => {
     const dedup = new Set<string>();

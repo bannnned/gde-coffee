@@ -103,21 +103,6 @@ export default function CafeCardFooter({
     WebkitLineClamp: 1,
     overflow: "hidden",
   };
-  const statPillBaseStyle = {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    minWidth: 86,
-    height: 28,
-    padding: "0 12px",
-    borderRadius: 999,
-    border: "1px solid color-mix(in srgb, var(--glass-border) 82%, transparent)",
-    background:
-      "linear-gradient(135deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--surface) 72%, transparent))",
-    backdropFilter: "blur(6px)",
-    WebkitBackdropFilter: "blur(6px)",
-  } as const;
 
   return (
     <div
@@ -144,11 +129,13 @@ export default function CafeCardFooter({
       >
         <div
           style={{
-            display: "grid",
-            gap: 8,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            gap: 10,
           }}
         >
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <p
               title={cafe.name}
               style={{
@@ -177,9 +164,11 @@ export default function CafeCardFooter({
           </div>
           <div
             style={{
-              display: "flex",
-              justifyContent: "center",
-              width: "100%",
+              minWidth: 74,
+              display: "grid",
+              justifyItems: "end",
+              gap: 6,
+              alignContent: "end",
             }}
           >
             {ratingLoading ? (
@@ -193,16 +182,8 @@ export default function CafeCardFooter({
                 ...
               </p>
             ) : hasReviewStats ? (
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={statPillBaseStyle}>
+              <>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                   <IconStarFilled size={14} color="var(--cafe-hero-emphasis-color)" />
                   <p
                     style={{
@@ -215,7 +196,7 @@ export default function CafeCardFooter({
                     {ratingLabel}
                   </p>
                 </div>
-                <div style={statPillBaseStyle}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                   <IconMessageCircle size={14} color="var(--cafe-hero-subtitle-color)" />
                   <p
                     style={{
@@ -227,7 +208,7 @@ export default function CafeCardFooter({
                     {ratingSnapshot?.reviews_count ?? 0}
                   </p>
                 </div>
-              </div>
+              </>
             ) : (
               <Badge
                 variant="secondary"

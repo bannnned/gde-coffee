@@ -1185,3 +1185,34 @@ Critical path stack-transition:
 - Артефакт: удаленный `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/select.tsx`.
 - Артефакт: очищенный bridge barrel `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/index.ts`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AS · Remove obsolete `ui/bridge/form` by migrating discovery settings form wrappers (P1, status: done)
+- Цель: убрать bridge-обертки `FormField/FormActions` и оставить в settings-дроуере нативную new-ui разметку.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/form.tsx` (delete).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/index.ts`.
+- Depends on: `W5-AR`.
+- AC: `SettingsDrawer` не импортирует `FormField/FormActions` из bridge.
+- AC: `ui/bridge/form.tsx` удален, bridge barrel очищен от `./form`.
+- AC: поиск по `frontend/src` не показывает usage `FormField/FormActions` из bridge.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: migration form wrappers в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`.
+- Артефакт: удаленный `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/form.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AT · Remove obsolete `ui/bridge/tags-input` via `components/ui/TagsInput` migration (P1, status: done)
+- Цель: убрать bridge `AppTagsInput` и перевести composer отзывов на reusable `components/ui/TagsInput`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/tags-input.tsx` (new).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/index.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/ReviewComposerCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/tags-input.tsx` (delete).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/index.ts`.
+- Depends on: `W5-AS`.
+- AC: `ReviewComposerCard` не импортирует `AppTagsInput` из bridge.
+- AC: bridge-файл `ui/bridge/tags-input.tsx` удален, bridge barrel очищен от `./tags-input`.
+- AC: поиск по `frontend/src` не показывает usage `AppTagsInput`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: новый `TagsInput` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/tags-input.tsx`.
+- Артефакт: migration review composer в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/ReviewComposerCard.tsx`.
+- Артефакт: удаленный `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/tags-input.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
