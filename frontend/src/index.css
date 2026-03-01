@@ -308,6 +308,12 @@
   box-shadow: 0 0 0 calc(var(--focus-ring-width) + 1px) var(--focus-ring-offset-color);
 }
 
+.review-filter-select .ui-focus-ring:focus-visible {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: 0 0 0 calc(var(--focus-ring-width) + 1px) var(--focus-ring-offset-color);
+}
+
 .ui-stack-xs {
   display: flex;
   flex-direction: column;

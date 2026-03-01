@@ -970,3 +970,52 @@ Critical path stack-transition:
 - Артефакт: удаленный `Select` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
 - Артефакт: migration admin select controls на `AppSelect` в перечисленных страницах/карточках.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AF · Remove admin `Switch` wrapper and migrate to explicit inline switch controls (P1, status: done)
+- Цель: убрать admin wrapper `Switch` из `fields`-слоя и перевести usage на явные inline `button[role="switch"]` контролы.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCreateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksEditCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksFiltersCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Depends on: `W5-AE`.
+- AC: `fields.tsx` не содержит `Switch` wrapper (контракт + реализация).
+- AC: в admin usage отсутствует импорт/usage `Switch` из `features/admin/ui`.
+- AC: UX toggle-состояний (`checked`, aria, visual active/inactive) сохранен через явную inline-разметку.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `Switch` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Артефакт: migration switch controls на explicit inline `button[role="switch"]` в перечисленных страницах/карточках.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AG · Remove admin `TextInput` wrapper and migrate to direct `Input` usage (P1, status: done)
+- Цель: убрать admin wrapper `TextInput` из `fields`-слоя и перевести usage на прямой `Input` с явной label/description-разметкой.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCreateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksEditCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksFiltersCard.tsx`.
+- Depends on: `W5-AF`.
+- AC: `fields.tsx` не содержит `TextInput` wrapper (контракт + реализация).
+- AC: в admin usage отсутствует импорт/usage `TextInput` из `features/admin/ui`.
+- AC: label/required/description поведение сохранено через явную разметку в местах usage.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `TextInput` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Артефакт: migration input controls на `Input` в перечисленных страницах/карточках.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AH · Remove admin `Textarea` wrapper and migrate to explicit native textarea usage (P1, status: done)
+- Цель: убрать admin wrapper `Textarea` из `fields`-слоя и перевести usage на явный нативный `textarea` с explicit label-разметкой.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCreateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksEditCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Depends on: `W5-AG`.
+- AC: `fields.tsx` не содержит `Textarea` wrapper (контракт + реализация).
+- AC: в admin usage отсутствует импорт/usage `Textarea` из `features/admin/ui`.
+- AC: styling и поведение `minRows/autosize` сохранены через explicit `rows/minHeight` + системные классы `textarea`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `Textarea` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Артефакт: migration textarea controls на explicit native markup в перечисленных страницах/карточках.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

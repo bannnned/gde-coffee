@@ -104,7 +104,7 @@ export default function FiltersBar({
     };
   }, [user]);
 
-  const isClickSuppressed = Date.now() < suppressClicksUntil;
+  const isClickSuppressedNow = () => Date.now() < suppressClicksUntil;
 
   return (
     <div
@@ -128,7 +128,7 @@ export default function FiltersBar({
             aria-label="Open profile"
             type="button"
             onClick={() => {
-              if (isClickSuppressed || isOpeningProfile) return;
+              if (isClickSuppressedNow() || isOpeningProfile) return;
               setIsOpeningProfile(true);
               const overlayBackgroundLocation = {
                 pathname: location.pathname,
@@ -168,7 +168,7 @@ export default function FiltersBar({
             aria-label="Войти"
             type="button"
             onClick={() => {
-              if (isClickSuppressed) return;
+              if (isClickSuppressedNow()) return;
               if (status === "loading") return;
               openAuthModal("login");
             }}
@@ -184,7 +184,7 @@ export default function FiltersBar({
               className={`glass-action glass-action--square ui-focus-ring ${favoritesOnly ? classes.favoriteHeaderButtonActive : ""}`}
               aria-label="Избранные кофейни"
               onClick={() => {
-                if (isClickSuppressed) return;
+                if (isClickSuppressedNow()) return;
                 onToggleFavorites?.();
               }}
             >
@@ -196,7 +196,7 @@ export default function FiltersBar({
             className={`glass-action glass-action--square ui-focus-ring ${highlightSettingsButton ? classes.attentionButton : ""}`}
             aria-label={DISCOVERY_UI_TEXT.settingsAria}
             onClick={() => {
-              if (isClickSuppressed) return;
+              if (isClickSuppressedNow()) return;
               onOpenSettings();
             }}
           >

@@ -2,9 +2,7 @@ import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   ActionIcon,
   Button,
-  Switch,
   Table, 
-  Textarea, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
@@ -572,27 +570,59 @@ export default function AdminCafesImportPage() {
               </label>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <Switch
-                label="Dry run (без записи в БД)"
-                checked={dryRun}
-                onChange={(event) => setDryRun(event.currentTarget.checked)}
-              />
+              <label className="inline-flex items-center gap-2 text-sm text-text">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={dryRun}
+                  onClick={() => setDryRun((prev) => !prev)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full border transition ui-focus-ring ${
+                    dryRun
+                      ? "border-[var(--color-brand-accent)] bg-[var(--color-brand-accent)]"
+                      : "border-border bg-surface"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full bg-white transition ${
+                      dryRun ? "translate-x-[14px]" : "translate-x-[1px]"
+                    }`}
+                  />
+                </button>
+                <span>Dry run (без записи в БД)</span>
+              </label>
             </div>
           </div>
-          <Switch
-            label="Импортировать только валидные строки (невалидные пропускать локально)"
-            checked={partialImportEnabled}
-            onChange={(event) => setPartialImportEnabled(event.currentTarget.checked)}
-          />
+          <label className="inline-flex items-center gap-2 text-sm text-text">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={partialImportEnabled}
+              onClick={() => setPartialImportEnabled((prev) => !prev)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition ui-focus-ring ${
+                partialImportEnabled
+                  ? "border-[var(--color-brand-accent)] bg-[var(--color-brand-accent)]"
+                  : "border-border bg-surface"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white transition ${
+                  partialImportEnabled ? "translate-x-[14px]" : "translate-x-[1px]"
+                }`}
+              />
+            </button>
+            <span>Импортировать только валидные строки (невалидные пропускать локально)</span>
+          </label>
 
-          <Textarea
-            label="JSON для импорта"
-            minRows={14}
-            autosize
-            value={jsonText}
-            onChange={(event) => setJsonText(event.currentTarget.value)}
-            placeholder='[{ "name": "...", "address": "...", "latitude": 0, "longitude": 0 }]'
-          />
+          <label className="flex min-w-0 flex-col gap-1.5">
+            <span className="text-sm font-medium text-text">JSON для импорта</span>
+            <textarea
+              className="w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-muted shadow-surface ui-focus-ring"
+              style={{ minHeight: `${14 * 22}px` }}
+              value={jsonText}
+              onChange={(event) => setJsonText(event.currentTarget.value)}
+              placeholder='[{ "name": "...", "address": "...", "latitude": 0, "longitude": 0 }]'
+            />
+          </label>
 
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
             <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>

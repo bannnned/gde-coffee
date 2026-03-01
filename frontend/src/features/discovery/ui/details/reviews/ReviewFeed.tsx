@@ -204,6 +204,7 @@ export function ReviewFeed({
             <AppSelect
               implementation="radix"
               size="xs"
+              className="review-filter-select"
               aria-label="Сортировка отзывов"
               placeholder="Сортировка"
               value={sort}
@@ -216,6 +217,7 @@ export function ReviewFeed({
             <AppSelect
               implementation="radix"
               size="xs"
+              className="review-filter-select"
               aria-label="Фильтр по позиции"
               placeholder="Позиция"
               value={positionFilter}

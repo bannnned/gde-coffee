@@ -287,6 +287,16 @@ function getGeoJsonSource(map: MLMap, id: string): GeoJSONSource | null {
   return null;
 }
 
+function getExistingLayerIDs(map: MLMap, layerIDs: readonly string[]): string[] {
+  const result: string[] = [];
+  for (const layerID of layerIDs) {
+    if (map.getLayer(layerID)) {
+      result.push(layerID);
+    }
+  }
+  return result;
+}
+
 function getCafesClusterSource(map: MLMap): (GeoJSONSource & {
   getClusterExpansionZoom?: (
     clusterId: number,
@@ -390,6 +400,7 @@ function spiderfyClusterLeaves(
       type: "Feature",
       properties: {
         id: cafeId,
+        spider_kind: "line",
       },
       geometry: {
         type: "LineString",
@@ -402,6 +413,7 @@ function spiderfyClusterLeaves(
       properties: {
         id: cafeId,
         name: cafeName,
+        spider_kind: "point",
       },
       geometry: {
         type: "Point",
@@ -597,7 +609,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
       id: CAFE_SPIDER_LINE_LAYER_ID,
       type: "line",
       source: CAFE_SPIDER_SOURCE_ID,
-      filter: ["==", "$type", "LineString"],
+      filter: ["==", ["get", "spider_kind"], "line"],
       paint: {
         "line-color": "#E1784F",
         "line-opacity": 0.84,
@@ -611,7 +623,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
       id: CAFE_SPIDER_POINT_LAYER_ID,
       type: "circle",
       source: CAFE_SPIDER_SOURCE_ID,
-      filter: ["==", "$type", "Point"],
+      filter: ["==", ["get", "spider_kind"], "point"],
       paint: {
         "circle-radius": 7,
         "circle-color": "#457E73",
@@ -916,42 +928,50 @@ export default function Map({
       attributionControl: false,
       fadeDuration: 0,
     });
-    let suppressNextMapClick = false;
+    let suppressMapTapUntil = 0;
+
+    const safeQueryRenderedFeatures = (
+      geometry: maplibregl.PointLike | [maplibregl.PointLike, maplibregl.PointLike],
+      layerIDs: readonly string[],
+    ) => {
+      const activeLayerIDs = getExistingLayerIDs(map, layerIDs);
+      if (activeLayerIDs.length === 0) return [];
+      try {
+        return map.queryRenderedFeatures(geometry, {
+          layers: activeLayerIDs,
+        });
+      } catch (error) {
+        console.warn("[MapLibre] queryRenderedFeatures failed", error);
+        return [];
+      }
+    };
 
     const queryInteractiveFeaturesByPoint = (point: maplibregl.Point) => {
-      const exact = map.queryRenderedFeatures(point, {
-        layers: [...CAFE_MAP_INTERACTIVE_LAYER_IDS],
-      });
+      const exact = safeQueryRenderedFeatures(point, CAFE_MAP_INTERACTIVE_LAYER_IDS);
       if (exact.length > 0) {
         return { features: exact, hitMode: "exact" as const };
       }
       const pad = 14;
-      const near = map.queryRenderedFeatures(
+      const near = safeQueryRenderedFeatures(
         [
           [point.x - pad, point.y - pad],
           [point.x + pad, point.y + pad],
         ],
-        {
-          layers: [...CAFE_MAP_INTERACTIVE_LAYER_IDS],
-        },
+        CAFE_MAP_INTERACTIVE_LAYER_IDS,
       );
       return { features: near, hitMode: "padded" as const };
     };
 
     const queryClusterFeaturesByPoint = (point: maplibregl.Point) => {
-      const exact = map.queryRenderedFeatures(point, {
-        layers: [...CAFE_CLUSTER_INTERACTIVE_LAYER_IDS],
-      });
+      const exact = safeQueryRenderedFeatures(point, CAFE_CLUSTER_INTERACTIVE_LAYER_IDS);
       if (exact.length > 0) return exact;
       const pad = 14;
-      return map.queryRenderedFeatures(
+      return safeQueryRenderedFeatures(
         [
           [point.x - pad, point.y - pad],
           [point.x + pad, point.y + pad],
         ],
-        {
-          layers: [...CAFE_CLUSTER_INTERACTIVE_LAYER_IDS],
-        },
+        CAFE_CLUSTER_INTERACTIVE_LAYER_IDS,
       );
     };
 
@@ -977,10 +997,7 @@ export default function Map({
       if ("originalEvent" in event && "stopPropagation" in event.originalEvent) {
         event.originalEvent.stopPropagation();
       }
-      suppressNextMapClick = true;
-      window.setTimeout(() => {
-        suppressNextMapClick = false;
-      }, 0);
+      suppressMapTapUntil = Date.now() + 220;
 
       const featureFromLayer = event.features?.find(
         (feature) =>
@@ -989,6 +1006,11 @@ export default function Map({
           asFiniteNumber(feature.properties?.cluster_id) != null,
       );
       if (featureFromLayer) {
+        console.info("[MapCluster] layer tap", {
+          layerId: featureFromLayer.layer?.id ?? "unknown",
+          clusterId: asFiniteNumber(featureFromLayer.properties?.cluster_id) ?? null,
+          pointCount: asFiniteNumber(featureFromLayer.properties?.point_count) ?? null,
+        });
         logMapClusterDebug("cluster_layer_tap", {
           layerId: featureFromLayer.layer?.id ?? "unknown",
           clusterId: asFiniteNumber(featureFromLayer.properties?.cluster_id) ?? null,
@@ -1018,21 +1040,28 @@ export default function Map({
         clusterId: asFiniteNumber(clusterFeature.properties?.cluster_id) ?? null,
         pointCount: asFiniteNumber(clusterFeature.properties?.point_count) ?? null,
       });
+      console.info("[MapCluster] layer tap fallback", {
+        layerId: clusterFeature.layer?.id ?? "unknown",
+        clusterId: asFiniteNumber(clusterFeature.properties?.cluster_id) ?? null,
+        pointCount: asFiniteNumber(clusterFeature.properties?.point_count) ?? null,
+      });
       void expandClusterOnClick(
         map,
         clusterFeature as GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>,
       );
     };
 
-    const handleMapClick = (e: maplibregl.MapMouseEvent) => {
-      if (suppressNextMapClick) {
-        suppressNextMapClick = false;
-        return;
-      }
-      const { features: interactiveFeatures, hitMode } = queryInteractiveFeaturesByPoint(e.point);
+    const handleMapTap = (
+      point: maplibregl.Point,
+      lngLat: maplibregl.LngLat,
+      source: "click" | "touchend",
+    ) => {
+      if (Date.now() < suppressMapTapUntil) return true;
+      const { features: interactiveFeatures, hitMode } = queryInteractiveFeaturesByPoint(point);
       logMapClusterDebug("map_tap", {
-        x: e.point.x,
-        y: e.point.y,
+        source,
+        x: point.x,
+        y: point.y,
         zoom: map.getZoom(),
         hitMode,
         layers: interactiveFeatures.map((feature) => feature.layer?.id ?? "unknown"),
@@ -1045,7 +1074,7 @@ export default function Map({
       if (spiderCafeId) {
         clearSpiderfy(map);
         onCafeSelectRef.current?.(spiderCafeId);
-        return;
+        return true;
       }
 
       const clusterFeature = interactiveFeatures.find((feature) => {
@@ -1058,6 +1087,13 @@ export default function Map({
         return asFiniteNumber(feature.properties?.cluster_id) != null;
       });
       if (clusterFeature) {
+        console.info("[MapCluster] map tap", {
+          source,
+          layerId: clusterFeature.layer?.id ?? "unknown",
+          clusterId: asFiniteNumber(clusterFeature.properties?.cluster_id) ?? null,
+          pointCount: asFiniteNumber(clusterFeature.properties?.point_count) ?? null,
+          hitMode,
+        });
         logMapClusterDebug("map_tap_cluster_feature", {
           layerId: clusterFeature.layer?.id ?? "unknown",
           clusterId: asFiniteNumber(clusterFeature.properties?.cluster_id) ?? null,
@@ -1068,7 +1104,7 @@ export default function Map({
           map,
           clusterFeature as GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>,
         );
-        return;
+        return true;
       }
 
       const cafeFeature = interactiveFeatures.find(
@@ -1078,12 +1114,23 @@ export default function Map({
       if (cafeId) {
         clearSpiderfy(map);
         onCafeSelectRef.current?.(cafeId);
-        return;
+        return true;
       }
 
-      if (!onMapClickRef.current) return;
+      if (!onMapClickRef.current) return false;
       clearSpiderfy(map);
-      onMapClickRef.current([e.lngLat.lng, e.lngLat.lat]);
+      onMapClickRef.current([lngLat.lng, lngLat.lat]);
+      return false;
+    };
+
+    const handleMapClick = (e: maplibregl.MapMouseEvent) => {
+      void handleMapTap(e.point, e.lngLat, "click");
+    };
+
+    const handleMapTouchEnd = (e: maplibregl.MapTouchEvent) => {
+      const point = e.point ?? e.points?.[0];
+      if (!point) return;
+      void handleMapTap(point, e.lngLat, "touchend");
     };
 
     const handleMoveEnd = () => {
@@ -1126,11 +1173,15 @@ export default function Map({
 
     const runStyleLoad = async () => {
       applyBaseStyleTweaks(map, schemeRef.current);
-      addSources(
-        map,
-        geojsonRef.current ?? geojson,
-      );
-      addLayers(map, selectedCafeRef.current ?? null);
+      try {
+        addSources(
+          map,
+          geojsonRef.current ?? geojson,
+        );
+        addLayers(map, selectedCafeRef.current ?? null);
+      } catch (error) {
+        console.warn("[MapLibre] Failed to add map layers/sources", error);
+      }
       updateUserLocation(map, userLocation);
       updateSelected(map, selectedCafeRef.current ?? null);
       if (focusRef.current) {
@@ -1139,11 +1190,15 @@ export default function Map({
       setIsMapReady(true);
 
       if (!clusterTapEventsBoundRef.current) {
-        map.on("click", CAFE_CLUSTER_LAYER_ID, handleClusterLayerTap);
-        map.on("click", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterLayerTap);
-        map.on("touchend", CAFE_CLUSTER_LAYER_ID, handleClusterLayerTap);
-        map.on("touchend", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterLayerTap);
-        clusterTapEventsBoundRef.current = true;
+        try {
+          map.on("click", CAFE_CLUSTER_LAYER_ID, handleClusterLayerTap);
+          map.on("click", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterLayerTap);
+          map.on("touchend", CAFE_CLUSTER_LAYER_ID, handleClusterLayerTap);
+          map.on("touchend", CAFE_CLUSTER_COUNT_LAYER_ID, handleClusterLayerTap);
+          clusterTapEventsBoundRef.current = true;
+        } catch (error) {
+          console.warn("[MapLibre] Failed to bind cluster tap events", error);
+        }
       }
 
       if (!disableCafeClick && !layerEventsBoundRef.current) {
@@ -1173,6 +1228,7 @@ export default function Map({
 
     map.on("style.load", handleStyleLoad);
     map.on("click", handleMapClick);
+    map.on("touchend", handleMapTouchEnd);
     map.on("moveend", handleMoveEnd);
     map.on("error", handleError);
     if (!mapHandlersBoundRef.current) {
@@ -1184,6 +1240,7 @@ export default function Map({
     return () => {
       map.off("style.load", handleStyleLoad);
       map.off("click", handleMapClick);
+      map.off("touchend", handleMapTouchEnd);
       map.off("moveend", handleMoveEnd);
       map.off("error", handleError);
       if (clusterTapEventsBoundRef.current) {

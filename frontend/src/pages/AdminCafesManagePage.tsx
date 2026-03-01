@@ -3,13 +3,12 @@ import {
   ActionIcon,
   Button,
   Loader,
-  TextInput,
-  Textarea, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { AppSelect } from "../ui/bridge";
+import { Input } from "../components/ui";
 
 import {
   deleteAdminCafeByID,
@@ -354,60 +353,73 @@ export default function AdminCafesManagePage() {
                 <>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <TextInput
-                        label="Название"
-                        value={editForm.name}
-                        onChange={(event) =>
-                          setEditForm((prev) => ({ ...prev, name: event.currentTarget.value }))
-                        }
-                      />
+                      <label className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-sm font-medium text-text">Название</span>
+                        <Input
+                          value={editForm.name}
+                          onChange={(event) =>
+                            setEditForm((prev) => ({ ...prev, name: event.currentTarget.value }))
+                          }
+                        />
+                      </label>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <TextInput
-                        label="Адрес"
-                        value={editForm.address}
-                        onChange={(event) =>
-                          setEditForm((prev) => ({ ...prev, address: event.currentTarget.value }))
-                        }
-                      />
+                      <label className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-sm font-medium text-text">Адрес</span>
+                        <Input
+                          value={editForm.address}
+                          onChange={(event) =>
+                            setEditForm((prev) => ({ ...prev, address: event.currentTarget.value }))
+                          }
+                        />
+                      </label>
                     </div>
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <TextInput
-                        label="Latitude"
-                        value={editForm.latitude}
-                        onChange={(event) =>
-                          setEditForm((prev) => ({ ...prev, latitude: event.currentTarget.value }))
-                        }
-                      />
+                      <label className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-sm font-medium text-text">Latitude</span>
+                        <Input
+                          value={editForm.latitude}
+                          onChange={(event) =>
+                            setEditForm((prev) => ({ ...prev, latitude: event.currentTarget.value }))
+                          }
+                        />
+                      </label>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <TextInput
-                        label="Longitude"
-                        value={editForm.longitude}
-                        onChange={(event) =>
-                          setEditForm((prev) => ({ ...prev, longitude: event.currentTarget.value }))
-                        }
-                      />
+                      <label className="flex min-w-0 flex-col gap-1.5">
+                        <span className="text-sm font-medium text-text">Longitude</span>
+                        <Input
+                          value={editForm.longitude}
+                          onChange={(event) =>
+                            setEditForm((prev) => ({ ...prev, longitude: event.currentTarget.value }))
+                          }
+                        />
+                      </label>
                     </div>
                   </div>
-                  <Textarea
-                    label="Описание"
-                    minRows={4}
-                    value={editForm.description}
-                    onChange={(event) =>
-                      setEditForm((prev) => ({ ...prev, description: event.currentTarget.value }))
-                    }
-                  />
-                  <TextInput
-                    label="Amenities (через запятую)"
-                    placeholder="wifi, power, quiet, toilet, laptop"
-                    value={editForm.amenities}
-                    onChange={(event) =>
-                      setEditForm((prev) => ({ ...prev, amenities: event.currentTarget.value }))
-                    }
-                  />
+                  <label className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-sm font-medium text-text">Описание</span>
+                    <textarea
+                      rows={4}
+                      className="w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-muted shadow-surface ui-focus-ring"
+                      value={editForm.description}
+                      onChange={(event) =>
+                        setEditForm((prev) => ({ ...prev, description: event.currentTarget.value }))
+                      }
+                    />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-sm font-medium text-text">Amenities (через запятую)</span>
+                    <Input
+                      placeholder="wifi, power, quiet, toilet, laptop"
+                      value={editForm.amenities}
+                      onChange={(event) =>
+                        setEditForm((prev) => ({ ...prev, amenities: event.currentTarget.value }))
+                      }
+                    />
+                  </label>
                   <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
                     <Button loading={saveLoading} onClick={() => void handleSave()}>
                       Сохранить изменения

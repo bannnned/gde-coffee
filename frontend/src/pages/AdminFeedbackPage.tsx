@@ -3,12 +3,12 @@ import {
   ActionIcon,
   Button,
   Table, 
-  TextInput, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { AppSelect } from "../ui/bridge";
+import { Input } from "../components/ui";
 
 import {
   listAdminFeedback,
@@ -153,12 +153,14 @@ export default function AdminFeedbackPage() {
             <div style={{ display: "grid", gap: 12 }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <TextInput
-                    label="Поиск"
-                    placeholder="Текст отзыва, контакт, email, имя"
-                    value={queryDraft}
-                    onChange={(event) => setQueryDraft(event.currentTarget.value)}
-                  />
+                  <label className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-sm font-medium text-text">Поиск</span>
+                    <Input
+                      placeholder="Текст отзыва, контакт, email, имя"
+                      value={queryDraft}
+                      onChange={(event) => setQueryDraft(event.currentTarget.value)}
+                    />
+                  </label>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <label className="flex min-w-0 flex-col gap-1.5">
