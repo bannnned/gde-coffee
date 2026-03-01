@@ -75,6 +75,8 @@
 57. `W5-AR` закрыт (`done`): удален устаревший `ui/bridge/select.tsx`, а `ui/bridge/index.ts` очищен от реэкспорта `./select`; `AppSelect` полностью выведен из кода.
 58. `W5-AS` закрыт (`done`): из discovery settings удалены bridge-обертки `FormField/FormActions`, после чего удален `ui/bridge/form.tsx` и очищен bridge barrel.
 59. `W5-AT` закрыт (`done`): composer отзывов переведен с `AppTagsInput` на `components/ui/TagsInput`; удален `ui/bridge/tags-input.tsx` и очищен bridge barrel.
+60. `W5-AU` закрыт (`done`): `AppModal/AppSheet` перенесены в `components/ui/overlay.tsx`, все usage переведены на `components/ui`, после чего удалены `ui/bridge/overlay.tsx` и `ui/bridge/index.ts`.
+61. `W5-AV` закрыт (`done`): из `components/ui` и call sites удалены compat-пропсы `implementation`/`comboboxProps`; контракты `overlay/select/tags-input` очищены до final API.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

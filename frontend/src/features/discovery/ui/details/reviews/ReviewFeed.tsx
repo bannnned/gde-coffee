@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { IconStarFilled, IconThumbUp } from "@tabler/icons-react";
 
-import { Badge, Button, Select } from "../../../../../components/ui";
-import { AppModal } from "../../../../../ui/bridge";
+import { AppModal, Badge, Button, Select } from "../../../../../components/ui";
 import PhotoLightboxModal, {
   type PhotoLightboxItem,
 } from "../../../../../components/PhotoLightboxModal";
@@ -343,7 +342,6 @@ export function ReviewFeed({
           if (!next) setExpandedReviewID(null);
         }}
         title="Полный отзыв"
-        implementation="radix"
         presentation="dialog"
         contentClassName="w-[min(94vw,760px)] border border-glass-border bg-glass shadow-glass"
         bodyClassName="max-h-[80vh] overflow-auto p-4"

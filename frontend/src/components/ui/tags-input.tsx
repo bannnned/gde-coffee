@@ -29,8 +29,6 @@ export type TagsInputProps = {
   className?: string;
   nothingFoundMessage?: string;
   onSearchChange?: (value: string) => void;
-  // Kept for backward compatibility while migrating from bridge layer.
-  implementation?: unknown;
 };
 
 function normalizeTag(tag: string): string {

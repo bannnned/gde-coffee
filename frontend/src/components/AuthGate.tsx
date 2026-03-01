@@ -15,8 +15,7 @@ import { Controller, useForm } from "react-hook-form";
 import type { AuthUser, LoginPayload, RegisterPayload } from "../api/auth";
 import * as authApi from "../api/auth";
 import { buildOAuthStartUrl } from "../api/url";
-import { Button as UIButton, Input } from "../components/ui";
-import { AppModal } from "../ui/bridge";
+import { AppModal, Button as UIButton, Input } from "../components/ui";
 import TelegramLoginWidget from "./TelegramLoginWidget";
 import classes from "./AuthGate.module.css";
 
@@ -243,7 +242,6 @@ export default function AuthGate({ children }: PropsWithChildren) {
         title={<span className={classes.title}>{titleText}</span>}
         centered
         closeButton
-        implementation="radix"
         presentation="dialog"
         contentClassName={classes.modalContent}
         bodyClassName={classes.modalBody}

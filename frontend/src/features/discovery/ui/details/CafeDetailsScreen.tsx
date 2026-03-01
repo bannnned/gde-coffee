@@ -5,7 +5,7 @@ import {
 } from "@tabler/icons-react";
 
 import { triggerCafeAISummary } from "../../../../api/reviews";
-import { Button } from "../../../../components/ui";
+import { AppModal, Button } from "../../../../components/ui";
 import ReviewsSection from "./ReviewsSection";
 import { useCafeDetailsComputed } from "./hooks/useCafeDetailsComputed";
 import { useCafeDetailsData } from "./hooks/useCafeDetailsData";
@@ -17,7 +17,6 @@ import PhotoLightboxModal from "../../../../components/PhotoLightboxModal";
 import type { Cafe, CafePhotoKind } from "../../../../entities/cafe/model/types";
 import { extractApiErrorMessage } from "../../../../utils/apiError";
 import { cn } from "../../../../lib/utils";
-import { AppModal } from "../../../../ui/bridge";
 
 type CafeDetailsScreenProps = {
   opened: boolean;
@@ -322,7 +321,6 @@ export default function CafeDetailsScreen({
       }}
       fullScreen
       closeButton
-      implementation="radix"
       title={
         <div className="flex min-w-0 items-center justify-between gap-2 pr-2">
           <p className="truncate text-base font-semibold text-[var(--text)]">{cafe.name}</p>

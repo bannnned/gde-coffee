@@ -35,9 +35,6 @@ export type SelectProps = {
   required?: boolean;
   error?: ReactNode;
   "aria-label"?: string;
-  // Kept for backward compatibility while migrating from bridge layer.
-  implementation?: unknown;
-  comboboxProps?: unknown;
 };
 
 const SIZE_HEIGHT: Record<NonNullable<SelectProps["size"]>, number> = {

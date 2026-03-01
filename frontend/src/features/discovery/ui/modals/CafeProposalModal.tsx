@@ -6,8 +6,7 @@ import { uploadCafePhotoByPresignedUrl } from "../../../../api/cafePhotos";
 import { geocodeAddress } from "../../../../api/geocode";
 import { presignSubmissionPhotoUpload, submitCafeCreate } from "../../../../api/submissions";
 import Map from "../../../../components/Map";
-import { Badge, Button, Input } from "../../../../components/ui";
-import { AppModal } from "../../../../ui/bridge";
+import { AppModal, Badge, Button, Input } from "../../../../components/ui";
 import { extractApiErrorMessage, extractApiErrorStatus } from "../../../../utils/apiError";
 import classes from "./CafeProposalModal.module.css";
 
@@ -270,7 +269,6 @@ export default function CafeProposalModal({
         }}
         title="Предложить новую кофейню"
         fullScreen
-        implementation="radix"
         presentation="sheet"
         contentClassName={classes.modalContent}
         bodyClassName={classes.modalBody}
@@ -458,7 +456,6 @@ export default function CafeProposalModal({
         }}
         title="Выбор точки на карте"
         fullScreen
-        implementation="radix"
         presentation="sheet"
         contentClassName={classes.mapModalContent}
         bodyClassName={classes.mapModalBody}

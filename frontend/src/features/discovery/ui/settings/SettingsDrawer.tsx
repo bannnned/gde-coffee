@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IconMapPin, IconPlus } from "@tabler/icons-react";
 
-import { Button, Select } from "../../../../components/ui";
+import { AppSheet, Button, Select } from "../../../../components/ui";
 import { cn } from "../../../../lib/utils";
 import { DISCOVERY_UI_TEXT } from "../../constants";
-import { AppSheet } from "../../../../ui/bridge";
 import {
   discoveryGlassSelectStyles,
 } from "../styles/glass";
@@ -212,7 +211,6 @@ export default function SettingsDrawer({
         if (!next) onClose();
       }}
       title="Настройки"
-      implementation="radix"
       contentClassName="bg-glass border border-glass-border shadow-glass backdrop-blur-[18px] backdrop-saturate-[180%]"
       bodyClassName="px-4 pt-4 pb-6"
     >
@@ -398,7 +396,6 @@ export default function SettingsDrawer({
                         searchValue={topTagsQuery}
                         onSearchChange={onTopTagsQueryChange}
                         onChange={setPendingTagToAdd}
-                        comboboxProps={{ withinPortal: true, zIndex: 4300 }}
                         rightSection={topTagsOptionsLoading ? <span style={{ fontSize: 12 }}>...</span> : null}
                         styles={discoveryGlassSelectStyles}
                         disabled={!canEditTags}

@@ -4,9 +4,8 @@ import { IconPlus, IconRotateClockwise2, IconTrash } from "@tabler/icons-react";
 
 import { uploadCafePhotoByPresignedUrl } from "../../../api/cafePhotos";
 import { presignSubmissionPhotoUpload, submitCafePhotos, submitMenuPhotos } from "../../../api/submissions";
-import { Badge, Button } from "../../../components/ui";
+import { AppModal, Badge, Button } from "../../../components/ui";
 import { cn } from "../../../lib/utils";
-import { AppModal } from "../../../ui/bridge";
 import { extractApiErrorMessage } from "../../../utils/apiError";
 import { rotateImageFileByQuarterTurns } from "../../../utils/imageRotation";
 import classes from "./CafePhotoSubmissionModal.module.css";
@@ -214,7 +213,6 @@ export default function CafePhotoSubmissionModal({
       }}
       title={`Предложить фото: ${cafeName}`}
       fullScreen
-      implementation="radix"
       presentation="sheet"
       contentClassName={classes.modalContent}
       bodyClassName={classes.modalBody}

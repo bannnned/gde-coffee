@@ -19,9 +19,8 @@ import {
   setCafePhotoCover,
   uploadCafePhotoByPresignedUrl,
 } from "../../../api/cafePhotos";
-import { Badge, Button } from "../../../components/ui";
+import { AppModal, Badge, Button } from "../../../components/ui";
 import type { CafePhoto, CafePhotoKind } from "../../../entities/cafe/model/types";
-import { AppModal } from "../../../ui/bridge";
 import { extractApiErrorMessage } from "../../../utils/apiError";
 import { rotateImageFileByQuarterTurns } from "../../../utils/imageRotation";
 import classes from "./CafePhotoAdminModal.module.css";
@@ -364,7 +363,6 @@ export default function CafePhotoAdminModal({
       }}
       title={`Фото ${photoKindLabel}: ${cafeName}`}
       fullScreen
-      implementation="radix"
       presentation="sheet"
       contentClassName={classes.modalContent}
       bodyClassName={classes.modalBody}

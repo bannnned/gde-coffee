@@ -1216,3 +1216,49 @@ Critical path stack-transition:
 - Артефакт: migration review composer в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/ReviewComposerCard.tsx`.
 - Артефакт: удаленный `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/tags-input.tsx`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AU · Remove obsolete `ui/bridge/overlay` by migrating `AppModal/AppSheet` to `components/ui` (P1, status: done)
+- Цель: убрать overlay-bridge слой и использовать `AppModal/AppSheet` напрямую из `components/ui`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/overlay.tsx` (new).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/index.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/PhotoLightboxModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/AuthGate.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoSubmissionModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoAdminModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/CafeDetailsScreen.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/ReviewFeed.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/modals/CafeProposalModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx` (delete).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/index.ts` (delete).
+- Depends on: `W5-AT`.
+- AC: перечисленные файлы импортируют `AppModal/AppSheet` из `components/ui`, а не из bridge.
+- AC: `ui/bridge/overlay.tsx` и `ui/bridge/index.ts` удалены.
+- AC: поиск по `frontend/src` не показывает импортов `ui/bridge`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: новый overlay primitive в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/overlay.tsx`.
+- Артефакт: migration modal/sheet usage в перечисленных product-компонентах.
+- Артефакт: удаленные `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/overlay.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/index.ts`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AV · Drop `implementation/comboboxProps` compatibility props from new UI contracts and call sites (P1, status: done)
+- Цель: зачистить legacy-совместимость в new-ui API и убрать неиспользуемые compat-пропсы из интерфейсов/usage.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/overlay.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/select.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/tags-input.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/AuthGate.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/PhotoLightboxModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoSubmissionModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/CafePhotoAdminModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/modals/CafeProposalModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/CafeDetailsScreen.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/ReviewFeed.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`.
+- Depends on: `W5-AU`.
+- AC: в коде отсутствуют `implementation=` и `comboboxProps=` в JSX usage.
+- AC: new-ui контракты `AppModal/AppSheet`, `Select`, `TagsInput` не содержат compat-пропсов `implementation`/`comboboxProps`.
+- AC: поведение modal/sheet/select/tags-input сохранено без UX-регрессий.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: очищенные new-ui контракты в `components/ui`.
+- Артефакт: очищенные call sites в перечисленных product-компонентах.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

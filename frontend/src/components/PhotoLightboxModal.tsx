@@ -6,9 +6,8 @@ import {
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { Button } from "./ui";
+import { AppModal, Button } from "./ui";
 import { cn } from "../lib/utils";
-import { AppModal } from "../ui/bridge";
 import {
   buildCafePhotoPictureSources,
   buildCafePhotoSrcSet,
@@ -330,7 +329,6 @@ export default function PhotoLightboxModal({
       onOpenChange={(next) => {
         if (!next) onClose();
       }}
-      implementation="radix"
       presentation="dialog"
       closeButton={false}
       contentClassName="!left-0 !top-0 !h-[100dvh] !w-[100vw] !translate-x-0 !translate-y-0 border-0 bg-transparent p-0 shadow-none"

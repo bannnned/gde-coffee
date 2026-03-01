@@ -1,6 +1,7 @@
 export * from "./badge";
 export * from "./button";
 export * from "./input";
+export * from "./overlay";
 export * from "./popover";
 export * from "./select";
 export * from "./sheet";

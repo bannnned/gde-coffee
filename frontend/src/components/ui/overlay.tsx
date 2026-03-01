@@ -9,10 +9,8 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "../../components/ui";
+} from "./sheet";
 import { cn } from "../../lib/utils";
-
-type BridgeEngine = "mantine" | "radix";
 
 type AppModalProps = {
   open: boolean;
@@ -22,7 +20,6 @@ type AppModalProps = {
   centered?: boolean;
   fullScreen?: boolean;
   closeButton?: boolean;
-  implementation?: BridgeEngine;
   contentClassName?: string;
   bodyClassName?: string;
   titleClassName?: string;
@@ -37,7 +34,6 @@ export function AppModal({
   centered: _centered = false,
   fullScreen = false,
   closeButton = true,
-  implementation: _implementation = "radix",
   contentClassName,
   bodyClassName,
   titleClassName,
@@ -135,7 +131,6 @@ type AppSheetProps = {
   closeButton?: boolean;
   children: ReactNode;
   side?: "left" | "right";
-  implementation?: BridgeEngine;
   contentClassName?: string;
   bodyClassName?: string;
   titleClassName?: string;
@@ -148,7 +143,6 @@ export function AppSheet({
   closeButton = true,
   children,
   side = "right",
-  implementation: _implementation = "radix",
   contentClassName,
   bodyClassName,
   titleClassName,
