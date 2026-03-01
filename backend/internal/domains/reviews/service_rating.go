@@ -34,6 +34,11 @@ const (
 		 where ar.review_id = r.id and ar.status = 'confirmed'
 	), 0),
 	coalesce((
+		select count(*)
+		  from helpful_votes hv
+		 where hv.review_id = r.id
+	), 0)::int as helpful_votes,
+	coalesce((
 		select sum(hv.weight)
 		  from helpful_votes hv
 		 where hv.review_id = r.id
@@ -109,6 +114,7 @@ type bestReviewCandidate struct {
 	AuthorName    string
 	Rating        float64
 	Summary       string
+	HelpfulVotes  int
 	HelpfulScore  float64
 	QualityScore  float64
 	VisitVerified bool
@@ -179,6 +185,7 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 		VisitConfidence  string
 		VisitVerified    bool
 		ConfirmedReports int
+		HelpfulVotes     int
 		HelpfulScore     float64
 		CreatedAt        time.Time
 	}
@@ -210,6 +217,7 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 			&item.VisitConfidence,
 			&item.VisitVerified,
 			&item.ConfirmedReports,
+			&item.HelpfulVotes,
 			&item.HelpfulScore,
 			&item.CreatedAt,
 		); err != nil {
@@ -359,6 +367,7 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 			AuthorName:    item.AuthorName,
 			Rating:        item.Rating,
 			Summary:       item.Summary,
+			HelpfulVotes:  item.HelpfulVotes,
 			HelpfulScore:  item.HelpfulScore,
 			QualityScore:  qualityScore,
 			VisitVerified: item.VisitVerified,
@@ -641,6 +650,7 @@ func (s *Service) recalculateCafeRatingSnapshotWithOptions(
 			"author_name":    bestReview.AuthorName,
 			"rating":         roundFloat(bestReview.Rating, 2),
 			"summary":        bestReview.Summary,
+			"helpful_votes":  bestReview.HelpfulVotes,
 			"helpful_score":  roundFloat(bestReview.HelpfulScore, 3),
 			"quality_score":  roundFloat(bestReview.QualityScore, 2),
 			"visit_verified": bestReview.VisitVerified,

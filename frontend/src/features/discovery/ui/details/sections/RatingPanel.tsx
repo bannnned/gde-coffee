@@ -13,6 +13,7 @@ type RatingPanelProps = {
   verifiedSharePercent: number;
   showVerifiedSharePercent?: boolean;
   onOpenReviews?: () => void;
+  onOpenBestReview?: (reviewID: string) => void;
   ratingLoading: boolean;
   ratingError: string | null;
   bestReview: CafeRatingBestReview | null;
@@ -36,6 +37,7 @@ export default function RatingPanel({
   verifiedSharePercent,
   showVerifiedSharePercent = false,
   onOpenReviews,
+  onOpenBestReview,
   ratingLoading,
   ratingError,
   bestReview,
@@ -51,6 +53,8 @@ export default function RatingPanel({
   aiSummaryTriggerLoading,
   onTriggerAISummary,
 }: RatingPanelProps) {
+  const bestReviewLikes = bestReview ? Math.max(0, Math.round(bestReview.helpful_votes)) : 0;
+
   return (
     <>
       <div className={classes.statsRow}>
@@ -91,18 +95,28 @@ export default function RatingPanel({
         />
       ) : null}
       {bestReview && bestReview.id ? (
-        <div className={classes.bestReviewCard}>
+        <button
+          type="button"
+          className={`${classes.bestReviewCard} ${classes.bestReviewCardButton} ${onOpenBestReview ? "ui-focus-ring" : ""}`}
+          onClick={() => {
+            if (!onOpenBestReview) return;
+            onOpenBestReview(bestReview.id);
+          }}
+          disabled={!onOpenBestReview}
+          aria-label="Открыть лучший отзыв в разделе отзывов"
+          title={onOpenBestReview ? "Перейти к отзыву" : undefined}
+        >
           <div className={classes.bestReviewStack}>
             <div className={classes.bestReviewHeader}>
               <p className={classes.bestReviewTitle}>Лучший отзыв</p>
               <Badge className={classes.metaChip}>
-                Полезность: {bestReview.helpful_score.toFixed(1)}
+                Лайки: {bestReviewLikes}
               </Badge>
             </div>
             <p className={classes.bestReviewAuthor}>{bestReview.author_name}</p>
             <p className={classes.bestReviewText}>{bestReview.summary}</p>
           </div>
-        </div>
+        </button>
       ) : null}
     </>
   );

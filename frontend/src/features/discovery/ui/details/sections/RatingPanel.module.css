@@ -51,6 +51,21 @@
   background: var(--surface);
 }
 
+.bestReviewCardButton {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.bestReviewCardButton:disabled {
+  cursor: default;
+}
+
+.bestReviewCardButton:not(:disabled):hover {
+  background: color-mix(in srgb, var(--surface) 88%, var(--card));
+}
+
 .bestReviewStack {
   display: flex;
   flex-direction: column;

@@ -30,6 +30,7 @@ export type CafeRatingBestReview = {
   author_name: string;
   rating: number;
   summary: string;
+  helpful_votes: number;
   helpful_score: number;
   quality_score: number;
   visit_verified: boolean;
@@ -544,12 +545,18 @@ function parseFormulaVersions(raw: RawRecord): { rating: string; quality: string
 
 function parseBestReview(rawValue: unknown): CafeRatingBestReview | null {
   if (!isRecord(rawValue)) return null;
+  const helpfulScore = asNumber(rawValue.helpful_score);
+  const parsedHelpfulVotes = Number(rawValue.helpful_votes);
+  const helpfulVotes = Number.isFinite(parsedHelpfulVotes)
+    ? Math.max(0, Math.round(parsedHelpfulVotes))
+    : Math.max(0, Math.round(helpfulScore));
   return {
     id: asString(rawValue.id),
     author_name: asString(rawValue.author_name, "Участник"),
     rating: asNumber(rawValue.rating),
     summary: asString(rawValue.summary),
-    helpful_score: asNumber(rawValue.helpful_score),
+    helpful_votes: helpfulVotes,
+    helpful_score: helpfulScore,
     quality_score: asNumber(rawValue.quality_score),
     visit_verified: Boolean(rawValue.visit_verified),
     created_at: asString(rawValue.created_at),
