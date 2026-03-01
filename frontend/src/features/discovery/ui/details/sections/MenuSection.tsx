@@ -232,7 +232,7 @@ export default function MenuSection({
             После добавления фото и отзывов здесь появятся позиции и теги меню.
           </p>
         )}
-        {onManagePhotos && (
+        {onManagePhotos && menuPhotoItems.length > 0 && (
           <div className={cn("mt-2 flex justify-center", menuPhotoItems.length > 0 && "mt-0")}>
             <Button
               type="button"

@@ -311,7 +311,7 @@ export default function AboutSection({
             )}
           </div>
         ) : null}
-        {onManagePhotos && (
+        {onManagePhotos && aboutPhotoItems.length > 0 && (
           <Button
             type="button"
             size="sm"
