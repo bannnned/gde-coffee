@@ -63,6 +63,7 @@
 45. `W5-AF` закрыт (`done`): из admin fields-слоя удален `Switch` wrapper; admin toggles переведены на explicit inline `button[role="switch"]`.
 46. `W5-AG` закрыт (`done`): из admin fields-слоя удален `TextInput` wrapper; admin inputs переведены на прямой `Input` + explicit label/description-разметку.
 47. `W5-AH` закрыт (`done`): из admin fields-слоя удален `Textarea` wrapper; admin textareas переведены на explicit native `textarea` + label-разметку.
+48. `W5-AI` закрыт (`done`): удален пустой `features/admin/ui/fields.tsx`, а `features/admin/ui/index.ts` очищен от реэкспорта `./fields`.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

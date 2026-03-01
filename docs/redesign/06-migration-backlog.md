@@ -1019,3 +1019,16 @@ Critical path stack-transition:
 - Артефакт: удаленный `Textarea` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
 - Артефакт: migration textarea controls на explicit native markup в перечисленных страницах/карточках.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AI · Remove empty admin `fields` layer and clean admin UI barrel (P1, status: done)
+- Цель: удалить пустой `fields`-слой после завершения de-compat миграции полей и оставить `admin/ui` только с `layout` экспортами.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx` (delete).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/index.ts`.
+- Depends on: `W5-AH`.
+- AC: файл `features/admin/ui/fields.tsx` удален.
+- AC: barrel `features/admin/ui/index.ts` не реэкспортирует `./fields`.
+- AC: в `frontend/src` отсутствуют прямые импорты `features/admin/ui/fields`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
+- Артефакт: очищенный barrel `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/index.ts`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
