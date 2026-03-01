@@ -13,28 +13,29 @@ COPY backend/go.mod backend/go.sum ./backend/
 WORKDIR /app/backend
 RUN go mod download
 COPY backend/ ./
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /app/server .
 
 # 3) runtime
-FROM alpine:3.19
+FROM alpine:3.21
 WORKDIR /app
 
 ENV GIN_MODE=release
 
-# важно: curl для healthcheck + certs
-RUN apk add --no-cache ca-certificates curl && update-ca-certificates
+RUN apk add --no-cache ca-certificates && update-ca-certificates
+
+RUN addgroup -g 1000 appgroup && adduser -D -u 1000 -G appgroup appuser
 
 COPY backend/ca.crt /app/ca.crt
 COPY --from=backend-build /app/server /app/server
 COPY --from=frontend-build /app/frontend/dist /app/public
 
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
 EXPOSE 8080
 
 HEALTHCHECK --interval=10s --timeout=2s --start-period=10s --retries=12 \
-  CMD curl -fsS http://127.0.0.1:8080/ >/dev/null || exit 1
+  CMD wget -qO /dev/null http://127.0.0.1:8080/ || exit 1
 
 CMD ["/app/server"]
-
-
-
-
