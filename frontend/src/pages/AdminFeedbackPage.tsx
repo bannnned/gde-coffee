@@ -2,13 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Button,
-  Table, 
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { AppSelect } from "../ui/bridge";
-import { Input } from "../components/ui";
+import { Input, Table } from "../components/ui";
 
 import {
   listAdminFeedback,

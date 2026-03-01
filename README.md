@@ -42,6 +42,8 @@ Map style by color scheme:
 - `VITE_MAP_STYLE_URL_LIGHT` — optional override for light map style URL (`style.json`)
 - `VITE_MAP_STYLE_URL_DARK` — optional override for dark map style URL (`style.json`)
 - `VITE_MAP_STYLE_URL` — legacy override for both schemes (kept for backward compatibility)
+- `VITE_MAP_CITY_LABEL_FONT_STACK` — optional comma-separated font stack for city/place labels
+  (example: `Unbounded Regular,Noto Sans Regular,Open Sans Regular`; fonts must exist on the style `glyphs` endpoint)
 
 ## Backend overview
 The backend serves:

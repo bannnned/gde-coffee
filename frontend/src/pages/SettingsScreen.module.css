@@ -323,6 +323,10 @@
   flex-wrap: wrap;
 }
 
+.socialActionsRow {
+  margin-top: 12px;
+}
+
 .banner {
   border-radius: 16px;
   padding: 12px 14px;

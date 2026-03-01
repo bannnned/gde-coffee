@@ -1,4 +1,5 @@
-import { Badge, Button } from "../../admin/ui";
+import { Button } from "../../admin/ui";
+import { Badge } from "../../../components/ui";
 
 import type { AdminDrink } from "../../../api/adminDrinks";
 
@@ -38,7 +39,7 @@ export default function AdminDrinksCatalogCard({
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <p style={{ margin: 0,  fontWeight: 600 }}>{item.name}</p>
                   <Badge variant="secondary">{item.id}</Badge>
-                  {!item.is_active && <Badge variant="secondary" color="gray">hidden</Badge>}
+                  {!item.is_active && <Badge variant="secondary">hidden</Badge>}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <Button variant="secondary" size="sm" onClick={() => onSelectDrink(item.id)}>

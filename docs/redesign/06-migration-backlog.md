@@ -1032,3 +1032,50 @@ Critical path stack-transition:
 - Артефакт: удаленный `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/fields.tsx`.
 - Артефакт: очищенный barrel `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/index.ts`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AJ · Remove exported admin `Loader` wrapper and migrate external usage (P1, status: done)
+- Цель: убрать публичный wrapper `Loader` из admin layout-слоя и перевести внешний usage на explicit inline spinner.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Depends on: `W5-AI`.
+- AC: `layout.tsx` не экспортирует `Loader`; для внутренних `Button/ActionIcon loading` используется private spinner.
+- AC: во `frontend/src` отсутствует импорт/usage `Loader` из `features/admin/ui`.
+- AC: поведение loader в `AppSelect.rightSection` на странице управления кофейнями сохранено через explicit inline spinner.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: `Loader` de-export + private `Spinner` в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration `rightSection` spinner в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AK · Remove admin `Badge` wrapper and migrate usage to new-ui/explicit markup (P1, status: done)
+- Цель: убрать `Badge` wrapper из admin layout-слоя и перевести admin usage на `components/ui/Badge` или explicit inline markup там, где нужен `dot`-вариант.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Depends on: `W5-AJ`.
+- AC: `layout.tsx` не содержит `Badge` wrapper (контракт + реализация).
+- AC: во `frontend/src` отсутствует импорт/usage `Badge` из `features/admin/ui`.
+- AC: бейджи в admin-drinks используют `components/ui/Badge`.
+- AC: для moderation сохранен `dot`-паттерн через explicit inline badge-разметку.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `Badge` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration badge usage в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AL · Remove admin `Table` wrapper and migrate usage to new-ui table component (P1, status: done)
+- Цель: убрать `Table` wrapper из admin layout-слоя и перевести admin usage на reusable `components/ui/table.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/table.tsx` (new).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/index.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Depends on: `W5-AK`.
+- AC: `layout.tsx` не содержит `Table` wrapper (контракт + реализация).
+- AC: во `frontend/src` отсутствует импорт `Table` из `features/admin/ui`.
+- AC: таблицы admin-страниц импортируют `Table` из `components/ui`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `Table` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: new-ui table primitive в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/table.tsx` + export в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/index.ts`.
+- Артефакт: migration admin tables в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

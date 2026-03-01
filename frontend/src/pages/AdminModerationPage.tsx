@@ -1,7 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ActionIcon,
-  Badge,
   Button,
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
@@ -49,6 +48,74 @@ const ACTION_LABELS: Record<string, string> = {
   update: "Обновление",
   delete: "Удаление",
 };
+
+type InlineBadgeVariant = "default" | "secondary" | "outline" | "dot";
+type InlineBadgeTone = "yellow" | "green" | "red" | "orange" | "gray";
+
+function inlineBadgeTone(color?: InlineBadgeTone): string {
+  if (color === "green") return "var(--color-status-success)";
+  if (color === "red") return "var(--color-status-error)";
+  if (color === "orange" || color === "yellow") return "var(--color-status-warning)";
+  return "color-mix(in srgb, var(--muted) 45%, var(--surface))";
+}
+
+function InlineBadge({
+  children,
+  variant = "default",
+  color,
+  style,
+}: {
+  children?: ReactNode;
+  variant?: InlineBadgeVariant;
+  color?: InlineBadgeTone;
+  style?: CSSProperties;
+}) {
+  const tone = inlineBadgeTone(color);
+  const isSoft = variant === "secondary" || variant === "dot";
+  const isSolid = variant === "default";
+  const isLowContrastTone = color === "yellow" || color === "gray";
+  const textColor = isSolid
+    ? isLowContrastTone
+      ? "var(--text)"
+      : "var(--color-on-accent)"
+    : "var(--text)";
+  const background =
+    variant === "outline"
+      ? "transparent"
+      : isSoft
+        ? "color-mix(in srgb, var(--surface) 72%, transparent)"
+        : tone;
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: variant === "dot" ? 6 : 0,
+        borderRadius: 999,
+        border: `1px solid ${tone}`,
+        background,
+        color: textColor,
+        fontSize: 12,
+        fontWeight: 600,
+        padding: "2px 8px",
+        ...style,
+      }}
+    >
+      {variant === "dot" ? (
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: 999,
+            background: tone,
+            display: "inline-block",
+          }}
+        />
+      ) : null}
+      {children}
+    </span>
+  );
+}
 
 function readPayloadString(payload: Record<string, unknown> | undefined, key: string): string | null {
   const value = payload?.[key];
@@ -427,12 +494,12 @@ export default function AdminModerationPage() {
                 <div style={{ display: "grid", gap: 12 }}>
                   <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      <Badge variant="secondary">{entityLabel(item.entity_type)}</Badge>
-                      <Badge variant="dot" color="gray">
+                      <InlineBadge variant="secondary">{entityLabel(item.entity_type)}</InlineBadge>
+                      <InlineBadge variant="dot" color="gray">
                         {actionLabel}
-                      </Badge>
+                      </InlineBadge>
                     </div>
-                    <Badge color={statusMeta.color}>{statusMeta.label}</Badge>
+                    <InlineBadge color={statusMeta.color}>{statusMeta.label}</InlineBadge>
                   </div>
                   <p style={{ margin: 0,  fontSize: 13, color: "var(--muted)" }}>
                     {item.author_label || item.author_user_id} • {formatModerationDate(item.created_at)}
@@ -513,9 +580,9 @@ export default function AdminModerationPage() {
                       </p>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {amenities.map((amenity) => (
-                          <Badge key={`${item.id}-amenity-${amenity}`} variant="secondary" style={{ borderRadius: 10 }}>
+                          <InlineBadge key={`${item.id}-amenity-${amenity}`} variant="secondary" style={{ borderRadius: 10 }}>
                             {amenity}
-                          </Badge>
+                          </InlineBadge>
                         ))}
                       </div>
                     </div>
@@ -529,18 +596,18 @@ export default function AdminModerationPage() {
                         </p>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                           {reviewRating != null && (
-                            <Badge variant="secondary">Оценка: {reviewRating}</Badge>
+                            <InlineBadge variant="secondary">Оценка: {reviewRating}</InlineBadge>
                           )}
                           {reviewDrink && (
-                            <Badge variant="secondary">Напиток: {reviewDrink}</Badge>
+                            <InlineBadge variant="secondary">Напиток: {reviewDrink}</InlineBadge>
                           )}
                         </div>
                         {reviewTags.length > 0 && (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                             {reviewTags.map((tag) => (
-                              <Badge key={`${item.id}-tag-${tag}`} variant="outline" style={{ borderRadius: 10 }}>
+                              <InlineBadge key={`${item.id}-tag-${tag}`} variant="outline" style={{ borderRadius: 10 }}>
                                 {tag}
-                              </Badge>
+                              </InlineBadge>
                             ))}
                           </div>
                         )}

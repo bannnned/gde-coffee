@@ -297,7 +297,13 @@ export function ReviewFeed({
           : null}
 
         {!isLoading && !loadError && hasMore ? (
-          <Button type="button" variant="secondary" onClick={onLoadMore} disabled={isLoadingMore}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onLoadMore}
+            disabled={isLoadingMore}
+            className="review-show-more-button"
+          >
             {isLoadingMore ? (
               <>
                 <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -587,7 +593,7 @@ function ReviewCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => setTextExpanded(true)}
-                className="h-6 w-fit px-0 text-xs font-semibold text-[var(--cafe-hero-emphasis-color)] hover:bg-transparent"
+                className="review-show-more-button h-6 w-fit px-0 text-xs font-semibold text-[var(--cafe-hero-emphasis-color)] hover:bg-transparent"
               >
                 Показать еще
               </Button>

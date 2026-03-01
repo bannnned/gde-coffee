@@ -3,3 +3,4 @@ export * from "./button";
 export * from "./input";
 export * from "./popover";
 export * from "./sheet";
+export * from "./table";

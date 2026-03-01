@@ -20,13 +20,37 @@ const MAP_STYLE_DARK_URL_RAW =
   (import.meta.env.VITE_MAP_STYLE_URL_DARK as string | undefined)?.trim() ||
   MAP_STYLE_URL_RAW ||
   "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const MAP_CITY_LABEL_FONT_STACK_RAW =
+  (import.meta.env.VITE_MAP_CITY_LABEL_FONT_STACK as string | undefined)?.trim() || "";
+const CITY_LABEL_LAYER_ID_PATTERN = /^place_(?:city.*|capital.*|town|suburbs|villages?|hamlet)$/i;
+const CITY_LABEL_FONT_FALLBACK_STACK = ["Noto Sans Regular", "Open Sans Regular"] as const;
 
 function normalizeMapStyleUrl(raw: string): string {
   return /tiles\.openfreemap\.org/i.test(raw) ? "" : raw;
 }
 
+function parseFontStack(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((item) => item.trim().replace(/^["']+|["']+$/g, ""))
+    .filter(Boolean);
+}
+
 const MAP_STYLE_LIGHT_URL = normalizeMapStyleUrl(MAP_STYLE_LIGHT_URL_RAW);
 const MAP_STYLE_DARK_URL = normalizeMapStyleUrl(MAP_STYLE_DARK_URL_RAW);
+const MAP_CITY_LABEL_FONT_STACK = (() => {
+  const requested = parseFontStack(MAP_CITY_LABEL_FONT_STACK_RAW);
+  if (requested.length === 0) return null;
+  const merged: string[] = [];
+  const seen = new Set<string>();
+  for (const font of [...requested, ...CITY_LABEL_FONT_FALLBACK_STACK]) {
+    const normalized = font.toLowerCase();
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    merged.push(font);
+  }
+  return merged;
+})();
 
 function createFallbackMapStyle() {
   return {
@@ -90,6 +114,24 @@ const ROAD_LABEL_ZOOM_RANGES: ReadonlyArray<{
   { id: "roadname_major", minzoom: 10.5, maxzoom: 24 },
 ];
 
+function applyCityLabelFontStack(map: MLMap) {
+  if (!MAP_CITY_LABEL_FONT_STACK || MAP_CITY_LABEL_FONT_STACK.length === 0) return;
+  const styleLayers = map.getStyle()?.layers;
+  if (!Array.isArray(styleLayers)) return;
+
+  for (const styleLayer of styleLayers) {
+    const layerId = typeof styleLayer?.id === "string" ? styleLayer.id : "";
+    if (!layerId || !CITY_LABEL_LAYER_ID_PATTERN.test(layerId)) continue;
+    const runtimeLayer = map.getLayer(layerId);
+    if (!runtimeLayer || runtimeLayer.type !== "symbol") continue;
+    try {
+      map.setLayoutProperty(layerId, "text-font", MAP_CITY_LABEL_FONT_STACK);
+    } catch {
+      // Keep style defaults if custom stack is unavailable on the glyph endpoint.
+    }
+  }
+}
+
 function applyBaseStyleTweaks(map: MLMap, scheme: "light" | "dark") {
   for (const range of ROAD_LABEL_ZOOM_RANGES) {
     if (!map.getLayer(range.id)) continue;
@@ -108,7 +150,99 @@ function applyBaseStyleTweaks(map: MLMap, scheme: "light" | "dark") {
     }
   }
 
+  if (scheme === "light") {
+    if (map.getLayer("background")) {
+      try {
+        map.setPaintProperty("background", "background-color", "#EEE8DD");
+      } catch {
+        // Ignore style incompatibilities and keep original background.
+      }
+    }
+    if (map.getLayer("landcover")) {
+      try {
+        map.setPaintProperty("landcover", "fill-color", "#E7E0D3");
+      } catch {
+        // Ignore style incompatibilities and keep original landcover.
+      }
+    }
+    if (map.getLayer("landuse")) {
+      try {
+        map.setPaintProperty("landuse", "fill-color", "#E6DECF");
+      } catch {
+        // Ignore style incompatibilities and keep original landuse.
+      }
+    }
+    if (map.getLayer("landuse_residential")) {
+      try {
+        map.setPaintProperty("landuse_residential", "fill-color", "#ECE5D9");
+      } catch {
+        // Ignore style incompatibilities and keep original residential fill.
+      }
+    }
+    if (map.getLayer("park_national_park")) {
+      try {
+        map.setPaintProperty("park_national_park", "fill-color", "#D7E3CD");
+      } catch {
+        // Ignore style incompatibilities and keep original park style.
+      }
+    }
+    if (map.getLayer("park_nature_reserve")) {
+      try {
+        map.setPaintProperty("park_nature_reserve", "fill-color", "#DCE7D3");
+      } catch {
+        // Ignore style incompatibilities and keep original park style.
+      }
+    }
+    if (map.getLayer("water")) {
+      try {
+        map.setPaintProperty("water", "fill-color", "#BFD3E2");
+      } catch {
+        // Ignore style incompatibilities and keep original water style.
+      }
+    }
+    if (map.getLayer("building")) {
+      try {
+        map.setPaintProperty("building", "fill-color", "#CDC4B6");
+        map.setPaintProperty("building", "fill-opacity", [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          13.5,
+          0,
+          14.8,
+          0.34,
+          16,
+          0.58,
+        ]);
+      } catch {
+        // Ignore style incompatibilities and keep original buildings.
+      }
+    }
+    if (map.getLayer("building-top")) {
+      try {
+        map.setPaintProperty("building-top", "fill-color", "#DDD3C5");
+        map.setPaintProperty("building-top", "fill-outline-color", "#B2A897");
+        map.setPaintProperty("building-top", "fill-opacity", [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          12.8,
+          0,
+          14.6,
+          0.46,
+          16,
+          0.7,
+        ]);
+      } catch {
+        // Ignore style incompatibilities and keep original building tops.
+      }
+    }
+    applyCityLabelFontStack(map);
+    return;
+  }
+
   if (scheme !== "dark") {
+    applyCityLabelFontStack(map);
     return;
   }
 
@@ -162,6 +296,8 @@ function applyBaseStyleTweaks(map: MLMap, scheme: "light" | "dark") {
       // Keep default style if layer is not paint-compatible.
     }
   }
+
+  applyCityLabelFontStack(map);
 }
 
 const USER_ICON_ID = "user-pin";
@@ -300,33 +436,120 @@ function getExistingLayerIDs(map: MLMap, layerIDs: readonly string[]): string[] 
 function getCafesClusterSource(map: MLMap): (GeoJSONSource & {
   getClusterExpansionZoom?: (
     clusterId: number,
-    callback: (error: Error | null, zoom: number) => void,
-  ) => void;
+    callback?: (error: Error | null, zoom: number) => void,
+  ) => Promise<number> | void;
   getClusterLeaves?: (
     clusterId: number,
     limit: number,
     offset: number,
-    callback: (
+    callback?: (
       error: Error | null,
       features: Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>,
     ) => void,
-  ) => void;
+  ) => Promise<Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>> | void;
 }) | null {
   return getGeoJsonSource(map, "cafes") as (GeoJSONSource & {
     getClusterExpansionZoom?: (
       clusterId: number,
-      callback: (error: Error | null, zoom: number) => void,
-    ) => void;
+      callback?: (error: Error | null, zoom: number) => void,
+    ) => Promise<number> | void;
     getClusterLeaves?: (
       clusterId: number,
       limit: number,
       offset: number,
-      callback: (
+      callback?: (
         error: Error | null,
         features: Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>,
       ) => void,
-    ) => void;
+    ) => Promise<Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>> | void;
   }) | null;
+}
+
+async function readClusterExpansionZoom(
+  source: GeoJSONSource & {
+    getClusterExpansionZoom?: (
+      clusterId: number,
+      callback?: (error: Error | null, zoom: number) => void,
+    ) => Promise<number> | void;
+  },
+  clusterId: number,
+): Promise<number> {
+  const method = source.getClusterExpansionZoom;
+  if (typeof method !== "function") {
+    throw new Error("Cluster expansion is unavailable for this map source");
+  }
+
+  const maybePromise = method.call(source, clusterId);
+  if (
+    maybePromise &&
+    typeof maybePromise === "object" &&
+    "then" in maybePromise &&
+    typeof maybePromise.then === "function"
+  ) {
+    const zoom = await maybePromise;
+    return Number(zoom);
+  }
+
+  return await new Promise<number>((resolve, reject) => {
+    try {
+      void method.call(source, clusterId, (error, zoom) => {
+        if (error) {
+          reject(error instanceof Error ? error : new Error(String(error)));
+          return;
+        }
+        resolve(Number(zoom));
+      });
+    } catch (error) {
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
+}
+
+async function readClusterLeaves(
+  source: GeoJSONSource & {
+    getClusterLeaves?: (
+      clusterId: number,
+      limit: number,
+      offset: number,
+      callback?: (
+        error: Error | null,
+        features: Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>,
+      ) => void,
+    ) => Promise<Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>> | void;
+  },
+  clusterId: number,
+  limit: number,
+  offset: number,
+): Promise<Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>> {
+  const method = source.getClusterLeaves;
+  if (typeof method !== "function") {
+    return [];
+  }
+
+  const maybePromise = method.call(source, clusterId, limit, offset);
+  if (
+    maybePromise &&
+    typeof maybePromise === "object" &&
+    "then" in maybePromise &&
+    typeof maybePromise.then === "function"
+  ) {
+    const features = await maybePromise;
+    return Array.isArray(features) ? features : [];
+  }
+
+  return await new Promise<Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>>((resolve, reject) => {
+    try {
+      void method.call(source, clusterId, limit, offset, (error, features) => {
+        if (error) {
+          reject(error instanceof Error ? error : new Error(String(error)));
+          return;
+        }
+        resolve(Array.isArray(features) ? features : []);
+      });
+    } catch (error) {
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
 }
 
 function clearSpiderfy(map: MLMap) {
@@ -732,15 +955,7 @@ async function expandClusterOnClick(
   });
 
   try {
-    const expansionZoom = await new Promise<number>((resolve, reject) => {
-      source.getClusterExpansionZoom?.(clusterId, (error, zoom) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve(zoom);
-      });
-    });
+    const expansionZoom = await readClusterExpansionZoom(source, clusterId);
 
     const currentZoom = map.getZoom();
     const center = feature.geometry.coordinates as [number, number];
@@ -785,22 +1000,12 @@ async function expandClusterOnClick(
       2,
       Math.trunc(asFiniteNumber(feature.properties?.point_count) ?? CAFE_SPIDER_MAX_LEAVES),
     );
-    const leaves = await new Promise<
-      Array<GeoJSON.Feature<GeoJSON.Geometry, GeoJSON.GeoJsonProperties>>
-    >((resolve, reject) => {
-      source.getClusterLeaves?.(
-        clusterId,
-        Math.min(pointCount, CAFE_SPIDER_MAX_LEAVES),
-        0,
-        (error, nextFeatures) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          resolve(Array.isArray(nextFeatures) ? nextFeatures : []);
-        },
-      );
-    });
+    const leaves = await readClusterLeaves(
+      source,
+      clusterId,
+      Math.min(pointCount, CAFE_SPIDER_MAX_LEAVES),
+      0,
+    );
 
     logMapClusterDebug("cluster_action_spiderfy", {
       clusterId,

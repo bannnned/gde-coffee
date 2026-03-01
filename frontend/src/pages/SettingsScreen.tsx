@@ -1154,7 +1154,7 @@ export default function SettingsScreen() {
                   </div>
                 </div>
 
-                <div className={classes.actionsRow}>
+                <div className={`${classes.actionsRow} ${classes.socialActionsRow}`}>
                   {!githubLinked ? (
                     <UIButton
                       type="button"

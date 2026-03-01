@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   ActionIcon,
   Button,
-  Loader,
 } from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
@@ -322,7 +321,15 @@ export default function AdminCafesManagePage() {
               onChange={(value) => {
                 void handleSelectCafe(value);
               }}
-              rightSection={searchLoading ? <Loader size={16} /> : null}
+              rightSection={
+                searchLoading ? (
+                  <span
+                    aria-hidden="true"
+                    className="inline-block animate-spin rounded-full border-2 border-current border-t-transparent"
+                    style={{ width: 16, height: 16 }}
+                  />
+                ) : null
+              }
               data={searchItems.map((item) => ({
                 value: item.id,
                 label: `${item.name} — ${item.address || "без адреса"}`,

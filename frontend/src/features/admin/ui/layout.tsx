@@ -1,88 +1,12 @@
 import {
   type ButtonHTMLAttributes,
   type CSSProperties,
-  type HTMLAttributes,
   type ReactNode,
-  type TdHTMLAttributes,
-  type ThHTMLAttributes,
 } from "react";
 
 import { Button as UIButton } from "../../../components/ui";
-import { cn } from "../../../lib/utils";
 
-type BadgeProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-  variant?: "default" | "secondary" | "outline" | "dot";
-  color?: "yellow" | "green" | "red" | "orange" | "gray";
-} & Omit<HTMLAttributes<HTMLSpanElement>, "style" | "children">;
-
-function badgeTone(color?: BadgeProps["color"]): string {
-  if (color === "green") return "var(--color-status-success)";
-  if (color === "red") return "var(--color-status-error)";
-  if (color === "orange" || color === "yellow") return "var(--color-status-warning)";
-  return "color-mix(in srgb, var(--muted) 45%, var(--surface))";
-}
-
-export function Badge({
-  children,
-  className,
-  style,
-  variant = "default",
-  color,
-  ...rest
-}: BadgeProps) {
-  const tone = badgeTone(color);
-  const isSoft = variant === "secondary" || variant === "dot";
-  const isSolid = variant === "default";
-  const isLowContrastTone = color === "yellow" || color === "gray";
-  const textColor = isSolid
-    ? isLowContrastTone
-      ? "var(--text)"
-      : "var(--color-on-accent)"
-    : "var(--text)";
-  const background =
-    variant === "outline"
-      ? "transparent"
-      : isSoft
-        ? "color-mix(in srgb, var(--surface) 72%, transparent)"
-        : tone;
-  return (
-    <span
-      className={className}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: variant === "dot" ? 6 : 0,
-        borderRadius: 999,
-        border: `1px solid ${tone}`,
-        background,
-        color: textColor,
-        fontSize: 12,
-        fontWeight: 600,
-        padding: "2px 8px",
-        ...style,
-      }}
-      {...rest}
-    >
-      {variant === "dot" ? (
-        <span
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: 999,
-            background: tone,
-            display: "inline-block",
-          }}
-        />
-      ) : null}
-      {children}
-    </span>
-  );
-}
-
-export function Loader({ size = 16 }: { size?: number | string }) {
+function Spinner({ size = 16 }: { size?: number | string }) {
   const dim = typeof size === "number" ? size : Number(size) || 16;
   return (
     <span
@@ -115,7 +39,7 @@ export function Button({
       disabled={disabled || loading}
       {...rest}
     >
-      {loading ? <Loader size={14} /> : null}
+      {loading ? <Spinner size={14} /> : null}
       {children}
     </UIButton>
   );
@@ -150,128 +74,7 @@ export function ActionIcon({
       disabled={disabled || loading}
       {...rest}
     >
-      {loading ? <Loader size={14} /> : children}
+      {loading ? <Spinner size={14} /> : children}
     </UIButton>
   );
 }
-
-type TableProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-  striped?: boolean;
-  withTableBorder?: boolean;
-  withColumnBorders?: boolean;
-  highlightOnHover?: boolean;
-};
-
-type TableSectionProps = {
-  children?: ReactNode;
-  className?: string;
-  style?: CSSProperties;
-};
-type TableTheadProps = TableSectionProps & HTMLAttributes<HTMLTableSectionElement>;
-type TableTbodyProps = TableSectionProps & HTMLAttributes<HTMLTableSectionElement>;
-type TableTrProps = TableSectionProps & HTMLAttributes<HTMLTableRowElement>;
-type TableThProps = TableSectionProps & ThHTMLAttributes<HTMLTableCellElement>;
-type TableTdProps = TableSectionProps & TdHTMLAttributes<HTMLTableCellElement>;
-
-function TableRoot({
-  children,
-  className,
-  style,
-  striped,
-  withTableBorder,
-  withColumnBorders,
-  highlightOnHover,
-}: TableProps) {
-  return (
-    <div className={cn("w-full overflow-auto", className)} style={style}>
-      <table
-        className={cn("w-full border-collapse text-sm text-text")}
-        style={{
-          border: withTableBorder ? "1px solid var(--border)" : undefined,
-        }}
-        data-column-borders={withColumnBorders ? "true" : "false"}
-        data-striped={striped ? "true" : "false"}
-        data-hover={highlightOnHover ? "true" : "false"}
-      >
-        {children}
-      </table>
-    </div>
-  );
-}
-
-function TableThead({ children, className, style, ...rest }: TableTheadProps) {
-  return (
-    <thead className={className} style={style} {...rest}>
-      {children}
-    </thead>
-  );
-}
-
-function TableTbody({ children, className, style, ...rest }: TableTbodyProps) {
-  return (
-    <tbody className={className} style={style} {...rest}>
-      {children}
-    </tbody>
-  );
-}
-
-function TableTr({ children, className, style, ...rest }: TableTrProps) {
-  return (
-    <tr className={className} style={style} {...rest}>
-      {children}
-    </tr>
-  );
-}
-
-function TableTh({ children, className, style, ...rest }: TableThProps) {
-  return (
-    <th
-      className={className}
-      style={{
-        borderBottom: "1px solid var(--border)",
-        textAlign: "left",
-        padding: "8px 10px",
-        fontWeight: 700,
-        ...style,
-      }}
-      {...rest}
-    >
-      {children}
-    </th>
-  );
-}
-
-function TableTd({ children, className, style, ...rest }: TableTdProps) {
-  return (
-    <td
-      className={className}
-      style={{
-        borderBottom: "1px solid color-mix(in srgb, var(--border) 72%, transparent)",
-        padding: "8px 10px",
-        verticalAlign: "top",
-        ...style,
-      }}
-      {...rest}
-    >
-      {children}
-    </td>
-  );
-}
-
-type TableComposite = typeof TableRoot & {
-  Thead: typeof TableThead;
-  Tbody: typeof TableTbody;
-  Tr: typeof TableTr;
-  Th: typeof TableTh;
-  Td: typeof TableTd;
-};
-
-export const Table = TableRoot as TableComposite;
-Table.Thead = TableThead;
-Table.Tbody = TableTbody;
-Table.Tr = TableTr;
-Table.Th = TableTh;
-Table.Td = TableTd;

@@ -1,4 +1,5 @@
-import { Badge, Button } from "../../admin/ui";
+import { Button } from "../../admin/ui";
+import { Badge } from "../../../components/ui";
 import { AppSelect } from "../../../ui/bridge";
 
 import type { UnknownDrinkFormat } from "../../../api/adminDrinks";
@@ -59,7 +60,7 @@ export default function AdminDrinksUnknownCard({
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <p style={{ margin: 0,  fontWeight: 600 }}>{item.name}</p>
                   <Badge variant="secondary">mentions: {item.mentions_count}</Badge>
-                  <Badge color={item.status === "new" ? "yellow" : "gray"}>{item.status}</Badge>
+                  <Badge variant={item.status === "new" ? "warning" : "secondary"}>{item.status}</Badge>
                 </div>
                 <p style={{ margin: 0,  fontSize: 12, color: "var(--muted)" }}>
                   last: {new Date(item.last_seen_at).toLocaleDateString("ru-RU")}
