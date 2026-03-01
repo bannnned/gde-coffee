@@ -5,8 +5,7 @@ import {
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 
-import { Button } from "../../../components/ui";
-import { AppSelect } from "../../../ui/bridge";
+import { Button, Select } from "../../../components/ui";
 import { DISCOVERY_UI_TEXT } from "../constants";
 import classes from "./EmptyStateCard.module.css";
 
@@ -139,7 +138,7 @@ export default function EmptyStateCard({
               className={classes.locationRow}
               style={{ gridTemplateColumns: canApplyLocation ? "1fr auto" : "1fr" }}
             >
-              <AppSelect
+              <Select
                 data={locationSelectData}
                 value={pendingLocationId}
                 placeholder="Выбрать город"

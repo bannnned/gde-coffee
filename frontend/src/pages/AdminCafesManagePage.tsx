@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
-import {
-  ActionIcon,
-  Button,
-} from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { AppSelect } from "../ui/bridge";
-import { Input } from "../components/ui";
+import { Button, Input, Select, Spinner } from "../components/ui";
 
 import {
   deleteAdminCafeByID,
@@ -275,14 +270,16 @@ export default function AdminCafesManagePage() {
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-              <ActionIcon
-                size={42}
+              <Button
+                variant="ghost"
+                size="icon"
                 className="glass-action glass-action--square"
+                style={{ width: 42, height: 42 }}
                 onClick={() => void navigate("/settings")}
                 aria-label="Назад"
               >
                 <IconArrowLeft size={18} />
-              </ActionIcon>
+              </Button>
               <h3 className="m-0 text-2xl font-bold text-text">Управление кофейнями</h3>
             </div>
             <Button variant="secondary" onClick={() => void navigate("/admin/cafes/import")}>
@@ -310,8 +307,7 @@ export default function AdminCafesManagePage() {
 
           <label className="flex min-w-0 flex-col gap-1.5">
             <span className="text-sm font-medium text-text">Найти кофейню по названию</span>
-            <AppSelect
-              implementation="radix"
+            <Select
               placeholder="Введите минимум 2 символа"
               searchable
               clearable
@@ -322,13 +318,7 @@ export default function AdminCafesManagePage() {
                 void handleSelectCafe(value);
               }}
               rightSection={
-                searchLoading ? (
-                  <span
-                    aria-hidden="true"
-                    className="inline-block animate-spin rounded-full border-2 border-current border-t-transparent"
-                    style={{ width: 16, height: 16 }}
-                  />
-                ) : null
+                searchLoading ? <Spinner size={16} /> : null
               }
               data={searchItems.map((item) => ({
                 value: item.id,
@@ -428,10 +418,12 @@ export default function AdminCafesManagePage() {
                     />
                   </label>
                   <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
-                    <Button loading={saveLoading} onClick={() => void handleSave()}>
+                    <Button disabled={saveLoading} onClick={() => void handleSave()}>
+                      {saveLoading ? <Spinner size={14} /> : null}
                       Сохранить изменения
                     </Button>
-                    <Button variant="destructive" loading={deleteLoading} onClick={() => void handleDelete()}>
+                    <Button variant="destructive" disabled={deleteLoading} onClick={() => void handleDelete()}>
+                      {deleteLoading ? <Spinner size={14} /> : null}
                       Удалить кофейню
                     </Button>
                   </div>

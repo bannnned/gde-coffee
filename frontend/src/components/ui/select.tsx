@@ -9,8 +9,6 @@ import {
 
 import { cn } from "../../lib/utils";
 
-type BridgeEngine = "mantine" | "radix";
-
 type SelectOptionInput = string | { value: string; label: string; disabled?: boolean };
 type SelectOption = { value: string; label: string; disabled?: boolean };
 
@@ -19,7 +17,7 @@ type SelectStyles = {
   dropdown?: CSSProperties;
 };
 
-type AppSelectProps = {
+export type SelectProps = {
   value?: string | null;
   data: SelectOptionInput[];
   onChange?: (value: string | null) => void;
@@ -33,15 +31,16 @@ type AppSelectProps = {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   rightSection?: ReactNode;
-  comboboxProps?: unknown;
   styles?: SelectStyles;
-  implementation?: BridgeEngine;
   required?: boolean;
   error?: ReactNode;
   "aria-label"?: string;
+  // Kept for backward compatibility while migrating from bridge layer.
+  implementation?: unknown;
+  comboboxProps?: unknown;
 };
 
-const SIZE_HEIGHT: Record<NonNullable<AppSelectProps["size"]>, number> = {
+const SIZE_HEIGHT: Record<NonNullable<SelectProps["size"]>, number> = {
   xs: 34,
   sm: 38,
   md: 42,
@@ -68,7 +67,7 @@ function normalizeOptions(data: SelectOptionInput[]): SelectOption[] {
   return Array.from(dedup.values());
 }
 
-export function AppSelect({
+export function Select({
   value = null,
   data,
   onChange,
@@ -82,13 +81,11 @@ export function AppSelect({
   searchValue,
   onSearchChange,
   rightSection,
-  comboboxProps: _comboboxProps,
   styles,
-  implementation: _implementation = "radix",
   required = false,
   error,
   "aria-label": ariaLabel,
-}: AppSelectProps) {
+}: SelectProps) {
   const options = useMemo(() => normalizeOptions(data), [data]);
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value) ?? null,

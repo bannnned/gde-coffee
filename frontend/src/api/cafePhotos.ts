@@ -61,6 +61,29 @@ function clonePhotos(photos: CafePhoto[]): CafePhoto[] {
   return photos.map((photo) => ({ ...photo }));
 }
 
+function normalizePhotosForKind(raw: CafePhoto[] | undefined, kind: CafePhotoKind): CafePhoto[] {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  const normalized: CafePhoto[] = [];
+  for (const photo of raw) {
+    if (!photo || typeof photo !== "object") continue;
+    const photoKind =
+      photo.kind === "menu"
+        ? "menu"
+        : photo.kind === "cafe"
+          ? "cafe"
+          : null;
+    // Backward-compatible fallback for legacy rows without explicit kind:
+    // treat them as place photos and never show them in "menu".
+    if (photoKind == null && kind !== "cafe") continue;
+    if (photoKind != null && photoKind !== kind) continue;
+    normalized.push({
+      ...photo,
+      kind: photoKind ?? "cafe",
+    });
+  }
+  return normalized;
+}
+
 function setPhotoListCache(cafeId: string, kind: CafePhotoKind, photos: CafePhoto[]) {
   photoListCache.set(makePhotoCacheKey(cafeId, kind), {
     photos: clonePhotos(photos),
@@ -141,7 +164,7 @@ export async function getCafePhotos(
       params: { kind },
     })
     .then((res) => {
-      const photos = res.data?.photos ?? [];
+      const photos = normalizePhotosForKind(res.data?.photos, kind);
       setPhotoListCache(cafeId, kind, photos);
       return clonePhotos(photos);
     })
@@ -163,7 +186,7 @@ export async function reorderCafePhotos(
     { photo_ids: photoIds },
     { params: { kind } },
   );
-  const photos = res.data?.photos ?? [];
+  const photos = normalizePhotosForKind(res.data?.photos, kind);
   setPhotoListCache(cafeId, kind, photos);
   return clonePhotos(photos);
 }
@@ -178,7 +201,7 @@ export async function setCafePhotoCover(
     undefined,
     { params: { kind } },
   );
-  const photos = res.data?.photos ?? [];
+  const photos = normalizePhotosForKind(res.data?.photos, kind);
   setPhotoListCache(cafeId, kind, photos);
   return clonePhotos(photos);
 }
@@ -192,7 +215,7 @@ export async function deleteCafePhoto(
     `/api/cafes/${encodeURIComponent(cafeId)}/photos/${encodeURIComponent(photoId)}`,
     { params: { kind } },
   );
-  const photos = res.data?.photos ?? [];
+  const photos = normalizePhotosForKind(res.data?.photos, kind);
   setPhotoListCache(cafeId, kind, photos);
   return clonePhotos(photos);
 }

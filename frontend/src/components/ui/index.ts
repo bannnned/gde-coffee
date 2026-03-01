@@ -2,5 +2,7 @@ export * from "./badge";
 export * from "./button";
 export * from "./input";
 export * from "./popover";
+export * from "./select";
 export * from "./sheet";
+export * from "./spinner";
 export * from "./table";

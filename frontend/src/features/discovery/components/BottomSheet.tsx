@@ -20,6 +20,7 @@ type BottomSheetProps = PropsWithChildren<{
   errorText: string;
   header?: ReactNode;
   isListEmpty?: boolean;
+  autoExpandTrigger?: number;
   lockedState?: SheetState | null;
   disableMidState?: boolean;
   hideHeaderContentInPeek?: boolean;
@@ -41,6 +42,7 @@ export default function BottomSheet({
   errorText,
   header,
   isListEmpty,
+  autoExpandTrigger = 0,
   lockedState = null,
   disableMidState = false,
   hideHeaderContentInPeek = false,
@@ -54,6 +56,7 @@ export default function BottomSheet({
   } = useLayoutMetrics();
   const [sheetState, setSheetState] = useState<SheetState>("mid");
   const headerRef = useRef<HTMLDivElement | null>(null);
+  const lastAutoExpandTriggerRef = useRef(autoExpandTrigger);
   const [headerHeight, setHeaderHeight] = useState(PEEK_HEIGHT_PX);
   const sheetHeightRafRef = useRef<number | null>(null);
   const pendingSheetHeightRef = useRef<number | null>(null);
@@ -145,6 +148,20 @@ export default function BottomSheet({
       pendingSheetHeightRef.current = null;
     };
   }, [heights, height, scheduleSheetHeight]);
+
+  useLayoutEffect(() => {
+    if (autoExpandTrigger === lastAutoExpandTriggerRef.current) return;
+    lastAutoExpandTriggerRef.current = autoExpandTrigger;
+    if (lockedState) return;
+    if (effectiveSheetState !== "peek") return;
+    const nextState: SheetState = disableMidState ? "expanded" : "mid";
+    const rafId = window.requestAnimationFrame(() => {
+      setSheetState(nextState);
+    });
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [autoExpandTrigger, disableMidState, effectiveSheetState, lockedState]);
 
   useLayoutEffect(() => {
     setLayoutSheetState(effectiveSheetState);

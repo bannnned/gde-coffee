@@ -1,12 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import {
-  ActionIcon,
-  Button,
-} from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconCheck, IconX } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { AppSelect } from "../ui/bridge";
+import { Button, Select, Spinner } from "../components/ui";
 
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
@@ -332,17 +328,20 @@ export default function AdminModerationPage() {
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-              <ActionIcon
-                size={42}
+              <Button
+                variant="ghost"
+                size="icon"
                 className="glass-action glass-action--square"
+                style={{ width: 42, height: 42 }}
                 onClick={() => void navigate("/settings")}
                 aria-label="Назад"
               >
                 <IconArrowLeft size={18} />
-              </ActionIcon>
+              </Button>
               <h3 className="m-0 text-2xl font-bold text-text">Модерация</h3>
             </div>
-            <Button variant="secondary" onClick={() => void refresh()} loading={loading}>
+            <Button variant="secondary" onClick={() => void refresh()} disabled={loading}>
+              {loading ? <Spinner size={14} /> : null}
               Обновить
             </Button>
           </div>
@@ -351,8 +350,7 @@ export default function AdminModerationPage() {
             <div style={{ display: "grid", gap: 12 }}>
               <label className="flex min-w-0 flex-col gap-1.5">
                 <span className="text-sm font-medium text-text">Статус</span>
-                <AppSelect
-                  implementation="radix"
+                <Select
                   data={STATUS_OPTIONS}
                   value={filterStatus}
                   onChange={(value) => setFilterStatus((value ?? "") as SubmissionStatus | "")}
@@ -702,18 +700,18 @@ export default function AdminModerationPage() {
                       <Button
                         className="flex-1"
                         onClick={() => void handleApprove(item.id)}
-                        loading={isProcessing}
+                        disabled={isProcessing}
                       >
-                        <IconCheck size={16} />
+                        {isProcessing ? <Spinner size={14} /> : <IconCheck size={16} />}
                         Одобрить
                       </Button>
                       <Button
                         variant="destructive"
                         className="flex-1"
                         onClick={() => void handleReject(item.id)}
-                        loading={isProcessing}
+                        disabled={isProcessing}
                       >
-                        <IconX size={16} />
+                        {isProcessing ? <Spinner size={14} /> : <IconX size={16} />}
                         Отклонить
                       </Button>
                     </div>

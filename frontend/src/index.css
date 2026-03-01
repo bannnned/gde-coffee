@@ -314,6 +314,15 @@
   box-shadow: 0 0 0 calc(var(--focus-ring-width) + 1px) var(--focus-ring-offset-color);
 }
 
+.review-filter-select > div {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.review-filter-select select {
+  border: none !important;
+}
+
 .review-show-more-button.ui-focus-ring:focus-visible {
   outline: none;
   outline-offset: 0;
@@ -608,6 +617,18 @@
   width: var(--control-height-md);
   height: var(--control-height-md);
   border-radius: var(--radius-md);
+}
+
+/* Admin pages use .page-shell; make action buttons match Settings "Подключить" style. */
+.page-shell button.inline-flex.items-center.justify-center:not(.glass-action):not(.bg-danger):not([class*="bg-danger"]) {
+  border-radius: 14px;
+  border: 1px solid var(--glass-border) !important;
+  background: var(--glass-bg) !important;
+  color: var(--text) !important;
+  box-shadow: var(--glass-shadow) !important;
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  font-weight: 600;
 }
 
 .oauth-button {

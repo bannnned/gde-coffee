@@ -67,6 +67,12 @@
 49. `W5-AJ` закрыт (`done`): удален публичный admin `Loader` wrapper; внешний usage переведен на explicit inline spinner, внутренние `Button/ActionIcon` используют private `Spinner`.
 50. `W5-AK` закрыт (`done`): удален admin `Badge` wrapper; admin-drinks usage переведен на `components/ui/Badge`, moderation badges — на explicit inline markup с сохранением `dot`-паттерна.
 51. `W5-AL` закрыт (`done`): удален admin `Table` wrapper; таблицы admin-страниц переведены на `components/ui/table.tsx` (new-ui слой).
+52. `W5-AM` закрыт (`done`): удален admin `ActionIcon` wrapper; admin icon-actions переведены на `Button variant="ghost" size="icon"` с explicit sizing.
+53. `W5-AN` закрыт (`done`): удален admin `Button` wrapper и весь `features/admin/ui` слой; admin usage переведен на базовый `components/ui/Button` с explicit inline spinner в loading-сценариях.
+54. `W5-AO` закрыт (`done`): добавлен общий `components/ui/Spinner`, дубли inline loader-markup в admin-экранах и admin-drinks карточках заменены на `Spinner`.
+55. `W5-AP` закрыт (`done`): admin-зоны переведены с `AppSelect` (`ui/bridge`) на `components/ui/Select`; добавлен новый shared `Select` primitive и обновлены admin pages/cards.
+56. `W5-AQ` закрыт (`done`): discovery-зоны (location/settings/empty-state/reviews) переведены на `components/ui/Select`; usage `AppSelect` остался только в bridge-файле.
+57. `W5-AR` закрыт (`done`): удален устаревший `ui/bridge/select.tsx`, а `ui/bridge/index.ts` очищен от реэкспорта `./select`; `AppSelect` полностью выведен из кода.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

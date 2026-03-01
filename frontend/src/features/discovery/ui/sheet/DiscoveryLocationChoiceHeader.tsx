@@ -1,5 +1,4 @@
-import { Button } from "../../../../components/ui";
-import { AppSelect } from "../../../../ui/bridge";
+import { Button, Select } from "../../../../components/ui";
 import classes from "./DiscoveryLocationChoiceHeader.module.css";
 
 type LocationOption = {
@@ -64,7 +63,7 @@ export default function DiscoveryLocationChoiceHeader({
         >
           Выбрать вручную на карте
         </Button>
-        <AppSelect
+        <Select
           className={classes.select}
           data={locationOptions.map((option) => ({
             value: option.id,

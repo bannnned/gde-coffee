@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IconMapPin, IconPlus } from "@tabler/icons-react";
 
-import { Button } from "../../../../components/ui";
+import { Button, Select } from "../../../../components/ui";
 import { cn } from "../../../../lib/utils";
 import { DISCOVERY_UI_TEXT } from "../../constants";
-import { AppSelect, AppSheet, FormActions, FormField } from "../../../../ui/bridge";
+import { AppSheet, FormActions, FormField } from "../../../../ui/bridge";
 import {
   discoveryGlassSelectStyles,
 } from "../styles/glass";
@@ -385,7 +385,7 @@ export default function SettingsDrawer({
                 {isTagPickerOpen && (
                   <div className="flex flex-col gap-1.5">
                     <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-                      <AppSelect
+                      <Select
                         data={normalizedTagOptions.map((tag) => ({ value: tag, label: tag }))}
                         value={pendingTagToAdd}
                         searchable

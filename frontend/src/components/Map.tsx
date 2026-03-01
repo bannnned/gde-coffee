@@ -322,6 +322,7 @@ const CAFE_MAP_INTERACTIVE_LAYER_IDS = [
 ] as const;
 const CAFE_SPIDER_MAX_LEAVES = 24;
 const CLUSTER_ZOOM_TO_SPIDER_THRESHOLD = 0.1;
+const CLUSTER_ZOOM_DURATION_MS = 520;
 const MAP_CLUSTER_DEBUG_STORAGE_KEY = "debug.map.cluster";
 const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
@@ -391,6 +392,44 @@ function logMapClusterDebug(message: string, payload?: Record<string, unknown>) 
   }
   console.info("[MapClusterDebug]", message);
 }
+
+function cubicBezierAt(t: number, p1: number, p2: number) {
+  const oneMinusT = 1 - t;
+  return (
+    3 * oneMinusT * oneMinusT * t * p1 +
+    3 * oneMinusT * t * t * p2 +
+    t * t * t
+  );
+}
+
+function createCubicBezierEasing(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): (t: number) => number {
+  return (input) => {
+    const x = Math.min(1, Math.max(0, input));
+    if (x === 0 || x === 1) return x;
+
+    let lo = 0;
+    let hi = 1;
+    let t = x;
+    for (let idx = 0; idx < 14; idx += 1) {
+      const currentX = cubicBezierAt(t, x1, x2);
+      if (Math.abs(currentX - x) < 1e-5) break;
+      if (currentX < x) {
+        lo = t;
+      } else {
+        hi = t;
+      }
+      t = (lo + hi) / 2;
+    }
+    return Math.min(1, Math.max(0, cubicBezierAt(t, y1, y2)));
+  };
+}
+
+const CLUSTER_ZOOM_EASING = createCubicBezierEasing(0.42, 0, 0.58, 1);
 
 function loadImage(map: MLMap, id: string, url: string) {
   if (map.hasImage(id)) return Promise.resolve(true);
@@ -976,7 +1015,8 @@ async function expandClusterOnClick(
       map.easeTo({
         center,
         zoom: Math.max(expansionZoom, currentZoom + 1),
-        duration: 300,
+        duration: CLUSTER_ZOOM_DURATION_MS,
+        easing: CLUSTER_ZOOM_EASING,
         essential: true,
       });
       return;
@@ -990,7 +1030,8 @@ async function expandClusterOnClick(
       map.easeTo({
         center,
         zoom: Math.max(expansionZoom, currentZoom + 1),
-        duration: 300,
+        duration: CLUSTER_ZOOM_DURATION_MS,
+        easing: CLUSTER_ZOOM_EASING,
         essential: true,
       });
       return;
@@ -1211,11 +1252,6 @@ export default function Map({
           asFiniteNumber(feature.properties?.cluster_id) != null,
       );
       if (featureFromLayer) {
-        console.info("[MapCluster] layer tap", {
-          layerId: featureFromLayer.layer?.id ?? "unknown",
-          clusterId: asFiniteNumber(featureFromLayer.properties?.cluster_id) ?? null,
-          pointCount: asFiniteNumber(featureFromLayer.properties?.point_count) ?? null,
-        });
         logMapClusterDebug("cluster_layer_tap", {
           layerId: featureFromLayer.layer?.id ?? "unknown",
           clusterId: asFiniteNumber(featureFromLayer.properties?.cluster_id) ?? null,
@@ -1241,11 +1277,6 @@ export default function Map({
       }
 
       logMapClusterDebug("cluster_layer_tap_fallback", {
-        layerId: clusterFeature.layer?.id ?? "unknown",
-        clusterId: asFiniteNumber(clusterFeature.properties?.cluster_id) ?? null,
-        pointCount: asFiniteNumber(clusterFeature.properties?.point_count) ?? null,
-      });
-      console.info("[MapCluster] layer tap fallback", {
         layerId: clusterFeature.layer?.id ?? "unknown",
         clusterId: asFiniteNumber(clusterFeature.properties?.cluster_id) ?? null,
         pointCount: asFiniteNumber(clusterFeature.properties?.point_count) ?? null,
@@ -1292,13 +1323,6 @@ export default function Map({
         return asFiniteNumber(feature.properties?.cluster_id) != null;
       });
       if (clusterFeature) {
-        console.info("[MapCluster] map tap", {
-          source,
-          layerId: clusterFeature.layer?.id ?? "unknown",
-          clusterId: asFiniteNumber(clusterFeature.properties?.cluster_id) ?? null,
-          pointCount: asFiniteNumber(clusterFeature.properties?.point_count) ?? null,
-          hitMode,
-        });
         logMapClusterDebug("map_tap_cluster_feature", {
           layerId: clusterFeature.layer?.id ?? "unknown",
           clusterId: asFiniteNumber(clusterFeature.properties?.cluster_id) ?? null,

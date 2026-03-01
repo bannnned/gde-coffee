@@ -35,6 +35,7 @@ export default function DiscoveryScreen() {
     focusLngLat,
     selectedCafeId,
     selectedCafe,
+    selectCafeActionToken,
     selectedCafeJourneyID,
     photosRefreshToken,
     ratingRefreshToken,
@@ -289,6 +290,7 @@ export default function DiscoveryScreen() {
         isError={cafesQuery.isError && visibleCafes.length === 0}
         errorText={DISCOVERY_UI_TEXT.errorLoad}
         isListEmpty={manualPickMode || showFirstChoice || visibleCafes.length === 0}
+        autoExpandTrigger={manualPickMode ? 0 : selectCafeActionToken}
         lockedState={manualPickMode ? "peek" : null}
         disableMidState={false}
         hideHeaderContentInPeek

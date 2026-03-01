@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActionIcon,
-  Button,
-} from "../features/admin/ui";
+import { Button } from "../components/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
@@ -274,14 +271,16 @@ export default function AdminDrinksPage() {
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-              <ActionIcon
-                size={42}
+              <Button
+                variant="ghost"
+                size="icon"
                 className="glass-action glass-action--square"
+                style={{ width: 42, height: 42 }}
                 onClick={() => void navigate("/settings")}
                 aria-label="Назад"
               >
                 <IconArrowLeft size={18} />
-              </ActionIcon>
+              </Button>
               <h3 className="m-0 text-2xl font-bold text-text">Справочник напитков</h3>
             </div>
             <Button variant="secondary" onClick={() => void Promise.all([loadDrinks(), loadUnknown()])}>

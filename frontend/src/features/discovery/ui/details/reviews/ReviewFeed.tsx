@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { IconStarFilled, IconThumbUp } from "@tabler/icons-react";
 
-import { Badge, Button } from "../../../../../components/ui";
-import { AppModal, AppSelect } from "../../../../../ui/bridge";
+import { Badge, Button, Select } from "../../../../../components/ui";
+import { AppModal } from "../../../../../ui/bridge";
 import PhotoLightboxModal, {
   type PhotoLightboxItem,
 } from "../../../../../components/PhotoLightboxModal";
@@ -104,9 +104,9 @@ export function ReviewFeed({
   const filterSelectStyles = {
     input: {
       borderRadius: 14,
-      border: "1px solid var(--glass-border)",
+      border: "none",
       background: "linear-gradient(135deg, var(--glass-grad-1), var(--glass-grad-2))",
-      boxShadow: "var(--glass-shadow)",
+      boxShadow: "none",
       backdropFilter: "blur(10px) saturate(130%)",
       WebkitBackdropFilter: "blur(10px) saturate(130%)",
       minHeight: 38,
@@ -114,7 +114,7 @@ export function ReviewFeed({
     },
     dropdown: {
       borderRadius: 14,
-      border: "1px solid var(--glass-border)",
+      border: "none",
       background: "var(--color-surface-card)",
       backdropFilter: "none",
       WebkitBackdropFilter: "none",
@@ -201,8 +201,7 @@ export function ReviewFeed({
       {showReviewFilters ? (
         <div className="flex flex-nowrap items-end gap-2">
           <div className="min-w-0 flex-1">
-            <AppSelect
-              implementation="radix"
+            <Select
               size="xs"
               className="review-filter-select"
               aria-label="Сортировка отзывов"
@@ -214,8 +213,7 @@ export function ReviewFeed({
             />
           </div>
           <div className="min-w-0 flex-1">
-            <AppSelect
-              implementation="radix"
+            <Select
               size="xs"
               className="review-filter-select"
               aria-label="Фильтр по позиции"

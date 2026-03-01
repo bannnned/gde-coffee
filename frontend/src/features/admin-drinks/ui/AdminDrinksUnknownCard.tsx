@@ -1,6 +1,4 @@
-import { Button } from "../../admin/ui";
-import { Badge } from "../../../components/ui";
-import { AppSelect } from "../../../ui/bridge";
+import { Badge, Button, Select } from "../../../components/ui";
 
 import type { UnknownDrinkFormat } from "../../../api/adminDrinks";
 import type { UnknownStatusOption } from "../model/types";
@@ -41,8 +39,7 @@ export default function AdminDrinksUnknownCard({
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
           <h4 className="m-0 text-xl font-bold text-text">Неизвестные форматы</h4>
           <div style={{ width: 180 }}>
-            <AppSelect
-              implementation="radix"
+            <Select
               value={status}
               data={UNKNOWN_STATUS_OPTIONS}
               onChange={(value) => onStatusChange((value ?? "") as UnknownStatusOption)}
@@ -69,8 +66,7 @@ export default function AdminDrinksUnknownCard({
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 12 }}>
                 <label className="flex min-w-0 flex-col gap-1.5" style={{ width: 320 }}>
                   <span className="text-sm font-medium text-text">Привязать к напитку</span>
-                  <AppSelect
-                    implementation="radix"
+                  <Select
                     searchable
                     placeholder="Выберите напиток"
                     data={drinkOptions}

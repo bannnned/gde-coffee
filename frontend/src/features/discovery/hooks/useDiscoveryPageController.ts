@@ -130,7 +130,13 @@ export default function useDiscoveryPageController() {
     enabled: location.locationChoice !== null,
   });
   const visibleCafes = location.locationChoice ? cafes : [];
-  const { selectedCafeId, selectedCafe, selectCafe, itemRefs } =
+  const {
+    selectedCafeId,
+    selectedCafe,
+    selectCafe,
+    itemRefs,
+    selectCafeActionToken,
+  } =
     useCafeSelection({ cafes: visibleCafes, onFocusLngLat: location.setFocusLngLat });
   const selectedCafePendingPhotos = selectedCafe?.id
     ? pendingPhotoProcessingByCafeId[selectedCafe.id] ?? null
@@ -567,6 +573,7 @@ export default function useDiscoveryPageController() {
     focusLngLat: location.focusLngLat,
     selectedCafeId,
     selectedCafe,
+    selectCafeActionToken,
     selectedCafeJourneyID,
     photosRefreshToken,
     ratingRefreshToken,

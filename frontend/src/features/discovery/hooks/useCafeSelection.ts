@@ -12,6 +12,7 @@ export default function useCafeSelection({
   onFocusLngLat,
 }: UseCafeSelectionParams) {
   const [selectedCafeIdRaw, setSelectedCafeIdRaw] = useState<string | null>(null);
+  const [selectCafeActionToken, setSelectCafeActionToken] = useState(0);
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const selectedCafeId = useMemo(() => {
@@ -29,6 +30,7 @@ export default function useCafeSelection({
 
   function selectCafe(id: string) {
     setSelectedCafeIdRaw(id);
+    setSelectCafeActionToken((prev) => prev + 1);
     const c = cafes.find((x) => x.id === id);
     if (c && onFocusLngLat) onFocusLngLat([c.longitude, c.latitude]);
 
@@ -40,5 +42,5 @@ export default function useCafeSelection({
     });
   }
 
-  return { selectedCafeId, selectedCafe, selectCafe, itemRefs };
+  return { selectedCafeId, selectedCafe, selectCafe, itemRefs, selectCafeActionToken };
 }

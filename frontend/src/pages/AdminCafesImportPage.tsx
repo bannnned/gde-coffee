@@ -1,13 +1,8 @@
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
-import {
-  ActionIcon,
-  Button,
-} from "../features/admin/ui";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { AppSelect } from "../ui/bridge";
-import { Table } from "../components/ui";
+import { Button, Select, Spinner, Table } from "../components/ui";
 
 import { importAdminCafesJSON, type AdminCafeImportItem, type AdminCafeImportResponse } from "../api/adminCafes";
 import { useAuth } from "../components/AuthGate";
@@ -488,14 +483,16 @@ export default function AdminCafesImportPage() {
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-              <ActionIcon
-                size={42}
+              <Button
+                variant="ghost"
+                size="icon"
                 className="glass-action glass-action--square"
+                style={{ width: 42, height: 42 }}
                 onClick={() => void navigate("/settings")}
                 aria-label="Назад"
               >
                 <IconArrowLeft size={18} />
-              </ActionIcon>
+              </Button>
               <h3 className="m-0 text-2xl font-bold text-text">Импорт кофеен из JSON</h3>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
@@ -558,8 +555,7 @@ export default function AdminCafesImportPage() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <label className="flex min-w-0 flex-col gap-1.5">
                 <span className="text-sm font-medium text-text">Режим дубликатов</span>
-                <AppSelect
-                  implementation="radix"
+                <Select
                   data={[
                     { value: "skip_existing", label: "skip_existing (пропускать)" },
                     { value: "upsert", label: "upsert (обновлять)" },
@@ -629,8 +625,8 @@ export default function AdminCafesImportPage() {
               Всего строк: {preview.rawTotal}. Валидных: {preview.validItems.length}. Ошибок: {preview.issues.length}
             </p>
             <Button
-              loading={loading}
               disabled={
+                loading ||
                 Boolean(preview.fatalError) ||
                 preview.rawTotal === 0 ||
                 preview.validItems.length === 0 ||
@@ -638,6 +634,7 @@ export default function AdminCafesImportPage() {
               }
               onClick={() => void handleImport()}
             >
+              {loading ? <Spinner size={14} /> : null}
               {dryRun ? "Проверить импорт" : "Импортировать"}
             </Button>
           </div>

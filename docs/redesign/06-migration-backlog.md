@@ -1079,3 +1079,109 @@ Critical path stack-transition:
 - Артефакт: new-ui table primitive в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/table.tsx` + export в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/index.ts`.
 - Артефакт: migration admin tables в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AM · Remove admin `ActionIcon` wrapper and migrate usage to icon buttons (P1, status: done)
+- Цель: убрать `ActionIcon` wrapper из admin layout-слоя и перевести usage на `Button size="icon"` с explicit размером/стилем.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Depends on: `W5-AL`.
+- AC: `layout.tsx` не содержит `ActionIcon` wrapper (контракт + реализация).
+- AC: во `frontend/src` отсутствует импорт/usage `ActionIcon` из `features/admin/ui`.
+- AC: back/action icon-buttons на admin-экранах работают через `Button variant="ghost" size="icon"` без UX-регрессий.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `ActionIcon` bridge в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`.
+- Артефакт: migration icon-actions в перечисленных admin-экранах.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AN · Remove admin `Button` wrapper and migrate usage to base `components/ui/Button` (P1, status: done)
+- Цель: убрать `Button` wrapper из admin layout-слоя и перевести admin usage на базовый `components/ui/Button` с явным inline spinner в loading-сценариях.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx` (delete).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/index.ts` (delete).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminDrinksPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCreateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksEditCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCatalogCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-AM`.
+- AC: в проекте отсутствует `Button` wrapper в `features/admin/ui`.
+- AC: во `frontend/src` отсутствуют импорты `features/admin/ui` (слой удален полностью).
+- AC: loading-поведение admin-кнопок сохранено через `disabled + inline spinner`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удален admin UI-layer (`/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/layout.tsx`, `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin/ui/index.ts`).
+- Артефакт: migration admin buttons на `components/ui/Button` в перечисленных страницах/карточках.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AO · Extract shared `Spinner` primitive and remove duplicated inline loader markup (P1, status: done)
+- Цель: вынести повторяющийся inline loader-markup в единый `components/ui/Spinner` и убрать дубли в admin-экранах/карточках.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/spinner.tsx` (new).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/index.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksCreateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksEditCard.tsx`.
+- Depends on: `W5-AN`.
+- AC: в admin-зонах отсутствует дублированная inline spinner-разметка (`animate-spin ... border-t-transparent`) — вместо нее используется `Spinner`.
+- AC: loading-поведение в кнопках/селектах сохранено.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: общий spinner primitive в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/spinner.tsx`.
+- Артефакт: migration admin loading markers на `Spinner` в перечисленных файлах.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AP · De-bridge admin selects to `components/ui/Select` (P1, status: done)
+- Цель: убрать зависимость admin-страниц/карточек от `AppSelect` (`ui/bridge`) и перевести их на новый `components/ui/Select`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/select.tsx` (new).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/index.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminFeedbackPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesImportPage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminCafesManagePage.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/admin-drinks/ui/AdminDrinksUnknownCard.tsx`.
+- Depends on: `W5-AO`.
+- AC: перечисленные admin-файлы не импортируют `AppSelect` из `ui/bridge`.
+- AC: добавлен reusable `Select` primitive в `components/ui`.
+- AC: поведение searchable/clearable/rightSection для admin select-сценариев сохранено.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: новый `Select` primitive в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/ui/select.tsx`.
+- Артефакт: migration admin select usage в перечисленных страницах/карточках.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AQ · De-bridge discovery selects to `components/ui/Select` and zero-out `AppSelect` usage (P1, status: done)
+- Цель: перевести discovery select-сценарии на общий `components/ui/Select` и убрать runtime-usage `AppSelect` вне bridge-слоя.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/sheet/DiscoveryLocationChoiceHeader.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/EmptyStateCard.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/ReviewFeed.tsx`.
+- Depends on: `W5-AP`.
+- AC: перечисленные discovery-файлы импортируют `Select` из `components/ui`, а не `AppSelect`.
+- AC: глобальный поиск по `frontend/src` не показывает usage `AppSelect` вне `/ui/bridge/select.tsx`.
+- AC: UX-поведение discovery select-сценариев (searchable/clearable/styles/rightSection) сохранено.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: migration discovery select usage в перечисленных feature-файлах.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AR · Remove obsolete `ui/bridge/select` after full Select migration (P1, status: done)
+- Цель: удалить устаревший bridge `AppSelect` после полного перехода на `components/ui/Select`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/select.tsx` (delete).
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/index.ts`.
+- Depends on: `W5-AQ`.
+- AC: файл `ui/bridge/select.tsx` удален.
+- AC: `ui/bridge/index.ts` не реэкспортирует `./select`.
+- AC: поиск по `frontend/src` не находит `AppSelect`.
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: удаленный `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/select.tsx`.
+- Артефакт: очищенный bridge barrel `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/index.ts`.
+- Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.

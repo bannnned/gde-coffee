@@ -1,5 +1,4 @@
-import { Button } from "../../admin/ui";
-import { Badge } from "../../../components/ui";
+import { Badge, Button } from "../../../components/ui";
 
 import type { AdminDrink } from "../../../api/adminDrinks";
 

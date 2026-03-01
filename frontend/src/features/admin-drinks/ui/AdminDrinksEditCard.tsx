@@ -1,5 +1,4 @@
-import { Button } from "../../admin/ui";
-import { Input } from "../../../components/ui";
+import { Button, Input, Spinner } from "../../../components/ui";
 
 import type { DrinkEditorState } from "../model/types";
 
@@ -73,7 +72,8 @@ export default function AdminDrinksEditCard({
           </button>
           <span>Активный</span>
         </label>
-        <Button loading={loading} onClick={onSave}>
+        <Button disabled={loading} onClick={onSave}>
+          {loading ? <Spinner size={14} /> : null}
           Сохранить
         </Button>
       </div>
