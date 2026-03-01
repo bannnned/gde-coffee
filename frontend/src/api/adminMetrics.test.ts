@@ -9,7 +9,7 @@ vi.mock("./http", () => ({
 import { http } from "./http";
 import { getAdminFunnel, getAdminNorthStar, searchAdminCafesByName } from "./adminMetrics";
 
-const mockHttpGet = vi.mocked(http.get);
+const mockHttp = vi.mocked(http);
 
 describe("adminMetrics api", () => {
   beforeEach(() => {
@@ -17,7 +17,7 @@ describe("adminMetrics api", () => {
   });
 
   it("passes cafe_id filter to north-star endpoint and parses summary", async () => {
-    mockHttpGet.mockResolvedValueOnce({
+    mockHttp.get.mockResolvedValueOnce({
       data: {
         summary: {
           from: "2026-02-01T00:00:00Z",
@@ -37,7 +37,7 @@ describe("adminMetrics api", () => {
       cafe_id: "550e8400-e29b-41d4-a716-446655440000",
     });
 
-    expect(mockHttpGet).toHaveBeenCalledWith("/api/admin/metrics/north-star", {
+    expect(mockHttp.get).toHaveBeenCalledWith("/api/admin/metrics/north-star", {
       params: {
         days: 14,
         cafe_id: "550e8400-e29b-41d4-a716-446655440000",
@@ -48,7 +48,7 @@ describe("adminMetrics api", () => {
   });
 
   it("passes cafe_id filter to funnel endpoint and parses stages", async () => {
-    mockHttpGet.mockResolvedValueOnce({
+    mockHttp.get.mockResolvedValueOnce({
       data: {
         summary: {
           from: "2026-02-01T00:00:00Z",
@@ -80,7 +80,7 @@ describe("adminMetrics api", () => {
       cafe_id: "550e8400-e29b-41d4-a716-446655440000",
     });
 
-    expect(mockHttpGet).toHaveBeenCalledWith("/api/admin/metrics/funnel", {
+    expect(mockHttp.get).toHaveBeenCalledWith("/api/admin/metrics/funnel", {
       params: {
         days: 14,
         cafe_id: "550e8400-e29b-41d4-a716-446655440000",
@@ -95,6 +95,6 @@ describe("adminMetrics api", () => {
     const items = await searchAdminCafesByName("a", 15);
 
     expect(items).toEqual([]);
-    expect(mockHttpGet).not.toHaveBeenCalled();
+    expect(mockHttp.get).not.toHaveBeenCalled();
   });
 });

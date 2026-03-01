@@ -48,6 +48,18 @@ export default tseslint.config(
       "react/prop-types": "off",
       "react-hooks/set-state-in-effect": "warn",
       "prefer-const": "warn",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/ui/bridge", "**/ui/bridge/**"],
+              message:
+                "ui/bridge has been removed. Import primitives directly from src/components/ui.",
+            },
+          ],
+        },
+      ],
     },
   },
   {
@@ -61,6 +73,13 @@ export default tseslint.config(
               name: "@mantine/core",
               message:
                 "Do not import Mantine inside src/components/ui. Use Radix + Tailwind primitives in this layer.",
+            },
+          ],
+          patterns: [
+            {
+              group: ["**/ui/bridge", "**/ui/bridge/**"],
+              message:
+                "ui/bridge has been removed. Import primitives directly from src/components/ui.",
             },
           ],
         },

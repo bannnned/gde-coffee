@@ -139,10 +139,10 @@ export function formatReviewDate(value: string): string {
 
 function stripSectionPrefix(value: string): string {
   return value
-    .replace(/^(что\s*понравил[ао]с[ья]|понравилось|плюсы?|liked)\s*[:\-]?\s*/i, "")
-    .replace(/^(что\s*улучшить|что\s*можно\s*улучшить|улучшить|could\s*improve|improve)\s*[:\-]?\s*/i, "")
-    .replace(/^(что\s*не\s*понравил[ао]с[ья]|не\s*понравилось|минусы?|disliked)\s*[:\-]?\s*/i, "")
-    .replace(/^(короткий\s*вывод|вывод|для\s*кого\s*место|кому\s*подойдет|summary)\s*[:\-]?\s*/i, "")
+    .replace(/^(что\s*понравил[ао]с[ья]|понравилось|плюсы?|liked)\s*[:-]?\s*/i, "")
+    .replace(/^(что\s*улучшить|что\s*можно\s*улучшить|улучшить|could\s*improve|improve)\s*[:-]?\s*/i, "")
+    .replace(/^(что\s*не\s*понравил[ао]с[ья]|не\s*понравилось|минусы?|disliked)\s*[:-]?\s*/i, "")
+    .replace(/^(короткий\s*вывод|вывод|для\s*кого\s*место|кому\s*подойдет|summary)\s*[:-]?\s*/i, "")
     .trim();
 }
 

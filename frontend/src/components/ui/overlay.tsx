@@ -17,7 +17,6 @@ type AppModalProps = {
   onOpenChange: (next: boolean) => void;
   title?: ReactNode;
   children: ReactNode;
-  centered?: boolean;
   fullScreen?: boolean;
   closeButton?: boolean;
   contentClassName?: string;
@@ -31,7 +30,6 @@ export function AppModal({
   onOpenChange,
   title,
   children,
-  centered: _centered = false,
   fullScreen = false,
   closeButton = true,
   contentClassName,

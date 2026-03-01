@@ -1262,3 +1262,45 @@ Critical path stack-transition:
 - Артефакт: очищенные new-ui контракты в `components/ui`.
 - Артефакт: очищенные call sites в перечисленных product-компонентах.
 - Проверка: `npm run typecheck`, `npm run build`, `npm test -- --watch=false` — pass.
+
+### [x] W5-AW · Remove empty `src/ui/bridge` directory and add ESLint guardrail against bridge imports (P1, status: done)
+- Цель: финально закрыть bridge-этап: удалить пустой каталог `src/ui/bridge` и запретить повторное появление импортов из него через lint-правило.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/eslint.config.js`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge` (empty dir remove).
+- Depends on: `W5-AV`.
+- AC: каталог `/frontend/src/ui/bridge` отсутствует.
+- AC: в ESLint добавлен `no-restricted-imports` guardrail на паттерны `**/ui/bridge` и `**/ui/bridge/**` для TS/TSX.
+- AC: override для `src/components/ui/**/*` сохраняет правило про запрет `@mantine/core` и включает guardrail для `ui/bridge`, чтобы правило не терялось из-за override.
+- AC: `typecheck/build/tests` проходят без регрессий; `lint` запускается, но остается общий исторический долг в unrelated файлах.
+- Артефакт: обновленный `/Users/a1/Desktop/Prog/gde-coffee/frontend/eslint.config.js`.
+- Артефакт: удаленный пустой каталог `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge`.
+- Проверка: `npm run lint` (ожидаемо падает на существующих ранее unrelated ошибках), `npm run typecheck`, `npm run build`, `npm test -- --watch=false`.
+
+### [x] W5-AX · Fix blocking ESLint errors to restore clean error-level lint gate (P1, status: done)
+- Цель: убрать все error-level lint-нарушения, оставив только warning-долг, чтобы guardrail `no-restricted-imports` не маскировался общими ошибками.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/App.home.smoke.test.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/adminMetrics.test.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/ReviewFeed.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/reviews/reviewForm.ts`.
+- Depends on: `W5-AW`.
+- AC: исправлен `@typescript-eslint/only-throw-error` + `@typescript-eslint/no-base-to-string` в smoke-тесте через безопасный `unknown -> Error`.
+- AC: исправлен `@typescript-eslint/unbound-method` в `adminMetrics.test.ts` (без выноса unbound метода).
+- AC: исправлен `react-hooks/purity` (`Date.now`) в `ReviewFeed`.
+- AC: исправлены `no-useless-escape` regex в `reviewForm`.
+- AC: `npm run lint` проходит без errors (допустимы warnings).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: точечные правки в перечисленных 4 файлах.
+- Проверка: `npm run lint` (0 errors, warnings only), `npm run typecheck`, `npm run build`, `npm test -- --watch=false`.
+
+### [x] W5-AY · Reduce warning-level lint debt in discovery settings/lightbox paths (`set-state-in-effect`) (P2, status: done)
+- Цель: начать последовательное снижение warning-долга после восстановления error-level gate, с фокусом на `react-hooks/set-state-in-effect`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/settings/SettingsDrawer.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/PhotoLightboxModal.tsx`.
+- Depends on: `W5-AX`.
+- AC: в `SettingsDrawer` убран sync `setState` в эффекте для `pendingLocationId` (локальный state удален, селект теперь controlled от `selectedLocationId`).
+- AC: в `SettingsDrawer` feedback-обновления в effect-path переведены на отложенный callback, чтобы избежать sync `setState` в теле эффекта.
+- AC: в `PhotoLightboxModal` reset/image-ready обновления в effect-path переведены на `requestAnimationFrame`, чтобы убрать sync `setState` в эффектах.
+- AC: `lint` сохраняет 0 errors; warning-count уменьшен (с 32 до 27 по текущему срезу).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: рефактор состояний/эффектов в перечисленных 2 файлах.
+- Проверка: `npm run lint`, `npm run typecheck`, `npm run build`, `npm test -- --watch=false`.

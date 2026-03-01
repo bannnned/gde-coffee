@@ -126,7 +126,7 @@ export function TagsInput({
       (acc, splitter) => acc.flatMap((part) => part.split(splitter)),
       [current],
     );
-    let working = [...normalizedSelected];
+    const working = [...normalizedSelected];
     const selectedKeys = new Set(working.map((item) => item.toLowerCase()));
     for (const chunk of chunks) {
       const tag = normalizeTag(chunk);

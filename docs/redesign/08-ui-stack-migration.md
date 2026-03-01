@@ -77,6 +77,9 @@
 59. `W5-AT` закрыт (`done`): composer отзывов переведен с `AppTagsInput` на `components/ui/TagsInput`; удален `ui/bridge/tags-input.tsx` и очищен bridge barrel.
 60. `W5-AU` закрыт (`done`): `AppModal/AppSheet` перенесены в `components/ui/overlay.tsx`, все usage переведены на `components/ui`, после чего удалены `ui/bridge/overlay.tsx` и `ui/bridge/index.ts`.
 61. `W5-AV` закрыт (`done`): из `components/ui` и call sites удалены compat-пропсы `implementation`/`comboboxProps`; контракты `overlay/select/tags-input` очищены до final API.
+62. `W5-AW` закрыт (`done`): удален пустой каталог `src/ui/bridge`, а в ESLint добавлен guardrail (`no-restricted-imports`) против повторного появления импортов `ui/bridge`.
+63. `W5-AX` закрыт (`done`): исправлены все error-level lint нарушения (smoke test throw handling, adminMetrics unbound-method, ReviewFeed purity, reviewForm regex escapes); `lint` теперь проходит с warning-only долговым хвостом.
+64. `W5-AY` закрыт (`done`): начато сокращение warning-долга `react-hooks/set-state-in-effect` в `SettingsDrawer` и `PhotoLightboxModal`; warning-count снижен с 32 до 27 при сохранении 0 lint errors.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.
@@ -112,7 +115,7 @@
 ### 7.2 Где допускается Mantine
 1. Текущие экраны (`features/*`, `pages/*`) до их целевой миграции.
 2. Глобальные интеграции `MantineProvider`, `Notifications`, текущая тема.
-3. Временный bridge-слой `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/ui/bridge/*`, где согласованы интерфейсы перехода.
+3. `ui/bridge` удален; повторное появление bridge-импортов блокируется ESLint guardrail.
 
 ### 7.3 Где обязателен shadcn/Tailwind
 1. Любые новые базовые primitives (кнопка, input, badge, sheet/popover).
@@ -120,13 +123,13 @@
 3. Новый код в пилотной зоне после старта `STK-BL-010`.
 
 ### 7.4 Утвержденные migration-path для контейнеров
-1. Modal path: `Mantine Modal` -> `AppModal` bridge (`src/ui/bridge/overlay.tsx`) -> Radix-backed реализация.
-2. Sheet/Drawer path: `Mantine Drawer` -> `AppSheet` bridge (`src/ui/bridge/overlay.tsx`) -> `components/ui/sheet.tsx`.
-3. Form path: Mantine-form layout -> `FormField/FormActions` bridge (`src/ui/bridge/form.tsx`) + `components/ui/input.tsx`/`components/ui/popover.tsx`.
+1. Modal path: `Mantine Modal` -> `components/ui/overlay.tsx` (`AppModal`) -> Radix-backed реализация.
+2. Sheet/Drawer path: `Mantine Drawer` -> `components/ui/overlay.tsx` (`AppSheet`) + `components/ui/sheet.tsx`.
+3. Form path: Mantine-form layout -> нативная разметка форм + `components/ui/input.tsx`/`components/ui/popover.tsx`.
 
 ### 7.5 Правило PR-приемки для переходного периода
 1. Нельзя добавлять новый reusable UI поверх Mantine, если уже есть эквивалент в `src/components/ui`.
-2. Если временно нужен Mantine-контейнер, он должен идти через bridge-слой.
+2. Временный bridge-слой не допускается: если нужен контейнер, используем `src/components/ui/*`.
 3. Для каждого PR в миграционном треке явно указывать: `legacy`, `bridge`, или `new-ui`.
 
 ## 8. Масштабирование на Wave 2/3 (`STK-BL-020`)
@@ -156,7 +159,7 @@
 ### 9.1 Stage A — Freeze
 1. Запрещены новые reusable-компоненты на Mantine.
 2. Все новые reusable UI идут в `src/components/ui/*`.
-3. Все переходные контейнеры идут через `src/ui/bridge/*`.
+3. Восстановление bridge-слоя запрещено; переходные контейнеры делаются в `src/components/ui/*`.
 
 ### 9.2 Stage B — Scope Exit (per wave)
 1. В закрытой волне нет прямых импортов `@mantine/core` в мигрированных feature-файлах.

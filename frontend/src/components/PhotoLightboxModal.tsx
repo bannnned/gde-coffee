@@ -149,16 +149,26 @@ export default function PhotoLightboxModal({
 
   useEffect(() => {
     if (!opened) return;
-    resetTransform();
+    const frameID = window.requestAnimationFrame(() => {
+      resetTransform();
+    });
+    return () => {
+      window.cancelAnimationFrame(frameID);
+    };
   }, [activePhoto?.id, activePhoto?.url, opened, resetTransform]);
 
   useEffect(() => {
     const nextURL = activePhoto?.url?.trim();
-    if (!nextURL) {
-      setImageReady(true);
-      return;
-    }
-    setImageReady(loadedUrlsRef.current.has(nextURL));
+    const frameID = window.requestAnimationFrame(() => {
+      if (!nextURL) {
+        setImageReady(true);
+        return;
+      }
+      setImageReady(loadedUrlsRef.current.has(nextURL));
+    });
+    return () => {
+      window.cancelAnimationFrame(frameID);
+    };
   }, [activePhoto?.url]);
 
   useEffect(() => {

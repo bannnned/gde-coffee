@@ -240,7 +240,6 @@ export default function AuthGate({ children }: PropsWithChildren) {
           closeAuthModal();
         }}
         title={<span className={classes.title}>{titleText}</span>}
-        centered
         closeButton
         presentation="dialog"
         contentClassName={classes.modalContent}

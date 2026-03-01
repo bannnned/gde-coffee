@@ -78,7 +78,6 @@ export default function SettingsDrawer({
 }: SettingsDrawerProps) {
   const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
   const [pendingTagToAdd, setPendingTagToAdd] = useState<string | null>(null);
-  const [pendingLocationId, setPendingLocationId] = useState<string>("");
   const [tagSaveFeedback, setTagSaveFeedback] = useState<string | null>(null);
   const prevTopTagsSavingRef = useRef(topTagsSaving);
   const normalizedSelectedLocationId =
@@ -147,6 +146,9 @@ export default function SettingsDrawer({
   const canEditTags = isAuthed && !topTagsLoading && !topTagsSaving;
   const toggleTag = (tag: string) => {
     if (!canEditTags) return;
+    if (tagSaveFeedback) {
+      setTagSaveFeedback(null);
+    }
     const value = tag.trim();
     if (!value) return;
     if (hasTagSelected(value)) {
@@ -161,6 +163,9 @@ export default function SettingsDrawer({
 
   const handleAddPendingTag = () => {
     if (!canEditTags) return;
+    if (tagSaveFeedback) {
+      setTagSaveFeedback(null);
+    }
     const value = (pendingTagToAdd ?? "").trim();
     if (!value) return;
     if (!normalizedTagOptionsSet.has(value.toLowerCase())) {
@@ -182,11 +187,14 @@ export default function SettingsDrawer({
     if (!wasSaving || topTagsSaving) return undefined;
 
     if (!topTagsError && !topTagsDirty) {
-      setTagSaveFeedback("Сохранено");
+      const showTimer = window.setTimeout(() => {
+        setTagSaveFeedback("Сохранено");
+      }, 0);
       const timer = window.setTimeout(() => {
         setTagSaveFeedback(null);
       }, 2200);
       return () => {
+        window.clearTimeout(showTimer);
         window.clearTimeout(timer);
       };
     }
@@ -195,14 +203,14 @@ export default function SettingsDrawer({
   }, [topTagsDirty, topTagsError, topTagsSaving]);
 
   useEffect(() => {
-    if (topTagsDirty) {
+    if (!topTagsDirty) return;
+    const timer = window.setTimeout(() => {
       setTagSaveFeedback(null);
-    }
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [topTagsDirty]);
-
-  useEffect(() => {
-    setPendingLocationId(normalizedSelectedLocationId);
-  }, [normalizedSelectedLocationId, opened]);
 
   return (
     <AppSheet
@@ -231,10 +239,9 @@ export default function SettingsDrawer({
             <span className="text-sm font-medium text-text">Город</span>
             <div className="relative">
               <select
-                value={pendingLocationId}
+                value={normalizedSelectedLocationId}
                 onChange={(event) => {
                   const nextId = event.currentTarget.value.trim();
-                  setPendingLocationId(nextId);
                   if (!nextId) return;
                   onSelectLocation(nextId);
                 }}

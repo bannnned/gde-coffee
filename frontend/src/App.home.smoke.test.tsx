@@ -225,6 +225,20 @@ vi.mock("./features/discovery/hooks/useDiscoveryPageController", () => {
 
 import App from "./App";
 
+function toError(value: unknown): Error {
+  if (value instanceof Error) return value;
+  if (typeof value === "string") return new Error(value);
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint" || typeof value === "symbol") {
+    return new Error(String(value));
+  }
+  if (value == null) return new Error("Unknown render error");
+  try {
+    return new Error(JSON.stringify(value));
+  } catch {
+    return new Error("Unknown render error");
+  }
+}
+
 describe("App home route", () => {
   it("renders / without crashing", async () => {
     window.history.pushState({}, "", "/");
@@ -251,7 +265,7 @@ describe("App home route", () => {
       throw new Error(`Aggregate render failure:\n${details}`);
     }
     if (renderError) {
-      throw renderError;
+      throw toError(renderError);
     }
 
     await waitFor(() => {

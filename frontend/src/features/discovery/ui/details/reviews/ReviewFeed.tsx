@@ -160,7 +160,7 @@ export function ReviewFeed({
     }
     if (!latestTimestamp) return "";
     const staleAfterMs = REVIEWS_STALE_DAYS * 24 * 60 * 60 * 1000;
-    if (Date.now() - latestTimestamp < staleAfterMs) return "";
+    if (new Date().getTime() - latestTimestamp < staleAfterMs) return "";
     return "Сюда давно не заходили. Исправьте это и оставьте свежий отзыв.";
   }, [positionFilter, reviews]);
 
