@@ -26,6 +26,7 @@ type ratingDiagnosticsReviewInput struct {
 	VisitConfidence  string
 	VisitVerified    bool
 	ConfirmedReports int
+	HelpfulVotes     int
 	HelpfulScore     float64
 	CreatedAt        time.Time
 }
@@ -266,6 +267,7 @@ func (s *Service) loadRatingDiagnosticsInputs(
 				&item.VisitConfidence,
 			&item.VisitVerified,
 			&item.ConfirmedReports,
+			&item.HelpfulVotes,
 			&item.HelpfulScore,
 			&item.CreatedAt,
 		); err != nil {

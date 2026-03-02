@@ -2727,6 +2727,7 @@ func TestAdminReviewsHealthAccessAndPayload(t *testing.T) {
 
 func TestOutboxDispatchEnqueuesInboxConsumers(t *testing.T) {
 	pool := integrationTestPool(t)
+	mustExec(t, pool, `TRUNCATE domain_events CASCADE`)
 	repository := NewRepository(pool)
 	service := NewService(repository)
 
@@ -2811,6 +2812,7 @@ func TestOutboxDispatchEnqueuesInboxConsumers(t *testing.T) {
 
 func TestInboxTerminalFailureMovesToDLQ(t *testing.T) {
 	pool := integrationTestPool(t)
+	mustExec(t, pool, `TRUNCATE domain_events CASCADE`)
 	repository := NewRepository(pool)
 	service := NewService(repository)
 

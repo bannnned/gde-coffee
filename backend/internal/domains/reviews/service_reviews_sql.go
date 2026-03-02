@@ -59,7 +59,7 @@ do update set
 from reviews r
 left join review_attributes ra on ra.review_id = r.id
 where r.id = $1::uuid and r.status = 'published'
-for update`
+for update of r`
 
 	sqlUpdateReview = `update reviews
     set rating = $2,

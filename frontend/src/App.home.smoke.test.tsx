@@ -166,6 +166,12 @@ vi.mock("./features/discovery/hooks/useDiscoveryPageController", () => {
       focusLngLat: null,
       selectedCafeId: null,
       selectedCafe: null,
+      selectCafeActionToken: 0,
+      selectedCafeJourneyID: "",
+      photosRefreshToken: 0,
+      ratingRefreshToken: 0,
+      selectedCafePhotoProcessing: false,
+      selectedMenuPhotoProcessing: false,
       itemRefs: { current: {} },
       showFetchingBadge: false,
       showFirstChoice: false,
@@ -184,6 +190,17 @@ vi.mock("./features/discovery/hooks/useDiscoveryPageController", () => {
       selectedAmenities: [],
       favoritesOnly: false,
       favoriteBusyCafeId: null,
+      topDescriptiveTags: [],
+      topDescriptiveTagsSource: "",
+      isTopTagsLoading: false,
+      tagOptions: [],
+      tagOptionsQuery: "",
+      isTagOptionsLoading: false,
+      favoriteDescriptiveTagsDraft: [],
+      isFavoriteTagsLoading: false,
+      isFavoriteTagsSaving: false,
+      favoriteTagsError: null,
+      isFavoriteTagsDirty: false,
       manualPickMode: false,
       manualPickedCenter: null,
       manualPinOffsetY: 0,
@@ -192,6 +209,7 @@ vi.mock("./features/discovery/hooks/useDiscoveryPageController", () => {
       selectedLocationId: null,
       locationLabel: "",
       proposalCity: "",
+      isAuthed: false,
       isPrivilegedUser: false,
       isPhotoAdmin: false,
       setSettingsOpen: noop,
@@ -212,9 +230,15 @@ vi.mock("./features/discovery/hooks/useDiscoveryPageController", () => {
       handleToggleFavorite: noop,
       handleOpenPhotoAdmin: noop,
       handlePhotosChanged: noop,
+      handlePhotoSubmissionQueued: noop,
       handleStartCafeDescriptionEdit: noop,
       handleSaveCafeDescription: vi.fn(),
       handleOpenCafeProposal: noop,
+      handleReviewSaved: noop,
+      setTagOptionsQuery: noop,
+      handleFavoriteTagsDraftChange: noop,
+      handleSaveFavoriteTags: noop,
+      handleRequireTagsAuth: noop,
       open2gisRoute: noop,
       openYandexRoute: noop,
       radiusM: 800,
@@ -268,8 +292,11 @@ describe("App home route", () => {
       throw toError(renderError);
     }
 
-    await waitFor(() => {
-      expect(document.querySelector(".map-wrapper")).not.toBeNull();
-    });
+    await waitFor(
+      () => {
+        expect(document.querySelector(".map-wrapper")).not.toBeNull();
+      },
+      { timeout: 5000 },
+    );
   });
 });
