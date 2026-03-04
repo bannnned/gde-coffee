@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"fmt"
 	"syscall"
 	"time"
 
@@ -112,47 +112,9 @@ func main() {
 	_ = godotenv.Load()
 	logging.Setup()
 
-	// Read port early so the health server can start immediately.
-	port := strings.TrimSpace(os.Getenv("PORT"))
-	if port == "" {
-		port = "8080"
-	}
-
-	// ---- Start HTTP server IMMEDIATELY with a health-only handler ----
-	// Timeweb starts its healthcheck right after the container is up.
-	// We must have /_health answering 200 before any heavy init (DB, migrations, S3).
-	var (
-		handlerMu      sync.RWMutex
-		activeHandler  http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/_health" || r.URL.Path == "/" {
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte("ok"))
-				return
-			}
-			http.Error(w, "initializing", http.StatusServiceUnavailable)
-		})
-	)
-
-	srv := &http.Server{
-		Addr: "0.0.0.0:" + port,
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handlerMu.RLock()
-			h := activeHandler
-			handlerMu.RUnlock()
-			h.ServeHTTP(w, r)
-		}),
-	}
-	go func() {
-		slog.Info("http server starting (health-only)", "addr", srv.Addr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("server listen failed", "error", err)
-			os.Exit(1)
-		}
-	}()
-
-	// ---- Full initialization ----
 	cfg, err := config.Load()
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "config load failed: %v\n", err)
 		slog.Error("config load failed", "error", err)
 		os.Exit(1)
 	}
@@ -166,6 +128,7 @@ func main() {
 	dbURL3 := os.Getenv("DATABASE_URL_3")
 
 	if dbURL1 == "" && dbURL2 == "" && dbURL3 == "" {
+		fmt.Fprintln(os.Stderr, "FATAL: no DATABASE_URL set")
 		slog.Error("DATABASE_URL or DATABASE_URL_2 or DATABASE_URL_3 is required")
 		os.Exit(1)
 	}
@@ -200,19 +163,21 @@ func main() {
 	}
 
 	if pool == nil {
+		fmt.Fprintln(os.Stderr, "FATAL: all db connections failed")
 		slog.Error("db connect failed for DATABASE_URL, DATABASE_URL_2, and DATABASE_URL_3")
 		os.Exit(1)
 	}
 
 	if err := dbmigrations.Run(selectedDBURL); err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: migrations failed: %v\n", err)
 		slog.Error("db migrations failed", "error", err)
 		os.Exit(1)
 	}
 	slog.Info("db migrations applied")
 
-	// ---- Build the full Gin engine ----
-	r := gin.New()
-	r.Use(gin.Recovery())
+	// Use gin.Default() — identical to the working production code.
+	// Our custom middleware is added on top.
+	r := gin.Default()
 	r.Use(logging.RequestID())
 	r.Use(logging.RequestLogger())
 
@@ -271,6 +236,7 @@ func main() {
 		PresignTTL:      cfg.Media.S3PresignTTL,
 	})
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: s3 init failed: %v\n", err)
 		slog.Error("s3 init failed", "error", err)
 		os.Exit(1)
 	}
@@ -483,11 +449,20 @@ func main() {
 		serveStaticOrIndex(c, cfg.PublicDir)
 	})
 
-	// ---- Swap handler: from health-only to full Gin engine ----
-	handlerMu.Lock()
-	activeHandler = r
-	handlerMu.Unlock()
-	slog.Info("app fully initialized, serving all routes")
+	srv := &http.Server{
+		Addr:    "0.0.0.0:" + cfg.Port,
+		Handler: r,
+	}
+
+	go func() {
+		fmt.Fprintf(os.Stderr, "=== listening on %s ===\n", srv.Addr)
+		slog.Info("http server starting", "addr", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fmt.Fprintf(os.Stderr, "FATAL: listen failed: %v\n", err)
+			slog.Error("server listen failed", "error", err)
+			os.Exit(1)
+		}
+	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
