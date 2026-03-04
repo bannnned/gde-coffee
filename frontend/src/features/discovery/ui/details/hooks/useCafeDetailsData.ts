@@ -80,7 +80,7 @@ export function useCafeDetailsData({
     return () => {
       cancelled = true;
     };
-  }, [cafe?.id, opened, photosRefreshToken]);
+  }, [cafe?.id, cafe?.photos, opened, photosRefreshToken]);
 
   useEffect(() => {
     if (!opened || !cafe?.id) return;

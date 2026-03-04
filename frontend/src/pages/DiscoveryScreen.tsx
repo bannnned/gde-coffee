@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 
-import Map from "../components/Map";
 import { DISCOVERY_UI_TEXT } from "../features/discovery/constants";
 import BottomSheet from "../features/discovery/components/BottomSheet";
 import CafeCard from "../features/discovery/components/CafeCard";
@@ -21,6 +20,7 @@ const CafePhotoSubmissionModal = lazy(
   () => import("../features/discovery/components/CafePhotoSubmissionModal"),
 );
 const CafeProposalModal = lazy(() => import("../features/discovery/ui/modals/CafeProposalModal"));
+const DiscoveryMap = lazy(() => import("../components/Map"));
 
 export default function DiscoveryScreen() {
   const { safeViewportHeight, visualViewportScale } = useLayoutMetrics();
@@ -239,21 +239,37 @@ export default function DiscoveryScreen() {
           inset: 0,
         }}
       >
-        <Map
-          center={userCenter}
-          zoom={13}
-          cafes={visibleCafes}
-          filtersBarHeight={filtersBarHeight}
-          controlsHidden={controlsHidden}
-          userLocation={isCityOnlyMode || manualPickMode ? null : userCenter}
-          selectedCafeId={selectedCafeId}
-          focusLngLat={manualPickMode ? null : focusLngLat}
-          onCafeSelect={manualPickMode ? undefined : selectCafe}
-          disableCafeClick={manualPickMode}
-          paddingEnabled
-          centerProbeOffsetY={manualPickMode ? manualCenterProbeOffsetY : 0}
-          onCenterChange={manualPickMode ? handleManualCenterChange : undefined}
-        />
+        <Suspense
+          fallback={
+            <div className="map-wrapper">
+              <div
+                className="map-shell"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  background:
+                    "radial-gradient(circle at 20% 20%, var(--bg-accent-1), transparent 48%), radial-gradient(circle at 80% 30%, var(--bg-accent-2), transparent 44%), var(--bg)",
+                }}
+              />
+            </div>
+          }
+        >
+          <DiscoveryMap
+            center={userCenter}
+            zoom={13}
+            cafes={visibleCafes}
+            filtersBarHeight={filtersBarHeight}
+            controlsHidden={controlsHidden}
+            userLocation={isCityOnlyMode || manualPickMode ? null : userCenter}
+            selectedCafeId={selectedCafeId}
+            focusLngLat={manualPickMode ? null : focusLngLat}
+            onCafeSelect={manualPickMode ? undefined : selectCafe}
+            disableCafeClick={manualPickMode}
+            paddingEnabled
+            centerProbeOffsetY={manualPickMode ? manualCenterProbeOffsetY : 0}
+            onCenterChange={manualPickMode ? handleManualCenterChange : undefined}
+          />
+        </Suspense>
       </div>
 
       {manualPickMode && (
@@ -368,7 +384,9 @@ export default function DiscoveryScreen() {
         onRequireAuthForTags={handleRequireTagsAuth}
         onTopTagsChange={handleFavoriteTagsDraftChange}
         onTopTagsQueryChange={setTagOptionsQuery}
-        onSaveTopTags={handleSaveFavoriteTags}
+        onSaveTopTags={() => {
+          void handleSaveFavoriteTags();
+        }}
       />
 
       {detailsOpen && (

@@ -45,7 +45,7 @@ export default function ReviewsSection({
     if (controller.positionFilter !== "all") {
       controller.setPositionFilter("all");
     }
-  }, [controller.positionFilter, controller.setPositionFilter, controller.setSort, controller.sort, focusReviewID, opened]);
+  }, [controller, controller.positionFilter, controller.setPositionFilter, controller.setSort, controller.sort, focusReviewID, opened]);
 
   useEffect(() => {
     if (!focusReviewID || !opened) return;
@@ -55,6 +55,7 @@ export default function ReviewsSection({
     if (!controller.hasMore) return;
     controller.onLoadMore();
   }, [
+    controller,
     controller.hasMore,
     controller.isLoading,
     controller.isLoadingMore,

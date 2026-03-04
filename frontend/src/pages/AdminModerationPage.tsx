@@ -422,7 +422,7 @@ export default function AdminModerationPage() {
                       key={item.value}
                       type="button"
                       className="ui-focus-ring"
-                      onClick={() => setActiveTab((item.value as ModerationTabKey) ?? "all")}
+                      onClick={() => setActiveTab(item.value)}
                       style={{
                         border: active
                           ? "1px solid var(--color-border-soft)"

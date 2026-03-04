@@ -643,7 +643,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         filter: unclusteredFilter,
         layout: {
           "icon-image": CAFE_ICON_ID,
-          "icon-size": 0.1,
+          "icon-size": 0.2,
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
           "icon-anchor": "bottom",
@@ -701,7 +701,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         filter: ["all", unclusteredFilter, ["==", ["get", "id"], selectedCafeId ?? ""]],
         layout: {
           "icon-image": CAFE_ICON_ID,
-          "icon-size": 0.12,
+          "icon-size": 0.24,
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
           "icon-anchor": "bottom",
@@ -762,7 +762,7 @@ function addLayers(map: MLMap, selectedCafeId: string | null) {
         source: "user",
         layout: {
           "icon-image": USER_ICON_ID,
-          "icon-size": 0.11,
+          "icon-size": 0.22,
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
           "icon-anchor": "bottom",

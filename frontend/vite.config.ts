@@ -6,6 +6,9 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
+    // MapLibre bundle is intentionally isolated into a dedicated lazy-loaded chunk.
+    // Keep warning threshold above its current compressed size to avoid noisy false positives.
+    chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
         manualChunks(id) {

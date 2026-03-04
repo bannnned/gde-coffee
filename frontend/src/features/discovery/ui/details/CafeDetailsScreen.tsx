@@ -314,7 +314,9 @@ export default function CafeDetailsScreen({
       diagnosticsBase={diagnosticsBase}
       diagnosticsTopReviews={diagnosticsTopReviews}
       aiSummaryTriggerLoading={aiSummaryTriggerLoading}
-      onTriggerAISummary={handleAdminTriggerAISummary}
+      onTriggerAISummary={() => {
+        void handleAdminTriggerAISummary();
+      }}
     />
   );
 

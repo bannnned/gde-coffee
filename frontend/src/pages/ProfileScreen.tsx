@@ -9,7 +9,7 @@ import {
 import { useLocation, useNavigate, type Location as RouterLocation } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
-import { Badge, Button } from "../components/ui";
+import { Button } from "../components/ui";
 import useProfileAccount from "../features/profile/model/useProfileAccount";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import { cn } from "../lib/utils";

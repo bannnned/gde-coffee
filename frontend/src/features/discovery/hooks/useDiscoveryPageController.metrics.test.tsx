@@ -4,7 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Cafe } from "../../../entities/cafe/model/types";
 
-const reportMetricEventMock = vi.fn();
+type TestMetricPayload = {
+  event_type: string;
+  cafe_id: string;
+  provider?: string;
+};
+
+const reportMetricEventMock = vi.fn<[TestMetricPayload], void>();
 const createJourneyIDMock = vi.fn((cafeID: string) => `jid-${cafeID}-${Date.now()}`);
 
 const cafesFixture: Cafe[] = [
@@ -48,7 +54,9 @@ vi.mock("../../../api/cafes", () => ({
 vi.mock("../../../api/metrics", () => ({
   __esModule: true,
   createJourneyID: (cafeID: string) => createJourneyIDMock(cafeID),
-  reportMetricEvent: (payload: unknown) => reportMetricEventMock(payload),
+  reportMetricEvent: (payload: TestMetricPayload) => {
+    reportMetricEventMock(payload);
+  },
 }));
 
 vi.mock("../../../api/submissions", () => ({
@@ -266,4 +274,3 @@ describe("useDiscoveryPageController metrics", () => {
     expect(openSpy).toHaveBeenCalledTimes(2);
   });
 });
-

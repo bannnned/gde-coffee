@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { notifications } from "../../../../lib/notifications";
 import { IconMapPinFilled, IconPhotoPlus, IconTrash } from "@tabler/icons-react";
 
 import { uploadCafePhotoByPresignedUrl } from "../../../../api/cafePhotos";
 import { geocodeAddress } from "../../../../api/geocode";
 import { presignSubmissionPhotoUpload, submitCafeCreate } from "../../../../api/submissions";
-import Map from "../../../../components/Map";
 import { AppModal, Badge, Button, Input } from "../../../../components/ui";
 import { extractApiErrorMessage, extractApiErrorStatus } from "../../../../utils/apiError";
 import classes from "./CafeProposalModal.module.css";
@@ -20,6 +19,7 @@ type CafeProposalModalProps = {
 const MAX_UPLOAD_CONCURRENCY = 3;
 const COORD_PRECISION = 6;
 const GEOCODE_DEBOUNCE_MS = 2000;
+const ProposalMap = lazy(() => import("../../../../components/Map"));
 
 async function runWithConcurrency<T>(
   items: T[],
@@ -462,14 +462,30 @@ export default function CafeProposalModal({
       >
         <div className={classes.mapRoot}>
           <div className={classes.mapCanvas}>
-            <Map
-              center={mapPickerStartCenter}
-              zoom={14}
-              cafes={[]}
-              userLocation={null}
-              paddingEnabled={false}
-              onCenterChange={setMapPickerCenter}
-            />
+            <Suspense
+              fallback={
+                <div className="map-wrapper">
+                  <div
+                    className="map-shell"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      background:
+                        "radial-gradient(circle at 20% 20%, var(--bg-accent-1), transparent 48%), radial-gradient(circle at 80% 30%, var(--bg-accent-2), transparent 44%), var(--bg)",
+                    }}
+                  />
+                </div>
+              }
+            >
+              <ProposalMap
+                center={mapPickerStartCenter}
+                zoom={14}
+                cafes={[]}
+                userLocation={null}
+                paddingEnabled={false}
+                onCenterChange={setMapPickerCenter}
+              />
+            </Suspense>
           </div>
 
           <div className={classes.mapPin}>

@@ -81,6 +81,9 @@
 63. `W5-AX` закрыт (`done`): исправлены все error-level lint нарушения (smoke test throw handling, adminMetrics unbound-method, ReviewFeed purity, reviewForm regex escapes); `lint` теперь проходит с warning-only долговым хвостом.
 64. `W5-AY` закрыт (`done`): начато сокращение warning-долга `react-hooks/set-state-in-effect` в `SettingsDrawer` и `PhotoLightboxModal`; warning-count снижен с 32 до 27 при сохранении 0 lint errors.
 65. `W5-AZ` закрыт (`done`): продолжено сокращение warning-долга `react-hooks/set-state-in-effect` в `CafeCardFooter` и `ReviewsSection`; warning-count снижен с 27 до 24 при сохранении 0 lint errors.
+66. `W5-BA` закрыт (`done`): warning-долг снижался в Discovery/Profile контуре (`unused-vars`, `no-misused-promises`, hook-deps); warning-count снижен с 24 до 12 при сохранении 0 lint errors.
+67. `W5-BB` закрыт (`done`): финальная зачистка warning-долга в metrics/admin test слое и moderation tab typing; `lint` доведен до полностью чистого состояния (`0 errors / 0 warnings`).
+68. `W6-A` закрыт (`done`): выполнена оптимизация startup bundle для карты (lazy boundaries + marker asset optimization); `DiscoveryScreen` chunk снижен `83.89 -> 65.01 kB`, marker assets снижены `pin 332.78 -> 69.74 kB`, `cup 242.93 -> 48.38 kB`.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

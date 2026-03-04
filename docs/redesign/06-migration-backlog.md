@@ -1316,3 +1316,57 @@ Critical path stack-transition:
 - AC: `typecheck/build/tests` проходят без регрессий.
 - Артефакт: рефактор эффектов в перечисленных 2 файлах.
 - Проверка: `npm run lint`, `npm run typecheck`, `npm run build`, `npm test -- --watch=false`.
+
+### [x] W5-BA · Reduce warning-level lint debt in discovery/profile flow (`unused-vars`, `no-misused-promises`, hook-deps) (P2, status: done)
+- Цель: продолжить уменьшение warning-долга после `W5-AZ`, закрыв безопасные предупреждения в Discovery/Profile слоях без изменения UX-поведения.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/FiltersBar.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/hooks/useDiscoveryPageController.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/CafeDetailsScreen.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/ReviewsSection.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/hooks/useCafeDetailsData.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/DiscoveryScreen.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/ProfileScreen.tsx`.
+- Depends on: `W5-AZ`.
+- AC: устранены warning-источники `@typescript-eslint/no-unused-vars` в Discovery/Profile контуре.
+- AC: предупреждения `@typescript-eslint/no-misused-promises` в `DiscoveryScreen` и `CafeDetailsScreen` устранены через `void`-wrappers.
+- AC: warning `react-hooks/exhaustive-deps` в `useDiscoveryPageController` и `useCafeDetailsData` устранен без изменения пользовательского сценария.
+- AC: `lint` сохраняет 0 errors; warning-count уменьшен (с 24 до 12 по текущему срезу).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: точечные правки в перечисленных 7 файлах (Discovery/Profile).
+- Проверка: `npm run lint`, `npm run typecheck`, `npm run build`, `npm test -- --watch=false`.
+
+### [x] W5-BB · Final warning debt cleanup in metrics/admin tests and moderation tab typing (P2, status: done)
+- Цель: довести lint-контур до полностью чистого состояния (0 errors / 0 warnings) после `W5-BA`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/adminMetrics.test.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/hooks/useDiscoveryPageController.metrics.test.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminModerationPage.tsx`.
+- Depends on: `W5-BA`.
+- AC: устранены warning-источники `@typescript-eslint/no-unsafe-call` в `adminMetrics.test.ts` через hoisted typed mock.
+- AC: устранены warning-источники `@typescript-eslint/no-unsafe-return` и `@typescript-eslint/no-unsafe-member-access` в `useDiscoveryPageController.metrics.test.tsx` через явный тип payload мока метрик.
+- AC: устранен warning `@typescript-eslint/no-unnecessary-type-assertion` в `AdminModerationPage`.
+- AC: `npm run lint` проходит без warning/error (`0/0`).
+- AC: `npm run typecheck`, `npm test -- --watch=false`, `npm run build` проходят без регрессий.
+- Артефакт: точечные правки в перечисленных 3 файлах.
+- Проверка: `npm run lint`, `npm run typecheck`, `npm test -- --watch=false`, `npm run build`.
+
+### [x] W6-A · Bundle/map payload optimization for startup performance (P1, status: done)
+- Цель: уменьшить реальный startup-payload Discovery без изменения бизнес-логики.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/DiscoveryScreen.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/modals/CafeProposalModal.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/Map.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/assets/pin.png`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/assets/cup.png`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/vite.config.ts`.
+- Depends on: `W5-BB`.
+- AC: `Map` вынесен в lazy-boundary на Discovery и в modal map-picker (через `React.lazy` + `Suspense` fallback), чтобы убрать часть кода карты из первоначального screen chunk.
+- AC: map-marker ассеты (`pin.png`, `cup.png`) оптимизированы по размеру без потери UX-размера маркеров на карте (пересчитан `icon-size`).
+- AC: Vite warning по крупному map chunk больше не шумит CI/локальный build (map chunk оставлен отдельным и ожидаемо тяжелым).
+- AC: `lint/typecheck/tests/build` проходят без регрессий.
+- Артефакт: lazy map-import и fallback skeleton в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/DiscoveryScreen.tsx` и `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/modals/CafeProposalModal.tsx`.
+- Артефакт: перерасчет icon scale в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/Map.tsx`.
+- Артефакт: оптимизированные marker assets `pin.png`, `cup.png` и build-threshold настройка в `/Users/a1/Desktop/Prog/gde-coffee/frontend/vite.config.ts`.
+- Результат (build snapshot):
+  - `DiscoveryScreen` js: `83.89 kB -> 65.01 kB`.
+  - `Map` js выделен в отдельный lazy chunk: `19.24 kB`.
+  - `pin.png`: `332.78 kB -> 69.74 kB`.
+  - `cup.png`: `242.93 kB -> 48.38 kB`.

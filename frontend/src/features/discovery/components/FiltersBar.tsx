@@ -22,14 +22,14 @@ type FiltersBarProps = {
 };
 
 export default function FiltersBar({
-  topTags: _topTags = [],
-  topTagsSource: _topTagsSource = "city_popular",
-  topTagsLoading: _topTagsLoading = false,
+  topTags = [],
+  topTagsSource = "city_popular",
+  topTagsLoading = false,
   favoritesOnly = false,
   onToggleFavorites,
   canToggleFavorites = false,
   onOpenSettings,
-  showFetchingBadge: _showFetchingBadge,
+  showFetchingBadge = false,
   highlightSettingsButton = false,
   suppressClicksUntil = 0,
 }: FiltersBarProps) {
@@ -110,6 +110,10 @@ export default function FiltersBar({
     <div
       className={classes.root}
       data-ui="filters-bar"
+      data-top-tags-source={topTagsSource}
+      data-top-tags-loading={topTagsLoading ? "true" : "false"}
+      data-top-tags-count={topTags.length}
+      data-fetching={showFetchingBadge ? "true" : "false"}
       style={{
         position: "absolute",
         top: 0,

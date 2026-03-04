@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "../../../components/AuthGate";
 import { updateCafeDescription } from "../../../api/cafes";
@@ -121,6 +121,7 @@ export default function useDiscoveryPageController() {
   });
 
   const [lng, lat] = location.userCenter;
+  const userID = user?.id ?? "";
   const { cafes, cafesQuery, showFetchingBadge } = useCafes({
     lat,
     lng,
@@ -129,7 +130,10 @@ export default function useDiscoveryPageController() {
     favoritesOnly,
     enabled: location.locationChoice !== null,
   });
-  const visibleCafes = location.locationChoice ? cafes : [];
+  const visibleCafes = useMemo(
+    () => (location.locationChoice ? cafes : []),
+    [cafes, location.locationChoice],
+  );
   const {
     selectedCafeId,
     selectedCafe,
@@ -249,7 +253,7 @@ export default function useDiscoveryPageController() {
 
   useEffect(() => {
     void refreshTopTags();
-  }, [refreshTopTags, user?.id]);
+  }, [refreshTopTags, userID]);
 
   useEffect(() => {
     if (!modals.settingsOpen) {
@@ -301,7 +305,7 @@ export default function useDiscoveryPageController() {
   ]);
 
   useEffect(() => {
-    if (!user) {
+    if (!userID) {
       setFavoriteDescriptiveTags([]);
       setFavoriteDescriptiveTagsDraft([]);
       setFavoriteTagsError(null);
@@ -337,7 +341,7 @@ export default function useDiscoveryPageController() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, lat, lng, location.effectiveRadiusM, modals.settingsOpen]);
+  }, [userID, lat, lng, location.effectiveRadiusM, modals.settingsOpen]);
 
   const handleFavoriteTagsDraftChange = (next: string[]) => {
     setFavoriteDescriptiveTagsDraft(
