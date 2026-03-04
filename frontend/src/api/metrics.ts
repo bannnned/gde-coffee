@@ -5,7 +5,9 @@ export type MetricEventType =
   | "review_read"
   | "route_click"
   | "checkin_start"
-  | "review_submit";
+  | "review_submit"
+  | "map_first_render"
+  | "map_first_interaction";
 export type RouteProvider = "2gis" | "yandex";
 
 type MetricEventInput = {

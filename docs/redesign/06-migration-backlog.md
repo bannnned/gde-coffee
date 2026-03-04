@@ -1370,3 +1370,60 @@ Critical path stack-transition:
   - `Map` js выделен в отдельный lazy chunk: `19.24 kB`.
   - `pin.png`: `332.78 kB -> 69.74 kB`.
   - `cup.png`: `242.93 kB -> 48.38 kB`.
+
+### [x] W6-B · Discovery map chunk prefetch during splash/idle (P1, status: done)
+- Цель: сократить задержку первого появления карты после сплеша, не увеличивая initial startup-bundle.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/main.tsx`.
+- Depends on: `W6-A`.
+- AC: добавлен prefetch `./components/Map` через idle-сценарий (`requestIdleCallback` с fallback на `setTimeout`), чтобы чанк карты подтягивался до первого интерактива Discovery.
+- AC: prefetch запускается только для главного маршрута (`/`) и не триггерится на медленных/экономных сетях (`saveData`/`2g` guard), чтобы не ухудшать UX в constrained-сценариях.
+- AC: `lint/typecheck/build` проходят без регрессий.
+- Артефакт: startup prefetch scheduler и network guards в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/main.tsx`.
+
+### [x] W6-C · Map network hints и style warmup (P1, status: done)
+- Цель: снизить время до первого полезного рендера карты за счет раннего сетевого прогрева ресурсов.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/main.tsx`.
+- Depends on: `W6-B`.
+- AC: добавлены `dns-prefetch` + `preconnect` hints для map/style origins (активный style host + fallback tile hosts).
+- AC: добавлен мягкий warmup style JSON (`prefetch` hint + idle `fetch` with `force-cache`) для текущей цветовой схемы.
+- AC: warmup/hints защищены теми же guardrails (`/` route, `saveData`, `2g`) и не создают лишнюю нагрузку в constrained-сетях.
+- AC: `lint/typecheck/tests/build` проходят без регрессий.
+- Артефакт: network hints + style warmup orchestration в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/main.tsx`.
+
+### [x] W6-D · Exclude React Query Devtools from production bundle (P1, status: done)
+- Цель: уменьшить startup JS payload для продакшна без изменения пользовательского функционала.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/main.tsx`.
+- Depends on: `W6-C`.
+- AC: `@tanstack/react-query-devtools` больше не попадает в prod-bundle через статический импорт.
+- AC: devtools подгружается только в dev-режиме через lazy dynamic import.
+- AC: `lint/typecheck/tests/build` проходят без регрессий.
+- Артефакт: `QueryDevtoolsSlot` (dev-only lazy loader) в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/main.tsx`.
+
+### [x] W6-E · Telemetry for first-map-render / first-map-interaction (P1, status: done)
+- Цель: измерять реальную latency карты и первый user interaction в проде для дальнейшей приоритизации оптимизаций.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/Map.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/metrics.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/internal/domains/metrics/`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/migrations/000031_product_metrics_map_perf_events.*.sql`.
+- Depends on: `W6-D`.
+- AC: фронт отправляет одноразовые события `map_first_render` и `map_first_interaction` в `/metrics/events` с мета-полями latency/network/source.
+- AC: backend ingest принимает новые event_type без деградации текущих funnel/north-star сценариев.
+- AC: DB constraint `product_metrics_events_type_chk` расширен новыми типами событий.
+- AC: `lint/typecheck/tests/build` (frontend) и `go test ./internal/domains/metrics` (backend) проходят.
+- Артефакт: map telemetry hooks в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/components/Map.tsx`.
+- Артефакт: metric type union в `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/metrics.ts`.
+- Артефакт: backend validation/constants + migration в перечисленных backend путях.
+
+### [x] W6-F · Admin dashboard block for map performance (P1, status: done)
+- Цель: дать продукту/админу быстрый обзор map-latency на основе новых telemetry-событий без ручных SQL.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/internal/domains/metrics/`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/main.go`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/adminMetrics.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Depends on: `W6-E`.
+- AC: backend добавляет endpoint `GET /api/admin/metrics/map-perf` с агрегатами `render/interaction p50,p95` и `interaction_coverage`.
+- AC: админ-страница `/admin/metrics` отображает новый блок `Map performance` с ключевыми карточками и счетчиками событий.
+- AC: при scope `по кофейне` интерфейс явно указывает, что map-perf считается глобально по приложению.
+- AC: frontend/backed тесты и сборка проходят без регрессий.
+- Артефакт: backend report/aggregation и handler route в перечисленных backend файлах.
+- Артефакт: API-клиент `getAdminMapPerf()` и UI-блок в перечисленных frontend файлах.

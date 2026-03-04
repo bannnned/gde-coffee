@@ -6,6 +6,7 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import useAppColorScheme from "../hooks/useAppColorScheme";
+import { createJourneyID, reportMetricEvent } from "../api/metrics";
 import type { Cafe } from "../types";
 import pinUrl from "../assets/pin.png";
 import cupUrl from "../assets/cup.png";
@@ -22,8 +23,48 @@ const MAP_STYLE_DARK_URL_RAW =
   "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 const MAP_CITY_LABEL_FONT_STACK_RAW =
   (import.meta.env.VITE_MAP_CITY_LABEL_FONT_STACK as string | undefined)?.trim() || "";
+const MAP_METRICS_CAFE_ID = "11111111-1111-4111-8111-111111111111";
 const CITY_LABEL_LAYER_ID_PATTERN = /^place_(?:city.*|capital.*|town|suburbs|villages?|hamlet)$/i;
 const CITY_LABEL_FONT_FALLBACK_STACK = ["Noto Sans Regular", "Open Sans Regular"] as const;
+let mapMetricsJourneyID = "";
+let mapFirstRenderReported = false;
+let mapFirstInteractionReported = false;
+
+function getMapMetricsJourneyID(): string {
+  if (!mapMetricsJourneyID) {
+    mapMetricsJourneyID = createJourneyID("map");
+  }
+  return mapMetricsJourneyID;
+}
+
+function getNetworkMeta() {
+  if (typeof navigator === "undefined") {
+    return {
+      effective_type: "",
+      downlink_mbps: null as number | null,
+      rtt_ms: null as number | null,
+      save_data: false,
+    };
+  }
+  const connection = (
+    navigator as Navigator & {
+      connection?: {
+        effectiveType?: string;
+        downlink?: number;
+        rtt?: number;
+        saveData?: boolean;
+      };
+    }
+  ).connection;
+  const downlink = Number(connection?.downlink);
+  const rtt = Number(connection?.rtt);
+  return {
+    effective_type: connection?.effectiveType ?? "",
+    downlink_mbps: Number.isFinite(downlink) ? downlink : null,
+    rtt_ms: Number.isFinite(rtt) ? rtt : null,
+    save_data: Boolean(connection?.saveData),
+  };
+}
 
 function normalizeMapStyleUrl(raw: string): string {
   return /tiles\.openfreemap\.org/i.test(raw) ? "" : raw;
@@ -915,6 +956,7 @@ export default function Map({
   const selectedCafeRef = useRef<string | null>(selectedCafeId ?? null);
   const geojsonRef = useRef<GeoJSON.FeatureCollection | null>(null);
   const paddingRef = useRef({ top: 0, bottom: 0 });
+  const mapInitStartedAtRef = useRef<number | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
   useEffect(() => {
@@ -944,6 +986,65 @@ export default function Map({
   useEffect(() => {
     schemeRef.current = scheme;
   }, [scheme]);
+
+  const reportMapFirstRender = useMemo(
+    () =>
+      (map: MLMap, phase: "style_load" | "first_render") => {
+        if (mapFirstRenderReported) return;
+        if (typeof performance === "undefined") return;
+        mapFirstRenderReported = true;
+        const now = performance.now();
+        const initStartedAt = mapInitStartedAtRef.current;
+        reportMetricEvent({
+          event_type: "map_first_render",
+          journey_id: getMapMetricsJourneyID(),
+          cafe_id: MAP_METRICS_CAFE_ID,
+          meta: {
+            route: typeof window !== "undefined" ? window.location.pathname : "",
+            phase,
+            app_elapsed_ms: Math.round(now),
+            map_init_elapsed_ms:
+              initStartedAt != null ? Math.max(0, Math.round(now - initStartedAt)) : null,
+            zoom: Number(map.getZoom().toFixed(2)),
+            scheme: schemeRef.current,
+            ...getNetworkMeta(),
+          },
+        });
+      },
+    [],
+  );
+
+  const reportMapFirstInteraction = useMemo(
+    () =>
+      (
+        map: MLMap,
+        interactionType: "tap" | "drag" | "zoom" | "zoom_button",
+        source: "click" | "touchend" | "gesture" | "button",
+      ) => {
+        if (mapFirstInteractionReported) return;
+        if (typeof performance === "undefined") return;
+        mapFirstInteractionReported = true;
+        const now = performance.now();
+        const initStartedAt = mapInitStartedAtRef.current;
+        reportMetricEvent({
+          event_type: "map_first_interaction",
+          journey_id: getMapMetricsJourneyID(),
+          cafe_id: MAP_METRICS_CAFE_ID,
+          meta: {
+            route: typeof window !== "undefined" ? window.location.pathname : "",
+            interaction_type: interactionType,
+            source,
+            app_elapsed_ms: Math.round(now),
+            map_init_elapsed_ms:
+              initStartedAt != null ? Math.max(0, Math.round(now - initStartedAt)) : null,
+            zoom: Number(map.getZoom().toFixed(2)),
+            scheme: schemeRef.current,
+            ...getNetworkMeta(),
+          },
+        });
+      },
+    [],
+  );
 
   const geojson = useMemo(() => {
     const features = cafes.flatMap((cafe) => {
@@ -987,6 +1088,7 @@ export default function Map({
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    mapInitStartedAtRef.current = typeof performance !== "undefined" ? performance.now() : null;
 
     const map = new maplibregl.Map({
       container: containerRef.current,
@@ -1114,6 +1216,7 @@ export default function Map({
       lngLat: maplibregl.LngLat,
       source: "click" | "touchend",
     ) => {
+      reportMapFirstInteraction(map, "tap", source);
       if (Date.now() < suppressMapTapUntil) return true;
       const { features: interactiveFeatures, hitMode } = queryInteractiveFeaturesByPoint(point);
       logMapClusterDebug("map_tap", {
@@ -1212,6 +1315,14 @@ export default function Map({
       clearSpiderfy(map);
     };
 
+    const handleDragStart = () => {
+      reportMapFirstInteraction(map, "drag", "gesture");
+    };
+
+    const handleZoomStart = () => {
+      reportMapFirstInteraction(map, "zoom", "gesture");
+    };
+
     const handleError = (event: { error?: unknown }) => {
       const message = readMapErrorMessage(event.error);
       if (NON_FATAL_STYLE_MESSAGES.some((part) => message.includes(part))) {
@@ -1223,6 +1334,7 @@ export default function Map({
     };
 
     const runStyleLoad = async () => {
+      reportMapFirstRender(map, "style_load");
       applyBaseStyleTweaks(map, schemeRef.current);
       try {
         addSources(
@@ -1277,10 +1389,17 @@ export default function Map({
       void runStyleLoad();
     };
 
+    const handleFirstRender = () => {
+      reportMapFirstRender(map, "first_render");
+    };
+
     map.on("style.load", handleStyleLoad);
+    map.on("render", handleFirstRender);
     map.on("click", handleMapClick);
     map.on("touchend", handleMapTouchEnd);
     map.on("moveend", handleMoveEnd);
+    map.on("dragstart", handleDragStart);
+    map.on("zoomstart", handleZoomStart);
     map.on("error", handleError);
     if (!mapHandlersBoundRef.current) {
       map.on("movestart", handleMoveStart);
@@ -1290,9 +1409,12 @@ export default function Map({
 
     return () => {
       map.off("style.load", handleStyleLoad);
+      map.off("render", handleFirstRender);
       map.off("click", handleMapClick);
       map.off("touchend", handleMapTouchEnd);
       map.off("moveend", handleMoveEnd);
+      map.off("dragstart", handleDragStart);
+      map.off("zoomstart", handleZoomStart);
       map.off("error", handleError);
       if (clusterTapEventsBoundRef.current) {
         map.off("click", CAFE_CLUSTER_LAYER_ID, handleClusterLayerTap);
@@ -1321,7 +1443,7 @@ export default function Map({
       setIsMapReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [center, reportMapFirstInteraction, reportMapFirstRender, scheme, zoom]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1455,11 +1577,17 @@ export default function Map({
 
 
   const handleZoomIn = () => {
-    mapRef.current?.zoomIn({ duration: 220 });
+    const map = mapRef.current;
+    if (!map) return;
+    reportMapFirstInteraction(map, "zoom_button", "button");
+    map.zoomIn({ duration: 220 });
   };
 
   const handleZoomOut = () => {
-    mapRef.current?.zoomOut({ duration: 220 });
+    const map = mapRef.current;
+    if (!map) return;
+    reportMapFirstInteraction(map, "zoom_button", "button");
+    map.zoomOut({ duration: 220 });
   };
 
   return (

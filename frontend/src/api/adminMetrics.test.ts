@@ -10,7 +10,7 @@ vi.mock("./http", () => ({
   },
 }));
 
-import { getAdminFunnel, getAdminNorthStar, searchAdminCafesByName } from "./adminMetrics";
+import { getAdminFunnel, getAdminMapPerf, getAdminNorthStar, searchAdminCafesByName } from "./adminMetrics";
 
 describe("adminMetrics api", () => {
   beforeEach(() => {
@@ -97,5 +97,35 @@ describe("adminMetrics api", () => {
 
     expect(items).toEqual([]);
     expect(httpGetMock).not.toHaveBeenCalled();
+  });
+
+  it("loads map perf summary and parses percentiles", async () => {
+    httpGetMock.mockResolvedValueOnce({
+      data: {
+        summary: {
+          from: "2026-02-01T00:00:00Z",
+          to: "2026-02-15T00:00:00Z",
+          days: 14,
+          first_render_events: 120,
+          first_render_p50_ms: 812.4,
+          first_render_p95_ms: 1733.2,
+          first_interaction_events: 88,
+          first_interaction_p50_ms: 910.1,
+          first_interaction_p95_ms: 2012.8,
+          interaction_coverage: 0.7333,
+        },
+      },
+    });
+
+    const report = await getAdminMapPerf({ days: 14 });
+
+    expect(httpGetMock).toHaveBeenCalledWith("/api/admin/metrics/map-perf", {
+      params: {
+        days: 14,
+      },
+    });
+    expect(report.summary.first_render_events).toBe(120);
+    expect(report.summary.first_render_p50_ms).toBe(812.4);
+    expect(report.summary.interaction_coverage).toBe(0.7333);
   });
 });

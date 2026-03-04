@@ -3,16 +3,18 @@ package metrics
 import "time"
 
 const (
-	EventCafeCardOpen  = "cafe_card_open"
-	EventReviewRead    = "review_read"
-	EventRouteClick    = "route_click"
-	EventCheckIn       = "checkin_start"
-	EventReviewSubmit  = "review_submit"
-	Provider2GIS       = "2gis"
-	ProviderYandex     = "yandex"
-	DefaultRangeDays   = 14
-	MaxRangeDays       = 90
-	MaxEventsPerIngest = 50
+	EventCafeCardOpen        = "cafe_card_open"
+	EventReviewRead          = "review_read"
+	EventRouteClick          = "route_click"
+	EventCheckIn             = "checkin_start"
+	EventReviewSubmit        = "review_submit"
+	EventMapFirstRender      = "map_first_render"
+	EventMapFirstInteraction = "map_first_interaction"
+	Provider2GIS             = "2gis"
+	ProviderYandex           = "yandex"
+	DefaultRangeDays         = 14
+	MaxRangeDays             = 90
+	MaxEventsPerIngest       = 50
 )
 
 type EventInput struct {
@@ -82,6 +84,32 @@ type FunnelStage struct {
 type FunnelReport struct {
 	Summary FunnelSummary `json:"summary"`
 	Stages  []FunnelStage `json:"stages"`
+}
+
+type MapPerfSnapshot struct {
+	FirstRenderEvents      int
+	FirstRenderP50Ms       float64
+	FirstRenderP95Ms       float64
+	FirstInteractionEvents int
+	FirstInteractionP50Ms  float64
+	FirstInteractionP95Ms  float64
+}
+
+type MapPerfSummary struct {
+	From                   string  `json:"from"`
+	To                     string  `json:"to"`
+	Days                   int     `json:"days"`
+	FirstRenderEvents      int     `json:"first_render_events"`
+	FirstRenderP50Ms       float64 `json:"first_render_p50_ms"`
+	FirstRenderP95Ms       float64 `json:"first_render_p95_ms"`
+	FirstInteractionEvents int     `json:"first_interaction_events"`
+	FirstInteractionP50Ms  float64 `json:"first_interaction_p50_ms"`
+	FirstInteractionP95Ms  float64 `json:"first_interaction_p95_ms"`
+	InteractionCoverage    float64 `json:"interaction_coverage"`
+}
+
+type MapPerfReport struct {
+	Summary MapPerfSummary `json:"summary"`
 }
 
 type ingestEventRequest struct {

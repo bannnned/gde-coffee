@@ -1,9 +1,8 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 import './index.css'
 import { AppNotifications } from './lib/notifications'
@@ -71,6 +70,25 @@ const queryClient = new QueryClient({
 })
 
 const CHUNK_RELOAD_STORAGE_KEY = "gdeCoffeeChunkReloaded"
+let mapChunkPrefetchStarted = false
+let mapStyleWarmupStarted = false
+const insertedMapHintKeys = new Set<string>()
+const DEFAULT_MAP_STYLE_LIGHT_URL = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+const DEFAULT_MAP_STYLE_DARK_URL = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+const MAP_STYLE_URL_RAW = (import.meta.env.VITE_MAP_STYLE_URL as string | undefined)?.trim() ?? ""
+const MAP_STYLE_LIGHT_URL_RAW =
+  (import.meta.env.VITE_MAP_STYLE_URL_LIGHT as string | undefined)?.trim() ||
+  MAP_STYLE_URL_RAW ||
+  DEFAULT_MAP_STYLE_LIGHT_URL
+const MAP_STYLE_DARK_URL_RAW =
+  (import.meta.env.VITE_MAP_STYLE_URL_DARK as string | undefined)?.trim() ||
+  MAP_STYLE_URL_RAW ||
+  DEFAULT_MAP_STYLE_DARK_URL
+const FALLBACK_TILE_ORIGINS = [
+  "https://a.tile.openstreetmap.org",
+  "https://b.tile.openstreetmap.org",
+  "https://c.tile.openstreetmap.org",
+] as const
 
 function readErrorMessage(reason: unknown): string {
   if (typeof reason === "string") return reason
@@ -131,6 +149,143 @@ function bindChunkLoadRecovery() {
   window.addEventListener("unhandledrejection", handleUnhandledRejection)
 }
 
+function normalizeMapStyleUrl(raw: string): string {
+  return /tiles\.openfreemap\.org/i.test(raw) ? "" : raw
+}
+
+function extractUrlOrigin(url: string): string | null {
+  try {
+    return new URL(url).origin
+  } catch {
+    return null
+  }
+}
+
+function shouldPrefetchMapChunk(): boolean {
+  if (import.meta.env.MODE === "test") return false
+  if (typeof navigator === "undefined") return false
+  if (window.location.pathname !== "/") return false
+  const connection = (
+    navigator as Navigator & {
+      connection?: {
+        saveData?: boolean
+        effectiveType?: string
+      }
+    }
+  ).connection
+  if (connection?.saveData) return false
+  const effectiveType = connection?.effectiveType?.toLowerCase() ?? ""
+  if (effectiveType.includes("2g")) return false
+  return true
+}
+
+function collectMapHintOrigins(): string[] {
+  const origins = new Set<string>()
+  const styleCandidates = [
+    normalizeMapStyleUrl(MAP_STYLE_LIGHT_URL_RAW),
+    normalizeMapStyleUrl(MAP_STYLE_DARK_URL_RAW),
+  ].filter(Boolean)
+  for (const styleUrl of styleCandidates) {
+    const origin = extractUrlOrigin(styleUrl)
+    if (origin) origins.add(origin)
+  }
+  for (const fallbackOrigin of FALLBACK_TILE_ORIGINS) {
+    origins.add(fallbackOrigin)
+  }
+  return Array.from(origins)
+}
+
+function appendMapHintLink(rel: "dns-prefetch" | "preconnect" | "prefetch", href: string, as?: "fetch") {
+  if (!href) return
+  const key = `${rel}:${href}:${as ?? ""}`
+  if (insertedMapHintKeys.has(key)) return
+  insertedMapHintKeys.add(key)
+
+  const link = document.createElement("link")
+  link.rel = rel
+  link.href = href
+  if (rel === "preconnect") link.crossOrigin = "anonymous"
+  if (rel === "prefetch" && as) {
+    link.as = as
+    link.crossOrigin = "anonymous"
+  }
+  document.head.appendChild(link)
+}
+
+function resolveMapStyleWarmupUrl(): string {
+  const lightStyle = normalizeMapStyleUrl(MAP_STYLE_LIGHT_URL_RAW)
+  const darkStyle = normalizeMapStyleUrl(MAP_STYLE_DARK_URL_RAW)
+  const prefersDark =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  if (prefersDark) return darkStyle || lightStyle
+  return lightStyle || darkStyle
+}
+
+function installMapNetworkHints() {
+  if (typeof document === "undefined") return
+  if (!shouldPrefetchMapChunk()) return
+
+  const hintOrigins = collectMapHintOrigins()
+  for (const origin of hintOrigins) {
+    appendMapHintLink("dns-prefetch", origin)
+    appendMapHintLink("preconnect", origin)
+  }
+
+  const styleWarmupUrl = resolveMapStyleWarmupUrl()
+  if (styleWarmupUrl) {
+    appendMapHintLink("prefetch", styleWarmupUrl, "fetch")
+  }
+}
+
+function prefetchMapChunk() {
+  if (mapChunkPrefetchStarted) return
+  mapChunkPrefetchStarted = true
+  void import("./components/Map").catch(() => undefined)
+}
+
+function scheduleMapChunkPrefetch() {
+  if (typeof window === "undefined") return
+  if (!shouldPrefetchMapChunk()) return
+
+  const runPrefetch = () => prefetchMapChunk()
+  const requestIdle = window.requestIdleCallback
+
+  window.requestAnimationFrame(() => {
+    if (typeof requestIdle === "function") {
+      requestIdle(runPrefetch, { timeout: 1200 })
+      return
+    }
+    window.setTimeout(runPrefetch, 450)
+  })
+}
+
+function warmupMapStyleRequest() {
+  if (mapStyleWarmupStarted) return
+  if (typeof window === "undefined") return
+  if (!shouldPrefetchMapChunk()) return
+
+  const styleWarmupUrl = resolveMapStyleWarmupUrl()
+  if (!styleWarmupUrl) return
+  mapStyleWarmupStarted = true
+
+  const runWarmup = () => {
+    void fetch(styleWarmupUrl, {
+      mode: "no-cors",
+      credentials: "omit",
+      cache: "force-cache",
+    }).catch(() => undefined)
+  }
+
+  const requestIdle = window.requestIdleCallback
+  if (typeof requestIdle === "function") {
+    requestIdle(runWarmup, { timeout: 1600 })
+    return
+  }
+  window.setTimeout(runWarmup, 650)
+}
+
 function PaletteSync() {
   const { colorScheme } = useAppColorScheme()
 
@@ -156,6 +311,29 @@ function PaletteSync() {
   return null
 }
 
+type QueryDevtoolsComponent = React.ComponentType<{ initialIsOpen?: boolean }>
+
+function QueryDevtoolsSlot() {
+  const [Devtools, setDevtools] = useState<QueryDevtoolsComponent | null>(null)
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    let isMounted = true
+    void import('@tanstack/react-query-devtools')
+      .then((module) => {
+        if (!isMounted) return
+        setDevtools(() => module.ReactQueryDevtools)
+      })
+      .catch(() => undefined)
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  if (!import.meta.env.DEV || !Devtools) return null
+  return <Devtools initialIsOpen={false} />
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
@@ -163,7 +341,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <PaletteSync />
         <AppNotifications />
         <App />
-        <ReactQueryDevtools initialIsOpen={false} />
+        <QueryDevtoolsSlot />
       </AppColorSchemeProvider>
     </QueryClientProvider>
   </React.StrictMode>,
@@ -223,6 +401,9 @@ if (document.readyState === 'complete') {
 
 bindViewportInsetsSync()
 bindChunkLoadRecovery()
+installMapNetworkHints()
+scheduleMapChunkPrefetch()
+warmupMapStyleRequest()
 
 if ('serviceWorker' in navigator) {
   window.addEventListener(

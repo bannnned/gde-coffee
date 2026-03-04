@@ -6,10 +6,12 @@ import { Button, Select, Spinner, Table } from "../components/ui";
 
 import {
   getAdminFunnel,
+  getAdminMapPerf,
   getAdminNorthStar,
   searchAdminCafesByName,
   type AdminCafeSearchItem,
   type AdminFunnelReport,
+  type AdminMapPerfReport,
   type AdminNorthStarReport,
 } from "../api/adminMetrics";
 import { useAuth } from "../components/AuthGate";
@@ -42,6 +44,11 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function formatMs(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "n/a";
+  return `${Math.round(value)} мс`;
+}
+
 function buildCafeOptionLabel(item: AdminCafeSearchItem): string {
   const address = item.address?.trim();
   return address ? `${item.name} — ${address}` : item.name;
@@ -64,6 +71,7 @@ export default function AdminNorthStarPage() {
 
   const [report, setReport] = useState<AdminNorthStarReport | null>(null);
   const [funnelReport, setFunnelReport] = useState<AdminFunnelReport | null>(null);
+  const [mapPerfReport, setMapPerfReport] = useState<AdminMapPerfReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -123,6 +131,7 @@ export default function AdminNorthStarPage() {
     if (scope === "cafe" && !selectedCafeId) {
       setReport(null);
       setFunnelReport(null);
+      setMapPerfReport(null);
       setLoadError(null);
       return;
     }
@@ -134,16 +143,19 @@ export default function AdminNorthStarPage() {
         days,
         cafe_id: scope === "cafe" ? selectedCafeId ?? undefined : undefined,
       };
-      const [nextReport, nextFunnelReport] = await Promise.all([
+      const [nextReport, nextFunnelReport, nextMapPerfReport] = await Promise.all([
         getAdminNorthStar(params),
         getAdminFunnel(params),
+        getAdminMapPerf({ days }),
       ]);
       setReport(nextReport);
       setFunnelReport(nextFunnelReport);
+      setMapPerfReport(nextMapPerfReport);
     } catch (error: unknown) {
       setLoadError(extractApiErrorMessage(error, "Не удалось загрузить метрики North Star."));
       setReport(null);
       setFunnelReport(null);
+      setMapPerfReport(null);
     } finally {
       setLoading(false);
     }
@@ -459,6 +471,77 @@ export default function AdminNorthStarPage() {
                       )}
                     </Table.Tbody>
                   </Table>
+                </div>
+              </div>
+
+              <div style={{ border: "1px solid var(--border)", borderRadius: 16, padding: 16 }}>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Map performance</p>
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                      first render / first interaction
+                    </p>
+                  </div>
+
+                  {scope === "cafe" && (
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                      Эта метрика считается глобально по приложению (не по конкретной кофейне).
+                    </p>
+                  )}
+
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                    {[
+                      {
+                        key: "render_p50",
+                        label: "Render p50",
+                        value: formatMs(mapPerfReport?.summary.first_render_p50_ms ?? 0),
+                      },
+                      {
+                        key: "render_p95",
+                        label: "Render p95",
+                        value: formatMs(mapPerfReport?.summary.first_render_p95_ms ?? 0),
+                      },
+                      {
+                        key: "interaction_p50",
+                        label: "Interaction p50",
+                        value: formatMs(mapPerfReport?.summary.first_interaction_p50_ms ?? 0),
+                      },
+                      {
+                        key: "interaction_p95",
+                        label: "Interaction p95",
+                        value: formatMs(mapPerfReport?.summary.first_interaction_p95_ms ?? 0),
+                      },
+                      {
+                        key: "coverage",
+                        label: "Interaction coverage",
+                        value: formatPercent(mapPerfReport?.summary.interaction_coverage ?? 0),
+                      },
+                    ].map((item) => (
+                      <div key={item.key} style={{ flex: 1, minWidth: 160 }}>
+                        <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: 12,
+                              color: "var(--muted)",
+                              textTransform: "uppercase",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {item.label}
+                          </p>
+                          <p style={{ margin: 0, fontSize: 22, fontWeight: 800, marginTop: 3 }}>
+                            {item.value}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                    События: render {mapPerfReport?.summary.first_render_events ?? 0} · interaction{" "}
+                    {mapPerfReport?.summary.first_interaction_events ?? 0}
+                  </p>
                 </div>
               </div>
             </>

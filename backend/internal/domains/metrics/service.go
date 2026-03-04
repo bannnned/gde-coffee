@@ -9,6 +9,7 @@ type repository interface {
 	InsertEvents(ctx context.Context, events []EventInput) (int, error)
 	ListDailyNorthStarMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time, cafeID string) ([]DailyNorthStarMetrics, error)
 	GetFunnelJourneyCounts(ctx context.Context, dateFrom time.Time, dateTo time.Time, cafeID string) (FunnelJourneyCounts, error)
+	GetMapPerfSnapshot(ctx context.Context, dateFrom time.Time, dateTo time.Time) (MapPerfSnapshot, error)
 }
 
 type Service struct {
@@ -130,6 +131,33 @@ func (s *Service) GetFunnelReport(
 			CafeID: cafeID,
 		},
 		Stages: stages,
+	}, nil
+}
+
+func (s *Service) GetMapPerfReport(
+	ctx context.Context,
+	days int,
+	now time.Time,
+) (MapPerfReport, error) {
+	dateFrom, dateTo, normalizedDays := buildDateRange(days, now)
+	snapshot, err := s.repository.GetMapPerfSnapshot(ctx, dateFrom, dateTo)
+	if err != nil {
+		return MapPerfReport{}, err
+	}
+
+	return MapPerfReport{
+		Summary: MapPerfSummary{
+			From:                   dateFrom.Format(time.RFC3339),
+			To:                     dateTo.Format(time.RFC3339),
+			Days:                   normalizedDays,
+			FirstRenderEvents:      snapshot.FirstRenderEvents,
+			FirstRenderP50Ms:       snapshot.FirstRenderP50Ms,
+			FirstRenderP95Ms:       snapshot.FirstRenderP95Ms,
+			FirstInteractionEvents: snapshot.FirstInteractionEvents,
+			FirstInteractionP50Ms:  snapshot.FirstInteractionP50Ms,
+			FirstInteractionP95Ms:  snapshot.FirstInteractionP95Ms,
+			InteractionCoverage:    safeRate(snapshot.FirstInteractionEvents, snapshot.FirstRenderEvents),
+		},
 	}, nil
 }
 

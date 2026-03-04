@@ -316,6 +316,7 @@ func main() {
 	adminMetricsGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
 	adminMetricsGroup.GET("/north-star", metricsHandler.GetNorthStar)
 	adminMetricsGroup.GET("/funnel", metricsHandler.GetFunnel)
+	adminMetricsGroup.GET("/map-perf", metricsHandler.GetMapPerf)
 
 	api.GET("/cafes/:id/photos", photosHandler.List)
 	api.POST("/cafes/:id/photos/presign", auth.RequireRole(pool, "admin", "moderator"), photosHandler.Presign)

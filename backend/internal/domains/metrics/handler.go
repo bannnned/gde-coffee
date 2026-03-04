@@ -115,6 +115,32 @@ func (h *Handler) GetFunnel(c *gin.Context) {
 	c.JSON(http.StatusOK, report)
 }
 
+func (h *Handler) GetMapPerf(c *gin.Context) {
+	days := DefaultRangeDays
+	if rawDays := strings.TrimSpace(c.Query("days")); rawDays != "" {
+		value, err := strconv.Atoi(rawDays)
+		if err != nil || value <= 0 {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "days должен быть целым числом больше 0.", nil)
+			return
+		}
+		if value > MaxRangeDays {
+			value = MaxRangeDays
+		}
+		days = value
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+	defer cancel()
+
+	report, err := h.service.GetMapPerfReport(ctx, days, time.Now())
+	if err != nil {
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить метрики производительности карты.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, report)
+}
+
 func readNorthStarRangeParams(c *gin.Context) (int, string, bool) {
 	days := DefaultRangeDays
 	if rawDays := strings.TrimSpace(c.Query("days")); rawDays != "" {
@@ -139,9 +165,9 @@ func readNorthStarRangeParams(c *gin.Context) (int, string, bool) {
 func normalizeEvent(raw ingestEventRequest, userID string, now time.Time) (EventInput, error) {
 	eventType := strings.ToLower(strings.TrimSpace(raw.EventType))
 	switch eventType {
-	case EventCafeCardOpen, EventReviewRead, EventRouteClick, EventCheckIn, EventReviewSubmit:
+	case EventCafeCardOpen, EventReviewRead, EventRouteClick, EventCheckIn, EventReviewSubmit, EventMapFirstRender, EventMapFirstInteraction:
 	default:
-		return EventInput{}, validationError("event_type должен быть cafe_card_open, review_read, route_click, checkin_start или review_submit.")
+		return EventInput{}, validationError("event_type должен быть cafe_card_open, review_read, route_click, checkin_start, review_submit, map_first_render или map_first_interaction.")
 	}
 
 	journeyID := strings.TrimSpace(raw.JourneyID)

@@ -84,6 +84,11 @@
 66. `W5-BA` закрыт (`done`): warning-долг снижался в Discovery/Profile контуре (`unused-vars`, `no-misused-promises`, hook-deps); warning-count снижен с 24 до 12 при сохранении 0 lint errors.
 67. `W5-BB` закрыт (`done`): финальная зачистка warning-долга в metrics/admin test слое и moderation tab typing; `lint` доведен до полностью чистого состояния (`0 errors / 0 warnings`).
 68. `W6-A` закрыт (`done`): выполнена оптимизация startup bundle для карты (lazy boundaries + marker asset optimization); `DiscoveryScreen` chunk снижен `83.89 -> 65.01 kB`, marker assets снижены `pin 332.78 -> 69.74 kB`, `cup 242.93 -> 48.38 kB`.
+69. `W6-B` закрыт (`done`): добавлен prefetch map chunk во время splash/idle с сетевыми guardrails (`saveData`/`2g`) для ускорения первого открытия карты без роста initial bundle.
+70. `W6-C` закрыт (`done`): добавлены map network hints (`dns-prefetch`/`preconnect`) и style warmup (`prefetch` + idle cache fetch) для ускорения first-map-render при сохранении сетевых guardrails.
+71. `W6-D` закрыт (`done`): `ReactQueryDevtools` убран из production bundle и переведен в dev-only lazy import (`QueryDevtoolsSlot`) для снижения startup payload.
+72. `W6-E` закрыт (`done`): добавлена telemetry-инструментация `map_first_render` и `map_first_interaction` (frontend map hooks + backend ingest support + DB constraint migration) для измерения реальной map latency в проде.
+73. `W6-F` закрыт (`done`): добавлен backend endpoint `GET /api/admin/metrics/map-perf` и UI-блок `Map performance` в `/admin/metrics` с p50/p95 и interaction coverage.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

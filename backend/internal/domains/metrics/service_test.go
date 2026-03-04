@@ -12,6 +12,7 @@ type serviceRepositoryStub struct {
 	capturedCafeID   string
 	rows             []DailyNorthStarMetrics
 	funnelCounts     FunnelJourneyCounts
+	mapPerfSnapshot  MapPerfSnapshot
 }
 
 func (r *serviceRepositoryStub) InsertEvents(ctx context.Context, events []EventInput) (int, error) {
@@ -40,6 +41,16 @@ func (r *serviceRepositoryStub) GetFunnelJourneyCounts(
 	r.capturedDateTo = dateTo
 	r.capturedCafeID = cafeID
 	return r.funnelCounts, nil
+}
+
+func (r *serviceRepositoryStub) GetMapPerfSnapshot(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) (MapPerfSnapshot, error) {
+	r.capturedDateFrom = dateFrom
+	r.capturedDateTo = dateTo
+	return r.mapPerfSnapshot, nil
 }
 
 func TestGetNorthStarReport_PropagatesCafeFilterAndBuildsDaily(t *testing.T) {
@@ -130,5 +141,41 @@ func TestGetFunnelReport_BuildsStagesAndConversions(t *testing.T) {
 	}
 	if stage5.ConversionFromStart < 0.089 || stage5.ConversionFromStart > 0.091 {
 		t.Fatalf("unexpected stage5 conversion from start: %v", stage5.ConversionFromStart)
+	}
+}
+
+func TestGetMapPerfReport_BuildsSummaryAndCoverage(t *testing.T) {
+	repo := &serviceRepositoryStub{
+		mapPerfSnapshot: MapPerfSnapshot{
+			FirstRenderEvents:      100,
+			FirstRenderP50Ms:       840,
+			FirstRenderP95Ms:       1800,
+			FirstInteractionEvents: 73,
+			FirstInteractionP50Ms:  950,
+			FirstInteractionP95Ms:  2100,
+		},
+	}
+	service := NewService(repo)
+	now := time.Date(2026, 2, 21, 15, 30, 0, 0, time.UTC)
+
+	report, err := service.GetMapPerfReport(context.Background(), 14, now)
+	if err != nil {
+		t.Fatalf("GetMapPerfReport returned error: %v", err)
+	}
+
+	if report.Summary.Days != 14 {
+		t.Fatalf("expected days=14, got %d", report.Summary.Days)
+	}
+	if report.Summary.FirstRenderEvents != 100 || report.Summary.FirstInteractionEvents != 73 {
+		t.Fatalf("unexpected event counts: %+v", report.Summary)
+	}
+	if report.Summary.FirstRenderP50Ms != 840 || report.Summary.FirstRenderP95Ms != 1800 {
+		t.Fatalf("unexpected render percentiles: %+v", report.Summary)
+	}
+	if report.Summary.FirstInteractionP50Ms != 950 || report.Summary.FirstInteractionP95Ms != 2100 {
+		t.Fatalf("unexpected interaction percentiles: %+v", report.Summary)
+	}
+	if report.Summary.InteractionCoverage < 0.729 || report.Summary.InteractionCoverage > 0.731 {
+		t.Fatalf("unexpected interaction coverage: %v", report.Summary.InteractionCoverage)
 	}
 }

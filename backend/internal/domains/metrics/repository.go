@@ -209,3 +209,68 @@ from stage_flags`
 
 	return counts, nil
 }
+
+func (r *Repository) GetMapPerfSnapshot(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) (MapPerfSnapshot, error) {
+	const query = `with render_events as (
+	select
+		case
+			when coalesce(metadata->>'map_init_elapsed_ms', '') ~ '^-?[0-9]+(\.[0-9]+)?$'
+			then (metadata->>'map_init_elapsed_ms')::double precision
+			else null
+		end as map_init_ms
+	from public.product_metrics_events
+	where event_type = 'map_first_render'
+	  and occurred_at >= $1
+	  and occurred_at < $2
+), interaction_events as (
+	select
+		case
+			when coalesce(metadata->>'map_init_elapsed_ms', '') ~ '^-?[0-9]+(\.[0-9]+)?$'
+			then (metadata->>'map_init_elapsed_ms')::double precision
+			else null
+		end as map_init_ms
+	from public.product_metrics_events
+	where event_type = 'map_first_interaction'
+	  and occurred_at >= $1
+	  and occurred_at < $2
+), render_agg as (
+	select
+		count(*) filter (where map_init_ms is not null)::int as first_render_events,
+		coalesce(percentile_cont(0.5) within group (order by map_init_ms), 0)::double precision as first_render_p50_ms,
+		coalesce(percentile_cont(0.95) within group (order by map_init_ms), 0)::double precision as first_render_p95_ms
+	from render_events
+), interaction_agg as (
+	select
+		count(*) filter (where map_init_ms is not null)::int as first_interaction_events,
+		coalesce(percentile_cont(0.5) within group (order by map_init_ms), 0)::double precision as first_interaction_p50_ms,
+		coalesce(percentile_cont(0.95) within group (order by map_init_ms), 0)::double precision as first_interaction_p95_ms
+	from interaction_events
+)
+select
+	r.first_render_events,
+	r.first_render_p50_ms,
+	r.first_render_p95_ms,
+	i.first_interaction_events,
+	i.first_interaction_p50_ms,
+	i.first_interaction_p95_ms
+from render_agg r
+cross join interaction_agg i`
+
+	var snapshot MapPerfSnapshot
+	if err := r.pool.QueryRow(ctx, query, dateFrom.UTC(), dateTo.UTC()).Scan(
+		&snapshot.FirstRenderEvents,
+		&snapshot.FirstRenderP50Ms,
+		&snapshot.FirstRenderP95Ms,
+		&snapshot.FirstInteractionEvents,
+		&snapshot.FirstInteractionP50Ms,
+		&snapshot.FirstInteractionP95Ms,
+	); err != nil {
+		return MapPerfSnapshot{}, err
+	}
+
+	return snapshot, nil
+}

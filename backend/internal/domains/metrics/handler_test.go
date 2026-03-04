@@ -41,6 +41,14 @@ func (r *handlerRepositoryStub) GetFunnelJourneyCounts(
 	return FunnelJourneyCounts{}, nil
 }
 
+func (r *handlerRepositoryStub) GetMapPerfSnapshot(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) (MapPerfSnapshot, error) {
+	return MapPerfSnapshot{}, nil
+}
+
 func TestGetNorthStar_InvalidCafeID_ReturnsBadRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := &handlerRepositoryStub{}
@@ -131,6 +139,31 @@ func TestGetFunnel_ValidCafeID_PropagatesFilter(t *testing.T) {
 	}
 }
 
+func TestGetMapPerf_ValidDays_ReturnsSummary(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	repo := &handlerRepositoryStub{}
+	handler := NewHandler(NewService(repo))
+
+	router := gin.New()
+	router.GET("/api/admin/metrics/map-perf", handler.GetMapPerf)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/metrics/map-perf?days=14", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d, body=%s", rec.Code, rec.Body.String())
+	}
+
+	var report MapPerfReport
+	if err := json.Unmarshal(rec.Body.Bytes(), &report); err != nil {
+		t.Fatalf("response is not valid MapPerfReport JSON: %v", err)
+	}
+	if report.Summary.Days != 14 {
+		t.Fatalf("expected days=14, got %d", report.Summary.Days)
+	}
+}
+
 func TestNormalizeEvent_AcceptsNewEventTypes(t *testing.T) {
 	now := time.Date(2026, 2, 21, 12, 0, 0, 0, time.UTC)
 	_, err := normalizeEvent(ingestEventRequest{
@@ -152,6 +185,26 @@ func TestNormalizeEvent_AcceptsNewEventTypes(t *testing.T) {
 	}, "", now)
 	if err != nil {
 		t.Fatalf("review_submit should be valid, got error: %v", err)
+	}
+
+	_, err = normalizeEvent(ingestEventRequest{
+		EventType: "map_first_render",
+		AnonID:    "anon_1",
+		JourneyID: "journey_map_perf",
+		CafeID:    "11111111-1111-4111-8111-111111111111",
+	}, "", now)
+	if err != nil {
+		t.Fatalf("map_first_render should be valid, got error: %v", err)
+	}
+
+	_, err = normalizeEvent(ingestEventRequest{
+		EventType: "map_first_interaction",
+		AnonID:    "anon_1",
+		JourneyID: "journey_map_perf",
+		CafeID:    "11111111-1111-4111-8111-111111111111",
+	}, "", now)
+	if err != nil {
+		t.Fatalf("map_first_interaction should be valid, got error: %v", err)
 	}
 }
 

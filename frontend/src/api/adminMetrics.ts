@@ -42,6 +42,23 @@ export type AdminFunnelReport = {
   stages: AdminFunnelStage[];
 };
 
+export type AdminMapPerfSummary = {
+  from: string;
+  to: string;
+  days: number;
+  first_render_events: number;
+  first_render_p50_ms: number;
+  first_render_p95_ms: number;
+  first_interaction_events: number;
+  first_interaction_p50_ms: number;
+  first_interaction_p95_ms: number;
+  interaction_coverage: number;
+};
+
+export type AdminMapPerfReport = {
+  summary: AdminMapPerfSummary;
+};
+
 export type AdminCafeSearchItem = {
   id: string;
   name: string;
@@ -134,6 +151,32 @@ export async function getAdminFunnel(params?: { days?: number; cafe_id?: string 
         conversion_from_start: asNumber(record.conversion_from_start),
       };
     }),
+  };
+}
+
+export async function getAdminMapPerf(params?: { days?: number }): Promise<AdminMapPerfReport> {
+  const res = await http.get<unknown>("/api/admin/metrics/map-perf", {
+    params: {
+      days: params?.days,
+    },
+  });
+
+  const root = asRecord(res.data);
+  const summaryRaw = asRecord(root.summary);
+
+  return {
+    summary: {
+      from: asString(summaryRaw.from),
+      to: asString(summaryRaw.to),
+      days: asNumber(summaryRaw.days),
+      first_render_events: asNumber(summaryRaw.first_render_events),
+      first_render_p50_ms: asNumber(summaryRaw.first_render_p50_ms),
+      first_render_p95_ms: asNumber(summaryRaw.first_render_p95_ms),
+      first_interaction_events: asNumber(summaryRaw.first_interaction_events),
+      first_interaction_p50_ms: asNumber(summaryRaw.first_interaction_p50_ms),
+      first_interaction_p95_ms: asNumber(summaryRaw.first_interaction_p95_ms),
+      interaction_coverage: asNumber(summaryRaw.interaction_coverage),
+    },
   };
 }
 
