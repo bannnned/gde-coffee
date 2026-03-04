@@ -21,7 +21,7 @@ WORKDIR /app
 
 ENV GIN_MODE=release
 
-RUN apk add --no-cache ca-certificates && update-ca-certificates
+RUN apk add --no-cache ca-certificates curl wget && update-ca-certificates
 
 RUN addgroup -g 1000 appgroup && adduser -D -u 1000 -G appgroup appuser
 
@@ -35,7 +35,7 @@ USER appuser
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=12 \
-  CMD wget -qO /dev/null http://127.0.0.1:8080/_health || exit 1
+HEALTHCHECK --interval=10s --timeout=5s --start-period=90s --retries=12 \
+  CMD sh -ec 'curl -fsS --max-time 3 http://127.0.0.1:8080/_health >/dev/null || wget -qO /dev/null http://127.0.0.1:8080/_health'
 
 CMD ["/app/server"]
