@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -20,7 +20,7 @@ func (h Handler) RevokeAllSessions(c *gin.Context) {
 	defer cancel()
 
 	if _, err := h.Pool.Exec(ctx, `update users set session_version = session_version + 1 where id = $1`, userID); err != nil {
-		log.Printf("revoke all sessions failed: %v", err)
+		slog.Error("revoke all sessions failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db update failed", nil)
 		return
 	}

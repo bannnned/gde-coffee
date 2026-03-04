@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -267,7 +267,7 @@ func (h *Handler) Confirm(c *gin.Context) {
 		case errors.Is(err, ErrCafePhotoInvalid), errors.Is(err, ErrCafePhotoTooLarge):
 			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Не удалось обработать изображение.", nil)
 		default:
-			log.Printf("photo confirm optimize failed: cafe_id=%s kind=%s object_key=%s err=%v", cafeID, photoKind, objectKey, err)
+			slog.Error("photo confirm optimize failed", "cafe_id", cafeID, "kind", photoKind, "object_key", objectKey, "error", err)
 			httpx.RespondError(c, http.StatusInternalServerError, "internal", "Внутренняя ошибка сервера.", nil)
 		}
 		return
@@ -815,7 +815,7 @@ func (h *Handler) Delete(c *gin.Context) {
 		deleteCtx, deleteCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer deleteCancel()
 		if err := h.s3.DeleteObject(deleteCtx, objectKey); err != nil {
-			log.Printf("photo delete warning: failed to delete object %q from S3: %v", objectKey, err)
+			slog.Warn("photo S3 delete failed", "object_key", objectKey, "error", err)
 		}
 	}
 

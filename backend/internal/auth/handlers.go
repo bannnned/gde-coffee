@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -208,7 +208,7 @@ func (h Handler) Login(c *gin.Context) {
 
 	if h.LoginLimiter != nil {
 		if !h.LoginLimiter.Allow(c.ClientIP()) {
-			log.Printf("rate limit: login from %s", c.ClientIP())
+			slog.Warn("rate limit exceeded", "action", "login", "ip", c.ClientIP())
 			respondError(c, http.StatusTooManyRequests, "rate_limited", "too many login attempts", nil)
 			return
 		}
@@ -229,29 +229,29 @@ func (h Handler) Login(c *gin.Context) {
 	).Scan(&user.ID, &user.Email, &user.DisplayName, &user.AvatarURL, &user.EmailVerifiedAt, &user.Role, &passwordHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			log.Printf("login failed (no user): email=%s ip=%s", email, c.ClientIP())
+			slog.Warn("login failed", "reason", "no_user", "email", email, "ip", c.ClientIP())
 			respondError(c, http.StatusUnauthorized, "unauthorized", "invalid credentials", nil)
 			return
 		}
-		log.Printf("login failed (db): %v", err)
+		slog.Error("login failed", "reason", "db", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "internal error", nil)
 		return
 	}
 	if err := populateUserReputation(ctx, h.Pool, &user); err != nil {
-		log.Printf("login failed (reputation query): %v", err)
+		slog.Error("login failed", "reason", "reputation_query", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "internal error", nil)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
-		log.Printf("login failed (bad password): email=%s ip=%s", email, c.ClientIP())
+		slog.Warn("login failed", "reason", "bad_password", "email", email, "ip", c.ClientIP())
 		respondError(c, http.StatusUnauthorized, "unauthorized", "invalid credentials", nil)
 		return
 	}
 
 	sessionID, expiresAt, err := createSession(ctx, h.Pool, user.ID, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
-		log.Printf("login failed (session create): %v", err)
+		slog.Error("login failed", "reason", "session_create", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "internal error", nil)
 		return
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -35,23 +35,29 @@ func main() {
 	)
 	flag.Parse()
 
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+
 	_ = godotenv.Load()
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("config load failed: %v", err)
+		slog.Error("config load failed", "error", err)
+		os.Exit(1)
 	}
 	if !cfg.Media.S3Enabled {
-		log.Fatal("S3 must be enabled for backfill")
+		slog.Error("S3 must be enabled for backfill")
+		os.Exit(1)
 	}
 
 	dbURL, err := resolveDatabaseURL()
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("fatal error", "error", err)
+		os.Exit(1)
 	}
 	pool, err := connectDB(dbURL)
 	if err != nil {
-		log.Fatalf("db connect failed: %v", err)
+		slog.Error("db connect failed", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
@@ -67,28 +73,32 @@ func main() {
 		PresignTTL:      cfg.Media.S3PresignTTL,
 	})
 	if err != nil {
-		log.Fatalf("s3 init failed: %v", err)
+		slog.Error("s3 init failed", "error", err)
+		os.Exit(1)
 	}
 	if s3 == nil || !s3.Enabled() {
-		log.Fatal("s3 service is not enabled")
+		slog.Error("s3 service is not enabled")
+		os.Exit(1)
 	}
 
 	normalizedKind := strings.TrimSpace(strings.ToLower(*kind))
 	if normalizedKind != "" {
 		if _, err := photos.NormalizePhotoKind(normalizedKind); err != nil {
-			log.Fatalf("invalid kind: %v", err)
+			slog.Error("invalid kind", "error", err)
+			os.Exit(1)
 		}
 	}
 
 	rows, err := loadCafePhotos(context.Background(), pool, normalizedKind, strings.TrimSpace(*cafeID), *limit)
 	if err != nil {
-		log.Fatalf("load cafe photos failed: %v", err)
+		slog.Error("load cafe photos failed", "error", err)
+		os.Exit(1)
 	}
 	if len(rows) == 0 {
-		log.Println("nothing to process")
+		slog.Info("nothing to process")
 		return
 	}
-	log.Printf("loaded cafe photos: %d", len(rows))
+	slog.Info("loaded cafe photos", "count", len(rows))
 
 	type stats struct {
 		processed          int
@@ -133,7 +143,7 @@ func main() {
 		cancel()
 		if err != nil {
 			s.failed++
-			log.Printf("row %s failed: %v", row.ID, err)
+			slog.Warn("row optimization failed", "row_id", row.ID, "error", err)
 			continue
 		}
 
@@ -146,14 +156,13 @@ func main() {
 
 		if *dryRun {
 			if changed {
-				log.Printf(
-					"[dry-run] row=%s key=%s -> %s size=%d -> %d variants=%d",
-					row.ID,
-					row.ObjectKey,
-					meta.ObjectKey,
-					row.SizeBytes,
-					meta.SizeBytes,
-					meta.GeneratedVariants,
+				slog.Info("dry-run change detected",
+					"row_id", row.ID,
+					"old_key", row.ObjectKey,
+					"new_key", meta.ObjectKey,
+					"old_size", row.SizeBytes,
+					"new_size", meta.SizeBytes,
+					"variants", meta.GeneratedVariants,
 				)
 			}
 			continue
@@ -162,7 +171,7 @@ func main() {
 		if !changed {
 			s.unchanged++
 			if (idx+1)%50 == 0 {
-				log.Printf("progress: %d/%d unchanged=%d updated=%d failed=%d", idx+1, len(rows), s.unchanged, s.updated, s.failed)
+				slog.Info("backfill progress", "current", idx+1, "total", len(rows), "unchanged", s.unchanged, "updated", s.updated, "failed", s.failed)
 			}
 			continue
 		}
@@ -181,7 +190,7 @@ func main() {
 		updateCancel()
 		if err != nil {
 			s.failed++
-			log.Printf("row %s update failed: %v", row.ID, err)
+			slog.Warn("row update failed", "row_id", row.ID, "error", err)
 			if meta.ObjectKey != row.ObjectKey {
 				cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
 				_ = s3.DeleteObject(cleanupCtx, meta.ObjectKey)
@@ -192,19 +201,18 @@ func main() {
 
 		s.updated++
 		if (idx+1)%25 == 0 || idx == len(rows)-1 {
-			log.Printf("progress: %d/%d unchanged=%d updated=%d failed=%d", idx+1, len(rows), s.unchanged, s.updated, s.failed)
+			slog.Info("backfill progress", "current", idx+1, "total", len(rows), "unchanged", s.unchanged, "updated", s.updated, "failed", s.failed)
 		}
 	}
 
-	log.Printf(
-		"done processed=%d updated=%d unchanged=%d failed=%d variants=%d bytes_saved=%d (%.2f MB)",
-		s.processed,
-		s.updated,
-		s.unchanged,
-		s.failed,
-		s.totalVariants,
-		s.totalSavedBytes,
-		float64(s.totalSavedBytes)/(1024*1024),
+	slog.Info("backfill complete",
+		"processed", s.processed,
+		"updated", s.updated,
+		"unchanged", s.unchanged,
+		"failed", s.failed,
+		"variants", s.totalVariants,
+		"bytes_saved", s.totalSavedBytes,
+		"mb_saved", fmt.Sprintf("%.2f", float64(s.totalSavedBytes)/(1024*1024)),
 	)
 }
 

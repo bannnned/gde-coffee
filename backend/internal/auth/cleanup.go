@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,20 +13,21 @@ func StartSessionCleanup(ctx context.Context, pool *pgxpool.Pool, interval time.
 		return
 	}
 
+	logger := slog.Default().With("worker_name", "session_cleanup")
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("session cleanup worker stopped")
+			logger.Info("worker stopped")
 			return
 		case <-ticker.C:
 			qctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			_, err := pool.Exec(qctx, `delete from sessions where revoked_at is not null or expires_at < now()`)
 			cancel()
 			if err != nil && ctx.Err() == nil {
-				log.Printf("session cleanup failed: %v", err)
+				logger.Error("cleanup failed", "error", err)
 			}
 		}
 	}

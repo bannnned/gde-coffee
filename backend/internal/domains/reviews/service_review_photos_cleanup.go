@@ -2,7 +2,7 @@ package reviews
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -32,11 +32,13 @@ func (s *Service) StartPhotoCleanupWorker(ctx context.Context, pollInterval time
 		pollInterval = 15 * time.Minute
 	}
 
-	log.Printf("reviews photo cleanup worker started: interval=%s", pollInterval)
+	logger := slog.Default().With("worker_name", "reviews_photo_cleanup")
+
+	logger.Info("worker started", "interval", pollInterval)
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("reviews photo cleanup worker stopped")
+			logger.Info("worker stopped")
 			return
 		default:
 		}
@@ -45,7 +47,7 @@ func (s *Service) StartPhotoCleanupWorker(ctx context.Context, pollInterval time
 		removed, err := s.cleanupReviewPhotoUploadsBatch(cleanupCtx, reviewPhotoCleanupBatchSize)
 		cancel()
 		if err != nil {
-			log.Printf("reviews photo cleanup error: %v", err)
+			logger.Error("cleanup error", "error", err)
 			time.Sleep(pollInterval)
 			continue
 		}
