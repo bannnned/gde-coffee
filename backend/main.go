@@ -478,7 +478,9 @@ func main() {
 	})
 
 	// ---- Swap handler: from health-only to full Gin engine ----
-	handler.Store(r)
+	// atomic.Value requires the same concrete type on every Store call,
+	// so wrap gin's ServeHTTP in http.HandlerFunc (same type as the initial value).
+	handler.Store(http.HandlerFunc(r.ServeHTTP))
 	slog.Info("app fully initialized, serving all routes")
 
 	quit := make(chan os.Signal, 1)
