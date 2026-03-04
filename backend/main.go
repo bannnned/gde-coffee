@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -110,6 +111,40 @@ func main() {
 	_ = godotenv.Load()
 	logging.Setup()
 
+	// Read port early so the health server can start immediately.
+	port := strings.TrimSpace(os.Getenv("PORT"))
+	if port == "" {
+		port = "8080"
+	}
+
+	// ---- Start HTTP server IMMEDIATELY with a health-only handler ----
+	// Timeweb starts its healthcheck right after the container is up.
+	// We must have /_health answering 200 before any heavy init (DB, migrations, S3).
+	var handler atomic.Value
+	handler.Store(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/_health" || r.URL.Path == "/" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+			return
+		}
+		http.Error(w, "initializing", http.StatusServiceUnavailable)
+	}))
+
+	srv := &http.Server{
+		Addr: "0.0.0.0:" + port,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler.Load().(http.Handler).ServeHTTP(w, r)
+		}),
+	}
+	go func() {
+		slog.Info("http server starting (health-only)", "addr", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("server listen failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	// ---- Full initialization ----
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("config load failed", "error", err)
@@ -169,6 +204,7 @@ func main() {
 	}
 	slog.Info("db migrations applied")
 
+	// ---- Build the full Gin engine ----
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(logging.RequestID())
@@ -441,18 +477,9 @@ func main() {
 		serveStaticOrIndex(c, cfg.PublicDir)
 	})
 
-	srv := &http.Server{
-		Addr:    "0.0.0.0:" + cfg.Port,
-		Handler: r,
-	}
-
-	go func() {
-		slog.Info("http server starting", "addr", srv.Addr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("server listen failed", "error", err)
-			os.Exit(1)
-		}
-	}()
+	// ---- Swap handler: from health-only to full Gin engine ----
+	handler.Store(r)
+	slog.Info("app fully initialized, serving all routes")
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
