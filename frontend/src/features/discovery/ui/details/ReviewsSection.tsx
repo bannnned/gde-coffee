@@ -29,7 +29,12 @@ export default function ReviewsSection({
 
   useEffect(() => {
     if (controller.submitSuccessVersion <= 0) return;
-    setComposerOpen(false);
+    const timer = window.setTimeout(() => {
+      setComposerOpen(false);
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [controller.submitSuccessVersion]);
 
   useEffect(() => {

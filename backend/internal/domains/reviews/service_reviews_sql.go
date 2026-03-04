@@ -3,7 +3,7 @@ package reviews
 import "time"
 
 const (
-	minReviewSummaryLength = 60
+	minReviewSummaryLength = 12
 	defaultReviewListLimit = 20
 
 	sqlCheckCafeExists    = `select exists(select 1 from cafes where id = $1::uuid)`

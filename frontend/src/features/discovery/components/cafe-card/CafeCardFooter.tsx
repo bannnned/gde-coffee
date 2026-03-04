@@ -1,5 +1,5 @@
 import { IconMessageCircle, IconStarFilled } from "@tabler/icons-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { getCafeRatingSnapshot, type CafeRatingSnapshot } from "../../../../api/reviews";
 import { Badge } from "../../../../components/ui";
@@ -25,6 +25,7 @@ export default function CafeCardFooter({
   cafe,
   ratingRefreshToken = 0,
 }: CafeCardFooterProps) {
+  const lastAppliedRefreshTokenRef = useRef(0);
   const [ratingState, setRatingState] = useState<{
     cafeId: string;
     snapshot: CafeRatingSnapshot | null;
@@ -45,27 +46,34 @@ export default function CafeCardFooter({
 
   useEffect(() => {
     let cancelled = false;
-    const forceRefresh = ratingRefreshToken > 0;
-    if (cachedSnapshot && !forceRefresh) {
-      setRatingState({
-        cafeId: cafe.id,
-        snapshot: cachedSnapshot,
-        loading: false,
-      });
+    let loadingTimer: number | null = null;
+    const forceRefresh = ratingRefreshToken > lastAppliedRefreshTokenRef.current;
+    if (forceRefresh) {
+      lastAppliedRefreshTokenRef.current = ratingRefreshToken;
+    }
+    const cachedForCafe = cafeRatingSnapshotCache.get(cafe.id) ?? null;
+    if (cachedForCafe && !forceRefresh) {
       return () => {
         cancelled = true;
       };
     }
 
-    setRatingState((prev) => ({
-      cafeId: cafe.id,
-      snapshot: prev.cafeId === cafe.id ? prev.snapshot : cachedSnapshot,
-      loading: true,
-    }));
+    loadingTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      setRatingState((prev) => ({
+        cafeId: cafe.id,
+        snapshot: prev.cafeId === cafe.id ? prev.snapshot : cachedForCafe,
+        loading: true,
+      }));
+    }, 0);
 
     getCafeRatingSnapshot(cafe.id)
       .then((snapshot) => {
         if (cancelled) return;
+        if (loadingTimer != null) {
+          window.clearTimeout(loadingTimer);
+          loadingTimer = null;
+        }
         cafeRatingSnapshotCache.set(cafe.id, snapshot);
         setRatingState({
           cafeId: cafe.id,
@@ -75,6 +83,10 @@ export default function CafeCardFooter({
       })
       .catch(() => {
         if (cancelled) return;
+        if (loadingTimer != null) {
+          window.clearTimeout(loadingTimer);
+          loadingTimer = null;
+        }
         setRatingState({
           cafeId: cafe.id,
           snapshot: null,
@@ -84,8 +96,12 @@ export default function CafeCardFooter({
 
     return () => {
       cancelled = true;
+      if (loadingTimer != null) {
+        window.clearTimeout(loadingTimer);
+        loadingTimer = null;
+      }
     };
-  }, [cafe.id, cachedSnapshot, ratingRefreshToken]);
+  }, [cafe.id, ratingRefreshToken]);
 
   const hasReviewStats = (ratingSnapshot?.reviews_count ?? 0) > 0;
   const displayRating = useMemo(

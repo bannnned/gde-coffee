@@ -91,6 +91,7 @@ export default function CafeDetailsScreen({
   const [menuImageReady, setMenuImageReady] = useState(true);
   const [ratingDiagnosticsExpanded, setRatingDiagnosticsExpanded] = useState(false);
   const [ratingRefreshToken, setRatingRefreshToken] = useState(0);
+  const [hasLocalSavedReview, setHasLocalSavedReview] = useState(false);
   const [aiSummaryTriggerLoading, setAiSummaryTriggerLoading] = useState(false);
 
   const loadedAboutUrlsRef = useRef<Set<string>>(new Set());
@@ -153,6 +154,7 @@ export default function CafeDetailsScreen({
     setDescriptionHint(null);
     setRatingDiagnosticsExpanded(false);
     setRatingRefreshToken(0);
+    setHasLocalSavedReview(false);
     setAiSummaryTriggerLoading(false);
     setAboutActiveIndex(0);
     setMenuActiveIndex(0);
@@ -277,15 +279,18 @@ export default function CafeDetailsScreen({
   };
 
   const handleReviewSaved = (reviewCafeId: string) => {
+    setHasLocalSavedReview(true);
     setRatingRefreshToken((value) => value + 1);
     onReviewSaved?.(reviewCafeId);
   };
+
+  const ratingReviewsDisplay = Math.max(ratingReviews, hasLocalSavedReview ? 1 : 0);
 
   const ratingPanel = (
     <RatingPanel
       ratingLabel={ratingLabel}
       ratingIsPreliminary={ratingIsPreliminary}
-      ratingReviews={ratingReviews}
+      ratingReviews={ratingReviewsDisplay}
       verifiedSharePercent={verifiedSharePercent}
       showVerifiedSharePercent={canViewAdminDiagnostics}
       onOpenReviews={() => {

@@ -178,7 +178,7 @@ export function TagsInput({
               <button
                 type="button"
                 aria-label={`Удалить тег ${tag}`}
-                className="inline-flex h-4 w-4 items-center justify-center rounded-full ui-focus-ring"
+                className="inline-flex h-4 w-4 items-center justify-center text-[var(--muted)] transition-colors hover:text-[var(--text)] ui-focus-ring"
                 onClick={() => removeTag(tag)}
               >
                 <IconX size={12} />
@@ -201,7 +201,12 @@ export function TagsInput({
             tryCommitQuery();
           }}
           onKeyDown={handleKeyDown}
-          className="min-w-[120px] flex-1 bg-transparent text-sm text-text placeholder:text-muted outline-none"
+          className="min-w-[120px] flex-1 border-0 bg-transparent text-sm text-text placeholder:text-muted outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0"
+          style={{
+            appearance: "none",
+            WebkitAppearance: "none",
+            backgroundImage: "none",
+          }}
         />
         {clearable && normalizedSelected.length > 0 && !disabled ? (
           <button

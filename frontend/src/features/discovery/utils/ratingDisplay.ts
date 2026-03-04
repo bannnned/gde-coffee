@@ -23,6 +23,9 @@ export function resolveCafeDisplayRating(snapshot: CafeRatingSnapshot | null): D
   }
 
   const reviewsCount = Number.isFinite(snapshot.reviews_count) ? snapshot.reviews_count : 0;
+  if (reviewsCount <= 0) {
+    return { value: null, isPreliminary: false };
+  }
   const weighted = asFiniteNumber(snapshot.rating);
   const rawMean = asFiniteNumber(snapshot.components?.ratings_mean);
 
@@ -49,4 +52,3 @@ export function resolveCafeDisplayRating(snapshot: CafeRatingSnapshot | null): D
 
   return { value: null, isPreliminary: false };
 }
-

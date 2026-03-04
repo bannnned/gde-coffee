@@ -54,11 +54,14 @@ export default function RatingPanel({
   onTriggerAISummary,
 }: RatingPanelProps) {
   const bestReviewLikes = bestReview ? Math.max(0, Math.round(bestReview.helpful_votes)) : 0;
+  const hasReviews = ratingReviews > 0;
+  const displayRatingLabel = hasReviews ? ratingLabel : "—";
+  const reviewsButtonLabel = hasReviews ? `Отзывы: ${ratingReviews}` : "Отзывов пока нет";
 
   return (
     <>
       <div className={classes.statsRow}>
-        <Badge className={classes.statChip}>Рейтинг: {ratingLabel}</Badge>
+        <Badge className={classes.statChip}>Рейтинг: {displayRatingLabel}</Badge>
         <button
           type="button"
           className={`${classes.statChipButton} ${onOpenReviews ? "ui-focus-ring" : ""}`}
@@ -67,7 +70,7 @@ export default function RatingPanel({
           aria-label="Перейти к отзывам"
           title={onOpenReviews ? "Открыть раздел отзывов" : undefined}
         >
-          Отзывы: {ratingReviews}
+          {reviewsButtonLabel}
         </button>
         {showVerifiedSharePercent && (
           <Badge className={classes.statChip}>Визиты: {verifiedSharePercent}%</Badge>

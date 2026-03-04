@@ -265,7 +265,7 @@ func normalizeAndValidateCreateRequest(req PublishReviewRequest) (PublishReviewR
 	normalized.DrinkID = normalized.Positions[0].DrinkID
 	normalized.Drink = normalized.Positions[0].Drink
 	if utfRuneLen(normalized.Summary) < minReviewSummaryLength {
-		return normalized, errInvalid("summary должен быть не короче 60 символов.")
+		return normalized, errInvalid("summary должен быть не короче 12 символов.")
 	}
 	if len(normalized.TasteTags) > maxTasteTags {
 		return normalized, errInvalid("taste_tags не может быть больше 10.")
@@ -315,7 +315,7 @@ func normalizeAndValidateUpdateRequest(req UpdateReviewRequest) (UpdateReviewReq
 		value := strings.TrimSpace(*req.Summary)
 		req.Summary = &value
 		if utfRuneLen(value) < minReviewSummaryLength {
-			return req, errInvalid("summary должен быть не короче 60 символов.")
+			return req, errInvalid("summary должен быть не короче 12 символов.")
 		}
 	}
 	if req.TasteTags != nil {

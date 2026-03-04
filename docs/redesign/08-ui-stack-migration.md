@@ -80,6 +80,7 @@
 62. `W5-AW` закрыт (`done`): удален пустой каталог `src/ui/bridge`, а в ESLint добавлен guardrail (`no-restricted-imports`) против повторного появления импортов `ui/bridge`.
 63. `W5-AX` закрыт (`done`): исправлены все error-level lint нарушения (smoke test throw handling, adminMetrics unbound-method, ReviewFeed purity, reviewForm regex escapes); `lint` теперь проходит с warning-only долговым хвостом.
 64. `W5-AY` закрыт (`done`): начато сокращение warning-долга `react-hooks/set-state-in-effect` в `SettingsDrawer` и `PhotoLightboxModal`; warning-count снижен с 32 до 27 при сохранении 0 lint errors.
+65. `W5-AZ` закрыт (`done`): продолжено сокращение warning-долга `react-hooks/set-state-in-effect` в `CafeCardFooter` и `ReviewsSection`; warning-count снижен с 27 до 24 при сохранении 0 lint errors.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

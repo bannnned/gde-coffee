@@ -1304,3 +1304,15 @@ Critical path stack-transition:
 - AC: `typecheck/build/tests` проходят без регрессий.
 - Артефакт: рефактор состояний/эффектов в перечисленных 2 файлах.
 - Проверка: `npm run lint`, `npm run typecheck`, `npm run build`, `npm test -- --watch=false`.
+
+### [x] W5-AZ · Reduce warning-level lint debt in cafe card/reviews section paths (`set-state-in-effect`) (P2, status: done)
+- Цель: продолжить снижение warning-долга `react-hooks/set-state-in-effect` в discovery-карточке и reviews shell.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/components/cafe-card/CafeCardFooter.tsx`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/features/discovery/ui/details/ReviewsSection.tsx`.
+- Depends on: `W5-AY`.
+- AC: в `CafeCardFooter` убраны синхронные `setState` в начале эффекта (`cache-hit` путь без setState, loading-path через отложенный callback).
+- AC: в `ReviewsSection` закрытие composer после успешного submit переведено на отложенный callback вместо sync `setState` в effect body.
+- AC: `lint` сохраняет 0 errors; warning-count уменьшен (с 27 до 24 по текущему срезу).
+- AC: `typecheck/build/tests` проходят без регрессий.
+- Артефакт: рефактор эффектов в перечисленных 2 файлах.
+- Проверка: `npm run lint`, `npm run typecheck`, `npm run build`, `npm test -- --watch=false`.

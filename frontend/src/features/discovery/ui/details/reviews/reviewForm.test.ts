@@ -70,6 +70,29 @@ describe("reviewFormSchema", () => {
     }
   });
 
+  it("rejects short improve text", () => {
+    const result = reviewFormSchema.safeParse({
+      ratingValue: "4",
+      positionsInput: ["americano"],
+      tagsInput: "",
+      liked: "",
+      improve: "коротко",
+      photos: [],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path.join(".") === "improve")).toBe(true);
+      expect(
+        result.error.issues.some(
+          (issue) =>
+            issue.path.join(".") === "improve" &&
+            issue.message.includes("Опишите чуть более подробно"),
+        ),
+      ).toBe(true);
+    }
+  });
+
   it("rejects more than allowed number of photos", () => {
     const photos = Array.from({ length: MAX_REVIEW_PHOTOS + 1 }, (_, idx) => ({
       id: `id-${idx}`,

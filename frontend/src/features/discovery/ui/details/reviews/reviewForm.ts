@@ -11,6 +11,7 @@ export const MAX_REVIEW_POSITIONS = 8;
 export const MAX_UPLOAD_CONCURRENCY = 3;
 export const REVIEWS_PAGE_SIZE = 20;
 export const DRINK_SUGGESTIONS_LIMIT = 12;
+export const MIN_IMPROVE_FIELD_LENGTH = 12;
 
 export type ReviewSummarySections = {
   liked: string;
@@ -47,6 +48,15 @@ export const reviewFormSchema = z
         code: z.ZodIssueCode.custom,
         path: ["improve"],
         message: "Заполните хотя бы одно поле: понравилось или что улучшить.",
+      });
+    }
+
+    const improveLength = value.improve.trim().length;
+    if (improveLength > 0 && improveLength < MIN_IMPROVE_FIELD_LENGTH) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["improve"],
+        message: "Опишите чуть более подробно, что бы вы хотели улучшить.",
       });
     }
   });
