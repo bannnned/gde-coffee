@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
+	"fmt"
 	"syscall"
 	"time"
 
@@ -108,6 +108,7 @@ func serveStaticOrIndex(c *gin.Context, publicDir string) {
 }
 
 func main() {
+	fmt.Fprintln(os.Stderr, "=== server starting ===")
 	_ = godotenv.Load()
 	logging.Setup()
 
@@ -120,20 +121,25 @@ func main() {
 	// ---- Start HTTP server IMMEDIATELY with a health-only handler ----
 	// Timeweb starts its healthcheck right after the container is up.
 	// We must have /_health answering 200 before any heavy init (DB, migrations, S3).
-	var handler atomic.Value
-	handler.Store(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/_health" || r.URL.Path == "/" {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("ok"))
-			return
-		}
-		http.Error(w, "initializing", http.StatusServiceUnavailable)
-	}))
+	var (
+		handlerMu      sync.RWMutex
+		activeHandler  http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/_health" || r.URL.Path == "/" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte("ok"))
+				return
+			}
+			http.Error(w, "initializing", http.StatusServiceUnavailable)
+		})
+	)
 
 	srv := &http.Server{
 		Addr: "0.0.0.0:" + port,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handler.Load().(http.Handler).ServeHTTP(w, r)
+			handlerMu.RLock()
+			h := activeHandler
+			handlerMu.RUnlock()
+			h.ServeHTTP(w, r)
 		}),
 	}
 	go func() {
@@ -478,9 +484,9 @@ func main() {
 	})
 
 	// ---- Swap handler: from health-only to full Gin engine ----
-	// atomic.Value requires the same concrete type on every Store call,
-	// so wrap gin's ServeHTTP in http.HandlerFunc (same type as the initial value).
-	handler.Store(http.HandlerFunc(r.ServeHTTP))
+	handlerMu.Lock()
+	activeHandler = r
+	handlerMu.Unlock()
 	slog.Info("app fully initialized, serving all routes")
 
 	quit := make(chan os.Signal, 1)
