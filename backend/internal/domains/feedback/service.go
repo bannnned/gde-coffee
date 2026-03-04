@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"html"
-	"log"
+	"log/slog"
 	"strings"
 )
 
@@ -76,6 +76,6 @@ func (s *Service) sendEmailNotification(ctx context.Context, input CreateFeedbac
 	)
 
 	if err := s.mailer.SendEmail(ctx, s.recipient, subject, textBody, htmlBody); err != nil {
-		log.Printf("feedback email send failed: %v", err)
+		slog.Error("feedback email notification failed", "error", err)
 	}
 }

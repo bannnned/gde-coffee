@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,6 +28,7 @@ import (
 	"backend/internal/domains/photos"
 	"backend/internal/domains/reviews"
 	"backend/internal/domains/tags"
+	"backend/internal/logging"
 	"backend/internal/mailer"
 	"backend/internal/media"
 	"backend/internal/shared/httpx"
@@ -107,15 +108,16 @@ func serveStaticOrIndex(c *gin.Context, publicDir string) {
 
 func main() {
 	_ = godotenv.Load()
+	logging.Setup()
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("config load failed", "error", err)
+		os.Exit(1)
 	}
-	log.Printf(
-		"telegram env: bot_username=%q token_set=%t",
-		strings.TrimSpace(cfg.Auth.TelegramBotUsername),
-		strings.TrimSpace(cfg.Auth.TelegramBotToken) != "",
+	slog.Info("telegram env",
+		"bot_username", strings.TrimSpace(cfg.Auth.TelegramBotUsername),
+		"token_set", strings.TrimSpace(cfg.Auth.TelegramBotToken) != "",
 	)
 
 	dbURL1 := os.Getenv("DATABASE_URL")
@@ -123,7 +125,8 @@ func main() {
 	dbURL3 := os.Getenv("DATABASE_URL_3")
 
 	if dbURL1 == "" && dbURL2 == "" && dbURL3 == "" {
-		log.Fatal("DATABASE_URL or DATABASE_URL_2 or DATABASE_URL_3 is required")
+		slog.Error("DATABASE_URL or DATABASE_URL_2 or DATABASE_URL_3 is required")
+		os.Exit(1)
 	}
 
 	var pool *pgxpool.Pool
@@ -131,7 +134,7 @@ func main() {
 	if dbURL1 != "" {
 		pool, err = connectDB(dbURL1)
 		if err != nil {
-			log.Printf("primary db connect failed: %v", err)
+			slog.Warn("db connect failed", "source", "primary", "error", err)
 		} else {
 			selectedDBURL = dbURL1
 		}
@@ -140,7 +143,7 @@ func main() {
 	if pool == nil && dbURL2 != "" {
 		pool, err = connectDB(dbURL2)
 		if err != nil {
-			log.Printf("secondary db connect failed: %v", err)
+			slog.Warn("db connect failed", "source", "secondary", "error", err)
 		} else {
 			selectedDBURL = dbURL2
 		}
@@ -149,22 +152,27 @@ func main() {
 	if pool == nil && dbURL3 != "" {
 		pool, err = connectDB(dbURL3)
 		if err != nil {
-			log.Printf("tertiary db connect failed: %v", err)
+			slog.Warn("db connect failed", "source", "tertiary", "error", err)
 		} else {
 			selectedDBURL = dbURL3
 		}
 	}
 
 	if pool == nil {
-		log.Fatal("db connect failed for DATABASE_URL, DATABASE_URL_2, and DATABASE_URL_3")
+		slog.Error("db connect failed for DATABASE_URL, DATABASE_URL_2, and DATABASE_URL_3")
+		os.Exit(1)
 	}
 
 	if err := dbmigrations.Run(selectedDBURL); err != nil {
-		log.Fatalf("db migrations failed: %v", err)
+		slog.Error("db migrations failed", "error", err)
+		os.Exit(1)
 	}
-	log.Println("db migrations applied")
+	slog.Info("db migrations applied")
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(logging.RequestID())
+	r.Use(logging.RequestLogger())
 
 	r.GET("/_health", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
@@ -187,9 +195,9 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := pool.Ping(ctx); err != nil {
-			log.Printf("db ping failed on startup: %v", err)
+			slog.Warn("db ping failed on startup", "error", err)
 		} else {
-			log.Println("db ping ok")
+			slog.Info("db ping ok")
 		}
 	}()
 
@@ -221,7 +229,8 @@ func main() {
 		PresignTTL:      cfg.Media.S3PresignTTL,
 	})
 	if err != nil {
-		log.Fatalf("s3 init failed: %v", err)
+		slog.Error("s3 init failed", "error", err)
+		os.Exit(1)
 	}
 
 	cafesHandler := cafes.NewDefaultHandler(pool, cfg)
@@ -345,7 +354,7 @@ func main() {
 	}
 	feedbackHandler := feedback.NewDefaultHandler(pool, mailerClient, feedbackRecipient)
 	if feedbackRecipient == "" {
-		log.Printf("feedback recipient is not configured: FEEDBACK_TO_EMAIL, MAIL_REPLY_TO and MAIL_FROM are empty")
+		slog.Warn("feedback recipient not configured")
 	}
 
 	oauthProviders := map[auth.Provider]auth.OAuthProvider{}
@@ -386,11 +395,11 @@ func main() {
 		for {
 			select {
 			case <-workerCtx.Done():
-				log.Println("mailer stats worker stopped")
+				slog.Info("mailer stats worker stopped")
 				return
 			case <-ticker.C:
 				sent, failed := mailerClient.Stats()
-				log.Printf("mailer stats: sent=%d failed=%d", sent, failed)
+				slog.Info("mailer stats", "sent", sent, "failed", failed)
 			}
 		}
 	}()
@@ -438,29 +447,30 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("listening on %s", srv.Addr)
+		slog.Info("http server starting", "addr", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("server listen failed: %v", err)
+			slog.Error("server listen failed", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-quit
-	log.Printf("shutdown signal received: %v", sig)
+	slog.Info("shutdown signal received", "signal", sig)
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdownCancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("http server shutdown error: %v", err)
+		slog.Error("http server shutdown error", "error", err)
 	}
-	log.Println("http server stopped")
+	slog.Info("http server stopped")
 
 	workerCancel()
 	wg.Wait()
-	log.Println("all workers stopped")
+	slog.Info("all workers stopped")
 
 	pool.Close()
-	log.Println("db pool closed, shutdown complete")
+	slog.Info("db pool closed, shutdown complete")
 }

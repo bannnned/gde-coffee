@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -50,7 +50,7 @@ func (h Handler) EmailVerifyRequest(c *gin.Context) {
 	}
 	if h.EmailVerifyLimiter != nil {
 		if !h.EmailVerifyLimiter.Allow(c.ClientIP()) {
-			log.Printf("rate limit: email verify request from %s", c.ClientIP())
+			slog.Warn("rate limit exceeded", "action", "email_verify_request", "ip", c.ClientIP())
 			respondError(c, http.StatusTooManyRequests, "rate_limited", "too many requests", nil)
 			return
 		}
@@ -68,7 +68,7 @@ func (h Handler) EmailVerifyRequest(c *gin.Context) {
 	var email *string
 	err := h.Pool.QueryRow(ctx, `select email_normalized from users where id = $1`, userID).Scan(&email)
 	if err != nil {
-		log.Printf("email verify request db query failed: %v", err)
+		slog.Error("email verify request db query failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
 		return
 	}
@@ -79,7 +79,7 @@ func (h Handler) EmailVerifyRequest(c *gin.Context) {
 
 	rawToken, err := GenerateToken(32)
 	if err != nil {
-		log.Printf("email verify request token generate failed: %v", err)
+		slog.Error("email verify request token generate failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "token generate failed", nil)
 		return
 	}
@@ -97,7 +97,7 @@ func (h Handler) EmailVerifyRequest(c *gin.Context) {
 		expiresAt,
 	)
 	if err != nil {
-		log.Printf("email verify request insert failed: %v", err)
+		slog.Error("email verify request insert failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db insert failed", nil)
 		return
 	}
@@ -106,7 +106,7 @@ func (h Handler) EmailVerifyRequest(c *gin.Context) {
 	textBody := "Подтвердите email для gde-kofe.ru:\n" + verifyURL + "\n\nЕсли вы не регистрировались, просто проигнорируйте это письмо."
 	htmlBody := "<p>Подтвердите email для <b>gde-kofe.ru</b>:</p><p><a href=\"" + verifyURL + "\">" + verifyURL + "</a></p><p>Если вы не регистрировались, просто проигнорируйте это письмо.</p>"
 	if err := h.Mailer.SendEmail(ctx, *email, "Подтверждение email — gde-kofe.ru", textBody, htmlBody); err != nil {
-		log.Printf("sendEmail failed: %v", err)
+		slog.Error("send email failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "email send failed", nil)
 		return
 	}
@@ -127,7 +127,7 @@ func (h Handler) EmailVerifyConfirm(c *gin.Context) {
 
 	tx, err := h.Pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		log.Printf("email verify confirm begin failed: %v", err)
+		slog.Error("email verify confirm begin failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db begin failed", nil)
 		return
 	}
@@ -147,7 +147,7 @@ func (h Handler) EmailVerifyConfirm(c *gin.Context) {
 			respondError(c, http.StatusBadRequest, "invalid_token", "token is invalid or expired", nil)
 			return
 		}
-		log.Printf("email verify confirm query failed: %v", err)
+		slog.Error("email verify confirm query failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
 		return
 	}
@@ -156,20 +156,20 @@ func (h Handler) EmailVerifyConfirm(c *gin.Context) {
 		update users set email_verified_at = now(), updated_at = now() where id = $1
 	`, userID)
 	if err != nil {
-		log.Printf("email verify confirm user update failed: %v", err)
+		slog.Error("email verify confirm user update failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "user update failed", nil)
 		return
 	}
 
 	_, err = tx.Exec(ctx, `update email_verifications set consumed_at = now() where token_hash = $1`, hash)
 	if err != nil {
-		log.Printf("email verify confirm token update failed: %v", err)
+		slog.Error("email verify confirm token update failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "token update failed", nil)
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		log.Printf("email verify confirm commit failed: %v", err)
+		slog.Error("email verify confirm commit failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db commit failed", nil)
 		return
 	}
@@ -185,7 +185,7 @@ func (h Handler) EmailChangeRequest(c *gin.Context) {
 	}
 	if h.EmailChangeLimiter != nil {
 		if !h.EmailChangeLimiter.Allow(c.ClientIP()) {
-			log.Printf("rate limit: email change request from %s", c.ClientIP())
+			slog.Warn("rate limit exceeded", "action", "email_change_request", "ip", c.ClientIP())
 			respondError(c, http.StatusTooManyRequests, "rate_limited", "too many requests", nil)
 			return
 		}
@@ -223,7 +223,7 @@ func (h Handler) EmailChangeRequest(c *gin.Context) {
 			respondError(c, http.StatusBadRequest, "no_local_password", "local password not set", nil)
 			return
 		}
-		log.Printf("email change request credential query failed: %v", err)
+		slog.Error("email change request credential query failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
 		return
 	}
@@ -239,14 +239,14 @@ func (h Handler) EmailChangeRequest(c *gin.Context) {
 		return
 	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		log.Printf("email change request user lookup failed: %v", err)
+		slog.Error("email change request user lookup failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
 		return
 	}
 
 	rawToken, err := GenerateToken(32)
 	if err != nil {
-		log.Printf("email change request token generate failed: %v", err)
+		slog.Error("email change request token generate failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "token generate failed", nil)
 		return
 	}
@@ -264,7 +264,7 @@ func (h Handler) EmailChangeRequest(c *gin.Context) {
 		expiresAt,
 	)
 	if err != nil {
-		log.Printf("email change request insert failed: %v", err)
+		slog.Error("email change request insert failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db insert failed", nil)
 		return
 	}
@@ -273,7 +273,7 @@ func (h Handler) EmailChangeRequest(c *gin.Context) {
 	textBody := "Подтвердите смену email для gde-kofe.ru:\n" + confirmURL + "\n\nЕсли это были не вы, не переходите по ссылке."
 	htmlBody := "<p>Подтвердите смену email для <b>gde-kofe.ru</b>:</p><p><a href=\"" + confirmURL + "\">" + confirmURL + "</a></p><p>Если это были не вы, не переходите по ссылке.</p>"
 	if err := h.Mailer.SendEmail(ctx, newEmail, "Подтверждение смены email — gde-kofe.ru", textBody, htmlBody); err != nil {
-		log.Printf("sendEmail failed: %v", err)
+		slog.Error("send email failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "email send failed", nil)
 		return
 	}
@@ -295,7 +295,7 @@ func (h Handler) EmailChangeConfirm(c *gin.Context) {
 
 	tx, err := h.Pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		log.Printf("email change confirm begin failed: %v", err)
+		slog.Error("email change confirm begin failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db begin failed", nil)
 		return
 	}
@@ -316,7 +316,7 @@ func (h Handler) EmailChangeConfirm(c *gin.Context) {
 			respondError(c, http.StatusBadRequest, "invalid_token", "token is invalid or expired", nil)
 			return
 		}
-		log.Printf("email change confirm query failed: %v", err)
+		slog.Error("email change confirm query failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
 		return
 	}
@@ -334,7 +334,7 @@ func (h Handler) EmailChangeConfirm(c *gin.Context) {
 			respondError(c, http.StatusConflict, "already_exists", "email already in use", nil)
 			return
 		}
-		log.Printf("email change confirm user update failed: %v", err)
+		slog.Error("email change confirm user update failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "user update failed", nil)
 		return
 	}
@@ -346,13 +346,13 @@ func (h Handler) EmailChangeConfirm(c *gin.Context) {
 
 	_, err = tx.Exec(ctx, `update email_change_requests set consumed_at = now() where token_hash = $1`, hash)
 	if err != nil {
-		log.Printf("email change confirm token update failed: %v", err)
+		slog.Error("email change confirm token update failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "token update failed", nil)
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		log.Printf("email change confirm commit failed: %v", err)
+		slog.Error("email change confirm commit failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db commit failed", nil)
 		return
 	}
@@ -370,7 +370,7 @@ func (h Handler) PasswordResetRequest(c *gin.Context) {
 	}
 	if h.PasswordResetLimiter != nil {
 		if !h.PasswordResetLimiter.Allow(c.ClientIP()) {
-			log.Printf("rate limit: password reset request from %s", c.ClientIP())
+			slog.Warn("rate limit exceeded", "action", "password_reset_request", "ip", c.ClientIP())
 			respondError(c, http.StatusTooManyRequests, "rate_limited", "too many requests", nil)
 			return
 		}
@@ -394,7 +394,7 @@ func (h Handler) PasswordResetRequest(c *gin.Context) {
 	var userID string
 	err := h.Pool.QueryRow(ctx, `select id::text from users where email_normalized = $1`, email).Scan(&userID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		log.Printf("password reset request user lookup failed: %v", err)
+		slog.Error("password reset request user lookup failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
 		return
 	}
@@ -411,14 +411,14 @@ func (h Handler) PasswordResetRequest(c *gin.Context) {
 			c.Status(http.StatusOK)
 			return
 		}
-		log.Printf("password reset request credential lookup failed: %v", err)
+		slog.Error("password reset request credential lookup failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
 		return
 	}
 
 	rawToken, err := GenerateToken(32)
 	if err != nil {
-		log.Printf("password reset request token generate failed: %v", err)
+		slog.Error("password reset request token generate failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "token generate failed", nil)
 		return
 	}
@@ -437,7 +437,7 @@ func (h Handler) PasswordResetRequest(c *gin.Context) {
 		c.GetHeader("User-Agent"),
 	)
 	if err != nil {
-		log.Printf("password reset request insert failed: %v", err)
+		slog.Error("password reset request insert failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db insert failed", nil)
 		return
 	}
@@ -446,7 +446,7 @@ func (h Handler) PasswordResetRequest(c *gin.Context) {
 	textBody := "Ссылка для сброса пароля gde-kofe.ru:\n" + resetURL + "\n\nЕсли это были не вы, просто проигнорируйте письмо."
 	htmlBody := "<p>Ссылка для сброса пароля <b>gde-kofe.ru</b>:</p><p><a href=\"" + resetURL + "\">" + resetURL + "</a></p><p>Если это были не вы, просто проигнорируйте письмо.</p>"
 	if err := h.Mailer.SendEmail(ctx, email, "Сброс пароля — gde-kofe.ru", textBody, htmlBody); err != nil {
-		log.Printf("sendEmail failed: %v", err)
+		slog.Error("send email failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "email send failed", nil)
 		return
 	}
@@ -478,7 +478,7 @@ func (h Handler) PasswordResetConfirm(c *gin.Context) {
 
 	tx, err := h.Pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		log.Printf("password reset confirm begin failed: %v", err)
+		slog.Error("password reset confirm begin failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db begin failed", nil)
 		return
 	}
@@ -498,28 +498,28 @@ func (h Handler) PasswordResetConfirm(c *gin.Context) {
 			respondError(c, http.StatusBadRequest, "invalid_token", "token is invalid or expired", nil)
 			return
 		}
-		log.Printf("password reset confirm query failed: %v", err)
+		slog.Error("password reset confirm query failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db query failed", nil)
 		return
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		log.Printf("password reset confirm hash failed: %v", err)
+		slog.Error("password reset confirm hash failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "password hash failed", nil)
 		return
 	}
 
 	_, err = tx.Exec(ctx, `update local_credentials set password_hash = $2 where user_id = $1`, userID, string(passwordHash))
 	if err != nil {
-		log.Printf("password reset confirm update failed: %v", err)
+		slog.Error("password reset confirm update failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "credential update failed", nil)
 		return
 	}
 
 	_, err = tx.Exec(ctx, `update password_reset_tokens set consumed_at = now() where token_hash = $1`, hash)
 	if err != nil {
-		log.Printf("password reset confirm token update failed: %v", err)
+		slog.Error("password reset confirm token update failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "token update failed", nil)
 		return
 	}
@@ -527,7 +527,7 @@ func (h Handler) PasswordResetConfirm(c *gin.Context) {
 	_, _ = tx.Exec(ctx, `update users set updated_at = now(), session_version = session_version + 1 where id = $1`, userID)
 
 	if err := tx.Commit(ctx); err != nil {
-		log.Printf("password reset confirm commit failed: %v", err)
+		slog.Error("password reset confirm commit failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "db commit failed", nil)
 		return
 	}

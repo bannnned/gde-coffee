@@ -3,7 +3,7 @@ package reviews
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"math"
 	"time"
 
@@ -38,18 +38,20 @@ func (s *Service) StartEventWorker(ctx context.Context, pollInterval time.Durati
 		pollInterval = 2 * time.Second
 	}
 
-	log.Printf("reviews outbox dispatch worker started: interval=%s", pollInterval)
+	logger := slog.Default().With("worker_name", "reviews_outbox_dispatch")
+
+	logger.Info("worker started", "interval", pollInterval)
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("reviews outbox dispatch worker stopped")
+			logger.Info("worker stopped")
 			return
 		default:
 		}
 
 		evt, err := s.repository.ClaimNextEvent(ctx)
 		if err != nil {
-			log.Printf("reviews outbox dispatch worker claim error: %v", err)
+			logger.Error("claim error", "error", err)
 			time.Sleep(pollInterval)
 			continue
 		}
@@ -65,7 +67,7 @@ func (s *Service) StartEventWorker(ctx context.Context, pollInterval time.Durati
 		}
 
 		if err := s.repository.MarkEventProcessed(ctx, evt.ID); err != nil {
-			log.Printf("reviews outbox dispatch worker mark processed error id=%d: %v", evt.ID, err)
+			logger.Error("mark processed error", "event_id", evt.ID, "error", err)
 		}
 	}
 }
@@ -86,18 +88,20 @@ func (s *Service) StartInboxWorker(ctx context.Context, pollInterval time.Durati
 		pollInterval = 2 * time.Second
 	}
 
-	log.Printf("reviews inbox worker started: interval=%s", pollInterval)
+	logger := slog.Default().With("worker_name", "reviews_inbox")
+
+	logger.Info("worker started", "interval", pollInterval)
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("reviews inbox worker stopped")
+			logger.Info("worker stopped")
 			return
 		default:
 		}
 
 		evt, err := s.repository.ClaimNextInboxEvent(ctx)
 		if err != nil {
-			log.Printf("reviews inbox worker claim error: %v", err)
+			logger.Error("claim error", "error", err)
 			time.Sleep(pollInterval)
 			continue
 		}
@@ -110,22 +114,21 @@ func (s *Service) StartInboxWorker(ctx context.Context, pollInterval time.Durati
 		if handleErr != nil {
 			deadLettered, markErr := s.repository.MarkInboxEventFailed(ctx, *evt, handleErr.Error())
 			if markErr != nil {
-				log.Printf("reviews inbox worker mark failed error id=%d: %v", evt.ID, markErr)
+				logger.Error("mark failed error", "inbox_id", evt.ID, "error", markErr)
 			} else if deadLettered {
-				log.Printf(
-					"reviews inbox worker moved to DLQ: inbox_id=%d outbox_id=%d consumer=%s event=%s attempts=%d",
-					evt.ID,
-					evt.OutboxEventID,
-					evt.Consumer,
-					evt.EventType,
-					evt.Attempts,
+				logger.Warn("moved to DLQ",
+					"inbox_id", evt.ID,
+					"outbox_id", evt.OutboxEventID,
+					"consumer", evt.Consumer,
+					"event_type", evt.EventType,
+					"attempts", evt.Attempts,
 				)
 			}
 			continue
 		}
 
 		if err := s.repository.MarkInboxEventProcessed(ctx, evt.ID); err != nil {
-			log.Printf("reviews inbox worker mark processed error id=%d: %v", evt.ID, err)
+			logger.Error("mark processed error", "inbox_id", evt.ID, "error", err)
 		}
 	}
 }

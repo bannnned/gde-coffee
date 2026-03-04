@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -42,7 +42,7 @@ type telegramCallbackRequest struct {
 
 func (h Handler) TelegramConfig(c *gin.Context) {
 	botUsername := strings.TrimSpace(h.TelegramBotUsername)
-	log.Printf("telegram config requested: bot_username=%q", botUsername)
+	slog.Debug("telegram config requested", "bot_username", botUsername)
 	c.JSON(http.StatusOK, telegramConfigResponse{
 		BotUsername: botUsername,
 	})
@@ -61,13 +61,13 @@ func (h Handler) fillTelegramProfileIfMissing(
 			userID,
 			strings.TrimSpace(*displayName),
 		); err != nil {
-			log.Printf("telegram profile: update display_name failed: %v", err)
+			slog.Warn("telegram profile update failed", "field", "display_name", "error", err)
 		}
 	}
 
 	if avatarURL != nil && strings.TrimSpace(*avatarURL) != "" {
 		if err := updateUserAvatarIfEmpty(ctx, h.Pool, userID, avatarURL); err != nil {
-			log.Printf("telegram profile: update avatar_url failed: %v", err)
+			slog.Warn("telegram profile update failed", "field", "avatar_url", "error", err)
 		}
 	}
 }
@@ -115,7 +115,7 @@ func (h Handler) TelegramStart(c *gin.Context) {
 	}
 	state, err := CreateOAuthState(ctx, h.Pool, ProviderTelegram, flow, userPtr, redirectURI)
 	if err != nil {
-		log.Printf("telegram start: create state failed: %v", err)
+		slog.Error("telegram create state failed", "error", err)
 		respondError(c, http.StatusInternalServerError, "internal", "state create failed", nil)
 		return
 	}
@@ -141,7 +141,7 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 			h.oauthRedirect(c, ProviderTelegram, dest, "invalid_state", "", "")
 			return
 		}
-		log.Printf("telegram callback: consume state failed: %v", err)
+		slog.Warn("telegram consume state failed", "error", err)
 		h.oauthRedirect(c, ProviderTelegram, dest, "invalid_state", "", "")
 		return
 	}
@@ -191,7 +191,7 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 	case oauthFlowLogin:
 		userID, _, err := ResolveUserForIdentity(ctx, h.Pool, identity, false)
 		if err != nil {
-			log.Printf("telegram login: resolve user failed: %v", err)
+			slog.Warn("telegram resolve user failed", "error", err)
 			h.oauthRedirect(c, ProviderTelegram, dest, "internal", "", "")
 			return
 		}
@@ -200,7 +200,7 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 
 		sessionID, _, err := createSession(ctx, h.Pool, userID, c.ClientIP(), c.GetHeader("User-Agent"))
 		if err != nil {
-			log.Printf("telegram login: session create failed: %v", err)
+			slog.Error("telegram session create failed", "error", err)
 			h.oauthRedirect(c, ProviderTelegram, dest, "internal", "", "")
 			return
 		}
@@ -216,7 +216,7 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 
 		foundIdentity, found, err := GetIdentity(ctx, h.Pool, ProviderTelegram, identity.ProviderUserID)
 		if err != nil {
-			log.Printf("telegram link: identity lookup failed: %v", err)
+			slog.Warn("telegram identity lookup failed", "error", err)
 			h.oauthRedirect(c, ProviderTelegram, dest, "internal", "", "")
 			return
 		}
@@ -232,7 +232,7 @@ func (h Handler) TelegramCallback(c *gin.Context) {
 					h.oauthRedirect(c, ProviderTelegram, dest, "already_linked", "", "")
 					return
 				}
-				log.Printf("telegram link: identity create failed: %v", err)
+				slog.Warn("telegram identity create failed", "error", err)
 				h.oauthRedirect(c, ProviderTelegram, dest, "internal", "", "")
 				return
 			}

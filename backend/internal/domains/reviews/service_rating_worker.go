@@ -2,7 +2,7 @@ package reviews
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -41,8 +41,10 @@ func (s *Service) StartRatingRebuildWorker(ctx context.Context, interval time.Du
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	log.Printf("reviews rating rebuild worker started: interval=%s batch=%d lock_key=%d", interval, batchSize, lockKey)
-	defer log.Printf("reviews rating rebuild worker stopped")
+	logger := slog.Default().With("worker_name", "reviews_rating_rebuild")
+
+	logger.Info("worker started", "interval", interval, "batch", batchSize, "lock_key", lockKey)
+	defer logger.Info("worker stopped")
 
 	cursor := ""
 	rebuild := func() {
@@ -52,40 +54,37 @@ func (s *Service) StartRatingRebuildWorker(ctx context.Context, interval time.Du
 		locked, err := s.withRatingRebuildLeaderLock(runCtx, lockKey, func() error {
 			processed, failed, nextCursor, wrapped, rebuildErr := s.rebuildCafeRatingSnapshotsBatch(runCtx, batchSize, cursor)
 			if rebuildErr != nil {
-				log.Printf(
-					"reviews rating rebuild failed: processed=%d failed=%d cursor=%q err=%v",
-					processed,
-					failed,
-					cursor,
-					rebuildErr,
+				logger.Error("rebuild failed",
+					"processed", processed,
+					"failed", failed,
+					"cursor", cursor,
+					"error", rebuildErr,
 				)
 				return rebuildErr
 			}
 			cursor = nextCursor
 			if failed > 0 {
-				log.Printf(
-					"reviews rating rebuild completed with errors: processed=%d failed=%d cursor=%q wrapped=%t",
-					processed,
-					failed,
-					cursor,
-					wrapped,
+				logger.Warn("rebuild completed with errors",
+					"processed", processed,
+					"failed", failed,
+					"cursor", cursor,
+					"wrapped", wrapped,
 				)
 				return nil
 			}
-			log.Printf(
-				"reviews rating rebuild completed: processed=%d cursor=%q wrapped=%t",
-				processed,
-				cursor,
-				wrapped,
+			logger.Info("rebuild completed",
+				"processed", processed,
+				"cursor", cursor,
+				"wrapped", wrapped,
 			)
 			return nil
 		})
 		if err != nil {
-			log.Printf("reviews rating rebuild lock failed: lock_key=%d err=%v", lockKey, err)
+			logger.Error("rebuild lock failed", "lock_key", lockKey, "error", err)
 			return
 		}
 		if !locked {
-			log.Printf("reviews rating rebuild skipped: another instance holds lock_key=%d", lockKey)
+			logger.Info("rebuild skipped, another instance holds lock", "lock_key", lockKey)
 		}
 	}
 
@@ -207,7 +206,7 @@ func (s *Service) rebuildCafeRatingSnapshotsBatch(
 		cancel()
 		if rebuildErr != nil {
 			failed++
-			log.Printf("reviews rating rebuild: cafe_id=%s err=%v", cafeID, rebuildErr)
+			slog.Warn("rating rebuild cafe failed", "worker_name", "reviews_rating_rebuild", "cafe_id", cafeID, "error", rebuildErr)
 		}
 		nextCursor = cafeID
 	}

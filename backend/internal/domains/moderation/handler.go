@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -747,7 +747,7 @@ func (h *Handler) applyCafeCreate(
 		payload.Longitude,
 		amenities,
 	).Scan(&cafeID); err != nil {
-		log.Printf("moderation: applyCafeCreate insert failed: %v", err)
+		slog.Error("moderation apply cafe create failed", "error", err)
 		return fmt.Errorf("Не удалось создать кофейню")
 	}
 

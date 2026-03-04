@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -280,14 +280,14 @@ func Load() (Config, error) {
 		Timeout:          geocodingTimeout,
 	}
 
-	log.Printf("config: port=%q public_dir=%q cors_origins=%v cookie_secure=%v sliding_hours=%d login_rate_limit=%d login_rate_window=%s",
-		cfg.Port,
-		cfg.PublicDir,
-		cfg.CORS.AllowOrigins,
-		cfg.Auth.CookieSecure,
-		cfg.Auth.SlidingRefreshHours,
-		cfg.Auth.LoginRateLimit,
-		cfg.Auth.LoginRateWindow,
+	slog.Info("config loaded",
+		"port", cfg.Port,
+		"public_dir", cfg.PublicDir,
+		"cors_origins", cfg.CORS.AllowOrigins,
+		"cookie_secure", cfg.Auth.CookieSecure,
+		"sliding_hours", cfg.Auth.SlidingRefreshHours,
+		"login_rate_limit", cfg.Auth.LoginRateLimit,
+		"login_rate_window", cfg.Auth.LoginRateWindow,
 	)
 
 	if cfg.Port == "" {
