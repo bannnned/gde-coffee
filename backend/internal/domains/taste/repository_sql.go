@@ -219,4 +219,70 @@ returning
 	status,
 	error_text,
 	created_at`
+
+	sqlSelectActiveUserTasteTagsJSON = `select coalesce(
+	jsonb_agg(
+		jsonb_build_object(
+			'id', id::text,
+			'user_id', user_id::text,
+			'taste_code', taste_code,
+			'polarity', polarity,
+			'score', score::double precision,
+			'confidence', confidence::double precision,
+			'source', source,
+			'status', status,
+			'cooldown_until', cooldown_until,
+			'reason_json', reason_json,
+			'created_at', created_at,
+			'updated_at', updated_at
+		)
+		order by confidence desc, updated_at desc
+	),
+	'[]'::jsonb
+)
+from public.user_taste_tags
+where user_id = $1::uuid
+  and status = 'active'`
+
+	sqlSelectActionableTasteHypothesesJSON = `select coalesce(
+	jsonb_agg(
+		jsonb_build_object(
+			'id', id::text,
+			'user_id', user_id::text,
+			'taste_code', taste_code,
+			'polarity', polarity,
+			'score', score::double precision,
+			'confidence', confidence::double precision,
+			'reason_json', reason_json,
+			'status', status,
+			'dismiss_count', dismiss_count,
+			'cooldown_until', cooldown_until,
+			'created_at', created_at,
+			'updated_at', updated_at
+		)
+		order by updated_at desc
+	),
+	'[]'::jsonb
+)
+from public.taste_hypotheses
+where user_id = $1::uuid
+  and status = 'new'
+  and (cooldown_until is null or cooldown_until <= now())`
+
+	sqlSelectTasteHypothesisByID = `select
+	id::text,
+	user_id::text,
+	taste_code,
+	polarity,
+	score::double precision,
+	confidence::double precision,
+	reason_json,
+	status,
+	dismiss_count,
+	cooldown_until,
+	created_at,
+	updated_at
+from public.taste_hypotheses
+where id = $1::uuid
+  and user_id = $2::uuid`
 )

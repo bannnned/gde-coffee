@@ -29,7 +29,7 @@
 | 2 | Миграции БД под taste-map | [x] | 2026-03-05 | - |
 | 3 | Backend domain + repositories | [x] | 2026-03-05 | - |
 | 4 | API onboarding | [x] | 2026-03-05 | - |
-| 5 | API профиля и гипотез | [ ] | - | - |
+| 5 | API профиля и гипотез | [x] | 2026-03-05 | - |
 | 6 | Inference engine v1 + triggers | [ ] | - | - |
 | 7 | Frontend onboarding flow | [ ] | - | - |
 | 8 | Frontend экран "Профиль вкуса" | [ ] | - | - |
@@ -516,6 +516,67 @@ Open questions:
 
 Следующий шаг:
 - Step 5 (API профиля и гипотез) после ручной проверки текущего Step 4 в релизном окружении.
+
+## Step 5 - API профиля и гипотез
+Date: 2026-03-05
+Owner: Engineering
+
+Что сделали:
+- Реализовали endpoint-ы профиля Taste Map:
+  - `GET /v1/me/taste-map` (и `/api/v1/me/taste-map` alias)
+  - `POST /v1/me/taste-hypotheses/:id/accept` (и `/api/v1/...` alias)
+  - `POST /v1/me/taste-hypotheses/:id/dismiss` (и `/api/v1/...` alias)
+- Для dismiss добавили cooldown логику: `30 дней` от момента dismiss.
+- В сервисе добавили lifecycle обработку гипотез:
+  - accept -> статус гипотезы `accepted` + upsert `user_taste_tags` как `active` с `source=explicit_feedback`;
+  - dismiss -> статус `dismissed`, `dismiss_count + 1`, `cooldown_until=now+30d` + upsert `user_taste_tags` как `muted`.
+- Добавили получение profile view:
+  - `base_map` (версия onboarding + completed_at);
+  - `active_tags`;
+  - actionable hypotheses (`status='new'`, не в cooldown).
+- Добавили repository-операции для:
+  - `ListActiveUserTasteTags`
+  - `ListActionableTasteHypotheses`
+  - `GetTasteHypothesisByID`
+- Добавили mapping доменной ошибки `ErrTasteHypothesisNotFound` -> HTTP 404.
+
+Ключевые решения:
+- Для UX/контракта в профильной выдаче показываем только actionable hypotheses (новые и не в cooldown), чтобы не засорять UI историей.
+- Повторный dismiss во время активного cooldown обрабатывается идемпотентно (возвращаем текущее состояние без нового инкремента).
+- Фича продолжает быть под `taste_map_v1` (env `TASTE_MAP_V1_ENABLED`) на всех новых endpoint-ах.
+
+Что сознательно НЕ делали (scope guard):
+- Не запускали inference triggers и пересчеты после feedback (это Step 6).
+- Не трогали frontend интеграцию/экраны Taste Map (это Step 7+).
+- Не добавляли аналитические events в pipeline (это Step 10).
+
+Измененные файлы:
+- backend/internal/domains/taste/repository_sql.go
+- backend/internal/domains/taste/repository.go
+- backend/internal/domains/taste/service.go
+- backend/internal/domains/taste/service_profile.go
+- backend/internal/domains/taste/errors.go
+- backend/internal/domains/taste/handler.go
+- backend/internal/domains/taste/handler_test.go
+- backend/internal/domains/taste/service_profile_test.go
+- backend/main.go
+- docs/taste_map_execution_runbook.md
+
+Проверки/тесты:
+- `go test ./internal/domains/taste` - passed.
+- `go test ./... -run '^$'` (compile-only sanity check) - passed.
+
+Риски/долги:
+- Нет интеграционного e2e теста реального auth+DB сценария по endpoint-ам `/v1/me/*`.
+- Пока не добавлена отдельная история/аудит изменений гипотез (кроме текущих reason_json полей).
+
+Open questions:
+- Нужно ли в `GET /v1/me/taste-map` отдавать историю hypotheses (`accepted/dismissed`) отдельным блоком или оставлять только actionable.
+- Должен ли повторный dismiss после истечения cooldown создавать новую гипотезу или переиспользовать текущую запись (сейчас переиспользуем и инкрементим dismiss_count).
+- Нужен ли отдельный endpoint для \"reset hypothesis feedback\" (ручной откат accept/dismiss) для поддержки и модерации.
+
+Следующий шаг:
+- Step 6 (Inference engine v1 + triggers) после ручной проверки Step 5 в релизном окружении и разборе open questions.
 ```
 
 ---

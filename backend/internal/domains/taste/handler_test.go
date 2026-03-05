@@ -16,6 +16,9 @@ import (
 type handlerServiceStub struct {
 	getOnboardingFn      func(ctx context.Context) OnboardingResponse
 	completeOnboardingFn func(ctx context.Context, userID string, req CompleteOnboardingRequest) (CompleteOnboardingResponse, error)
+	getTasteMapFn        func(ctx context.Context, userID string) (TasteMapResponse, error)
+	acceptHypothesisFn   func(ctx context.Context, userID string, hypothesisID string, req HypothesisFeedbackRequest) (HypothesisFeedbackResponse, error)
+	dismissHypothesisFn  func(ctx context.Context, userID string, hypothesisID string, req HypothesisFeedbackRequest) (HypothesisFeedbackResponse, error)
 }
 
 func (s *handlerServiceStub) GetOnboarding(ctx context.Context) OnboardingResponse {
@@ -30,6 +33,27 @@ func (s *handlerServiceStub) CompleteOnboarding(ctx context.Context, userID stri
 		return s.completeOnboardingFn(ctx, userID, req)
 	}
 	return CompleteOnboardingResponse{}, nil
+}
+
+func (s *handlerServiceStub) GetTasteMap(ctx context.Context, userID string) (TasteMapResponse, error) {
+	if s.getTasteMapFn != nil {
+		return s.getTasteMapFn(ctx, userID)
+	}
+	return TasteMapResponse{}, nil
+}
+
+func (s *handlerServiceStub) AcceptTasteHypothesis(ctx context.Context, userID string, hypothesisID string, req HypothesisFeedbackRequest) (HypothesisFeedbackResponse, error) {
+	if s.acceptHypothesisFn != nil {
+		return s.acceptHypothesisFn(ctx, userID, hypothesisID, req)
+	}
+	return HypothesisFeedbackResponse{}, nil
+}
+
+func (s *handlerServiceStub) DismissTasteHypothesis(ctx context.Context, userID string, hypothesisID string, req HypothesisFeedbackRequest) (HypothesisFeedbackResponse, error) {
+	if s.dismissHypothesisFn != nil {
+		return s.dismissHypothesisFn(ctx, userID, hypothesisID, req)
+	}
+	return HypothesisFeedbackResponse{}, nil
 }
 
 func TestGetOnboarding_FlagOff(t *testing.T) {
@@ -226,5 +250,123 @@ func TestCompleteOnboarding_Success(t *testing.T) {
 	}
 	if payload.SessionID == "" {
 		t.Fatalf("expected non-empty session_id")
+	}
+}
+
+func TestGetMyTasteMap_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewHandler(&handlerServiceStub{
+		getTasteMapFn: func(_ context.Context, userID string) (TasteMapResponse, error) {
+			if userID == "" {
+				t.Fatalf("expected user id")
+			}
+			return TasteMapResponse{
+				ContractVersion:  TasteContractVersion,
+				InferenceVersion: DefaultInferenceVersion,
+				ActiveTags: []TasteMapTag{{
+					TasteCode: "nutty_cocoa",
+					Polarity:  PolarityPositive,
+				}},
+				UpdatedAt: time.Now().UTC(),
+			}, nil
+		},
+	}, true)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("user_id", "550e8400-e29b-41d4-a716-446655440000")
+		c.Next()
+	})
+	router.GET("/api/v1/me/taste-map", handler.GetMyTasteMap)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/taste-map", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestGetMyTasteMap_FlagOff(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewHandler(&handlerServiceStub{}, false)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("user_id", "550e8400-e29b-41d4-a716-446655440000")
+		c.Next()
+	})
+	router.GET("/api/v1/me/taste-map", handler.GetMyTasteMap)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/taste-map", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAcceptHypothesis_NotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewHandler(&handlerServiceStub{
+		acceptHypothesisFn: func(_ context.Context, _ string, _ string, _ HypothesisFeedbackRequest) (HypothesisFeedbackResponse, error) {
+			return HypothesisFeedbackResponse{}, ErrTasteHypothesisNotFound
+		},
+	}, true)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("user_id", "550e8400-e29b-41d4-a716-446655440000")
+		c.Next()
+	})
+	router.POST("/api/v1/me/taste-hypotheses/:id/accept", handler.AcceptHypothesis)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/taste-hypotheses/h1/accept", bytes.NewBufferString(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestDismissHypothesis_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	now := time.Now().UTC()
+	cooldown := now.Add(30 * 24 * time.Hour)
+	handler := NewHandler(&handlerServiceStub{
+		dismissHypothesisFn: func(_ context.Context, userID string, hypothesisID string, req HypothesisFeedbackRequest) (HypothesisFeedbackResponse, error) {
+			if userID == "" || hypothesisID == "" {
+				t.Fatalf("expected user/hypothesis id")
+			}
+			if req.FeedbackSource != "profile_screen" {
+				t.Fatalf("expected feedback source from payload")
+			}
+			return HypothesisFeedbackResponse{
+				ID:            hypothesisID,
+				Status:        HypothesisStatusDismissed,
+				CooldownUntil: &cooldown,
+				UpdatedAt:     now,
+			}, nil
+		},
+	}, true)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("user_id", "550e8400-e29b-41d4-a716-446655440000")
+		c.Next()
+	})
+	router.POST("/api/v1/me/taste-hypotheses/:id/dismiss", handler.DismissHypothesis)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/me/taste-hypotheses/h1/dismiss", bytes.NewBufferString(`{"feedback_source":"profile_screen","reason_code":"not_me"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }

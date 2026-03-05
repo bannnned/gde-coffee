@@ -1,5 +1,11 @@
 package taste
 
+import "errors"
+
+var (
+	ErrTasteHypothesisNotFound = errors.New("taste hypothesis not found")
+)
+
 type validationError struct {
 	message string
 }

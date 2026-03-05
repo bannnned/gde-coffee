@@ -196,12 +196,115 @@ func (r *Repository) CreateTasteInferenceRun(
 	return scanTasteInferenceRun(row)
 }
 
+func (r *Repository) ListActiveUserTasteTags(ctx context.Context, userID string) ([]UserTasteTag, error) {
+	var payload []byte
+	if err := r.db.QueryRow(ctx, sqlSelectActiveUserTasteTagsJSON, userID).Scan(&payload); err != nil {
+		return nil, err
+	}
+	return decodeTasteTagsJSON(payload)
+}
+
+func (r *Repository) ListActionableTasteHypotheses(ctx context.Context, userID string) ([]TasteHypothesis, error) {
+	var payload []byte
+	if err := r.db.QueryRow(ctx, sqlSelectActionableTasteHypothesesJSON, userID).Scan(&payload); err != nil {
+		return nil, err
+	}
+	return decodeTasteHypothesesJSON(payload)
+}
+
+func (r *Repository) GetTasteHypothesisByID(ctx context.Context, hypothesisID string, userID string) (TasteHypothesis, error) {
+	row := r.db.QueryRow(ctx, sqlSelectTasteHypothesisByID, hypothesisID, userID)
+	return scanTasteHypothesis(row)
+}
+
 func normalizeJSON(input json.RawMessage, fallback string) json.RawMessage {
 	trimmed := strings.TrimSpace(string(input))
 	if trimmed == "" {
 		return json.RawMessage(fallback)
 	}
 	return append(json.RawMessage(nil), input...)
+}
+
+type userTasteTagJSON struct {
+	ID            string          `json:"id"`
+	UserID        string          `json:"user_id"`
+	TasteCode     string          `json:"taste_code"`
+	Polarity      string          `json:"polarity"`
+	Score         float64         `json:"score"`
+	Confidence    float64         `json:"confidence"`
+	Source        string          `json:"source"`
+	Status        string          `json:"status"`
+	CooldownUntil *time.Time      `json:"cooldown_until"`
+	ReasonJSON    json.RawMessage `json:"reason_json"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+}
+
+type tasteHypothesisJSON struct {
+	ID            string          `json:"id"`
+	UserID        string          `json:"user_id"`
+	TasteCode     string          `json:"taste_code"`
+	Polarity      string          `json:"polarity"`
+	Score         float64         `json:"score"`
+	Confidence    float64         `json:"confidence"`
+	ReasonJSON    json.RawMessage `json:"reason_json"`
+	Status        string          `json:"status"`
+	DismissCount  int             `json:"dismiss_count"`
+	CooldownUntil *time.Time      `json:"cooldown_until"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+}
+
+func decodeTasteTagsJSON(payload []byte) ([]UserTasteTag, error) {
+	raw := normalizeJSON(payload, "[]")
+	var rows []userTasteTagJSON
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		return nil, err
+	}
+	result := make([]UserTasteTag, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, UserTasteTag{
+			ID:            row.ID,
+			UserID:        row.UserID,
+			TasteCode:     row.TasteCode,
+			Polarity:      row.Polarity,
+			Score:         row.Score,
+			Confidence:    row.Confidence,
+			Source:        row.Source,
+			Status:        row.Status,
+			CooldownUntil: row.CooldownUntil,
+			ReasonJSON:    normalizeJSON(row.ReasonJSON, "{}"),
+			CreatedAt:     row.CreatedAt,
+			UpdatedAt:     row.UpdatedAt,
+		})
+	}
+	return result, nil
+}
+
+func decodeTasteHypothesesJSON(payload []byte) ([]TasteHypothesis, error) {
+	raw := normalizeJSON(payload, "[]")
+	var rows []tasteHypothesisJSON
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		return nil, err
+	}
+	result := make([]TasteHypothesis, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, TasteHypothesis{
+			ID:            row.ID,
+			UserID:        row.UserID,
+			TasteCode:     row.TasteCode,
+			Polarity:      row.Polarity,
+			Score:         row.Score,
+			Confidence:    row.Confidence,
+			ReasonJSON:    normalizeJSON(row.ReasonJSON, "{}"),
+			Status:        row.Status,
+			DismissCount:  row.DismissCount,
+			CooldownUntil: row.CooldownUntil,
+			CreatedAt:     row.CreatedAt,
+			UpdatedAt:     row.UpdatedAt,
+		})
+	}
+	return result, nil
 }
 
 func scanOnboardingSession(row pgx.Row) (OnboardingSession, error) {

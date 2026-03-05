@@ -15,8 +15,13 @@ import (
 type repository interface {
 	CreateOnboardingSession(ctx context.Context, userID string, version string) (OnboardingSession, error)
 	CompleteOnboardingSession(ctx context.Context, sessionID string, userID string, answers json.RawMessage, completedAt time.Time) (OnboardingSession, error)
+	GetUserTasteProfile(ctx context.Context, userID string) (UserTasteProfile, error)
+	ListActiveUserTasteTags(ctx context.Context, userID string) ([]UserTasteTag, error)
+	ListActionableTasteHypotheses(ctx context.Context, userID string) ([]TasteHypothesis, error)
+	GetTasteHypothesisByID(ctx context.Context, hypothesisID string, userID string) (TasteHypothesis, error)
 	UpsertUserTasteProfile(ctx context.Context, params UpsertUserTasteProfileParams) (UserTasteProfile, error)
 	UpsertUserTasteTag(ctx context.Context, params UpsertUserTasteTagParams) (UserTasteTag, error)
+	UpdateTasteHypothesisStatus(ctx context.Context, params UpdateTasteHypothesisStatusParams) (TasteHypothesis, error)
 }
 
 type Service struct {

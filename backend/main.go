@@ -294,11 +294,17 @@ func main() {
 	v1 := api.Group("/v1")
 	v1.GET("/taste/onboarding", tasteHandler.GetOnboarding)
 	v1.POST("/taste/onboarding/complete", auth.RequireAuth(pool), tasteHandler.CompleteOnboarding)
+	v1.GET("/me/taste-map", auth.RequireAuth(pool), tasteHandler.GetMyTasteMap)
+	v1.POST("/me/taste-hypotheses/:id/accept", auth.RequireAuth(pool), tasteHandler.AcceptHypothesis)
+	v1.POST("/me/taste-hypotheses/:id/dismiss", auth.RequireAuth(pool), tasteHandler.DismissHypothesis)
 
 	// Public v1 aliases without /api prefix for forward-compatible contracts.
 	v1Public := r.Group("/v1")
 	v1Public.GET("/taste/onboarding", tasteHandler.GetOnboarding)
 	v1Public.POST("/taste/onboarding/complete", auth.RequireAuth(pool), tasteHandler.CompleteOnboarding)
+	v1Public.GET("/me/taste-map", auth.RequireAuth(pool), tasteHandler.GetMyTasteMap)
+	v1Public.POST("/me/taste-hypotheses/:id/accept", auth.RequireAuth(pool), tasteHandler.AcceptHypothesis)
+	v1Public.POST("/me/taste-hypotheses/:id/dismiss", auth.RequireAuth(pool), tasteHandler.DismissHypothesis)
 
 	adminDrinksGroup := api.Group("/admin/drinks")
 	adminDrinksGroup.Use(auth.RequireRole(pool, "admin", "moderator"))
