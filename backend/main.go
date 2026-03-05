@@ -29,6 +29,7 @@ import (
 	"backend/internal/domains/photos"
 	"backend/internal/domains/reviews"
 	"backend/internal/domains/tags"
+	"backend/internal/domains/taste"
 	"backend/internal/logging"
 	"backend/internal/mailer"
 	"backend/internal/media"
@@ -247,6 +248,12 @@ func main() {
 	moderationHandler := moderation.NewHandler(pool, mediaService, cfg.Media)
 	reviewsHandler := reviews.NewDefaultHandler(pool, mediaService, cfg.Media)
 	tagsHandler := tags.NewDefaultHandler(pool)
+	tasteHandler, err := taste.NewDefaultHandler(pool, taste.TasteMapEnabledFromEnv())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: taste handler init failed: %v\n", err)
+		slog.Error("taste handler init failed", "error", err)
+		os.Exit(1)
+	}
 	metricsHandler := metrics.NewDefaultHandler(pool)
 
 	wg.Add(4)
@@ -283,6 +290,15 @@ func main() {
 	api.GET("/reputation/me", auth.RequireAuth(pool), reviewsHandler.GetMyReputation)
 	api.GET("/reputation/me/events", auth.RequireAuth(pool), reviewsHandler.GetMyReputationEvents)
 	api.GET("/reputation/users/:id/events", auth.RequireRole(pool, "admin", "moderator"), reviewsHandler.GetUserReputationEvents)
+
+	v1 := api.Group("/v1")
+	v1.GET("/taste/onboarding", tasteHandler.GetOnboarding)
+	v1.POST("/taste/onboarding/complete", auth.RequireAuth(pool), tasteHandler.CompleteOnboarding)
+
+	// Public v1 aliases without /api prefix for forward-compatible contracts.
+	v1Public := r.Group("/v1")
+	v1Public.GET("/taste/onboarding", tasteHandler.GetOnboarding)
+	v1Public.POST("/taste/onboarding/complete", auth.RequireAuth(pool), tasteHandler.CompleteOnboarding)
 
 	adminDrinksGroup := api.Group("/admin/drinks")
 	adminDrinksGroup.Use(auth.RequireRole(pool, "admin", "moderator"))

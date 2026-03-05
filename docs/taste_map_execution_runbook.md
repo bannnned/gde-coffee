@@ -28,7 +28,7 @@
 | 1 | Контракт Taste Map v1 (docs + json) | [x] | 2026-03-05 | - |
 | 2 | Миграции БД под taste-map | [x] | 2026-03-05 | - |
 | 3 | Backend domain + repositories | [x] | 2026-03-05 | - |
-| 4 | API onboarding | [ ] | - | - |
+| 4 | API onboarding | [x] | 2026-03-05 | - |
 | 5 | API профиля и гипотез | [ ] | - | - |
 | 6 | Inference engine v1 + triggers | [ ] | - | - |
 | 7 | Frontend onboarding flow | [ ] | - | - |
@@ -464,6 +464,58 @@ Open questions:
 
 Следующий шаг:
 - Step 4 (API onboarding).
+
+## Step 4 - API onboarding
+Date: 2026-03-05
+Owner: Engineering
+
+Что сделали:
+- Реализовали onboarding API v1 в домене `taste`:
+  - `GET /v1/taste/onboarding` (и `/api/v1/taste/onboarding` alias)
+  - `POST /v1/taste/onboarding/complete` (и `/api/v1/taste/onboarding/complete` alias)
+- Добавили feature flag gate `taste_map_v1` через env `TASTE_MAP_V1_ENABLED`.
+- Реализовали валидацию payload onboarding-ответов по типам шагов (`single_choice`, `multi_choice`, `range`, `paired_preference`) с кодом `invalid_argument`.
+- На completion:
+  - создается/завершается onboarding session;
+  - формируются baseline taste signals/tags;
+  - upsert в `user_taste_tags` и `user_taste_profile`.
+- Подключили роутинг и инициализацию handler в `backend/main.go`.
+
+Ключевые решения:
+- Onboarding contract загружается из embed-файла `contracts/taste_onboarding_v1.json` в runtime, чтобы API не зависел от внешнего `docs/`.
+- Возвращаем `404 feature_disabled` при выключенном флаге для явного soft-launch поведения.
+- Поддержаны оба path-style (`/api/v1/...` и `/v1/...`) для совместимости текущего фронта и публичного контракта.
+
+Что сознательно НЕ делали (scope guard):
+- Не реализовывали endpoints профиля/гипотез (это Step 5).
+- Не добавляли inference triggers/job orchestration (это Step 6).
+- Не меняли frontend flow (это Step 7+).
+
+Измененные файлы:
+- backend/internal/domains/taste/handler.go
+- backend/internal/domains/taste/service.go
+- backend/internal/domains/taste/errors.go
+- backend/internal/domains/taste/flags.go
+- backend/internal/domains/taste/onboarding_catalog.go
+- backend/internal/domains/taste/handler_test.go
+- backend/main.go
+- docs/taste_map_execution_runbook.md
+
+Проверки/тесты:
+- `go test ./internal/domains/taste` - passed.
+- `go test ./... -run '^$'` (compile-only sanity check) - passed.
+
+Риски/долги:
+- Пока нет интеграционного e2e теста onboarding через реальную БД + auth middleware цепочку.
+- `TASTE_MAP_V1_ENABLED` читается напрямую из env; нужно унифицировать с общей системой feature flags в конфиге при rollout.
+
+Open questions:
+- Нужно ли ограничивать максимальное число answers/размер payload для анти-абьюза на handler-уровне.
+- Нужна ли дедупликация/идемпотентность completion по `session_id` при повторной отправке от клиента с плохой сетью.
+- Нужен ли дополнительный audit-event (`taste_onboarding_completed`) в общую analytics pipeline уже на Step 4 или оставить на Step 10.
+
+Следующий шаг:
+- Step 5 (API профиля и гипотез) после ручной проверки текущего Step 4 в релизном окружении.
 ```
 
 ---

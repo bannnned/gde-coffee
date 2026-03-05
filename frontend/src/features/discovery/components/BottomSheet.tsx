@@ -103,7 +103,8 @@ export default function BottomSheet({
     return { mid, expanded, peek };
   }, [disableMidState, filtersBarHeight, headerHeight, hideHeaderContentInPeek, safeViewportHeight]);
 
-  const height = useMotionValue(heights.mid);
+  const visibleHeight = useMotionValue(heights.mid);
+  const translateY = useMotionValue(Math.max(0, heights.expanded - heights.mid));
 
   useLayoutEffect(() => {
     const target =
@@ -114,24 +115,28 @@ export default function BottomSheet({
           : heights.mid;
     // Keep React state updates at snap points; live drag sync goes through CSS var only.
     setSheetHeight(target);
-    const controls = animate(height, target, {
+    const controls = animate(visibleHeight, target, {
       type: "spring",
       stiffness: 300,
       damping: 34,
     });
     return () => controls.stop();
-  }, [effectiveSheetState, height, heights, setSheetHeight]);
+  }, [effectiveSheetState, heights, setSheetHeight, visibleHeight]);
 
-  useMotionValueEvent(height, "change", (latest) => {
-    const visibleHeight = Math.max(heights.peek, latest);
+  useMotionValueEvent(visibleHeight, "change", (latest) => {
+    // With fixed sheet height, dragging maps to a compositor-friendly translateY.
+    translateY.set(Math.max(0, heights.expanded - latest));
+    const currentVisibleHeight = Math.max(heights.peek, latest);
     // Live updates via CSS var preserve smooth drag by avoiding global context churn.
-    setSheetHeightLive(visibleHeight);
+    setSheetHeightLive(currentVisibleHeight);
   });
 
   useLayoutEffect(() => {
-    const visibleHeight = Math.max(heights.peek, height.get());
-    setSheetHeightLive(visibleHeight);
-  }, [height, heights, setSheetHeightLive]);
+    // Re-sync translate when viewport-driven expanded height changes.
+    const currentVisible = Math.max(heights.peek, visibleHeight.get());
+    translateY.set(Math.max(0, heights.expanded - currentVisible));
+    setSheetHeightLive(currentVisible);
+  }, [heights, setSheetHeightLive, translateY, visibleHeight]);
 
   useLayoutEffect(() => {
     if (autoExpandTrigger === lastAutoExpandTriggerRef.current) return;
@@ -215,7 +220,7 @@ export default function BottomSheet({
     }
     const startX = event.clientX;
     const startY = event.clientY;
-    const startHeight = height.get();
+    const startHeight = visibleHeight.get();
     const startSheetState = effectiveSheetState;
     const pointerId = event.pointerId;
     const pointerHost = event.currentTarget;
@@ -258,7 +263,7 @@ export default function BottomSheet({
       moveEvent.preventDefault();
       const next = startHeight - dy;
       const clamped = Math.max(heights.peek, Math.min(heights.expanded, next));
-      height.set(clamped);
+      visibleHeight.set(clamped);
       lastClientY = moveEvent.clientY;
       lastTs = performance.now();
     };
@@ -266,7 +271,7 @@ export default function BottomSheet({
     const handleUp = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
       if (mode === "drag") {
-        const current = height.get();
+        const current = visibleHeight.get();
         const offsetY = upEvent.clientY - startY;
         const nowTs = performance.now();
         const dt = Math.max(1, nowTs - lastTs);
@@ -315,8 +320,8 @@ export default function BottomSheet({
         data-state={effectiveSheetState}
         data-dragging={isDragging ? "true" : "false"}
         style={{
-          y: 0,
-          height,
+          y: translateY,
+          height: heights.expanded,
           maxHeight: "100%",
           borderRadius: 22,
           ["--sheet-header-height" as string]: `${Math.round(headerHeight)}px`,
