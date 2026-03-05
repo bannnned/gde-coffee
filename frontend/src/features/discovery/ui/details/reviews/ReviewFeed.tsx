@@ -8,6 +8,7 @@ import PhotoLightboxModal, {
 } from "../../../../../components/PhotoLightboxModal";
 import type { CafeReview, ReviewSort } from "../../../../../api/reviews";
 import { formatReviewDate, parseReviewSummarySections } from "./reviewForm";
+import { appHaptics } from "../../../../../lib/haptics";
 
 const COLLAPSED_TEXT_LENGTH_THRESHOLD = 220;
 const COLLAPSED_PHOTO_PREVIEW_LIMIT = 3;
@@ -207,7 +208,10 @@ export function ReviewFeed({
               placeholder="Сортировка"
               value={sort}
               data={sortSelectData}
-              onChange={(value) => onSortChange((value as ReviewSort) || "new")}
+              onChange={(value) => {
+                void appHaptics.trigger("selection");
+                onSortChange((value as ReviewSort) || "new");
+              }}
               styles={filterSelectStyles}
             />
           </div>
@@ -219,7 +223,10 @@ export function ReviewFeed({
               placeholder="Позиция"
               value={positionFilter}
               data={positionFilterData}
-              onChange={(value) => onPositionFilterChange(value || "all")}
+              onChange={(value) => {
+                void appHaptics.trigger("selection");
+                onPositionFilterChange(value || "all");
+              }}
               styles={filterSelectStyles}
             />
           </div>

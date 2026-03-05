@@ -2,6 +2,8 @@ package metrics
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"time"
 )
 
@@ -10,6 +12,8 @@ type repository interface {
 	ListDailyNorthStarMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time, cafeID string) ([]DailyNorthStarMetrics, error)
 	GetFunnelJourneyCounts(ctx context.Context, dateFrom time.Time, dateTo time.Time, cafeID string) (FunnelJourneyCounts, error)
 	GetMapPerfSnapshot(ctx context.Context, dateFrom time.Time, dateTo time.Time) (MapPerfSnapshot, error)
+	ListMapPerfDailyMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time) ([]MapPerfDailyMetrics, error)
+	ListMapPerfNetworkMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time) ([]MapPerfNetworkMetrics, error)
 }
 
 type Service struct {
@@ -144,6 +148,53 @@ func (s *Service) GetMapPerfReport(
 	if err != nil {
 		return MapPerfReport{}, err
 	}
+	dailyRows, err := s.repository.ListMapPerfDailyMetrics(ctx, dateFrom, dateTo)
+	if err != nil {
+		return MapPerfReport{}, err
+	}
+	networkRows, err := s.repository.ListMapPerfNetworkMetrics(ctx, dateFrom, dateTo)
+	if err != nil {
+		return MapPerfReport{}, err
+	}
+
+	dailyByDate := make(map[string]MapPerfDailyMetrics, len(dailyRows))
+	for _, row := range dailyRows {
+		key := row.Day.UTC().Format("2006-01-02")
+		dailyByDate[key] = row
+	}
+
+	daily := make([]MapPerfDailyPoint, 0, normalizedDays)
+	for day := dateFrom; day.Before(dateTo); day = day.Add(24 * time.Hour) {
+		key := day.Format("2006-01-02")
+		row := dailyByDate[key]
+		daily = append(daily, MapPerfDailyPoint{
+			Date:                   key,
+			FirstRenderEvents:      row.FirstRenderEvents,
+			FirstRenderP50Ms:       row.FirstRenderP50Ms,
+			FirstRenderP95Ms:       row.FirstRenderP95Ms,
+			FirstInteractionEvents: row.FirstInteractionEvents,
+			FirstInteractionP50Ms:  row.FirstInteractionP50Ms,
+			FirstInteractionP95Ms:  row.FirstInteractionP95Ms,
+			InteractionCoverage:    safeRate(row.FirstInteractionEvents, row.FirstRenderEvents),
+		})
+	}
+
+	network := make([]MapPerfNetworkPoint, 0, len(networkRows))
+	for _, row := range networkRows {
+		network = append(network, MapPerfNetworkPoint{
+			EffectiveType:          row.EffectiveType,
+			FirstRenderEvents:      row.FirstRenderEvents,
+			FirstRenderP50Ms:       row.FirstRenderP50Ms,
+			FirstRenderP95Ms:       row.FirstRenderP95Ms,
+			FirstInteractionEvents: row.FirstInteractionEvents,
+			FirstInteractionP50Ms:  row.FirstInteractionP50Ms,
+			FirstInteractionP95Ms:  row.FirstInteractionP95Ms,
+			InteractionCoverage:    safeRate(row.FirstInteractionEvents, row.FirstRenderEvents),
+		})
+	}
+
+	interactionCoverage := safeRate(snapshot.FirstInteractionEvents, snapshot.FirstRenderEvents)
+	trendDeltaPct := computeRecentTrendDeltaPct(daily)
 
 	return MapPerfReport{
 		Summary: MapPerfSummary{
@@ -156,9 +207,202 @@ func (s *Service) GetMapPerfReport(
 			FirstInteractionEvents: snapshot.FirstInteractionEvents,
 			FirstInteractionP50Ms:  snapshot.FirstInteractionP50Ms,
 			FirstInteractionP95Ms:  snapshot.FirstInteractionP95Ms,
-			InteractionCoverage:    safeRate(snapshot.FirstInteractionEvents, snapshot.FirstRenderEvents),
+			InteractionCoverage:    interactionCoverage,
 		},
+		Daily:   daily,
+		Network: network,
+		Alerts:  buildMapPerfAlerts(snapshot, interactionCoverage, trendDeltaPct),
+		History: buildMapPerfHistory(daily),
 	}, nil
+}
+
+func classifyLatency(valueMs float64, goodThreshold float64, watchThreshold float64) string {
+	if valueMs <= 0 {
+		return "watch"
+	}
+	if valueMs <= goodThreshold {
+		return "good"
+	}
+	if valueMs <= watchThreshold {
+		return "watch"
+	}
+	return "risk"
+}
+
+func classifyCoverage(value float64, goodThreshold float64, watchThreshold float64) string {
+	if value <= 0 {
+		return "risk"
+	}
+	if value >= goodThreshold {
+		return "good"
+	}
+	if value >= watchThreshold {
+		return "watch"
+	}
+	return "risk"
+}
+
+func severityFromStatus(status string) string {
+	if status == "risk" {
+		return "risk"
+	}
+	return "watch"
+}
+
+func computeRecentTrendDeltaPct(daily []MapPerfDailyPoint) float64 {
+	withData := make([]MapPerfDailyPoint, 0, len(daily))
+	for _, point := range daily {
+		if point.FirstRenderEvents > 0 && point.FirstRenderP95Ms > 0 {
+			withData = append(withData, point)
+		}
+	}
+	if len(withData) < 4 {
+		return 0
+	}
+
+	recent := withData[maxInt(0, len(withData)-3):]
+	prevEnd := maxInt(0, len(withData)-3)
+	prevStart := maxInt(0, prevEnd-3)
+	previous := withData[prevStart:prevEnd]
+	if len(previous) == 0 {
+		return 0
+	}
+
+	recentAvg := averageRenderP95(recent)
+	prevAvg := averageRenderP95(previous)
+	if prevAvg <= 0 {
+		return 0
+	}
+	return ((recentAvg - prevAvg) / prevAvg) * 100
+}
+
+func averageRenderP95(points []MapPerfDailyPoint) float64 {
+	if len(points) == 0 {
+		return 0
+	}
+	sum := 0.0
+	count := 0
+	for _, point := range points {
+		if point.FirstRenderP95Ms > 0 {
+			sum += point.FirstRenderP95Ms
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return sum / float64(count)
+}
+
+func buildMapPerfAlerts(snapshot MapPerfSnapshot, interactionCoverage float64, trendDeltaPct float64) []MapPerfAlert {
+	if snapshot.FirstRenderEvents <= 0 {
+		return nil
+	}
+	alerts := make([]MapPerfAlert, 0, 4)
+
+	renderStatus := classifyLatency(snapshot.FirstRenderP95Ms, 2200, 3200)
+	if renderStatus != "good" {
+		alerts = append(alerts, MapPerfAlert{
+			Key:      "render_p95",
+			Severity: severityFromStatus(renderStatus),
+			Label:    "Render p95",
+			Value:    fmt.Sprintf("%d мс", int(math.Round(snapshot.FirstRenderP95Ms))),
+			Target:   "цель ≤ 3200 мс",
+		})
+	}
+
+	interactionStatus := classifyLatency(snapshot.FirstInteractionP95Ms, 2800, 4200)
+	if interactionStatus != "good" {
+		alerts = append(alerts, MapPerfAlert{
+			Key:      "interaction_p95",
+			Severity: severityFromStatus(interactionStatus),
+			Label:    "Interaction p95",
+			Value:    fmt.Sprintf("%d мс", int(math.Round(snapshot.FirstInteractionP95Ms))),
+			Target:   "цель ≤ 4200 мс",
+		})
+	}
+
+	coverageStatus := classifyCoverage(interactionCoverage, 0.55, 0.4)
+	if coverageStatus != "good" {
+		alerts = append(alerts, MapPerfAlert{
+			Key:      "coverage",
+			Severity: severityFromStatus(coverageStatus),
+			Label:    "Interaction coverage",
+			Value:    fmt.Sprintf("%.1f%%", interactionCoverage*100),
+			Target:   "цель ≥ 55%",
+		})
+	}
+
+	if trendDeltaPct >= 15 {
+		alerts = append(alerts, MapPerfAlert{
+			Key:      "trend",
+			Severity: "watch",
+			Label:    "Render trend",
+			Value:    fmt.Sprintf("+%.1f%%", trendDeltaPct),
+			Target:   "рост < 15%",
+		})
+	}
+
+	return alerts
+}
+
+func buildMapPerfHistory(daily []MapPerfDailyPoint) []MapPerfHistoryPoint {
+	history := make([]MapPerfHistoryPoint, 0, 20)
+	prevStatus := ""
+	prevRenderP95 := 0.0
+	for _, point := range daily {
+		if point.FirstRenderEvents <= 0 {
+			continue
+		}
+		renderStatus := classifyLatency(point.FirstRenderP95Ms, 2200, 3200)
+		interactionStatus := classifyLatency(point.FirstInteractionP95Ms, 2800, 4200)
+		coverageStatus := classifyCoverage(point.InteractionCoverage, 0.55, 0.4)
+		status := maxStatus(renderStatus, interactionStatus, coverageStatus)
+		trendDeltaPct := 0.0
+		if prevRenderP95 > 0 && point.FirstRenderP95Ms > 0 {
+			trendDeltaPct = ((point.FirstRenderP95Ms - prevRenderP95) / prevRenderP95) * 100
+		}
+
+		if len(history) == 0 || prevStatus != status || math.Abs(trendDeltaPct) >= 15 {
+			history = append(history, MapPerfHistoryPoint{
+				Date:                  point.Date,
+				Status:                status,
+				FirstRenderP95Ms:      point.FirstRenderP95Ms,
+				FirstInteractionP95Ms: point.FirstInteractionP95Ms,
+				InteractionCoverage:   point.InteractionCoverage,
+				TrendDeltaPct:         trendDeltaPct,
+			})
+			if len(history) > 20 {
+				history = history[len(history)-20:]
+			}
+		}
+
+		prevStatus = status
+		if point.FirstRenderP95Ms > 0 {
+			prevRenderP95 = point.FirstRenderP95Ms
+		}
+	}
+	return history
+}
+
+func maxStatus(values ...string) string {
+	best := "good"
+	for _, value := range values {
+		if value == "risk" {
+			return "risk"
+		}
+		if value == "watch" {
+			best = "watch"
+		}
+	}
+	return best
+}
+
+func maxInt(a int, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func safeRate(numerator int, denominator int) float64 {

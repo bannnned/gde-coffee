@@ -20,6 +20,7 @@ import {
   type ReviewSort,
 } from "../../../../../api/reviews";
 import { useAuth } from "../../../../../components/AuthGate";
+import { appHaptics } from "../../../../../lib/haptics";
 import { extractApiErrorMessage } from "../../../../../utils/apiError";
 import {
   DEFAULT_REVIEW_FORM_VALUES,
@@ -434,12 +435,14 @@ export function useReviewsSectionController({
       const currentPhotos = getValues("photos");
       const imageFiles = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
       if (imageFiles.length === 0) {
+        void appHaptics.trigger("warning");
         setSubmitError("Поддерживаются только изображения.");
         return;
       }
 
       const availableSlots = Math.max(0, MAX_REVIEW_PHOTOS - currentPhotos.length);
       if (availableSlots <= 0) {
+        void appHaptics.trigger("warning");
         setSubmitError("Можно добавить не больше 8 фото к отзыву.");
         return;
       }
@@ -484,9 +487,13 @@ export function useReviewsSectionController({
         clearErrors("photos");
 
         if (imageFiles.length > files.length) {
+          void appHaptics.trigger("warning");
           setSubmitHint("Часть файлов пропущена: достигнут лимит 8 фото.");
+        } else {
+          void appHaptics.trigger("success");
         }
       } catch (error: unknown) {
+        void appHaptics.trigger("error");
         setSubmitError(extractErrorMessage(error, "Не удалось загрузить фото отзыва."));
       } finally {
         setUploadingPhotos(false);
@@ -511,6 +518,7 @@ export function useReviewsSectionController({
 
   const handleReviewSubmit = handleSubmit(async (values) => {
     if (!currentUserId || status !== "authed") {
+      void appHaptics.trigger("warning");
       openAuthModal("login");
       return;
     }
@@ -578,6 +586,7 @@ export function useReviewsSectionController({
         savedMessage = "Отзыв опубликован.";
       }
     } catch (error: unknown) {
+      void appHaptics.trigger("error");
       setSubmitError(extractErrorMessage(error, "Не удалось сохранить отзыв."));
       return;
     }
@@ -614,6 +623,7 @@ export function useReviewsSectionController({
       }
     }
     setSubmitHint(savedMessage);
+    void appHaptics.trigger("success");
     setSubmitSuccessVersion((prev) => prev + 1);
     onReviewSaved?.(cafeId);
 
@@ -650,6 +660,7 @@ export function useReviewsSectionController({
         normalizedReason !== "abuse" &&
         normalizedReason !== "violation"
       ) {
+        void appHaptics.trigger("warning");
         setSubmitError("Если причина указана, используйте abuse или violation.");
         return;
       }
@@ -661,6 +672,7 @@ export function useReviewsSectionController({
 
       setSubmitError(null);
       setSubmitHint(null);
+      void appHaptics.trigger("rigid");
       try {
         const deleteReason =
           normalizedReason === "abuse" || normalizedReason === "violation"
@@ -675,9 +687,11 @@ export function useReviewsSectionController({
         await deleteReview(review.id, {
           ...deletePayload,
         });
+        void appHaptics.trigger("medium");
         setSubmitHint("Отзыв удален.");
         await loadFirstPage();
       } catch (error: unknown) {
+        void appHaptics.trigger("error");
         setSubmitError(extractErrorMessage(error, "Не удалось удалить отзыв."));
       }
     },
@@ -694,6 +708,7 @@ export function useReviewsSectionController({
         return;
       }
       if (!currentUserId || status !== "authed") {
+        void appHaptics.trigger("warning");
         openAuthModal("login");
         return;
       }
@@ -704,12 +719,15 @@ export function useReviewsSectionController({
       try {
         const response = await addHelpfulVote(reviewID);
         if (response.already_exists) {
+          void appHaptics.trigger("warning");
           setSubmitHint("Вы уже отметили этот отзыв как полезный.");
         } else {
+          void appHaptics.trigger("selection");
           setSubmitHint("Спасибо, голос учтен.");
         }
         await loadFirstPage();
       } catch (error: unknown) {
+        void appHaptics.trigger("error");
         setSubmitError(extractErrorMessage(error, "Не удалось учесть голос полезности."));
       } finally {
         setHelpfulPendingReviewID("");
@@ -720,6 +738,7 @@ export function useReviewsSectionController({
 
   const startCheckIn = useCallback(async () => {
     if (!currentUserId || status !== "authed") {
+      void appHaptics.trigger("warning");
       openAuthModal("login");
       return;
     }
@@ -795,6 +814,7 @@ export function useReviewsSectionController({
 
   const verifyCurrentVisit = useCallback(async () => {
     if (!currentUserId || status !== "authed") {
+      void appHaptics.trigger("warning");
       openAuthModal("login");
       return;
     }

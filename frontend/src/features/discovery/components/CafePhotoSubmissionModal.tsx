@@ -5,6 +5,7 @@ import { IconPlus, IconRotateClockwise2, IconTrash } from "@tabler/icons-react";
 import { uploadCafePhotoByPresignedUrl } from "../../../api/cafePhotos";
 import { presignSubmissionPhotoUpload, submitCafePhotos, submitMenuPhotos } from "../../../api/submissions";
 import { AppModal, Badge, Button } from "../../../components/ui";
+import { appHaptics } from "../../../lib/haptics";
 import { cn } from "../../../lib/utils";
 import { extractApiErrorMessage } from "../../../utils/apiError";
 import { rotateImageFileByQuarterTurns } from "../../../utils/imageRotation";
@@ -121,6 +122,7 @@ export default function CafePhotoSubmissionModal({
     if (!fileList || fileList.length === 0) return;
     const accepted = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
     if (accepted.length === 0) {
+      void appHaptics.trigger("warning");
       notifications.show({
         color: "orange",
         title: "Нужны изображения",
@@ -184,12 +186,14 @@ export default function CafePhotoSubmissionModal({
           ? `Отправили ${modeLabel} на модерацию. После одобрения получите +4 к репутации как первый фотограф.`
           : `Отправили ${modeLabel} на модерацию. После одобрения получите +4 к репутации.`,
       });
+      void appHaptics.trigger("success");
       setDraftPhotos((prev) => {
         revokePreviewUrls(prev);
         return [];
       });
       onClose();
     } catch (err: unknown) {
+      void appHaptics.trigger("error");
       const message = extractApiErrorMessage(err, "Не удалось отправить заявку.");
       setError(message);
       notifications.show({
@@ -223,14 +227,20 @@ export default function CafePhotoSubmissionModal({
           <div className={classes.modeTabs}>
             <button
               type="button"
-              onClick={() => setMode("cafe")}
+              onClick={() => {
+                void appHaptics.trigger("selection");
+                setMode("cafe");
+              }}
               className={cn(classes.modeTab, mode === "cafe" ? classes.modeTabActive : "")}
             >
               Фото места
             </button>
             <button
               type="button"
-              onClick={() => setMode("menu")}
+              onClick={() => {
+                void appHaptics.trigger("selection");
+                setMode("menu");
+              }}
               className={cn(classes.modeTab, mode === "menu" ? classes.modeTabActive : "")}
             >
               Фото меню

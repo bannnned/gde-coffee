@@ -1427,3 +1427,54 @@ Critical path stack-transition:
 - AC: frontend/backed тесты и сборка проходят без регрессий.
 - Артефакт: backend report/aggregation и handler route в перечисленных backend файлах.
 - Артефакт: API-клиент `getAdminMapPerf()` и UI-блок в перечисленных frontend файлах.
+
+### [x] W6-G · Map performance trends and network breakdown in admin metrics (P1, status: done)
+- Цель: сделать диагностику map-latency операционной: видеть динамику по дням и деградации по типу сети, а не только общий snapshot.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/internal/domains/metrics/`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/adminMetrics.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Depends on: `W6-F`.
+- AC: backend `GET /api/admin/metrics/map-perf` возвращает `summary + daily + network`, где `daily` покрывает весь диапазон `days` даже при нулевых событиях.
+- AC: backend добавляет aggregation по `effective_type` (`4g/3g/2g/slow-2g/unknown`) с p50/p95 и coverage.
+- AC: admin UI показывает `Daily trend` таблицу (дата, render/interaction p95, coverage) и `Network breakdown` таблицу.
+- AC: фронтенд API-клиент и тесты покрывают новые поля (`daily`, `network`).
+- AC: `go test ./...`, `npm run -s lint`, `npm run -s typecheck`, `npm test -- --watch=false`, `npm run -s build` проходят.
+- Артефакт: новые типы/агрегации в backend metrics domain (`types.go`, `repository.go`, `service.go`).
+- Артефакт: расширенный admin map-perf UI + API parser/test в frontend.
+
+### [x] W6-H · Map performance action loop (health + recommendations) in admin metrics (P1, status: done)
+- Цель: превратить telemetry-блок из “наблюдения” в операционный контур: понятный статус, тренд и следующие действия.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Depends on: `W6-G`.
+- AC: в блоке `Map performance` отображается `Action loop` с общим health-статусом (`Норма/Наблюдать/Риск`) на базе порогов `render p95`, `interaction p95`, `interaction coverage`.
+- AC: добавлен тренд `render p95` (последние 3 дня против предыдущих 3) и выделение самого медленного сетевого сегмента.
+- AC: UI формирует и показывает список рекомендаций по действиям (action items) на основе health и trend сигналов.
+- AC: frontend `lint/typecheck/tests/build` проходят без регрессий.
+- Артефакт: helper-логика классификации/рекомендаций и новый UI-блок `Action loop` в `AdminNorthStarPage`.
+
+### [x] W6-I · Auto-alerts and compact status history for map performance (P1, status: done)
+- Цель: закрыть action loop до “observe → alert → inspect history” без ручного мониторинга графиков.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Depends on: `W6-H`.
+- AC: при `watch/risk` автоматически показывается alert (`notifications.show`) при появлении нового fingerprint состояния.
+- AC: в `Map performance` есть блок `Active alerts` с текущими нарушениями порогов и их target.
+- AC: в `Map performance` есть блок `Alert history` (время, статус, render/interaction p95, coverage, trend).
+- AC: история и anti-spam fingerprint сохраняются локально (`localStorage`) и не дублируют повторные алерты на том же состоянии.
+- AC: frontend `lint/typecheck/tests/build` проходят без регрессий.
+- Артефакт: local persistence + авто-алертинг + UI-блоки `Active alerts`/`Alert history` в `AdminNorthStarPage`.
+
+### [x] W6-J · Server-driven map alerts/history (replace local persistence) (P1, status: done)
+- Цель: сделать алерты и историю общими для команды (единый backend-источник), а не локальными на устройстве админа.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/internal/domains/metrics/types.go`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/internal/domains/metrics/service.go`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/internal/domains/metrics/service_test.go`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/adminMetrics.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/adminMetrics.test.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Depends on: `W6-I`.
+- AC: backend `GET /api/admin/metrics/map-perf` возвращает `alerts[]` и `history[]` вместе с `summary/daily/network`.
+- AC: backend формирует alert-список по threshold breach (`render p95`, `interaction p95`, `coverage`, `trend`), а `history` строится из daily-статусов.
+- AC: frontend удаляет `localStorage`-историю алертов и рендерит `Active alerts` / `Alert history` только из backend-репорта.
+- AC: авто-уведомление на фронте остается, но dedupe делается на runtime fingerprint текущего ответа.
+- AC: `go test ./...`, `npm run -s lint`, `npm run -s typecheck`, `npm test -- --watch=false`, `npm run -s build` проходят.
+- Артефакт: расширенный backend report contract + frontend API parser + UI switch на server-driven alerts/history.

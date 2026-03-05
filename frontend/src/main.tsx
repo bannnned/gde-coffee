@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import { AppNotifications } from './lib/notifications'
 import useAppColorScheme, { AppColorSchemeProvider } from './hooks/useAppColorScheme'
+import { AppHapticsProvider } from './hooks/useAppHaptics'
 import {
   applyPalette,
   getStoredPalette,
@@ -338,10 +339,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <AppColorSchemeProvider>
-        <PaletteSync />
-        <AppNotifications />
-        <App />
-        <QueryDevtoolsSlot />
+        <AppHapticsProvider>
+          <PaletteSync />
+          <AppNotifications />
+          <App />
+          <QueryDevtoolsSlot />
+        </AppHapticsProvider>
       </AppColorSchemeProvider>
     </QueryClientProvider>
   </React.StrictMode>,

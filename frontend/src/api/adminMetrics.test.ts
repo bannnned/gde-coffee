@@ -114,6 +114,49 @@ describe("adminMetrics api", () => {
           first_interaction_p95_ms: 2012.8,
           interaction_coverage: 0.7333,
         },
+        daily: [
+          {
+            date: "2026-02-14",
+            first_render_events: 11,
+            first_render_p50_ms: 700,
+            first_render_p95_ms: 1400,
+            first_interaction_events: 8,
+            first_interaction_p50_ms: 820,
+            first_interaction_p95_ms: 1700,
+            interaction_coverage: 0.7272,
+          },
+        ],
+        network: [
+          {
+            effective_type: "4g",
+            first_render_events: 92,
+            first_render_p50_ms: 640,
+            first_render_p95_ms: 1200,
+            first_interaction_events: 70,
+            first_interaction_p50_ms: 760,
+            first_interaction_p95_ms: 1500,
+            interaction_coverage: 0.7608,
+          },
+        ],
+        alerts: [
+          {
+            key: "coverage",
+            severity: "watch",
+            label: "Interaction coverage",
+            value: "42.0%",
+            target: "цель ≥ 55%",
+          },
+        ],
+        history: [
+          {
+            date: "2026-02-14",
+            status: "watch",
+            first_render_p95_ms: 2400,
+            first_interaction_p95_ms: 2800,
+            interaction_coverage: 0.42,
+            trend_delta_pct: 8.2,
+          },
+        ],
       },
     });
 
@@ -127,5 +170,9 @@ describe("adminMetrics api", () => {
     expect(report.summary.first_render_events).toBe(120);
     expect(report.summary.first_render_p50_ms).toBe(812.4);
     expect(report.summary.interaction_coverage).toBe(0.7333);
+    expect(report.daily[0]?.date).toBe("2026-02-14");
+    expect(report.network[0]?.effective_type).toBe("4g");
+    expect(report.alerts[0]?.key).toBe("coverage");
+    expect(report.history[0]?.status).toBe("watch");
   });
 });

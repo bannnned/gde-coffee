@@ -39,6 +39,7 @@ import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import { Button as UIButton, Input } from "../components/ui";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import useAppColorScheme from "../hooks/useAppColorScheme";
+import useAppHaptics from "../hooks/useAppHaptics";
 import useOauthRedirect from "../hooks/useOauthRedirect";
 import classes from "./SettingsScreen.module.css";
 
@@ -82,6 +83,7 @@ export default function SettingsScreen() {
   const [searchParams] = useSearchParams();
   const { user, status, refreshAuth } = useAuth();
   const { setColorScheme, colorScheme } = useAppColorScheme();
+  const { enabled: hapticsEnabled, isSupported: hapticsSupported, setEnabled: setHapticsEnabled } = useAppHaptics();
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [verifySuccess, setVerifySuccess] = useState<string | null>(null);
   const [nameChangeResult, setNameChangeResult] = useState<string | null>(null);
@@ -1078,6 +1080,41 @@ export default function SettingsScreen() {
                   Тёмная
                 </UIButton>
               </div>
+            </div>
+
+            <div className={classes.section}>
+              <div className={classes.sectionHeader}>
+                <div className={classes.sectionTitleRow}>
+                  <IconMessageCircle size={18} />
+                  <h3 className={classes.sectionTitle}>Тактильный отклик</h3>
+                </div>
+              </div>
+              <p className={classes.sectionDescription}>
+                Инфраструктура haptics подключена. Пока это базовая настройка перед привязкой к конкретным действиям.
+              </p>
+              <div className={classes.actionsRow}>
+                <UIButton
+                  type="button"
+                  variant={hapticsEnabled ? "default" : "secondary"}
+                  className={classes.actionButton}
+                  onClick={() => setHapticsEnabled(true)}
+                >
+                  Включить
+                </UIButton>
+                <UIButton
+                  type="button"
+                  variant={!hapticsEnabled ? "default" : "secondary"}
+                  className={classes.actionButton}
+                  onClick={() => setHapticsEnabled(false)}
+                >
+                  Выключить
+                </UIButton>
+              </div>
+              {!hapticsSupported ? (
+                <p className={classes.panelMutedText}>
+                  В этом браузере тактильный отклик может быть недоступен.
+                </p>
+              ) : null}
             </div>
 
             {user ? (

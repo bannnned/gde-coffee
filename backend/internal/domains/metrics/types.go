@@ -95,6 +95,26 @@ type MapPerfSnapshot struct {
 	FirstInteractionP95Ms  float64
 }
 
+type MapPerfDailyMetrics struct {
+	Day                    time.Time
+	FirstRenderEvents      int
+	FirstRenderP50Ms       float64
+	FirstRenderP95Ms       float64
+	FirstInteractionEvents int
+	FirstInteractionP50Ms  float64
+	FirstInteractionP95Ms  float64
+}
+
+type MapPerfNetworkMetrics struct {
+	EffectiveType          string
+	FirstRenderEvents      int
+	FirstRenderP50Ms       float64
+	FirstRenderP95Ms       float64
+	FirstInteractionEvents int
+	FirstInteractionP50Ms  float64
+	FirstInteractionP95Ms  float64
+}
+
 type MapPerfSummary struct {
 	From                   string  `json:"from"`
 	To                     string  `json:"to"`
@@ -108,8 +128,51 @@ type MapPerfSummary struct {
 	InteractionCoverage    float64 `json:"interaction_coverage"`
 }
 
+type MapPerfDailyPoint struct {
+	Date                   string  `json:"date"`
+	FirstRenderEvents      int     `json:"first_render_events"`
+	FirstRenderP50Ms       float64 `json:"first_render_p50_ms"`
+	FirstRenderP95Ms       float64 `json:"first_render_p95_ms"`
+	FirstInteractionEvents int     `json:"first_interaction_events"`
+	FirstInteractionP50Ms  float64 `json:"first_interaction_p50_ms"`
+	FirstInteractionP95Ms  float64 `json:"first_interaction_p95_ms"`
+	InteractionCoverage    float64 `json:"interaction_coverage"`
+}
+
+type MapPerfNetworkPoint struct {
+	EffectiveType          string  `json:"effective_type"`
+	FirstRenderEvents      int     `json:"first_render_events"`
+	FirstRenderP50Ms       float64 `json:"first_render_p50_ms"`
+	FirstRenderP95Ms       float64 `json:"first_render_p95_ms"`
+	FirstInteractionEvents int     `json:"first_interaction_events"`
+	FirstInteractionP50Ms  float64 `json:"first_interaction_p50_ms"`
+	FirstInteractionP95Ms  float64 `json:"first_interaction_p95_ms"`
+	InteractionCoverage    float64 `json:"interaction_coverage"`
+}
+
+type MapPerfAlert struct {
+	Key      string `json:"key"`
+	Severity string `json:"severity"`
+	Label    string `json:"label"`
+	Value    string `json:"value"`
+	Target   string `json:"target"`
+}
+
+type MapPerfHistoryPoint struct {
+	Date                  string  `json:"date"`
+	Status                string  `json:"status"`
+	FirstRenderP95Ms      float64 `json:"first_render_p95_ms"`
+	FirstInteractionP95Ms float64 `json:"first_interaction_p95_ms"`
+	InteractionCoverage   float64 `json:"interaction_coverage"`
+	TrendDeltaPct         float64 `json:"trend_delta_pct"`
+}
+
 type MapPerfReport struct {
-	Summary MapPerfSummary `json:"summary"`
+	Summary MapPerfSummary        `json:"summary"`
+	Daily   []MapPerfDailyPoint   `json:"daily"`
+	Network []MapPerfNetworkPoint `json:"network"`
+	Alerts  []MapPerfAlert        `json:"alerts"`
+	History []MapPerfHistoryPoint `json:"history"`
 }
 
 type ingestEventRequest struct {

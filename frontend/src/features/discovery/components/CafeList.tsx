@@ -5,6 +5,7 @@ import type { Cafe } from "../../../entities/cafe/model/types";
 import { DISCOVERY_UI_TEXT } from "../constants";
 import { formatDistance } from "../utils";
 import classes from "./CafeList.module.css";
+import { appHaptics } from "../../../lib/haptics";
 
 type CafeListProps = {
   cafes: Cafe[];
@@ -75,7 +76,10 @@ export default function CafeList({
             className={`${classes.item} ui-focus-ring`}
             data-selected={isSelected ? "true" : "false"}
             type="button"
-            onClick={() => onSelectCafe(c.id)}
+            onClick={() => {
+              void appHaptics.trigger("light");
+              onSelectCafe(c.id);
+            }}
             aria-pressed={isSelected}
             aria-current={isSelected ? "true" : undefined}
           >

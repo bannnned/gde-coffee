@@ -19,6 +19,7 @@ import useDiscoveryModals from "../model/modals/useDiscoveryModals";
 import useDiscoveryFavoriteActions from "../model/favorites/useDiscoveryFavoriteActions";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
 import { invalidateCafeCardRatingSnapshot } from "../components/cafe-card/CafeCardFooter";
+import { appHaptics } from "../../../lib/haptics";
 
 function normalizeTagList(raw: string[]): string[] {
   const seen = new Set<string>();
@@ -352,6 +353,7 @@ export default function useDiscoveryPageController() {
 
   const handleSaveFavoriteTags = async () => {
     if (!user) {
+      void appHaptics.trigger("warning");
       openAuthModal("login");
       return;
     }
@@ -382,6 +384,7 @@ export default function useDiscoveryPageController() {
     favoriteDescriptiveTags.some((value, index) => value !== favoriteDescriptiveTagsDraft[index]);
 
   const handleRequireTagsAuth = () => {
+    void appHaptics.trigger("warning");
     openAuthModal("login");
   };
 
@@ -421,6 +424,7 @@ export default function useDiscoveryPageController() {
   };
 
   function open2gisRoute(cafe: Cafe) {
+    void appHaptics.trigger("medium");
     const journeyID = resolveJourneyID(cafe.id);
     if (journeyID) {
       reportMetricEvent({
@@ -441,6 +445,7 @@ export default function useDiscoveryPageController() {
   }
 
   function openYandexRoute(cafe: Cafe) {
+    void appHaptics.trigger("medium");
     const journeyID = resolveJourneyID(cafe.id);
     if (journeyID) {
       reportMetricEvent({
@@ -463,6 +468,9 @@ export default function useDiscoveryPageController() {
   function selectCafeWithJourney(id: string) {
     const nextID = id.trim();
     if (!nextID) return;
+    if (selectedCafeId !== nextID) {
+      void appHaptics.trigger("light");
+    }
     if (!journeyByCafeRef.current[nextID] || selectedCafeId !== nextID) {
       journeyByCafeRef.current[nextID] = createJourneyID(nextID);
     }
@@ -472,6 +480,7 @@ export default function useDiscoveryPageController() {
   const handleOpenPhotoAdmin = (kind: "cafe" | "menu") => {
     if (!selectedCafe) return;
     if (!user) {
+      void appHaptics.trigger("warning");
       modals.setDetailsOpen(false);
       openAuthModal("login");
       return;
@@ -526,9 +535,11 @@ export default function useDiscoveryPageController() {
 
   const handleOpenCafeProposal = () => {
     if (!user) {
+      void appHaptics.trigger("warning");
       openAuthModal("login");
       return;
     }
+    void appHaptics.trigger("selection");
     modals.setCafeProposalOpen(true);
     modals.setSettingsOpen(false);
   };

@@ -274,3 +274,177 @@ cross join interaction_agg i`
 
 	return snapshot, nil
 }
+
+func (r *Repository) ListMapPerfDailyMetrics(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) ([]MapPerfDailyMetrics, error) {
+	const query = `with render_events as (
+	select
+		date_trunc('day', occurred_at)::date as day,
+		case
+			when coalesce(metadata->>'map_init_elapsed_ms', '') ~ '^-?[0-9]+(\.[0-9]+)?$'
+			then (metadata->>'map_init_elapsed_ms')::double precision
+			else null
+		end as map_init_ms
+	from public.product_metrics_events
+	where event_type = 'map_first_render'
+	  and occurred_at >= $1
+	  and occurred_at < $2
+), interaction_events as (
+	select
+		date_trunc('day', occurred_at)::date as day,
+		case
+			when coalesce(metadata->>'map_init_elapsed_ms', '') ~ '^-?[0-9]+(\.[0-9]+)?$'
+			then (metadata->>'map_init_elapsed_ms')::double precision
+			else null
+		end as map_init_ms
+	from public.product_metrics_events
+	where event_type = 'map_first_interaction'
+	  and occurred_at >= $1
+	  and occurred_at < $2
+), render_agg as (
+	select
+		day,
+		count(*) filter (where map_init_ms is not null)::int as first_render_events,
+		coalesce(percentile_cont(0.5) within group (order by map_init_ms), 0)::double precision as first_render_p50_ms,
+		coalesce(percentile_cont(0.95) within group (order by map_init_ms), 0)::double precision as first_render_p95_ms
+	from render_events
+	group by day
+), interaction_agg as (
+	select
+		day,
+		count(*) filter (where map_init_ms is not null)::int as first_interaction_events,
+		coalesce(percentile_cont(0.5) within group (order by map_init_ms), 0)::double precision as first_interaction_p50_ms,
+		coalesce(percentile_cont(0.95) within group (order by map_init_ms), 0)::double precision as first_interaction_p95_ms
+	from interaction_events
+	group by day
+)
+select
+	coalesce(r.day, i.day) as day,
+	coalesce(r.first_render_events, 0) as first_render_events,
+	coalesce(r.first_render_p50_ms, 0)::double precision as first_render_p50_ms,
+	coalesce(r.first_render_p95_ms, 0)::double precision as first_render_p95_ms,
+	coalesce(i.first_interaction_events, 0) as first_interaction_events,
+	coalesce(i.first_interaction_p50_ms, 0)::double precision as first_interaction_p50_ms,
+	coalesce(i.first_interaction_p95_ms, 0)::double precision as first_interaction_p95_ms
+from render_agg r
+full join interaction_agg i on i.day = r.day
+order by day asc`
+
+	rows, err := r.pool.Query(ctx, query, dateFrom.UTC(), dateTo.UTC())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]MapPerfDailyMetrics, 0, 32)
+	for rows.Next() {
+		var row MapPerfDailyMetrics
+		if err := rows.Scan(
+			&row.Day,
+			&row.FirstRenderEvents,
+			&row.FirstRenderP50Ms,
+			&row.FirstRenderP95Ms,
+			&row.FirstInteractionEvents,
+			&row.FirstInteractionP50Ms,
+			&row.FirstInteractionP95Ms,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (r *Repository) ListMapPerfNetworkMetrics(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) ([]MapPerfNetworkMetrics, error) {
+	const query = `with render_events as (
+	select
+		coalesce(nullif(lower(trim(metadata->>'effective_type')), ''), 'unknown') as effective_type,
+		case
+			when coalesce(metadata->>'map_init_elapsed_ms', '') ~ '^-?[0-9]+(\.[0-9]+)?$'
+			then (metadata->>'map_init_elapsed_ms')::double precision
+			else null
+		end as map_init_ms
+	from public.product_metrics_events
+	where event_type = 'map_first_render'
+	  and occurred_at >= $1
+	  and occurred_at < $2
+), interaction_events as (
+	select
+		coalesce(nullif(lower(trim(metadata->>'effective_type')), ''), 'unknown') as effective_type,
+		case
+			when coalesce(metadata->>'map_init_elapsed_ms', '') ~ '^-?[0-9]+(\.[0-9]+)?$'
+			then (metadata->>'map_init_elapsed_ms')::double precision
+			else null
+		end as map_init_ms
+	from public.product_metrics_events
+	where event_type = 'map_first_interaction'
+	  and occurred_at >= $1
+	  and occurred_at < $2
+), render_agg as (
+	select
+		effective_type,
+		count(*) filter (where map_init_ms is not null)::int as first_render_events,
+		coalesce(percentile_cont(0.5) within group (order by map_init_ms), 0)::double precision as first_render_p50_ms,
+		coalesce(percentile_cont(0.95) within group (order by map_init_ms), 0)::double precision as first_render_p95_ms
+	from render_events
+	group by effective_type
+), interaction_agg as (
+	select
+		effective_type,
+		count(*) filter (where map_init_ms is not null)::int as first_interaction_events,
+		coalesce(percentile_cont(0.5) within group (order by map_init_ms), 0)::double precision as first_interaction_p50_ms,
+		coalesce(percentile_cont(0.95) within group (order by map_init_ms), 0)::double precision as first_interaction_p95_ms
+	from interaction_events
+	group by effective_type
+)
+select
+	coalesce(r.effective_type, i.effective_type) as effective_type,
+	coalesce(r.first_render_events, 0) as first_render_events,
+	coalesce(r.first_render_p50_ms, 0)::double precision as first_render_p50_ms,
+	coalesce(r.first_render_p95_ms, 0)::double precision as first_render_p95_ms,
+	coalesce(i.first_interaction_events, 0) as first_interaction_events,
+	coalesce(i.first_interaction_p50_ms, 0)::double precision as first_interaction_p50_ms,
+	coalesce(i.first_interaction_p95_ms, 0)::double precision as first_interaction_p95_ms
+from render_agg r
+full join interaction_agg i on i.effective_type = r.effective_type
+order by first_render_events desc, effective_type asc`
+
+	rows, err := r.pool.Query(ctx, query, dateFrom.UTC(), dateTo.UTC())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]MapPerfNetworkMetrics, 0, 8)
+	for rows.Next() {
+		var row MapPerfNetworkMetrics
+		if err := rows.Scan(
+			&row.EffectiveType,
+			&row.FirstRenderEvents,
+			&row.FirstRenderP50Ms,
+			&row.FirstRenderP95Ms,
+			&row.FirstInteractionEvents,
+			&row.FirstInteractionP50Ms,
+			&row.FirstInteractionP95Ms,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}

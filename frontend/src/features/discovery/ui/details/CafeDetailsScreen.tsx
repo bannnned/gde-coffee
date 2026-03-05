@@ -17,6 +17,7 @@ import PhotoLightboxModal from "../../../../components/PhotoLightboxModal";
 import type { Cafe, CafePhotoKind } from "../../../../entities/cafe/model/types";
 import { extractApiErrorMessage } from "../../../../utils/apiError";
 import { cn } from "../../../../lib/utils";
+import { appHaptics } from "../../../../lib/haptics";
 
 type CafeDetailsScreenProps = {
   opened: boolean;
@@ -362,6 +363,7 @@ export default function CafeDetailsScreen({
                   if (item.value !== "reviews") {
                     setFocusReviewID(null);
                   }
+                  void appHaptics.trigger("selection");
                   setSection(item.value);
                 }}
                 className={cn(

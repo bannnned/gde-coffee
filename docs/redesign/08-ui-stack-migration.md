@@ -89,6 +89,10 @@
 71. `W6-D` закрыт (`done`): `ReactQueryDevtools` убран из production bundle и переведен в dev-only lazy import (`QueryDevtoolsSlot`) для снижения startup payload.
 72. `W6-E` закрыт (`done`): добавлена telemetry-инструментация `map_first_render` и `map_first_interaction` (frontend map hooks + backend ingest support + DB constraint migration) для измерения реальной map latency в проде.
 73. `W6-F` закрыт (`done`): добавлен backend endpoint `GET /api/admin/metrics/map-perf` и UI-блок `Map performance` в `/admin/metrics` с p50/p95 и interaction coverage.
+74. `W6-G` закрыт (`done`): `Map performance` расширен до операционного режима (daily trend + network breakdown), backend report дополнен блоками `daily` и `network` с coverage/p95, UI `/admin/metrics` показывает динамику по дням и деградации по типам сети.
+75. `W6-H` закрыт (`done`): в `Map performance` добавлен action loop слой (health-status + trend delta + slowest network + рекомендации), чтобы админ видел не только цифры, но и конкретные следующие действия.
+76. `W6-I` закрыт (`done`): добавлены авто-алерты по threshold breach (`watch/risk`) и компактная история статусов (`Active alerts` + `Alert history`) с local persistence и anti-spam fingerprint.
+77. `W6-J` закрыт (`done`): `Map performance` переведен на server-driven `alerts/history` (backend возвращает alert/history вместе с map-perf report), frontend удалил `localStorage`-источник и использует единый серверный источник для команды.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

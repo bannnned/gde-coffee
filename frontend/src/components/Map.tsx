@@ -6,6 +6,7 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import useAppColorScheme from "../hooks/useAppColorScheme";
+import { appHaptics } from "../lib/haptics";
 import { createJourneyID, reportMetricEvent } from "../api/metrics";
 import type { Cafe } from "../types";
 import pinUrl from "../assets/pin.png";
@@ -886,6 +887,7 @@ async function expandClusterOnClick(
   const source = getCafesClusterSource(map);
   if (!source || typeof source.getClusterExpansionZoom !== "function") return;
   clearSpiderfy(map);
+  void appHaptics.trigger("light");
   logMapClusterDebug("cluster_tap", {
     clusterId,
     pointCount: asFiniteNumber(feature.properties?.point_count) ?? null,

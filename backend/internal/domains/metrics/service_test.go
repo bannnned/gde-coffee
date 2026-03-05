@@ -13,6 +13,8 @@ type serviceRepositoryStub struct {
 	rows             []DailyNorthStarMetrics
 	funnelCounts     FunnelJourneyCounts
 	mapPerfSnapshot  MapPerfSnapshot
+	mapPerfDaily     []MapPerfDailyMetrics
+	mapPerfNetwork   []MapPerfNetworkMetrics
 }
 
 func (r *serviceRepositoryStub) InsertEvents(ctx context.Context, events []EventInput) (int, error) {
@@ -51,6 +53,26 @@ func (r *serviceRepositoryStub) GetMapPerfSnapshot(
 	r.capturedDateFrom = dateFrom
 	r.capturedDateTo = dateTo
 	return r.mapPerfSnapshot, nil
+}
+
+func (r *serviceRepositoryStub) ListMapPerfDailyMetrics(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) ([]MapPerfDailyMetrics, error) {
+	r.capturedDateFrom = dateFrom
+	r.capturedDateTo = dateTo
+	return r.mapPerfDaily, nil
+}
+
+func (r *serviceRepositoryStub) ListMapPerfNetworkMetrics(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) ([]MapPerfNetworkMetrics, error) {
+	r.capturedDateFrom = dateFrom
+	r.capturedDateTo = dateTo
+	return r.mapPerfNetwork, nil
 }
 
 func TestGetNorthStarReport_PropagatesCafeFilterAndBuildsDaily(t *testing.T) {
@@ -154,6 +176,28 @@ func TestGetMapPerfReport_BuildsSummaryAndCoverage(t *testing.T) {
 			FirstInteractionP50Ms:  950,
 			FirstInteractionP95Ms:  2100,
 		},
+		mapPerfDaily: []MapPerfDailyMetrics{
+			{
+				Day:                    time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC),
+				FirstRenderEvents:      40,
+				FirstRenderP50Ms:       780,
+				FirstRenderP95Ms:       1500,
+				FirstInteractionEvents: 30,
+				FirstInteractionP50Ms:  920,
+				FirstInteractionP95Ms:  1900,
+			},
+		},
+		mapPerfNetwork: []MapPerfNetworkMetrics{
+			{
+				EffectiveType:          "4g",
+				FirstRenderEvents:      60,
+				FirstRenderP50Ms:       700,
+				FirstRenderP95Ms:       1200,
+				FirstInteractionEvents: 50,
+				FirstInteractionP50Ms:  810,
+				FirstInteractionP95Ms:  1400,
+			},
+		},
 	}
 	service := NewService(repo)
 	now := time.Date(2026, 2, 21, 15, 30, 0, 0, time.UTC)
@@ -177,5 +221,82 @@ func TestGetMapPerfReport_BuildsSummaryAndCoverage(t *testing.T) {
 	}
 	if report.Summary.InteractionCoverage < 0.729 || report.Summary.InteractionCoverage > 0.731 {
 		t.Fatalf("unexpected interaction coverage: %v", report.Summary.InteractionCoverage)
+	}
+	if len(report.Daily) != 14 {
+		t.Fatalf("expected 14 daily points, got %d", len(report.Daily))
+	}
+	if report.Daily[13].Date != "2026-02-21" {
+		t.Fatalf("unexpected last daily date: %s", report.Daily[13].Date)
+	}
+	if report.Daily[12].Date != "2026-02-20" || report.Daily[12].FirstRenderEvents != 40 {
+		t.Fatalf("unexpected filled daily point: %+v", report.Daily[12])
+	}
+	if len(report.Network) != 1 {
+		t.Fatalf("expected 1 network row, got %d", len(report.Network))
+	}
+	if report.Network[0].EffectiveType != "4g" {
+		t.Fatalf("unexpected network row: %+v", report.Network[0])
+	}
+	if report.Network[0].InteractionCoverage < 0.83 || report.Network[0].InteractionCoverage > 0.84 {
+		t.Fatalf("unexpected network coverage: %v", report.Network[0].InteractionCoverage)
+	}
+	if len(report.Alerts) != 0 {
+		t.Fatalf("expected no alerts for healthy snapshot, got %d", len(report.Alerts))
+	}
+	if len(report.History) == 0 {
+		t.Fatalf("expected non-empty history")
+	}
+	if report.History[0].Date != "2026-02-20" {
+		t.Fatalf("unexpected history date: %+v", report.History[0])
+	}
+}
+
+func TestGetMapPerfReport_BuildsAlertsFromThresholdBreaches(t *testing.T) {
+	repo := &serviceRepositoryStub{
+		mapPerfSnapshot: MapPerfSnapshot{
+			FirstRenderEvents:      40,
+			FirstRenderP95Ms:       3900,
+			FirstInteractionEvents: 9,
+			FirstInteractionP95Ms:  4700,
+		},
+		mapPerfDaily: []MapPerfDailyMetrics{
+			{
+				Day:                    time.Date(2026, 2, 19, 0, 0, 0, 0, time.UTC),
+				FirstRenderEvents:      10,
+				FirstRenderP95Ms:       2300,
+				FirstInteractionEvents: 5,
+				FirstInteractionP95Ms:  3000,
+			},
+			{
+				Day:                    time.Date(2026, 2, 20, 0, 0, 0, 0, time.UTC),
+				FirstRenderEvents:      10,
+				FirstRenderP95Ms:       4100,
+				FirstInteractionEvents: 2,
+				FirstInteractionP95Ms:  5000,
+			},
+			{
+				Day:                    time.Date(2026, 2, 21, 0, 0, 0, 0, time.UTC),
+				FirstRenderEvents:      10,
+				FirstRenderP95Ms:       4200,
+				FirstInteractionEvents: 2,
+				FirstInteractionP95Ms:  5100,
+			},
+		},
+	}
+	service := NewService(repo)
+	now := time.Date(2026, 2, 21, 15, 30, 0, 0, time.UTC)
+
+	report, err := service.GetMapPerfReport(context.Background(), 14, now)
+	if err != nil {
+		t.Fatalf("GetMapPerfReport returned error: %v", err)
+	}
+	if len(report.Alerts) == 0 {
+		t.Fatalf("expected alerts to be present")
+	}
+	if report.Alerts[0].Severity == "" {
+		t.Fatalf("alert severity must be populated: %+v", report.Alerts[0])
+	}
+	if len(report.History) == 0 {
+		t.Fatalf("history should not be empty")
 	}
 }

@@ -7,6 +7,7 @@ import { DISCOVERY_ICONS, DISCOVERY_UI_TEXT } from "../constants";
 import classes from "./FiltersBar.module.css";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
 import { resolveAvatarUrl } from "../../../utils/resolveAvatarUrl";
+import { appHaptics } from "../../../lib/haptics";
 
 type FiltersBarProps = {
   topTags?: string[];
@@ -133,6 +134,7 @@ export default function FiltersBar({
             type="button"
             onClick={() => {
               if (isClickSuppressedNow() || isOpeningProfile) return;
+              void appHaptics.trigger("selection");
               setIsOpeningProfile(true);
               const overlayBackgroundLocation = {
                 pathname: location.pathname,
@@ -174,6 +176,7 @@ export default function FiltersBar({
             onClick={() => {
               if (isClickSuppressedNow()) return;
               if (status === "loading") return;
+              void appHaptics.trigger("selection");
               openAuthModal("login");
             }}
           >
@@ -201,6 +204,7 @@ export default function FiltersBar({
             aria-label={DISCOVERY_UI_TEXT.settingsAria}
             onClick={() => {
               if (isClickSuppressedNow()) return;
+              void appHaptics.trigger("selection");
               onOpenSettings();
             }}
           >

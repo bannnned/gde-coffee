@@ -7,6 +7,7 @@ import { DISCOVERY_UI_TEXT } from "../../constants";
 import {
   discoveryGlassSelectStyles,
 } from "../styles/glass";
+import { appHaptics } from "../../../../lib/haptics";
 
 type LocationOption = {
   id: string;
@@ -152,12 +153,14 @@ export default function SettingsDrawer({
     const value = tag.trim();
     if (!value) return;
     if (hasTagSelected(value)) {
+      void appHaptics.trigger("selection");
       onTopTagsChange(
         normalizedSelectedTags.filter((item) => item.toLowerCase() !== value.toLowerCase()),
       );
       return;
     }
     if (normalizedSelectedTags.length >= 12) return;
+    void appHaptics.trigger("selection");
     onTopTagsChange([...normalizedSelectedTags, value]);
   };
 
@@ -169,13 +172,16 @@ export default function SettingsDrawer({
     const value = (pendingTagToAdd ?? "").trim();
     if (!value) return;
     if (!normalizedTagOptionsSet.has(value.toLowerCase())) {
+      void appHaptics.trigger("warning");
       setPendingTagToAdd(null);
       return;
     }
     if (hasTagSelected(value) || normalizedSelectedTags.length >= 12) {
+      void appHaptics.trigger("warning");
       setPendingTagToAdd(null);
       return;
     }
+    void appHaptics.trigger("selection");
     onTopTagsChange([...normalizedSelectedTags, value]);
     setPendingTagToAdd(null);
     onTopTagsQueryChange("");
@@ -243,6 +249,7 @@ export default function SettingsDrawer({
                 onChange={(event) => {
                   const nextId = event.currentTarget.value.trim();
                   if (!nextId) return;
+                  void appHaptics.trigger("selection");
                   onSelectLocation(nextId);
                 }}
                 className="h-10 w-full rounded-[12px] border px-3 pr-9 text-sm font-medium text-[var(--text)] outline-none ui-focus-ring"
@@ -279,7 +286,10 @@ export default function SettingsDrawer({
             variant="secondary"
             size="md"
             className="justify-start gap-2 border-glass-border bg-glass text-text shadow-glass"
-            onClick={onOpenMapPicker}
+            onClick={() => {
+              void appHaptics.trigger("selection");
+              onOpenMapPicker();
+            }}
           >
             <IconMapPin size={16} />
             <span>Выбрать точку на карте</span>
@@ -302,7 +312,10 @@ export default function SettingsDrawer({
                       ? "border-[color:var(--color-brand-accent)]"
                       : "border-[color:var(--border)] bg-[color:var(--surface)] text-[var(--text)]",
                   )}
-                  onClick={() => onRadiusChange(value)}
+                  onClick={() => {
+                    void appHaptics.trigger("selection");
+                    onRadiusChange(value);
+                  }}
                 >
                   {formatRadiusLabel(value)}
                 </Button>
@@ -323,9 +336,11 @@ export default function SettingsDrawer({
                   className="h-8 w-8 rounded-full border-glass-border bg-glass text-text shadow-glass"
                   onClick={() => {
                     if (!isAuthed) {
+                      void appHaptics.trigger("warning");
                       onRequireAuthForTags?.();
                       return;
                     }
+                    void appHaptics.trigger("selection");
                     setIsTagPickerOpen((prev) => !prev);
                   }}
                 >
@@ -350,6 +365,7 @@ export default function SettingsDrawer({
                       type="button"
                       onClick={() => {
                         if (!isAuthed) {
+                          void appHaptics.trigger("warning");
                           onRequireAuthForTags?.();
                           return;
                         }
@@ -382,7 +398,10 @@ export default function SettingsDrawer({
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => onRequireAuthForTags?.()}
+                  onClick={() => {
+                    void appHaptics.trigger("warning");
+                    onRequireAuthForTags?.();
+                  }}
                   className="justify-start border-glass-border bg-glass text-text shadow-glass"
                 >
                   Войти и настроить теги
@@ -444,7 +463,10 @@ export default function SettingsDrawer({
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={onSaveTopTags}
+                  onClick={() => {
+                    void appHaptics.trigger("selection");
+                    onSaveTopTags();
+                  }}
                   disabled={!topTagsDirty || topTagsSaving || topTagsLoading}
                   className="justify-start border-glass-border bg-glass text-text shadow-glass"
                 >
@@ -469,7 +491,10 @@ export default function SettingsDrawer({
           <Button
             type="button"
             variant="secondary"
-            onClick={onSuggestCafe}
+            onClick={() => {
+              void appHaptics.trigger("selection");
+              onSuggestCafe?.();
+            }}
             disabled={!onSuggestCafe}
             className="justify-start gap-2 border-glass-border bg-glass text-text shadow-glass"
           >

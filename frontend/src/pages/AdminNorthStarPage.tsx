@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { notifications } from "../lib/notifications";
 import { IconArrowLeft, IconInfoCircle } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +11,10 @@ import {
   searchAdminCafesByName,
   type AdminCafeSearchItem,
   type AdminFunnelReport,
+  type AdminMapPerfDailyPoint,
+  type AdminMapPerfNetworkPoint,
   type AdminMapPerfReport,
+  type AdminMapPerfSummary,
   type AdminNorthStarReport,
 } from "../api/adminMetrics";
 import { useAuth } from "../components/AuthGate";
@@ -19,6 +22,7 @@ import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import { extractApiErrorMessage } from "../utils/apiError";
 
 type ScopeMode = "overall" | "cafe";
+type PerfHealthLevel = "good" | "watch" | "risk";
 
 const RANGE_OPTIONS = [
   { value: "7", label: "7 дней" },
@@ -49,6 +53,121 @@ function formatMs(value: number): string {
   return `${Math.round(value)} мс`;
 }
 
+function formatEffectiveType(value: string): string {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return "unknown";
+  return trimmed.toUpperCase();
+}
+
+function classifyLatency(valueMs: number, goodThreshold: number, watchThreshold: number): PerfHealthLevel {
+  if (!Number.isFinite(valueMs) || valueMs <= 0) return "watch";
+  if (valueMs <= goodThreshold) return "good";
+  if (valueMs <= watchThreshold) return "watch";
+  return "risk";
+}
+
+function classifyCoverage(value: number, goodThreshold: number, watchThreshold: number): PerfHealthLevel {
+  if (!Number.isFinite(value) || value <= 0) return "risk";
+  if (value >= goodThreshold) return "good";
+  if (value >= watchThreshold) return "watch";
+  return "risk";
+}
+
+function levelColor(level: PerfHealthLevel): string {
+  if (level === "good") return "var(--color-success, #1f9d55)";
+  if (level === "risk") return "var(--color-danger, #dc2626)";
+  return "var(--color-warning, #d97706)";
+}
+
+function levelLabel(level: PerfHealthLevel): string {
+  if (level === "good") return "Норма";
+  if (level === "risk") return "Риск";
+  return "Наблюдать";
+}
+
+type MapActionLoop = {
+  overall: PerfHealthLevel;
+  renderHealth: PerfHealthLevel;
+  interactionHealth: PerfHealthLevel;
+  coverageHealth: PerfHealthLevel;
+  trendDeltaPct: number | null;
+  slowNetwork: AdminMapPerfNetworkPoint | null;
+  recommendations: string[];
+};
+
+function computeAverage(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function buildActionLoop(
+  summary: AdminMapPerfSummary | undefined,
+  daily: AdminMapPerfDailyPoint[],
+  network: AdminMapPerfNetworkPoint[],
+): MapActionLoop {
+  const renderHealth = classifyLatency(summary?.first_render_p95_ms ?? 0, 2200, 3200);
+  const interactionHealth = classifyLatency(summary?.first_interaction_p95_ms ?? 0, 2800, 4200);
+  const coverageHealth = classifyCoverage(summary?.interaction_coverage ?? 0, 0.55, 0.4);
+
+  const withData = daily.filter((item) => item.first_render_events > 0 || item.first_interaction_events > 0);
+  const recent = withData.slice(-3).map((item) => item.first_render_p95_ms).filter((value) => value > 0);
+  const previous = withData
+    .slice(Math.max(0, withData.length - 6), Math.max(0, withData.length - 3))
+    .map((item) => item.first_render_p95_ms)
+    .filter((value) => value > 0);
+  const recentAvg = computeAverage(recent);
+  const previousAvg = computeAverage(previous);
+  const trendDeltaPct =
+    previousAvg > 0 && recentAvg > 0 ? ((recentAvg - previousAvg) / previousAvg) * 100 : null;
+
+  const slowNetwork = network
+    .filter((item) => item.first_render_events >= 10)
+    .sort((a, b) => b.first_render_p95_ms - a.first_render_p95_ms)[0] ?? null;
+
+  const levelToWeight: Record<PerfHealthLevel, number> = { good: 1, watch: 2, risk: 3 };
+  const all = [renderHealth, interactionHealth, coverageHealth];
+  const overall = all.sort((a, b) => levelToWeight[b] - levelToWeight[a])[0];
+
+  const recommendations: string[] = [];
+  if (renderHealth === "risk") {
+    recommendations.push("Проверить tile/style endpoint latency и CDN cache-hit для первых запросов карты.");
+  } else if (renderHealth === "watch") {
+    recommendations.push("Удерживать first render p95 ниже 3.2с: проверить размер style и warmup кэша.");
+  }
+
+  if (interactionHealth !== "good") {
+    recommendations.push("Проверить события first interaction: map handlers и блокировки UI в первые секунды.");
+  }
+
+  if (coverageHealth !== "good") {
+    recommendations.push("Довести interaction coverage: убедиться, что событие interaction отправляется стабильно.");
+  }
+
+  if (trendDeltaPct !== null && trendDeltaPct >= 15) {
+    recommendations.push("Render p95 растет >15% к предыдущему окну: откатить последние изменения карты или стиля.");
+  }
+
+  if (slowNetwork && slowNetwork.first_render_p95_ms >= 4500) {
+    recommendations.push(
+      `Слабый сегмент сети (${formatEffectiveType(slowNetwork.effective_type)}): добавить degradations для 2g/3g и снизить вес карты.`,
+    );
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push("Состояние стабильное: продолжаем мониторинг, без срочных action items.");
+  }
+
+  return {
+    overall,
+    renderHealth,
+    interactionHealth,
+    coverageHealth,
+    trendDeltaPct,
+    slowNetwork,
+    recommendations,
+  };
+}
+
 function buildCafeOptionLabel(item: AdminCafeSearchItem): string {
   const address = item.address?.trim();
   return address ? `${item.name} — ${address}` : item.name;
@@ -74,6 +193,7 @@ export default function AdminNorthStarPage() {
   const [mapPerfReport, setMapPerfReport] = useState<AdminMapPerfReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const lastAlertFingerprintRef = useRef<string>("");
 
   const selectedCafe = useMemo(
     () => searchOptions.find((item) => item.id === selectedCafeId) ?? null,
@@ -191,6 +311,39 @@ export default function AdminNorthStarPage() {
         },
       ]
     : [];
+
+  const mapPerfDaily = useMemo(() => mapPerfReport?.daily ?? [], [mapPerfReport?.daily]);
+  const mapPerfNetwork = useMemo(() => mapPerfReport?.network ?? [], [mapPerfReport?.network]);
+  const maxDailyRenderP95 = useMemo(() => {
+    return mapPerfDaily.reduce((max, point) => Math.max(max, point.first_render_p95_ms), 0);
+  }, [mapPerfDaily]);
+  const mapActionLoop = useMemo(
+    () => buildActionLoop(mapPerfReport?.summary, mapPerfDaily, mapPerfNetwork),
+    [mapPerfDaily, mapPerfNetwork, mapPerfReport?.summary],
+  );
+  const mapAlerts = useMemo(() => mapPerfReport?.alerts ?? [], [mapPerfReport?.alerts]);
+  const mapAlertHistory = useMemo(() => mapPerfReport?.history ?? [], [mapPerfReport?.history]);
+
+  useEffect(() => {
+    const summary = mapPerfReport?.summary;
+    if (!summary || summary.first_render_events <= 0 || mapAlerts.length === 0) {
+      return;
+    }
+    const fingerprint = [summary.to, ...mapAlerts.map((item) => `${item.key}:${item.value}`)].join("|");
+
+    if (lastAlertFingerprintRef.current === fingerprint) {
+      return;
+    }
+
+    lastAlertFingerprintRef.current = fingerprint;
+
+    const hasRisk = mapAlerts.some((item) => item.severity === "risk");
+    notifications.show({
+      color: hasRisk ? "red" : "yellow",
+      title: "Map performance alert",
+      message: `Найдено алертов: ${mapAlerts.length}. Render p95 ${formatMs(summary.first_render_p95_ms)}, coverage ${formatPercent(summary.interaction_coverage)}.`,
+    });
+  }, [mapAlerts, mapPerfReport?.summary]);
 
   if (status === "loading") {
     return (
@@ -542,6 +695,264 @@ export default function AdminNorthStarPage() {
                     События: render {mapPerfReport?.summary.first_render_events ?? 0} · interaction{" "}
                     {mapPerfReport?.summary.first_interaction_events ?? 0}
                   </p>
+
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Active alerts</p>
+                    {mapAlerts.length > 0 ? (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {mapAlerts.map((item) => {
+                          const color = item.severity === "risk" ? "var(--color-danger, #dc2626)" : "var(--color-warning, #d97706)";
+                          return (
+                            <div
+                              key={item.key}
+                              style={{
+                                border: `1px solid color-mix(in srgb, ${color} 35%, var(--border))`,
+                                borderRadius: 12,
+                                padding: "8px 10px",
+                                display: "flex",
+                                flexWrap: "wrap",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 8,
+                              }}
+                            >
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
+                                {item.label}: {item.value}
+                              </p>
+                              <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>{item.target}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                        Активных алертов нет.
+                      </p>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: 12,
+                      display: "grid",
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10 }}>
+                      <p style={{ margin: 0, fontWeight: 700 }}>Action loop</p>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: levelColor(mapActionLoop.overall),
+                          background: "color-mix(in srgb, var(--surface) 75%, var(--border))",
+                          border: `1px solid color-mix(in srgb, ${levelColor(mapActionLoop.overall)} 28%, var(--border))`,
+                        }}
+                      >
+                        Статус: {levelLabel(mapActionLoop.overall)}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {[
+                        { key: "render", label: "Render p95", level: mapActionLoop.renderHealth },
+                        { key: "interaction", label: "Interaction p95", level: mapActionLoop.interactionHealth },
+                        { key: "coverage", label: "Coverage", level: mapActionLoop.coverageHealth },
+                      ].map((item) => (
+                        <span
+                          key={item.key}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            borderRadius: 999,
+                            padding: "4px 10px",
+                            border: `1px solid color-mix(in srgb, ${levelColor(item.level)} 30%, var(--border))`,
+                            color: "var(--text)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              background: levelColor(item.level),
+                            }}
+                          />
+                          {item.label}: {levelLabel(item.level)}
+                        </span>
+                      ))}
+                    </div>
+
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                      Тренд render p95 (последние 3 дня к предыдущим 3):{" "}
+                      {mapActionLoop.trendDeltaPct === null
+                        ? "недостаточно данных"
+                        : `${mapActionLoop.trendDeltaPct > 0 ? "+" : ""}${mapActionLoop.trendDeltaPct.toFixed(1)}%`}
+                    </p>
+
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                      Самый медленный сетевой сегмент:{" "}
+                      {mapActionLoop.slowNetwork
+                        ? `${formatEffectiveType(mapActionLoop.slowNetwork.effective_type)} (${formatMs(mapActionLoop.slowNetwork.first_render_p95_ms)})`
+                        : "недостаточно данных"}
+                    </p>
+
+                    <div style={{ display: "grid", gap: 6 }}>
+                      {mapActionLoop.recommendations.map((item) => (
+                        <p key={item} style={{ margin: 0, fontSize: 13 }}>
+                          • {item}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Alert history</p>
+                    <Table striped highlightOnHover withTableBorder>
+                    <Table.Thead>
+                      <Table.Tr>
+                          <Table.Th>Дата</Table.Th>
+                          <Table.Th>Статус</Table.Th>
+                          <Table.Th>Render p95</Table.Th>
+                          <Table.Th>Interaction p95</Table.Th>
+                          <Table.Th>Coverage</Table.Th>
+                          <Table.Th>Тренд</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {mapAlertHistory.map((entry) => (
+                          <Table.Tr key={entry.date}>
+                            <Table.Td>{formatDate(entry.date)}</Table.Td>
+                            <Table.Td>
+                              <span style={{ color: levelColor(entry.status), fontWeight: 700 }}>{levelLabel(entry.status)}</span>
+                            </Table.Td>
+                            <Table.Td>{formatMs(entry.first_render_p95_ms)}</Table.Td>
+                            <Table.Td>{formatMs(entry.first_interaction_p95_ms)}</Table.Td>
+                            <Table.Td>{formatPercent(entry.interaction_coverage)}</Table.Td>
+                            <Table.Td>
+                              {`${entry.trend_delta_pct > 0 ? "+" : ""}${entry.trend_delta_pct.toFixed(1)}%`}
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                        {mapAlertHistory.length === 0 && (
+                          <Table.Tr>
+                            <Table.Td colSpan={6}>
+                              <p style={{ margin: 0, color: "var(--muted)" }}>
+                                История алертов пока пуста.
+                              </p>
+                            </Table.Td>
+                          </Table.Tr>
+                        )}
+                      </Table.Tbody>
+                    </Table>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Daily trend</p>
+                    <Table striped highlightOnHover withTableBorder>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Дата</Table.Th>
+                          <Table.Th>Render p95</Table.Th>
+                          <Table.Th>Interaction p95</Table.Th>
+                          <Table.Th>Coverage</Table.Th>
+                          <Table.Th>Тренд</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {mapPerfDaily.map((point) => {
+                          const trendWidth =
+                            maxDailyRenderP95 > 0
+                              ? Math.max(0, Math.min(100, (point.first_render_p95_ms / maxDailyRenderP95) * 100))
+                              : 0;
+                          return (
+                            <Table.Tr key={point.date}>
+                              <Table.Td>{formatDate(point.date)}</Table.Td>
+                              <Table.Td>{formatMs(point.first_render_p95_ms)}</Table.Td>
+                              <Table.Td>{formatMs(point.first_interaction_p95_ms)}</Table.Td>
+                              <Table.Td>{formatPercent(point.interaction_coverage)}</Table.Td>
+                              <Table.Td>
+                                <div
+                                  style={{
+                                    width: 120,
+                                    height: 8,
+                                    borderRadius: 999,
+                                    background: "color-mix(in srgb, var(--border) 80%, transparent)",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      width: `${trendWidth}%`,
+                                      height: "100%",
+                                      borderRadius: 999,
+                                      background:
+                                        "linear-gradient(90deg, var(--color-brand-accent), color-mix(in srgb, var(--color-brand-accent) 70%, var(--color-brand-accent-soft)))",
+                                    }}
+                                  />
+                                </div>
+                              </Table.Td>
+                            </Table.Tr>
+                          );
+                        })}
+                        {mapPerfDaily.length === 0 && (
+                          <Table.Tr>
+                            <Table.Td colSpan={5}>
+                              <p style={{ margin: 0, color: "var(--muted)" }}>
+                                По daily trend пока нет данных.
+                              </p>
+                            </Table.Td>
+                          </Table.Tr>
+                        )}
+                      </Table.Tbody>
+                    </Table>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Network breakdown</p>
+                    <Table striped highlightOnHover withTableBorder>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Сеть</Table.Th>
+                          <Table.Th>Render p95</Table.Th>
+                          <Table.Th>Interaction p95</Table.Th>
+                          <Table.Th>Render events</Table.Th>
+                          <Table.Th>Interaction events</Table.Th>
+                          <Table.Th>Coverage</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {mapPerfNetwork.map((row) => (
+                          <Table.Tr key={row.effective_type || "unknown"}>
+                            <Table.Td>{formatEffectiveType(row.effective_type)}</Table.Td>
+                            <Table.Td>{formatMs(row.first_render_p95_ms)}</Table.Td>
+                            <Table.Td>{formatMs(row.first_interaction_p95_ms)}</Table.Td>
+                            <Table.Td>{row.first_render_events}</Table.Td>
+                            <Table.Td>{row.first_interaction_events}</Table.Td>
+                            <Table.Td>{formatPercent(row.interaction_coverage)}</Table.Td>
+                          </Table.Tr>
+                        ))}
+                        {mapPerfNetwork.length === 0 && (
+                          <Table.Tr>
+                            <Table.Td colSpan={6}>
+                              <p style={{ margin: 0, color: "var(--muted)" }}>
+                                По network breakdown пока нет данных.
+                              </p>
+                            </Table.Td>
+                          </Table.Tr>
+                        )}
+                      </Table.Tbody>
+                    </Table>
+                  </div>
                 </div>
               </div>
             </>

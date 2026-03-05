@@ -49,6 +49,22 @@ func (r *handlerRepositoryStub) GetMapPerfSnapshot(
 	return MapPerfSnapshot{}, nil
 }
 
+func (r *handlerRepositoryStub) ListMapPerfDailyMetrics(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) ([]MapPerfDailyMetrics, error) {
+	return nil, nil
+}
+
+func (r *handlerRepositoryStub) ListMapPerfNetworkMetrics(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) ([]MapPerfNetworkMetrics, error) {
+	return nil, nil
+}
+
 func TestGetNorthStar_InvalidCafeID_ReturnsBadRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := &handlerRepositoryStub{}
