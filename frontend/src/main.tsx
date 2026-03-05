@@ -8,6 +8,7 @@ import './index.css'
 import { AppNotifications } from './lib/notifications'
 import useAppColorScheme, { AppColorSchemeProvider } from './hooks/useAppColorScheme'
 import { AppHapticsProvider } from './hooks/useAppHaptics'
+import { appHaptics } from './lib/haptics'
 import {
   applyPalette,
   getStoredPalette,
@@ -353,6 +354,21 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 const splashMountedAt = performance.now()
 const MIN_SPLASH_VISIBLE_MS = 2000
 const SPLASH_FADE_FALLBACK_MS = 900
+const SPLASH_QUESTION_ANIMATION = 'splash-question-jiggle'
+
+function bindSplashHaptics() {
+  if (typeof document === 'undefined') return
+  const splashQuestion = document.querySelector('.splash-question')
+  if (!splashQuestion) return
+
+  const handleQuestionAnimationStart = (event: Event) => {
+    const animationEvent = event as AnimationEvent
+    if (animationEvent.animationName !== SPLASH_QUESTION_ANIMATION) return
+    void appHaptics.trigger('soft')
+  }
+
+  splashQuestion.addEventListener('animationstart', handleQuestionAnimationStart, { once: true })
+}
 
 const hideSplash = () => {
   const elapsed = performance.now() - splashMountedAt
@@ -371,6 +387,7 @@ const hideSplash = () => {
     const finalize = () => {
       if (done) return
       done = true
+      void appHaptics.trigger('light')
       splash.classList.add('splash-hidden')
       splash.remove()
       try {
@@ -395,6 +412,8 @@ const hideSplash = () => {
     }, SPLASH_FADE_FALLBACK_MS)
   }, delay)
 }
+
+bindSplashHaptics()
 
 if (document.readyState === 'complete') {
   hideSplash()

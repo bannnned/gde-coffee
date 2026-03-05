@@ -3,6 +3,7 @@ package metrics
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -10,6 +11,81 @@ import (
 
 type Repository struct {
 	pool *pgxpool.Pool
+}
+
+func (r *Repository) ListMapPerfAlertStates(ctx context.Context) ([]MapPerfAlertState, error) {
+	const query = `select
+	alert_key,
+	state,
+	snoozed_until,
+	acknowledged_at,
+	coalesce(acknowledged_by::text, '') as acknowledged_by
+from public.product_metrics_alert_states`
+
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]MapPerfAlertState, 0, 8)
+	for rows.Next() {
+		var row MapPerfAlertState
+		if err := rows.Scan(
+			&row.AlertKey,
+			&row.State,
+			&row.SnoozedUntil,
+			&row.AcknowledgedAt,
+			&row.AcknowledgedBy,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (r *Repository) UpsertMapPerfAlertState(ctx context.Context, state MapPerfAlertState) error {
+	key := strings.TrimSpace(state.AlertKey)
+	if key == "" {
+		return nil
+	}
+	const query = `insert into public.product_metrics_alert_states (
+	alert_key,
+	state,
+	snoozed_until,
+	acknowledged_at,
+	acknowledged_by,
+	updated_at
+) values (
+	$1,
+	$2,
+	$3,
+	$4,
+	nullif($5, '')::uuid,
+	now()
+)
+on conflict (alert_key) do update
+set
+	state = excluded.state,
+	snoozed_until = excluded.snoozed_until,
+	acknowledged_at = excluded.acknowledged_at,
+	acknowledged_by = excluded.acknowledged_by,
+	updated_at = now()`
+
+	_, err := r.pool.Exec(
+		ctx,
+		query,
+		key,
+		state.State,
+		state.SnoozedUntil,
+		state.AcknowledgedAt,
+		state.AcknowledgedBy,
+	)
+	return err
 }
 
 func NewRepository(pool *pgxpool.Pool) *Repository {

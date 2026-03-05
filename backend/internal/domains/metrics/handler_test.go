@@ -15,6 +15,7 @@ import (
 type handlerRepositoryStub struct {
 	capturedCafeID       string
 	funnelCapturedCafeID string
+	lastAlertState       MapPerfAlertState
 }
 
 func (r *handlerRepositoryStub) InsertEvents(ctx context.Context, events []EventInput) (int, error) {
@@ -63,6 +64,15 @@ func (r *handlerRepositoryStub) ListMapPerfNetworkMetrics(
 	dateTo time.Time,
 ) ([]MapPerfNetworkMetrics, error) {
 	return nil, nil
+}
+
+func (r *handlerRepositoryStub) ListMapPerfAlertStates(ctx context.Context) ([]MapPerfAlertState, error) {
+	return nil, nil
+}
+
+func (r *handlerRepositoryStub) UpsertMapPerfAlertState(ctx context.Context, state MapPerfAlertState) error {
+	r.lastAlertState = state
+	return nil
 }
 
 func TestGetNorthStar_InvalidCafeID_ReturnsBadRequest(t *testing.T) {
@@ -237,5 +247,28 @@ func TestNormalizeEvent_ReviewSubmitRequiresReviewID(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "review_read/review_submit") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestUpdateMapPerfAlertState_Ack_ReturnsOK(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	repo := &handlerRepositoryStub{}
+	handler := NewHandler(NewService(repo))
+	router := gin.New()
+	router.POST("/api/admin/metrics/map-perf/alerts/:alert_key/state", handler.UpdateMapPerfAlertState)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/metrics/map-perf/alerts/render_p95/state", strings.NewReader(`{"action":"ack"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d, body=%s", rec.Code, rec.Body.String())
+	}
+	if repo.lastAlertState.AlertKey != "render_p95" {
+		t.Fatalf("expected alert_key render_p95, got %q", repo.lastAlertState.AlertKey)
+	}
+	if repo.lastAlertState.State != AlertStateAcked {
+		t.Fatalf("expected acked state, got %q", repo.lastAlertState.State)
 	}
 }

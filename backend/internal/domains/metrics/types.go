@@ -15,6 +15,9 @@ const (
 	DefaultRangeDays         = 14
 	MaxRangeDays             = 90
 	MaxEventsPerIngest       = 50
+	AlertStateActive         = "active"
+	AlertStateAcked          = "acked"
+	AlertStateSnoozed        = "snoozed"
 )
 
 type EventInput struct {
@@ -151,11 +154,15 @@ type MapPerfNetworkPoint struct {
 }
 
 type MapPerfAlert struct {
-	Key      string `json:"key"`
-	Severity string `json:"severity"`
-	Label    string `json:"label"`
-	Value    string `json:"value"`
-	Target   string `json:"target"`
+	Key            string `json:"key"`
+	Severity       string `json:"severity"`
+	Label          string `json:"label"`
+	Value          string `json:"value"`
+	Target         string `json:"target"`
+	State          string `json:"state"`
+	SnoozedUntil   string `json:"snoozed_until,omitempty"`
+	AcknowledgedAt string `json:"acknowledged_at,omitempty"`
+	AcknowledgedBy string `json:"acknowledged_by,omitempty"`
 }
 
 type MapPerfHistoryPoint struct {
@@ -173,6 +180,27 @@ type MapPerfReport struct {
 	Network []MapPerfNetworkPoint `json:"network"`
 	Alerts  []MapPerfAlert        `json:"alerts"`
 	History []MapPerfHistoryPoint `json:"history"`
+}
+
+type MapPerfAlertState struct {
+	AlertKey       string
+	State          string
+	SnoozedUntil   *time.Time
+	AcknowledgedAt *time.Time
+	AcknowledgedBy string
+}
+
+type UpdateMapPerfAlertStateInput struct {
+	AlertKey    string
+	Action      string
+	SnoozeHours int
+	ActorUserID string
+	OccurredAt  time.Time
+}
+
+type mapPerfAlertActionRequest struct {
+	Action      string `json:"action"`
+	SnoozeHours int    `json:"snooze_hours"`
 }
 
 type ingestEventRequest struct {

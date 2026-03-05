@@ -1478,3 +1478,19 @@ Critical path stack-transition:
 - AC: авто-уведомление на фронте остается, но dedupe делается на runtime fingerprint текущего ответа.
 - AC: `go test ./...`, `npm run -s lint`, `npm run -s typecheck`, `npm test -- --watch=false`, `npm run -s build` проходят.
 - Артефакт: расширенный backend report contract + frontend API parser + UI switch на server-driven alerts/history.
+
+### [x] W6-K · Alert action loop controls (ack/snooze/reset) for map performance (P1, status: done)
+- Цель: закрыть командный action loop по alert’ам: “взяли в работу”, “временно скрыли шум”, “вернули в active”.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/migrations/000032_product_metrics_alert_states.*.sql`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/internal/domains/metrics/{types.go,repository.go,service.go,handler.go}`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/main.go`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/adminMetrics.ts`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Depends on: `W6-J`.
+- AC: backend хранит состояние alert’ов (`active/acked/snoozed`, `snoozed_until`, `acknowledged_by/at`) в отдельной таблице.
+- AC: `GET /api/admin/metrics/map-perf` возвращает alert’ы уже с текущим `state`, `snoozed_until`, `acknowledged_*`.
+- AC: backend endpoint `POST /api/admin/metrics/map-perf/alerts/:alert_key/state` поддерживает действия `ack`, `snooze`, `reset`.
+- AC: в UI `Active alerts` есть действия `В работу`, `Скрыть 24ч`, `Сбросить`, после действия репорт реактивно обновляется.
+- AC: уведомления показываются только по реально active alert’ам (не snoozed/acked).
+- AC: `go test ./...`, `npm run -s lint`, `npm run -s typecheck`, `npm test -- --watch=false`, `npm run -s build` проходят.
+- Артефакт: server-persistent alert controls + action buttons на админ-экране map performance.

@@ -141,6 +141,47 @@ func (h *Handler) GetMapPerf(c *gin.Context) {
 	c.JSON(http.StatusOK, report)
 }
 
+func (h *Handler) UpdateMapPerfAlertState(c *gin.Context) {
+	alertKey := strings.TrimSpace(c.Param("alert_key"))
+	if alertKey == "" {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "alert_key обязателен.", nil)
+		return
+	}
+
+	var req mapPerfAlertActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "Некорректный JSON в запросе.", nil)
+		return
+	}
+
+	userID, _ := auth.UserIDFromContext(c)
+	userID = strings.TrimSpace(userID)
+	if userID != "" && !validation.IsValidUUID(userID) {
+		userID = ""
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+	defer cancel()
+
+	err := h.service.UpdateMapPerfAlertState(ctx, UpdateMapPerfAlertStateInput{
+		AlertKey:    alertKey,
+		Action:      strings.ToLower(strings.TrimSpace(req.Action)),
+		SnoozeHours: req.SnoozeHours,
+		ActorUserID: userID,
+		OccurredAt:  time.Now(),
+	})
+	if err != nil {
+		if _, ok := err.(*eventValidationError); ok {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
+			return
+		}
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось обновить состояние алерта.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
 func readNorthStarRangeParams(c *gin.Context) (int, string, bool) {
 	days := DefaultRangeDays
 	if rawDays := strings.TrimSpace(c.Query("days")); rawDays != "" {

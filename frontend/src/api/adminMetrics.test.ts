@@ -3,14 +3,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { httpGetMock } = vi.hoisted(() => ({
   httpGetMock: vi.fn(),
 }));
+const { httpPostMock } = vi.hoisted(() => ({
+  httpPostMock: vi.fn(),
+}));
 
 vi.mock("./http", () => ({
   http: {
     get: httpGetMock,
+    post: httpPostMock,
   },
 }));
 
-import { getAdminFunnel, getAdminMapPerf, getAdminNorthStar, searchAdminCafesByName } from "./adminMetrics";
+import { getAdminFunnel, getAdminMapPerf, getAdminNorthStar, searchAdminCafesByName, setAdminMapPerfAlertState } from "./adminMetrics";
 
 describe("adminMetrics api", () => {
   beforeEach(() => {
@@ -145,6 +149,8 @@ describe("adminMetrics api", () => {
             label: "Interaction coverage",
             value: "42.0%",
             target: "цель ≥ 55%",
+            state: "snoozed",
+            snoozed_until: "2026-02-15T12:00:00Z",
           },
         ],
         history: [
@@ -173,6 +179,18 @@ describe("adminMetrics api", () => {
     expect(report.daily[0]?.date).toBe("2026-02-14");
     expect(report.network[0]?.effective_type).toBe("4g");
     expect(report.alerts[0]?.key).toBe("coverage");
+    expect(report.alerts[0]?.state).toBe("snoozed");
     expect(report.history[0]?.status).toBe("watch");
+  });
+
+  it("posts map-perf alert state action", async () => {
+    httpPostMock.mockResolvedValueOnce({ data: { status: "ok" } });
+
+    await setAdminMapPerfAlertState("render_p95", { action: "snooze", snooze_hours: 24 });
+
+    expect(httpPostMock).toHaveBeenCalledWith("/api/admin/metrics/map-perf/alerts/render_p95/state", {
+      action: "snooze",
+      snooze_hours: 24,
+    });
   });
 });

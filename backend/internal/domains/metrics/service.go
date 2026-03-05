@@ -14,6 +14,8 @@ type repository interface {
 	GetMapPerfSnapshot(ctx context.Context, dateFrom time.Time, dateTo time.Time) (MapPerfSnapshot, error)
 	ListMapPerfDailyMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time) ([]MapPerfDailyMetrics, error)
 	ListMapPerfNetworkMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time) ([]MapPerfNetworkMetrics, error)
+	ListMapPerfAlertStates(ctx context.Context) ([]MapPerfAlertState, error)
+	UpsertMapPerfAlertState(ctx context.Context, state MapPerfAlertState) error
 }
 
 type Service struct {
@@ -156,6 +158,10 @@ func (s *Service) GetMapPerfReport(
 	if err != nil {
 		return MapPerfReport{}, err
 	}
+	alertStates, err := s.repository.ListMapPerfAlertStates(ctx)
+	if err != nil {
+		return MapPerfReport{}, err
+	}
 
 	dailyByDate := make(map[string]MapPerfDailyMetrics, len(dailyRows))
 	for _, row := range dailyRows {
@@ -195,6 +201,12 @@ func (s *Service) GetMapPerfReport(
 
 	interactionCoverage := safeRate(snapshot.FirstInteractionEvents, snapshot.FirstRenderEvents)
 	trendDeltaPct := computeRecentTrendDeltaPct(daily)
+	alertStateByKey := make(map[string]MapPerfAlertState, len(alertStates))
+	for _, state := range alertStates {
+		alertStateByKey[state.AlertKey] = state
+	}
+	alerts := buildMapPerfAlerts(snapshot, interactionCoverage, trendDeltaPct)
+	alerts = applyMapPerfAlertStates(alerts, alertStateByKey, now.UTC())
 
 	return MapPerfReport{
 		Summary: MapPerfSummary{
@@ -211,9 +223,54 @@ func (s *Service) GetMapPerfReport(
 		},
 		Daily:   daily,
 		Network: network,
-		Alerts:  buildMapPerfAlerts(snapshot, interactionCoverage, trendDeltaPct),
+		Alerts:  alerts,
 		History: buildMapPerfHistory(daily),
 	}, nil
+}
+
+func (s *Service) UpdateMapPerfAlertState(ctx context.Context, input UpdateMapPerfAlertStateInput) error {
+	alertKey := input.AlertKey
+	if !isSupportedAlertKey(alertKey) {
+		return validationError("alert_key не поддерживается.")
+	}
+	action := input.Action
+	if action != "ack" && action != "snooze" && action != "reset" {
+		return validationError("action должен быть ack, snooze или reset.")
+	}
+
+	now := input.OccurredAt.UTC()
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+
+	nextState := MapPerfAlertState{
+		AlertKey:       alertKey,
+		State:          AlertStateActive,
+		SnoozedUntil:   nil,
+		AcknowledgedAt: nil,
+		AcknowledgedBy: input.ActorUserID,
+	}
+	switch action {
+	case "ack":
+		nextState.State = AlertStateAcked
+		nextState.AcknowledgedAt = &now
+	case "snooze":
+		hours := input.SnoozeHours
+		if hours <= 0 {
+			hours = 24
+		}
+		if hours > 24*7 {
+			hours = 24 * 7
+		}
+		until := now.Add(time.Duration(hours) * time.Hour)
+		nextState.State = AlertStateSnoozed
+		nextState.SnoozedUntil = &until
+		nextState.AcknowledgedAt = &now
+	case "reset":
+		nextState.State = AlertStateActive
+	}
+
+	return s.repository.UpsertMapPerfAlertState(ctx, nextState)
 }
 
 func classifyLatency(valueMs float64, goodThreshold float64, watchThreshold float64) string {
@@ -308,6 +365,7 @@ func buildMapPerfAlerts(snapshot MapPerfSnapshot, interactionCoverage float64, t
 			Label:    "Render p95",
 			Value:    fmt.Sprintf("%d мс", int(math.Round(snapshot.FirstRenderP95Ms))),
 			Target:   "цель ≤ 3200 мс",
+			State:    AlertStateActive,
 		})
 	}
 
@@ -319,6 +377,7 @@ func buildMapPerfAlerts(snapshot MapPerfSnapshot, interactionCoverage float64, t
 			Label:    "Interaction p95",
 			Value:    fmt.Sprintf("%d мс", int(math.Round(snapshot.FirstInteractionP95Ms))),
 			Target:   "цель ≤ 4200 мс",
+			State:    AlertStateActive,
 		})
 	}
 
@@ -330,6 +389,7 @@ func buildMapPerfAlerts(snapshot MapPerfSnapshot, interactionCoverage float64, t
 			Label:    "Interaction coverage",
 			Value:    fmt.Sprintf("%.1f%%", interactionCoverage*100),
 			Target:   "цель ≥ 55%",
+			State:    AlertStateActive,
 		})
 	}
 
@@ -340,10 +400,55 @@ func buildMapPerfAlerts(snapshot MapPerfSnapshot, interactionCoverage float64, t
 			Label:    "Render trend",
 			Value:    fmt.Sprintf("+%.1f%%", trendDeltaPct),
 			Target:   "рост < 15%",
+			State:    AlertStateActive,
 		})
 	}
 
 	return alerts
+}
+
+func applyMapPerfAlertStates(alerts []MapPerfAlert, states map[string]MapPerfAlertState, now time.Time) []MapPerfAlert {
+	result := make([]MapPerfAlert, 0, len(alerts))
+	for _, alert := range alerts {
+		state, ok := states[alert.Key]
+		if !ok {
+			result = append(result, alert)
+			continue
+		}
+		switch state.State {
+		case AlertStateSnoozed:
+			if state.SnoozedUntil != nil && state.SnoozedUntil.After(now) {
+				alert.State = AlertStateSnoozed
+				alert.SnoozedUntil = state.SnoozedUntil.UTC().Format(time.RFC3339)
+				if state.AcknowledgedAt != nil {
+					alert.AcknowledgedAt = state.AcknowledgedAt.UTC().Format(time.RFC3339)
+				}
+				alert.AcknowledgedBy = state.AcknowledgedBy
+				result = append(result, alert)
+				continue
+			}
+			alert.State = AlertStateActive
+		case AlertStateAcked:
+			alert.State = AlertStateAcked
+			if state.AcknowledgedAt != nil {
+				alert.AcknowledgedAt = state.AcknowledgedAt.UTC().Format(time.RFC3339)
+			}
+			alert.AcknowledgedBy = state.AcknowledgedBy
+		default:
+			alert.State = AlertStateActive
+		}
+		result = append(result, alert)
+	}
+	return result
+}
+
+func isSupportedAlertKey(value string) bool {
+	switch value {
+	case "render_p95", "interaction_p95", "coverage", "trend":
+		return true
+	default:
+		return false
+	}
 }
 
 func buildMapPerfHistory(daily []MapPerfDailyPoint) []MapPerfHistoryPoint {

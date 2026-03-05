@@ -93,6 +93,7 @@
 75. `W6-H` закрыт (`done`): в `Map performance` добавлен action loop слой (health-status + trend delta + slowest network + рекомендации), чтобы админ видел не только цифры, но и конкретные следующие действия.
 76. `W6-I` закрыт (`done`): добавлены авто-алерты по threshold breach (`watch/risk`) и компактная история статусов (`Active alerts` + `Alert history`) с local persistence и anti-spam fingerprint.
 77. `W6-J` закрыт (`done`): `Map performance` переведен на server-driven `alerts/history` (backend возвращает alert/history вместе с map-perf report), frontend удалил `localStorage`-источник и использует единый серверный источник для команды.
+78. `W6-K` закрыт (`done`): добавлены серверные action-controls для alert’ов (`ack/snooze/reset`) с хранением состояния в БД и UI-кнопками в `Active alerts` на `/admin/metrics`.
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

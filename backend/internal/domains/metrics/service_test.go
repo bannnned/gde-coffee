@@ -7,14 +7,16 @@ import (
 )
 
 type serviceRepositoryStub struct {
-	capturedDateFrom time.Time
-	capturedDateTo   time.Time
-	capturedCafeID   string
-	rows             []DailyNorthStarMetrics
-	funnelCounts     FunnelJourneyCounts
-	mapPerfSnapshot  MapPerfSnapshot
-	mapPerfDaily     []MapPerfDailyMetrics
-	mapPerfNetwork   []MapPerfNetworkMetrics
+	capturedDateFrom       time.Time
+	capturedDateTo         time.Time
+	capturedCafeID         string
+	rows                   []DailyNorthStarMetrics
+	funnelCounts           FunnelJourneyCounts
+	mapPerfSnapshot        MapPerfSnapshot
+	mapPerfDaily           []MapPerfDailyMetrics
+	mapPerfNetwork         []MapPerfNetworkMetrics
+	mapPerfAlertStates     []MapPerfAlertState
+	lastUpsertedAlertState MapPerfAlertState
 }
 
 func (r *serviceRepositoryStub) InsertEvents(ctx context.Context, events []EventInput) (int, error) {
@@ -73,6 +75,15 @@ func (r *serviceRepositoryStub) ListMapPerfNetworkMetrics(
 	r.capturedDateFrom = dateFrom
 	r.capturedDateTo = dateTo
 	return r.mapPerfNetwork, nil
+}
+
+func (r *serviceRepositoryStub) ListMapPerfAlertStates(ctx context.Context) ([]MapPerfAlertState, error) {
+	return r.mapPerfAlertStates, nil
+}
+
+func (r *serviceRepositoryStub) UpsertMapPerfAlertState(ctx context.Context, state MapPerfAlertState) error {
+	r.lastUpsertedAlertState = state
+	return nil
 }
 
 func TestGetNorthStarReport_PropagatesCafeFilterAndBuildsDaily(t *testing.T) {
@@ -298,5 +309,27 @@ func TestGetMapPerfReport_BuildsAlertsFromThresholdBreaches(t *testing.T) {
 	}
 	if len(report.History) == 0 {
 		t.Fatalf("history should not be empty")
+	}
+}
+
+func TestUpdateMapPerfAlertState_Snooze(t *testing.T) {
+	repo := &serviceRepositoryStub{}
+	service := NewService(repo)
+
+	err := service.UpdateMapPerfAlertState(context.Background(), UpdateMapPerfAlertStateInput{
+		AlertKey:    "render_p95",
+		Action:      "snooze",
+		SnoozeHours: 24,
+		ActorUserID: "550e8400-e29b-41d4-a716-446655440000",
+		OccurredAt:  time.Date(2026, 3, 5, 8, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatalf("UpdateMapPerfAlertState returned error: %v", err)
+	}
+	if repo.lastUpsertedAlertState.State != AlertStateSnoozed {
+		t.Fatalf("expected snoozed state, got %q", repo.lastUpsertedAlertState.State)
+	}
+	if repo.lastUpsertedAlertState.SnoozedUntil == nil {
+		t.Fatalf("expected snoozed_until to be set")
 	}
 }

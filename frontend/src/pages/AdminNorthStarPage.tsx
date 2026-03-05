@@ -8,6 +8,7 @@ import {
   getAdminFunnel,
   getAdminMapPerf,
   getAdminNorthStar,
+  setAdminMapPerfAlertState,
   searchAdminCafesByName,
   type AdminCafeSearchItem,
   type AdminFunnelReport,
@@ -40,6 +41,20 @@ function formatDate(value: string): string {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+  });
+}
+
+function formatDateTime(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -83,6 +98,14 @@ function levelLabel(level: PerfHealthLevel): string {
   if (level === "good") return "Норма";
   if (level === "risk") return "Риск";
   return "Наблюдать";
+}
+
+function mapAlertStateLabel(state: "active" | "acked" | "snoozed", snoozedUntil?: string): string {
+  if (state === "acked") return "В работе";
+  if (state === "snoozed") {
+    return snoozedUntil ? `Скрыт до ${formatDateTime(snoozedUntil)}` : "Скрыт";
+  }
+  return "Активен";
 }
 
 type MapActionLoop = {
@@ -193,6 +216,7 @@ export default function AdminNorthStarPage() {
   const [mapPerfReport, setMapPerfReport] = useState<AdminMapPerfReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [alertActionKey, setAlertActionKey] = useState<string | null>(null);
   const lastAlertFingerprintRef = useRef<string>("");
 
   const selectedCafe = useMemo(
@@ -323,13 +347,14 @@ export default function AdminNorthStarPage() {
   );
   const mapAlerts = useMemo(() => mapPerfReport?.alerts ?? [], [mapPerfReport?.alerts]);
   const mapAlertHistory = useMemo(() => mapPerfReport?.history ?? [], [mapPerfReport?.history]);
+  const activeMapAlerts = useMemo(() => mapAlerts.filter((item) => item.state === "active"), [mapAlerts]);
 
   useEffect(() => {
     const summary = mapPerfReport?.summary;
-    if (!summary || summary.first_render_events <= 0 || mapAlerts.length === 0) {
+    if (!summary || summary.first_render_events <= 0 || activeMapAlerts.length === 0) {
       return;
     }
-    const fingerprint = [summary.to, ...mapAlerts.map((item) => `${item.key}:${item.value}`)].join("|");
+    const fingerprint = [summary.to, ...activeMapAlerts.map((item) => `${item.key}:${item.value}`)].join("|");
 
     if (lastAlertFingerprintRef.current === fingerprint) {
       return;
@@ -337,13 +362,35 @@ export default function AdminNorthStarPage() {
 
     lastAlertFingerprintRef.current = fingerprint;
 
-    const hasRisk = mapAlerts.some((item) => item.severity === "risk");
+    const hasRisk = activeMapAlerts.some((item) => item.severity === "risk");
     notifications.show({
       color: hasRisk ? "red" : "yellow",
       title: "Map performance alert",
-      message: `Найдено алертов: ${mapAlerts.length}. Render p95 ${formatMs(summary.first_render_p95_ms)}, coverage ${formatPercent(summary.interaction_coverage)}.`,
+      message: `Найдено алертов: ${activeMapAlerts.length}. Render p95 ${formatMs(summary.first_render_p95_ms)}, coverage ${formatPercent(summary.interaction_coverage)}.`,
     });
-  }, [mapAlerts, mapPerfReport?.summary]);
+  }, [activeMapAlerts, mapPerfReport?.summary]);
+
+  const handleAlertAction = useCallback(
+    async (alertKey: string, action: "ack" | "snooze" | "reset") => {
+      setAlertActionKey(`${alertKey}:${action}`);
+      try {
+        await setAdminMapPerfAlertState(alertKey, {
+          action,
+          snooze_hours: action === "snooze" ? 24 : undefined,
+        });
+        await loadReport();
+      } catch (error: unknown) {
+        notifications.show({
+          color: "red",
+          title: "Не удалось обновить alert",
+          message: extractApiErrorMessage(error, "Попробуйте еще раз."),
+        });
+      } finally {
+        setAlertActionKey(null);
+      }
+    },
+    [loadReport],
+  );
 
   if (status === "loading") {
     return (
@@ -719,7 +766,44 @@ export default function AdminNorthStarPage() {
                               <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
                                 {item.label}: {item.value}
                               </p>
-                              <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>{item.target}</p>
+                              <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
+                                {item.target} · {mapAlertStateLabel(item.state, item.snoozed_until)}
+                              </p>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {item.state !== "acked" && (
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => void handleAlertAction(item.key, "ack")}
+                                    disabled={Boolean(alertActionKey)}
+                                  >
+                                    {alertActionKey === `${item.key}:ack` ? <Spinner size={12} /> : null}
+                                    В работу
+                                  </Button>
+                                )}
+                                {item.state !== "snoozed" && (
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => void handleAlertAction(item.key, "snooze")}
+                                    disabled={Boolean(alertActionKey)}
+                                  >
+                                    {alertActionKey === `${item.key}:snooze` ? <Spinner size={12} /> : null}
+                                    Скрыть 24ч
+                                  </Button>
+                                )}
+                                {item.state !== "active" && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => void handleAlertAction(item.key, "reset")}
+                                    disabled={Boolean(alertActionKey)}
+                                  >
+                                    {alertActionKey === `${item.key}:reset` ? <Spinner size={12} /> : null}
+                                    Сбросить
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           );
                         })}

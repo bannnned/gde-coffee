@@ -83,6 +83,10 @@ export type AdminMapPerfAlert = {
   label: string;
   value: string;
   target: string;
+  state: "active" | "acked" | "snoozed";
+  snoozed_until?: string;
+  acknowledged_at?: string;
+  acknowledged_by?: string;
 };
 
 export type AdminMapPerfHistoryPoint = {
@@ -254,12 +258,19 @@ export async function getAdminMapPerf(params?: { days?: number }): Promise<Admin
       const record = asRecord(item);
       const severityRaw = asString(record.severity);
       const severity: "watch" | "risk" = severityRaw === "risk" ? "risk" : "watch";
+      const stateRaw = asString(record.state);
+      const state: "active" | "acked" | "snoozed" =
+        stateRaw === "acked" ? "acked" : stateRaw === "snoozed" ? "snoozed" : "active";
       return {
         key: asString(record.key),
         severity,
         label: asString(record.label),
         value: asString(record.value),
         target: asString(record.target),
+        state,
+        snoozed_until: asString(record.snoozed_until) || undefined,
+        acknowledged_at: asString(record.acknowledged_at) || undefined,
+        acknowledged_by: asString(record.acknowledged_by) || undefined,
       };
     }).filter((item) => item.key && item.label),
     history: historyRaw.map((item) => {
@@ -277,6 +288,16 @@ export async function getAdminMapPerf(params?: { days?: number }): Promise<Admin
       };
     }).filter((item) => item.date),
   };
+}
+
+export async function setAdminMapPerfAlertState(
+  alertKey: string,
+  input: { action: "ack" | "snooze" | "reset"; snooze_hours?: number },
+): Promise<void> {
+  await http.post(`/api/admin/metrics/map-perf/alerts/${encodeURIComponent(alertKey)}/state`, {
+    action: input.action,
+    snooze_hours: input.snooze_hours,
+  });
 }
 
 export async function searchAdminCafesByName(query: string, limit = 12): Promise<AdminCafeSearchItem[]> {
