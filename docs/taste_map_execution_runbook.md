@@ -26,7 +26,7 @@
 | Step | Название | Статус | Дата | Ссылка на PR/commit |
 |---|---|---|---|---|
 | 1 | Контракт Taste Map v1 (docs + json) | [x] | 2026-03-05 | - |
-| 2 | Миграции БД под taste-map | [ ] | - | - |
+| 2 | Миграции БД под taste-map | [x] | 2026-03-05 | - |
 | 3 | Backend domain + repositories | [ ] | - | - |
 | 4 | API onboarding | [ ] | - | - |
 | 5 | API профиля и гипотез | [ ] | - | - |
@@ -377,6 +377,49 @@ Open questions:
 
 Следующий шаг:
 - Step 2 (миграции БД).
+
+## Step 2 - DB migrations + taxonomy seed
+Date: 2026-03-05
+Owner: Engineering
+
+Что сделали:
+- Добавили миграцию схемы Taste Map:
+  - backend/migrations/000035_taste_map_v1_schema.up.sql
+  - backend/migrations/000035_taste_map_v1_schema.down.sql
+- Добавили seed-миграцию taxonomy из docs/taste_taxonomy_v1.json:
+  - backend/migrations/000036_taste_map_v1_taxonomy_seed.up.sql
+  - backend/migrations/000036_taste_map_v1_taxonomy_seed.down.sql
+
+Ключевые решения:
+- Таблицы в v1: `taste_taxonomy`, `taste_onboarding_sessions`, `user_taste_profile`, `user_taste_tags`, `taste_hypotheses`, `taste_inference_runs`.
+- Для `taste_onboarding_sessions` оставили только одну активную (`status='started'`) сессию на пользователя.
+- Для `taste_hypotheses` оставили уникальность одной активной гипотезы (`status='new'`) на `(user_id, taste_code, polarity)`.
+
+Что сознательно НЕ делали (scope guard):
+- Не меняли runtime-код backend/frontend.
+- Не подключали новые таблицы к API/сервисам (это Step 3+).
+
+Измененные файлы:
+- backend/migrations/000035_taste_map_v1_schema.up.sql
+- backend/migrations/000035_taste_map_v1_schema.down.sql
+- backend/migrations/000036_taste_map_v1_taxonomy_seed.up.sql
+- backend/migrations/000036_taste_map_v1_taxonomy_seed.down.sql
+- docs/taste_map_execution_runbook.md
+
+Проверки/тесты:
+- Проверка миграций и SQL на синтаксис/структуру.
+- Проверка соответствия seed и `docs/taste_taxonomy_v1.json`.
+
+Риски/долги:
+- Нужно прогнать реальные `up/down` миграции на staging БД перед Step 3.
+
+Open questions:
+- Достаточно ли ограничения \"1 active onboarding session per user\" для мульти-девайс сценариев.
+- Нужна ли отдельная нормализация/таблица для групп taxonomy (сейчас group_code в check constraint).
+- Нужен ли архивный статус у taste tags (сейчас `active|muted|rejected`).
+
+Следующий шаг:
+- Step 3 (backend domain + repositories).
 ```
 
 ---
@@ -398,3 +441,8 @@ Open questions:
 - что реализовано;
 - какие флаги включены;
 - что оставлено в backlog.
+
+4. Пост-релизная проверка и разбор открытых вопросов:
+- после релиза пользователь вручную проверяет работоспособность в приложении;
+- после этой проверки команда проходит по всем `Open questions` из шагов и фиксирует решения;
+- подтвержденные решения обновляются в документации и backlog.
