@@ -1,0 +1,598 @@
+{
+  "contract_version": "taste_map_v1",
+  "onboarding_version": "onboarding_v1",
+  "locale": "ru-RU",
+  "estimated_duration_sec": 55,
+  "steps": [
+    {
+      "id": "drink_format",
+      "type": "single_choice",
+      "required": true,
+      "title": "Что вы чаще пьете?",
+      "subtitle": "Выберите один вариант, который сейчас ближе всего.",
+      "options": [
+        {
+          "id": "espresso",
+          "label": "Эспрессо",
+          "signals": [
+            {
+              "taste_code": "espresso",
+              "polarity": "positive",
+              "strength": 1.0
+            }
+          ]
+        },
+        {
+          "id": "milk_based",
+          "label": "Капучино/Латте",
+          "signals": [
+            {
+              "taste_code": "milk_based",
+              "polarity": "positive",
+              "strength": 1.0
+            },
+            {
+              "taste_code": "milk_ok",
+              "polarity": "positive",
+              "strength": 0.8
+            }
+          ]
+        },
+        {
+          "id": "filter",
+          "label": "Фильтр/Воронка",
+          "signals": [
+            {
+              "taste_code": "filter",
+              "polarity": "positive",
+              "strength": 1.0
+            },
+            {
+              "taste_code": "black_only",
+              "polarity": "positive",
+              "strength": 0.4
+            }
+          ]
+        },
+        {
+          "id": "cold",
+          "label": "Холодные напитки",
+          "signals": [
+            {
+              "taste_code": "cold",
+              "polarity": "positive",
+              "strength": 1.0
+            },
+            {
+              "taste_code": "iced",
+              "polarity": "positive",
+              "strength": 0.8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "consumption_context",
+      "type": "single_choice",
+      "required": true,
+      "title": "В каком формате вы чаще пьете кофе?",
+      "options": [
+        {
+          "id": "quick_pickup",
+          "label": "На бегу / to-go",
+          "signals": [
+            {
+              "taste_code": "quick_pickup",
+              "polarity": "positive",
+              "strength": 1.0
+            }
+          ]
+        },
+        {
+          "id": "work_focus",
+          "label": "Пока работаю",
+          "signals": [
+            {
+              "taste_code": "work_focus",
+              "polarity": "positive",
+              "strength": 1.0
+            }
+          ]
+        },
+        {
+          "id": "slow_weekend",
+          "label": "Неспешно в выходной",
+          "signals": [
+            {
+              "taste_code": "slow_weekend",
+              "polarity": "positive",
+              "strength": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flavor_likes",
+      "type": "multi_choice",
+      "required": true,
+      "min_choices": 2,
+      "max_choices": 5,
+      "title": "Какие вкусы вам обычно нравятся?",
+      "options": [
+        {
+          "id": "fruity_berry",
+          "label": "Фруктово-ягодные",
+          "signals": [
+            {
+              "taste_code": "fruity_berry",
+              "polarity": "positive",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "citrus",
+          "label": "Цитрусовые",
+          "signals": [
+            {
+              "taste_code": "citrus",
+              "polarity": "positive",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "floral",
+          "label": "Цветочные",
+          "signals": [
+            {
+              "taste_code": "floral",
+              "polarity": "positive",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "nutty_cocoa",
+          "label": "Орехово-шоколадные",
+          "signals": [
+            {
+              "taste_code": "nutty_cocoa",
+              "polarity": "positive",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "caramel_sweet",
+          "label": "Карамельно-сладкие",
+          "signals": [
+            {
+              "taste_code": "caramel_sweet",
+              "polarity": "positive",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "spicy",
+          "label": "Пряные",
+          "signals": [
+            {
+              "taste_code": "spicy",
+              "polarity": "positive",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "roasted_bitter",
+          "label": "Обжарочно-горькие",
+          "signals": [
+            {
+              "taste_code": "roasted_bitter",
+              "polarity": "positive",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "herbal_green",
+          "label": "Травянистые",
+          "signals": [
+            {
+              "taste_code": "herbal_green",
+              "polarity": "positive",
+              "strength": 0.9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flavor_avoid",
+      "type": "multi_choice",
+      "required": false,
+      "min_choices": 0,
+      "max_choices": 3,
+      "title": "Какие вкусы вы скорее избегаете?",
+      "options": [
+        {
+          "id": "fruity_berry",
+          "label": "Фруктово-ягодные",
+          "signals": [
+            {
+              "taste_code": "fruity_berry",
+              "polarity": "negative",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "citrus",
+          "label": "Цитрусовые",
+          "signals": [
+            {
+              "taste_code": "citrus",
+              "polarity": "negative",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "floral",
+          "label": "Цветочные",
+          "signals": [
+            {
+              "taste_code": "floral",
+              "polarity": "negative",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "nutty_cocoa",
+          "label": "Орехово-шоколадные",
+          "signals": [
+            {
+              "taste_code": "nutty_cocoa",
+              "polarity": "negative",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "caramel_sweet",
+          "label": "Карамельно-сладкие",
+          "signals": [
+            {
+              "taste_code": "caramel_sweet",
+              "polarity": "negative",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "spicy",
+          "label": "Пряные",
+          "signals": [
+            {
+              "taste_code": "spicy",
+              "polarity": "negative",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "roasted_bitter",
+          "label": "Обжарочно-горькие",
+          "signals": [
+            {
+              "taste_code": "roasted_bitter",
+              "polarity": "negative",
+              "strength": 0.9
+            }
+          ]
+        },
+        {
+          "id": "herbal_green",
+          "label": "Травянистые",
+          "signals": [
+            {
+              "taste_code": "herbal_green",
+              "polarity": "negative",
+              "strength": 0.9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "intensity_preferences",
+      "type": "range",
+      "required": true,
+      "title": "Какой баланс вам ближе?",
+      "dimensions": [
+        {
+          "id": "acidity",
+          "label": "Кислотность",
+          "min": 0,
+          "max": 5,
+          "mapping": [
+            {
+              "when": "value>=4",
+              "signals": [
+                {
+                  "taste_code": "acidity_high",
+                  "polarity": "positive",
+                  "strength": 0.8
+                },
+                {
+                  "taste_code": "acidity_low",
+                  "polarity": "negative",
+                  "strength": 0.4
+                }
+              ]
+            },
+            {
+              "when": "value<=1",
+              "signals": [
+                {
+                  "taste_code": "acidity_low",
+                  "polarity": "positive",
+                  "strength": 0.8
+                },
+                {
+                  "taste_code": "acidity_high",
+                  "polarity": "negative",
+                  "strength": 0.4
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sweetness",
+          "label": "Сладость",
+          "min": 0,
+          "max": 5,
+          "mapping": [
+            {
+              "when": "value>=4",
+              "signals": [
+                {
+                  "taste_code": "sweetness_high",
+                  "polarity": "positive",
+                  "strength": 0.8
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bitterness",
+          "label": "Горечь",
+          "min": 0,
+          "max": 5,
+          "mapping": [
+            {
+              "when": "value>=4",
+              "signals": [
+                {
+                  "taste_code": "bitterness_high",
+                  "polarity": "positive",
+                  "strength": 0.8
+                }
+              ]
+            },
+            {
+              "when": "value<=1",
+              "signals": [
+                {
+                  "taste_code": "bitterness_high",
+                  "polarity": "negative",
+                  "strength": 0.6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "body",
+          "label": "Плотность",
+          "min": 0,
+          "max": 5,
+          "mapping": [
+            {
+              "when": "value>=4",
+              "signals": [
+                {
+                  "taste_code": "body_heavy",
+                  "polarity": "positive",
+                  "strength": 0.8
+                },
+                {
+                  "taste_code": "body_light",
+                  "polarity": "negative",
+                  "strength": 0.4
+                }
+              ]
+            },
+            {
+              "when": "value<=1",
+              "signals": [
+                {
+                  "taste_code": "body_light",
+                  "polarity": "positive",
+                  "strength": 0.8
+                },
+                {
+                  "taste_code": "body_heavy",
+                  "polarity": "negative",
+                  "strength": 0.4
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "aftertaste",
+          "label": "Длина послевкусия",
+          "min": 0,
+          "max": 5,
+          "mapping": [
+            {
+              "when": "value>=4",
+              "signals": [
+                {
+                  "taste_code": "aftertaste_long",
+                  "polarity": "positive",
+                  "strength": 0.8
+                },
+                {
+                  "taste_code": "aftertaste_short",
+                  "polarity": "negative",
+                  "strength": 0.4
+                }
+              ]
+            },
+            {
+              "when": "value<=1",
+              "signals": [
+                {
+                  "taste_code": "aftertaste_short",
+                  "polarity": "positive",
+                  "strength": 0.8
+                },
+                {
+                  "taste_code": "aftertaste_long",
+                  "polarity": "negative",
+                  "strength": 0.4
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "milk_preference",
+      "type": "single_choice",
+      "required": true,
+      "title": "Какой формат с молоком вам ближе?",
+      "options": [
+        {
+          "id": "black_only",
+          "label": "Черный кофе",
+          "signals": [
+            {
+              "taste_code": "black_only",
+              "polarity": "positive",
+              "strength": 1.0
+            }
+          ]
+        },
+        {
+          "id": "milk_ok",
+          "label": "С обычным молоком",
+          "signals": [
+            {
+              "taste_code": "milk_ok",
+              "polarity": "positive",
+              "strength": 1.0
+            }
+          ]
+        },
+        {
+          "id": "plant_milk_preferred",
+          "label": "С растительным молоком",
+          "signals": [
+            {
+              "taste_code": "plant_milk_preferred",
+              "polarity": "positive",
+              "strength": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "serving_preference",
+      "type": "single_choice",
+      "required": true,
+      "title": "Какая подача чаще ваша?",
+      "options": [
+        {
+          "id": "hot",
+          "label": "Горячая",
+          "signals": [
+            {
+              "taste_code": "hot",
+              "polarity": "positive",
+              "strength": 1.0
+            }
+          ]
+        },
+        {
+          "id": "iced",
+          "label": "Холодная",
+          "signals": [
+            {
+              "taste_code": "iced",
+              "polarity": "positive",
+              "strength": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "paired_preference",
+      "type": "paired_preference",
+      "required": false,
+      "title": "Что вы выберете чаще?",
+      "pairs": [
+        {
+          "id": "pair_1",
+          "left": {
+            "label": "Яркая кислотность + цитрус",
+            "signals": [
+              {
+                "taste_code": "acidity_high",
+                "polarity": "positive",
+                "strength": 0.7
+              },
+              {
+                "taste_code": "citrus",
+                "polarity": "positive",
+                "strength": 0.7
+              }
+            ]
+          },
+          "right": {
+            "label": "Шоколад + плотность",
+            "signals": [
+              {
+                "taste_code": "nutty_cocoa",
+                "polarity": "positive",
+                "strength": 0.7
+              },
+              {
+                "taste_code": "body_heavy",
+                "polarity": "positive",
+                "strength": 0.7
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "initial_profile_rules": {
+    "score_strategy": "average_signed_strength_per_taste",
+    "confidence_strategy": "min(0.65, 0.35 + 0.05 * signal_count_for_tag)",
+    "source": "onboarding"
+  }
+}

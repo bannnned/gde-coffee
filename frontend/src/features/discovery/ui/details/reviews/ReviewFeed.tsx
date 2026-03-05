@@ -596,7 +596,7 @@ function ReviewCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => setTextExpanded(true)}
-                className="review-show-more-button h-6 w-fit px-0 text-xs font-semibold text-[var(--cafe-hero-emphasis-color)] hover:bg-transparent"
+                className="review-show-more-button h-6 w-fit border-0 bg-transparent px-0 text-xs font-semibold text-[var(--cafe-hero-emphasis-color)] shadow-none hover:bg-transparent"
               >
                 Показать еще
               </Button>

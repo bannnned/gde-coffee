@@ -52,14 +52,14 @@ export default function BottomSheet({
     filtersBarHeight,
     safeViewportHeight,
     setSheetHeight,
+    setSheetHeightLive,
     setSheetState: setLayoutSheetState,
   } = useLayoutMetrics();
   const [sheetState, setSheetState] = useState<SheetState>("mid");
+  const [isDragging, setIsDragging] = useState(false);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const lastAutoExpandTriggerRef = useRef(autoExpandTrigger);
   const [headerHeight, setHeaderHeight] = useState(PEEK_HEIGHT_PX);
-  const sheetHeightRafRef = useRef<number | null>(null);
-  const pendingSheetHeightRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -112,42 +112,26 @@ export default function BottomSheet({
         : effectiveSheetState === "peek"
           ? heights.peek
           : heights.mid;
+    // Keep React state updates at snap points; live drag sync goes through CSS var only.
+    setSheetHeight(target);
     const controls = animate(height, target, {
       type: "spring",
       stiffness: 300,
       damping: 34,
     });
     return () => controls.stop();
-  }, [effectiveSheetState, height, heights]);
-
-  const scheduleSheetHeight = useCallback((value: number) => {
-    pendingSheetHeightRef.current = value;
-    if (sheetHeightRafRef.current != null) return;
-    sheetHeightRafRef.current = window.requestAnimationFrame(() => {
-      sheetHeightRafRef.current = null;
-      const pending = pendingSheetHeightRef.current;
-      if (pending == null) return;
-      pendingSheetHeightRef.current = null;
-      setSheetHeight(pending);
-    });
-  }, [setSheetHeight]);
+  }, [effectiveSheetState, height, heights, setSheetHeight]);
 
   useMotionValueEvent(height, "change", (latest) => {
     const visibleHeight = Math.max(heights.peek, latest);
-    scheduleSheetHeight(visibleHeight);
+    // Live updates via CSS var preserve smooth drag by avoiding global context churn.
+    setSheetHeightLive(visibleHeight);
   });
 
   useLayoutEffect(() => {
     const visibleHeight = Math.max(heights.peek, height.get());
-    scheduleSheetHeight(visibleHeight);
-    return () => {
-      if (sheetHeightRafRef.current != null) {
-        cancelAnimationFrame(sheetHeightRafRef.current);
-        sheetHeightRafRef.current = null;
-      }
-      pendingSheetHeightRef.current = null;
-    };
-  }, [heights, height, scheduleSheetHeight]);
+    setSheetHeightLive(visibleHeight);
+  }, [height, heights, setSheetHeightLive]);
 
   useLayoutEffect(() => {
     if (autoExpandTrigger === lastAutoExpandTriggerRef.current) return;
@@ -268,6 +252,7 @@ export default function BottomSheet({
           return;
         }
         mode = "drag";
+        setIsDragging(true);
       }
       if (mode !== "drag") return;
       moveEvent.preventDefault();
@@ -299,6 +284,7 @@ export default function BottomSheet({
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleUp);
+      setIsDragging(false);
       if (pointerHost.releasePointerCapture) {
         try {
           pointerHost.releasePointerCapture(pointerId);
@@ -327,6 +313,7 @@ export default function BottomSheet({
       <MotionSheet
         className={classes.sheet}
         data-state={effectiveSheetState}
+        data-dragging={isDragging ? "true" : "false"}
         style={{
           y: 0,
           height,
@@ -336,7 +323,8 @@ export default function BottomSheet({
           background: "var(--glass-bg)",
           border: "1px solid var(--glass-border)",
           boxShadow: "var(--shadow)",
-          backdropFilter: "blur(14px)",
+          backdropFilter: isDragging ? "none" : "blur(14px)",
+          WebkitBackdropFilter: isDragging ? "none" : "blur(14px)",
         }}
       >
         <div

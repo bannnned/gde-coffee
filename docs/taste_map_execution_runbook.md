@@ -27,7 +27,7 @@
 |---|---|---|---|---|
 | 1 | Контракт Taste Map v1 (docs + json) | [x] | 2026-03-05 | - |
 | 2 | Миграции БД под taste-map | [x] | 2026-03-05 | - |
-| 3 | Backend domain + repositories | [ ] | - | - |
+| 3 | Backend domain + repositories | [x] | 2026-03-05 | - |
 | 4 | API onboarding | [ ] | - | - |
 | 5 | API профиля и гипотез | [ ] | - | - |
 | 6 | Inference engine v1 + triggers | [ ] | - | - |
@@ -420,6 +420,50 @@ Open questions:
 
 Следующий шаг:
 - Step 3 (backend domain + repositories).
+
+## Step 3 - Backend domain + repositories
+Date: 2026-03-05
+Owner: Engineering
+
+Что сделали:
+- Добавили новый доменный пакет `backend/internal/domains/taste`.
+- Реализовали модели и repository-слой под таблицы Taste Map:
+  - onboarding session create/complete
+  - user_taste_profile read/upsert
+  - user_taste_tags upsert
+  - taste_hypotheses create/update
+  - taste_inference_runs create
+- Вынесли SQL-константы отдельно.
+
+Ключевые решения:
+- Репозиторий построен через `QueryRow`-ориентированный CRUD (insert/update с `returning`).
+- Добавлен внутренний конструктор `newRepositoryWithQuerier` для unit-тестов без реальной БД.
+- Дефолты версий/статусов выставляются на repository-уровне (`taste_inference_v1`, `new`, `active`, `mixed`).
+
+Что сознательно НЕ делали (scope guard):
+- Не добавляли HTTP handlers/services/use-cases (это Step 4+).
+- Не подключали роутинг в приложение.
+
+Измененные файлы:
+- backend/internal/domains/taste/types.go
+- backend/internal/domains/taste/repository_sql.go
+- backend/internal/domains/taste/repository.go
+- backend/internal/domains/taste/repository_test.go
+- docs/taste_map_execution_runbook.md
+
+Проверки/тесты:
+- `go test ./internal/domains/taste` - passed.
+
+Риски/долги:
+- Нужны интеграционные тесты на реальной БД после подключения API слоя (Step 4/5).
+
+Open questions:
+- Где фиксировать validation boundary: в handler/service или частично в repository.
+- Нужны ли batch-методы upsert для `user_taste_tags`/`taste_hypotheses` до Step 6.
+- Нужна ли отдельная операция `get hypothesis by id` в repository для Step 5 UX-потока.
+
+Следующий шаг:
+- Step 4 (API onboarding).
 ```
 
 ---

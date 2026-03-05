@@ -228,7 +228,6 @@ export default function DiscoveryScreen() {
       data-sheet-state={sheetState}
       data-vv-scale={visualViewportScale.toFixed(3)}
       style={{
-        ["--sheet-height" as string]: `${sheetHeight}px`,
         height: `${discoveryViewportHeight}px`,
         overflow: "hidden",
       }}

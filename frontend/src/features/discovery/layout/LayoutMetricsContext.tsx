@@ -19,6 +19,7 @@ type LayoutMetricsValue = {
   visualViewportScale: number;
   sheetState: SheetState;
   setSheetHeight: (value: number) => void;
+  setSheetHeightLive: (value: number) => void;
   setFiltersBarHeight: (value: number) => void;
   setSheetState: (value: SheetState) => void;
 };
@@ -64,6 +65,8 @@ const readViewportSnapshot = (): ViewportSnapshot => {
 };
 
 const px = (value: number) => `${Math.max(0, Math.round(value))}px`;
+// Avoid re-rendering the whole discovery tree for every drag pixel.
+const SHEET_HEIGHT_STATE_STEP_PX = 12;
 
 const setRootVar = (name: string, value: string) => {
   if (typeof document === "undefined") return;
@@ -87,10 +90,16 @@ export function LayoutMetricsProvider({ children }: PropsWithChildren) {
     Math.max(0.5, Math.min(4, initialViewport.scale)),
   );
   const sheetHeightRef = useRef(sheetHeight);
+  const sheetHeightLiveRef = useRef(sheetHeight);
   const filtersBarHeightRef = useRef(filtersBarHeight);
   const viewportHeightRef = useRef(safeViewportHeight);
   const viewportWidthRef = useRef(safeViewportWidth);
   const viewportScaleRef = useRef(visualViewportScale);
+
+  useLayoutEffect(() => {
+    setRootVar("--sheet-height", px(sheetHeight));
+    sheetHeightLiveRef.current = sheetHeight;
+  }, [sheetHeight]);
 
   useLayoutEffect(() => {
     let raf: number | null = null;
@@ -159,12 +168,21 @@ export function LayoutMetricsProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  const setSheetHeightLive = useCallback((value: number) => {
+    const next = Math.max(0, Math.round(value));
+    if (Math.abs(sheetHeightLiveRef.current - next) < 1) return;
+    sheetHeightLiveRef.current = next;
+    // CSS var drives visual positioning for controls/overlays without React commits.
+    setRootVar("--sheet-height", px(next));
+  }, []);
+
   const setSheetHeight = useCallback((value: number) => {
     const next = Math.max(0, Math.round(value));
-    if (Math.abs(sheetHeightRef.current - next) < 1) return;
+    setSheetHeightLive(next);
+    if (Math.abs(sheetHeightRef.current - next) < SHEET_HEIGHT_STATE_STEP_PX) return;
     sheetHeightRef.current = next;
     setSheetHeightState(next);
-  }, []);
+  }, [setSheetHeightLive]);
 
   const setFiltersBarHeight = useCallback((value: number) => {
     const next = Math.max(0, Math.round(value));
@@ -182,6 +200,7 @@ export function LayoutMetricsProvider({ children }: PropsWithChildren) {
       visualViewportScale,
       sheetState,
       setSheetHeight,
+      setSheetHeightLive,
       setFiltersBarHeight,
       setSheetState,
     }),
@@ -194,6 +213,7 @@ export function LayoutMetricsProvider({ children }: PropsWithChildren) {
       visualViewportScale,
       setFiltersBarHeight,
       setSheetHeight,
+      setSheetHeightLive,
     ],
   );
 

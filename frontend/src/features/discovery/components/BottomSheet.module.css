@@ -27,6 +27,10 @@
     background-color var(--duration-base) var(--ease-standard);
 }
 
+.sheet[data-dragging="true"] {
+  transition: none;
+}
+
 .sheet::after {
   display: none;
 }
@@ -127,6 +131,13 @@
   mask-repeat: no-repeat;
   -webkit-mask-size: 100% 100%;
   mask-size: 100% 100%;
+}
+
+.sheet[data-dragging="true"] .list {
+  -webkit-mask-image: none;
+  mask-image: none;
+  -webkit-mask-size: auto;
+  mask-size: auto;
 }
 
 .list[data-empty="true"] {
