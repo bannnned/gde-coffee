@@ -163,6 +163,8 @@ type MapPerfAlert struct {
 	SnoozedUntil   string `json:"snoozed_until,omitempty"`
 	AcknowledgedAt string `json:"acknowledged_at,omitempty"`
 	AcknowledgedBy string `json:"acknowledged_by,omitempty"`
+	Owner          string `json:"owner,omitempty"`
+	Comment        string `json:"comment,omitempty"`
 }
 
 type MapPerfHistoryPoint struct {
@@ -175,11 +177,12 @@ type MapPerfHistoryPoint struct {
 }
 
 type MapPerfReport struct {
-	Summary MapPerfSummary        `json:"summary"`
-	Daily   []MapPerfDailyPoint   `json:"daily"`
-	Network []MapPerfNetworkPoint `json:"network"`
-	Alerts  []MapPerfAlert        `json:"alerts"`
-	History []MapPerfHistoryPoint `json:"history"`
+	Summary MapPerfSummary            `json:"summary"`
+	Daily   []MapPerfDailyPoint       `json:"daily"`
+	Network []MapPerfNetworkPoint     `json:"network"`
+	Alerts  []MapPerfAlert            `json:"alerts"`
+	History []MapPerfHistoryPoint     `json:"history"`
+	Actions []MapPerfAlertActionPoint `json:"actions"`
 }
 
 type MapPerfAlertState struct {
@@ -188,6 +191,28 @@ type MapPerfAlertState struct {
 	SnoozedUntil   *time.Time
 	AcknowledgedAt *time.Time
 	AcknowledgedBy string
+	Owner          string
+	Comment        string
+}
+
+type MapPerfAlertAction struct {
+	AlertKey    string
+	Action      string
+	ActorUserID string
+	SnoozeHours int
+	CreatedAt   time.Time
+	Owner       string
+	Comment     string
+}
+
+type MapPerfAlertActionPoint struct {
+	AlertKey    string `json:"alert_key"`
+	Action      string `json:"action"`
+	ActorUserID string `json:"actor_user_id,omitempty"`
+	SnoozeHours int    `json:"snooze_hours,omitempty"`
+	CreatedAt   string `json:"created_at"`
+	Owner       string `json:"owner,omitempty"`
+	Comment     string `json:"comment,omitempty"`
 }
 
 type UpdateMapPerfAlertStateInput struct {
@@ -196,11 +221,15 @@ type UpdateMapPerfAlertStateInput struct {
 	SnoozeHours int
 	ActorUserID string
 	OccurredAt  time.Time
+	Owner       string
+	Comment     string
 }
 
 type mapPerfAlertActionRequest struct {
 	Action      string `json:"action"`
 	SnoozeHours int    `json:"snooze_hours"`
+	Owner       string `json:"owner"`
+	Comment     string `json:"comment"`
 }
 
 type ingestEventRequest struct {

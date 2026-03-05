@@ -87,6 +87,8 @@ export type AdminMapPerfAlert = {
   snoozed_until?: string;
   acknowledged_at?: string;
   acknowledged_by?: string;
+  owner?: string;
+  comment?: string;
 };
 
 export type AdminMapPerfHistoryPoint = {
@@ -98,12 +100,23 @@ export type AdminMapPerfHistoryPoint = {
   trend_delta_pct: number;
 };
 
+export type AdminMapPerfActionPoint = {
+  alert_key: string;
+  action: "ack" | "snooze" | "reset";
+  actor_user_id?: string;
+  snooze_hours?: number;
+  created_at: string;
+  owner?: string;
+  comment?: string;
+};
+
 export type AdminMapPerfReport = {
   summary: AdminMapPerfSummary;
   daily: AdminMapPerfDailyPoint[];
   network: AdminMapPerfNetworkPoint[];
   alerts: AdminMapPerfAlert[];
   history: AdminMapPerfHistoryPoint[];
+  actions: AdminMapPerfActionPoint[];
 };
 
 export type AdminCafeSearchItem = {
@@ -214,6 +227,7 @@ export async function getAdminMapPerf(params?: { days?: number }): Promise<Admin
   const networkRaw = asArray(root.network);
   const alertsRaw = asArray(root.alerts);
   const historyRaw = asArray(root.history);
+  const actionsRaw = asArray(root.actions);
 
   return {
     summary: {
@@ -271,6 +285,8 @@ export async function getAdminMapPerf(params?: { days?: number }): Promise<Admin
         snoozed_until: asString(record.snoozed_until) || undefined,
         acknowledged_at: asString(record.acknowledged_at) || undefined,
         acknowledged_by: asString(record.acknowledged_by) || undefined,
+        owner: asString(record.owner) || undefined,
+        comment: asString(record.comment) || undefined,
       };
     }).filter((item) => item.key && item.label),
     history: historyRaw.map((item) => {
@@ -287,16 +303,33 @@ export async function getAdminMapPerf(params?: { days?: number }): Promise<Admin
         trend_delta_pct: asNumber(record.trend_delta_pct),
       };
     }).filter((item) => item.date),
+    actions: actionsRaw.map((item) => {
+      const record = asRecord(item);
+      const actionRaw = asString(record.action);
+      const action: "ack" | "snooze" | "reset" =
+        actionRaw === "ack" || actionRaw === "snooze" || actionRaw === "reset" ? actionRaw : "ack";
+      return {
+        alert_key: asString(record.alert_key),
+        action,
+        actor_user_id: asString(record.actor_user_id) || undefined,
+        snooze_hours: asNumber(record.snooze_hours) || undefined,
+        created_at: asString(record.created_at),
+        owner: asString(record.owner) || undefined,
+        comment: asString(record.comment) || undefined,
+      };
+    }).filter((item) => item.alert_key && item.created_at),
   };
 }
 
 export async function setAdminMapPerfAlertState(
   alertKey: string,
-  input: { action: "ack" | "snooze" | "reset"; snooze_hours?: number },
+  input: { action: "ack" | "snooze" | "reset"; snooze_hours?: number; owner?: string; comment?: string },
 ): Promise<void> {
   await http.post(`/api/admin/metrics/map-perf/alerts/${encodeURIComponent(alertKey)}/state`, {
     action: input.action,
     snooze_hours: input.snooze_hours,
+    owner: input.owner,
+    comment: input.comment,
   });
 }
 

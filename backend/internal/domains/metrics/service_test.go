@@ -7,16 +7,19 @@ import (
 )
 
 type serviceRepositoryStub struct {
-	capturedDateFrom       time.Time
-	capturedDateTo         time.Time
-	capturedCafeID         string
-	rows                   []DailyNorthStarMetrics
-	funnelCounts           FunnelJourneyCounts
-	mapPerfSnapshot        MapPerfSnapshot
-	mapPerfDaily           []MapPerfDailyMetrics
-	mapPerfNetwork         []MapPerfNetworkMetrics
-	mapPerfAlertStates     []MapPerfAlertState
-	lastUpsertedAlertState MapPerfAlertState
+	capturedDateFrom        time.Time
+	capturedDateTo          time.Time
+	capturedCafeID          string
+	rows                    []DailyNorthStarMetrics
+	funnelCounts            FunnelJourneyCounts
+	mapPerfSnapshot         MapPerfSnapshot
+	mapPerfDaily            []MapPerfDailyMetrics
+	mapPerfNetwork          []MapPerfNetworkMetrics
+	mapPerfAlertStates      []MapPerfAlertState
+	mapPerfAlertActions     []MapPerfAlertAction
+	lastUpsertedAlertState  MapPerfAlertState
+	lastInsertedAlertAction MapPerfAlertAction
+	lastResetExpiredAt      time.Time
 }
 
 func (r *serviceRepositoryStub) InsertEvents(ctx context.Context, events []EventInput) (int, error) {
@@ -81,9 +84,23 @@ func (r *serviceRepositoryStub) ListMapPerfAlertStates(ctx context.Context) ([]M
 	return r.mapPerfAlertStates, nil
 }
 
+func (r *serviceRepositoryStub) ResetExpiredMapPerfAlertStates(ctx context.Context, now time.Time) error {
+	r.lastResetExpiredAt = now
+	return nil
+}
+
 func (r *serviceRepositoryStub) UpsertMapPerfAlertState(ctx context.Context, state MapPerfAlertState) error {
 	r.lastUpsertedAlertState = state
 	return nil
+}
+
+func (r *serviceRepositoryStub) InsertMapPerfAlertAction(ctx context.Context, action MapPerfAlertAction) error {
+	r.lastInsertedAlertAction = action
+	return nil
+}
+
+func (r *serviceRepositoryStub) ListRecentMapPerfAlertActions(ctx context.Context, limit int) ([]MapPerfAlertAction, error) {
+	return r.mapPerfAlertActions, nil
 }
 
 func TestGetNorthStarReport_PropagatesCafeFilterAndBuildsDaily(t *testing.T) {
@@ -260,6 +277,9 @@ func TestGetMapPerfReport_BuildsSummaryAndCoverage(t *testing.T) {
 	if report.History[0].Date != "2026-02-20" {
 		t.Fatalf("unexpected history date: %+v", report.History[0])
 	}
+	if !repo.lastResetExpiredAt.Equal(now.UTC()) {
+		t.Fatalf("expected reset-expired call with now, got %s", repo.lastResetExpiredAt)
+	}
 }
 
 func TestGetMapPerfReport_BuildsAlertsFromThresholdBreaches(t *testing.T) {
@@ -310,6 +330,9 @@ func TestGetMapPerfReport_BuildsAlertsFromThresholdBreaches(t *testing.T) {
 	if len(report.History) == 0 {
 		t.Fatalf("history should not be empty")
 	}
+	if len(report.Actions) != 0 {
+		t.Fatalf("expected empty actions by default, got %d", len(report.Actions))
+	}
 }
 
 func TestUpdateMapPerfAlertState_Snooze(t *testing.T) {
@@ -331,5 +354,11 @@ func TestUpdateMapPerfAlertState_Snooze(t *testing.T) {
 	}
 	if repo.lastUpsertedAlertState.SnoozedUntil == nil {
 		t.Fatalf("expected snoozed_until to be set")
+	}
+	if repo.lastInsertedAlertAction.Action != "snooze" {
+		t.Fatalf("expected inserted action snooze, got %q", repo.lastInsertedAlertAction.Action)
+	}
+	if repo.lastInsertedAlertAction.SnoozeHours != 24 {
+		t.Fatalf("expected snooze_hours=24, got %d", repo.lastInsertedAlertAction.SnoozeHours)
 	}
 }

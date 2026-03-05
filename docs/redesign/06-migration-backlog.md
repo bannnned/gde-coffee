@@ -1494,3 +1494,32 @@ Critical path stack-transition:
 - AC: уведомления показываются только по реально active alert’ам (не snoozed/acked).
 - AC: `go test ./...`, `npm run -s lint`, `npm run -s typecheck`, `npm test -- --watch=false`, `npm run -s build` проходят.
 - Артефакт: server-persistent alert controls + action buttons на админ-экране map performance.
+
+### [x] W6-L · Alert lifecycle hardening (DB expiry reset + audit trail + filters) (P1, status: done)
+- Цель: убрать ручные хвосты в lifecycle alert’ов и сделать action loop полностью операционным для команды.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/migrations/000033_product_metrics_alert_actions.*.sql`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/internal/domains/metrics/{types.go,repository.go,service.go,service_test.go,handler_test.go}`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/{adminMetrics.ts,adminMetrics.test.ts}`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Depends on: `W6-K`.
+- AC: backend автоматически сбрасывает просроченные `snoozed` alert’ы в `active` на сервере (DB update), а не только на клиентской логике отображения.
+- AC: каждое действие `ack/snooze/reset` пишет audit-запись (alert key, action, actor, snooze_hours, created_at) в отдельную таблицу.
+- AC: `GET /api/admin/metrics/map-perf` возвращает `actions[]` для отображения server-side action history.
+- AC: UI получает фильтр по состоянию alert’ов (`active`, `acked`, `snoozed`, `all`) и показывает `Action history` таблицу рядом с `Alert history`.
+- AC: уведомления триггерятся только для реально `active` alert’ов.
+- AC: `go test ./...`, `npm run -s lint`, `npm run -s typecheck`, `npm test -- --watch=false`, `npm run -s build` проходят.
+- Артефакт: server-side expiry reset + audit trail + alert-state filters на админской странице.
+
+### [x] W6-M · Per-alert owner/comment on ack workflow (P1, status: done)
+- Цель: сделать ответственность и план действий явными для каждого alert’а прямо в action loop.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/migrations/000034_product_metrics_alert_owner_comment.*.sql`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/backend/internal/domains/metrics/{types.go,repository.go,service.go,handler.go,service_test.go,handler_test.go}`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/api/{adminMetrics.ts,adminMetrics.test.ts}`.
+- Scope: `/Users/a1/Desktop/Prog/gde-coffee/frontend/src/pages/AdminNorthStarPage.tsx`.
+- Depends on: `W6-L`.
+- AC: backend принимает и сохраняет `owner/comment` для действий `ack/snooze/reset` в state и в audit action log.
+- AC: для `ack` поле `owner` обязательно (валидация на backend).
+- AC: `GET /api/admin/metrics/map-perf` возвращает `owner/comment` в `alerts[]` и `actions[]`.
+- AC: UI позволяет указать `owner/comment` для alert перед `В работу`, а также отображает эти поля в `Action history`.
+- AC: `go test ./...`, `npm run -s lint`, `npm run -s typecheck`, `npm test -- --watch=false`, `npm run -s build` проходят.
+- Артефакт: accountable ack workflow (owner + comment) в admin map-performance.

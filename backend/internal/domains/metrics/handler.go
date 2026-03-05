@@ -169,6 +169,8 @@ func (h *Handler) UpdateMapPerfAlertState(c *gin.Context) {
 		SnoozeHours: req.SnoozeHours,
 		ActorUserID: userID,
 		OccurredAt:  time.Now(),
+		Owner:       req.Owner,
+		Comment:     req.Comment,
 	})
 	if err != nil {
 		if _, ok := err.(*eventValidationError); ok {

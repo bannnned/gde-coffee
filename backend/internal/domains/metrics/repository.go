@@ -19,7 +19,9 @@ func (r *Repository) ListMapPerfAlertStates(ctx context.Context) ([]MapPerfAlert
 	state,
 	snoozed_until,
 	acknowledged_at,
-	coalesce(acknowledged_by::text, '') as acknowledged_by
+	coalesce(acknowledged_by::text, '') as acknowledged_by,
+	coalesce(owner, '') as owner,
+	coalesce(comment, '') as comment
 from public.product_metrics_alert_states`
 
 	rows, err := r.pool.Query(ctx, query)
@@ -37,6 +39,8 @@ from public.product_metrics_alert_states`
 			&row.SnoozedUntil,
 			&row.AcknowledgedAt,
 			&row.AcknowledgedBy,
+			&row.Owner,
+			&row.Comment,
 		); err != nil {
 			return nil, err
 		}
@@ -46,6 +50,20 @@ from public.product_metrics_alert_states`
 		return nil, err
 	}
 	return result, nil
+}
+
+func (r *Repository) ResetExpiredMapPerfAlertStates(ctx context.Context, now time.Time) error {
+	const query = `update public.product_metrics_alert_states
+set
+	state = 'active',
+	snoozed_until = null,
+	updated_at = now()
+where
+	state = 'snoozed'
+	and snoozed_until is not null
+	and snoozed_until <= $1`
+	_, err := r.pool.Exec(ctx, query, now.UTC())
+	return err
 }
 
 func (r *Repository) UpsertMapPerfAlertState(ctx context.Context, state MapPerfAlertState) error {
@@ -59,6 +77,8 @@ func (r *Repository) UpsertMapPerfAlertState(ctx context.Context, state MapPerfA
 	snoozed_until,
 	acknowledged_at,
 	acknowledged_by,
+	owner,
+	comment,
 	updated_at
 ) values (
 	$1,
@@ -66,6 +86,8 @@ func (r *Repository) UpsertMapPerfAlertState(ctx context.Context, state MapPerfA
 	$3,
 	$4,
 	nullif($5, '')::uuid,
+	$6,
+	$7,
 	now()
 )
 on conflict (alert_key) do update
@@ -74,6 +96,8 @@ set
 	snoozed_until = excluded.snoozed_until,
 	acknowledged_at = excluded.acknowledged_at,
 	acknowledged_by = excluded.acknowledged_by,
+	owner = excluded.owner,
+	comment = excluded.comment,
 	updated_at = now()`
 
 	_, err := r.pool.Exec(
@@ -84,8 +108,89 @@ set
 		state.SnoozedUntil,
 		state.AcknowledgedAt,
 		state.AcknowledgedBy,
+		state.Owner,
+		state.Comment,
 	)
 	return err
+}
+
+func (r *Repository) InsertMapPerfAlertAction(ctx context.Context, action MapPerfAlertAction) error {
+	const query = `insert into public.product_metrics_alert_actions (
+	alert_key,
+	action,
+	actor_user_id,
+	snooze_hours,
+	owner,
+	comment,
+	created_at
+) values (
+	$1,
+	$2,
+	nullif($3, '')::uuid,
+	nullif($4, 0),
+	$5,
+	$6,
+	$7
+)`
+
+	_, err := r.pool.Exec(
+		ctx,
+		query,
+		strings.TrimSpace(action.AlertKey),
+		strings.TrimSpace(action.Action),
+		strings.TrimSpace(action.ActorUserID),
+		action.SnoozeHours,
+		strings.TrimSpace(action.Owner),
+		strings.TrimSpace(action.Comment),
+		action.CreatedAt.UTC(),
+	)
+	return err
+}
+
+func (r *Repository) ListRecentMapPerfAlertActions(ctx context.Context, limit int) ([]MapPerfAlertAction, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	const query = `select
+	alert_key,
+	action,
+	coalesce(actor_user_id::text, '') as actor_user_id,
+	coalesce(snooze_hours, 0) as snooze_hours,
+	coalesce(owner, '') as owner,
+	coalesce(comment, '') as comment,
+	created_at
+from public.product_metrics_alert_actions
+order by created_at desc
+limit $1`
+	rows, err := r.pool.Query(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]MapPerfAlertAction, 0, limit)
+	for rows.Next() {
+		var row MapPerfAlertAction
+		if err := rows.Scan(
+			&row.AlertKey,
+			&row.Action,
+			&row.ActorUserID,
+			&row.SnoozeHours,
+			&row.Owner,
+			&row.Comment,
+			&row.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func NewRepository(pool *pgxpool.Pool) *Repository {

@@ -24,6 +24,8 @@ import { extractApiErrorMessage } from "../utils/apiError";
 
 type ScopeMode = "overall" | "cafe";
 type PerfHealthLevel = "good" | "watch" | "risk";
+type AlertFilter = "all" | "active" | "acked" | "snoozed";
+type AlertDraft = { owner: string; comment: string };
 
 const RANGE_OPTIONS = [
   { value: "7", label: "7 дней" },
@@ -106,6 +108,12 @@ function mapAlertStateLabel(state: "active" | "acked" | "snoozed", snoozedUntil?
     return snoozedUntil ? `Скрыт до ${formatDateTime(snoozedUntil)}` : "Скрыт";
   }
   return "Активен";
+}
+
+function mapAlertActionLabel(action: "ack" | "snooze" | "reset"): string {
+  if (action === "ack") return "В работу";
+  if (action === "snooze") return "Скрыть";
+  return "Сброс";
 }
 
 type MapActionLoop = {
@@ -217,6 +225,8 @@ export default function AdminNorthStarPage() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [alertActionKey, setAlertActionKey] = useState<string | null>(null);
+  const [alertFilter, setAlertFilter] = useState<AlertFilter>("active");
+  const [alertDrafts, setAlertDrafts] = useState<Record<string, AlertDraft>>({});
   const lastAlertFingerprintRef = useRef<string>("");
 
   const selectedCafe = useMemo(
@@ -347,7 +357,27 @@ export default function AdminNorthStarPage() {
   );
   const mapAlerts = useMemo(() => mapPerfReport?.alerts ?? [], [mapPerfReport?.alerts]);
   const mapAlertHistory = useMemo(() => mapPerfReport?.history ?? [], [mapPerfReport?.history]);
+  const mapAlertActions = useMemo(() => mapPerfReport?.actions ?? [], [mapPerfReport?.actions]);
   const activeMapAlerts = useMemo(() => mapAlerts.filter((item) => item.state === "active"), [mapAlerts]);
+  const filteredMapAlerts = useMemo(() => {
+    if (alertFilter === "all") return mapAlerts;
+    return mapAlerts.filter((item) => item.state === alertFilter);
+  }, [alertFilter, mapAlerts]);
+
+  useEffect(() => {
+    setAlertDrafts((prev) => {
+      const next = { ...prev };
+      for (const alert of mapAlerts) {
+        if (!next[alert.key]) {
+          next[alert.key] = {
+            owner: alert.owner ?? "",
+            comment: alert.comment ?? "",
+          };
+        }
+      }
+      return next;
+    });
+  }, [mapAlerts]);
 
   useEffect(() => {
     const summary = mapPerfReport?.summary;
@@ -372,11 +402,22 @@ export default function AdminNorthStarPage() {
 
   const handleAlertAction = useCallback(
     async (alertKey: string, action: "ack" | "snooze" | "reset") => {
+      const draft = alertDrafts[alertKey] ?? { owner: "", comment: "" };
+      if (action === "ack" && !draft.owner.trim()) {
+        notifications.show({
+          color: "yellow",
+          title: "Нужен owner",
+          message: "Для действия 'В работу' укажите owner.",
+        });
+        return;
+      }
       setAlertActionKey(`${alertKey}:${action}`);
       try {
         await setAdminMapPerfAlertState(alertKey, {
           action,
           snooze_hours: action === "snooze" ? 24 : undefined,
+          owner: draft.owner.trim() || undefined,
+          comment: draft.comment.trim() || undefined,
         });
         await loadReport();
       } catch (error: unknown) {
@@ -389,7 +430,7 @@ export default function AdminNorthStarPage() {
         setAlertActionKey(null);
       }
     },
-    [loadReport],
+    [alertDrafts, loadReport],
   );
 
   if (status === "loading") {
@@ -745,10 +786,40 @@ export default function AdminNorthStarPage() {
 
                   <div style={{ display: "grid", gap: 8 }}>
                     <p style={{ margin: 0, fontWeight: 700 }}>Active alerts</p>
-                    {mapAlerts.length > 0 ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {[
+                        { key: "active", label: "Активные" },
+                        { key: "acked", label: "В работе" },
+                        { key: "snoozed", label: "Скрытые" },
+                        { key: "all", label: "Все" },
+                      ].map((option) => {
+                        const active = alertFilter === option.key;
+                        return (
+                          <button
+                            key={option.key}
+                            type="button"
+                            className="ui-focus-ring"
+                            onClick={() => setAlertFilter(option.key as AlertFilter)}
+                            style={{
+                              borderRadius: 999,
+                              padding: "4px 10px",
+                              border: "1px solid var(--border)",
+                              background: active ? "var(--color-brand-accent)" : "transparent",
+                              color: active ? "var(--color-on-accent)" : "var(--text)",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {filteredMapAlerts.length > 0 ? (
                       <div style={{ display: "grid", gap: 8 }}>
-                        {mapAlerts.map((item) => {
+                        {filteredMapAlerts.map((item) => {
                           const color = item.severity === "risk" ? "var(--color-danger, #dc2626)" : "var(--color-warning, #d97706)";
+                          const draft = alertDrafts[item.key] ?? { owner: item.owner ?? "", comment: item.comment ?? "" };
                           return (
                             <div
                               key={item.key}
@@ -769,6 +840,54 @@ export default function AdminNorthStarPage() {
                               <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
                                 {item.target} · {mapAlertStateLabel(item.state, item.snoozed_until)}
                               </p>
+                              <div style={{ display: "grid", gap: 6, width: "100%" }}>
+                                <input
+                                  className="ui-focus-ring"
+                                  value={draft.owner}
+                                  onChange={(event) => {
+                                    const value = event.currentTarget.value;
+                                    setAlertDrafts((prev) => ({
+                                      ...prev,
+                                      [item.key]: {
+                                        owner: value,
+                                        comment: prev[item.key]?.comment ?? item.comment ?? "",
+                                      },
+                                    }));
+                                  }}
+                                  placeholder="Owner (кто ведет)"
+                                  style={{
+                                    width: "100%",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: 8,
+                                    padding: "6px 8px",
+                                    background: "var(--surface)",
+                                    color: "var(--text)",
+                                  }}
+                                />
+                                <input
+                                  className="ui-focus-ring"
+                                  value={draft.comment}
+                                  onChange={(event) => {
+                                    const value = event.currentTarget.value;
+                                    setAlertDrafts((prev) => ({
+                                      ...prev,
+                                      [item.key]: {
+                                        owner: prev[item.key]?.owner ?? item.owner ?? "",
+                                        comment: value,
+                                      },
+                                    }));
+                                  }}
+                                  placeholder="Комментарий (что делаем)"
+                                  style={{
+                                    width: "100%",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: 8,
+                                    padding: "6px 8px",
+                                    background: "var(--surface)",
+                                    color: "var(--text)",
+                                  }}
+                                />
+                              </div>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                 {item.state !== "acked" && (
                                   <Button
@@ -810,7 +929,7 @@ export default function AdminNorthStarPage() {
                       </div>
                     ) : (
                       <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
-                        Активных алертов нет.
+                        По выбранному фильтру алертов нет.
                       </p>
                     )}
                   </div>
@@ -932,6 +1051,46 @@ export default function AdminNorthStarPage() {
                             <Table.Td colSpan={6}>
                               <p style={{ margin: 0, color: "var(--muted)" }}>
                                 История алертов пока пуста.
+                              </p>
+                            </Table.Td>
+                          </Table.Tr>
+                        )}
+                      </Table.Tbody>
+                    </Table>
+                  </div>
+
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Action history</p>
+                    <Table striped highlightOnHover withTableBorder>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Время</Table.Th>
+                          <Table.Th>Alert</Table.Th>
+                          <Table.Th>Действие</Table.Th>
+                          <Table.Th>Owner</Table.Th>
+                          <Table.Th>Комментарий</Table.Th>
+                          <Table.Th>Кто</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {mapAlertActions.map((action) => (
+                          <Table.Tr key={`${action.created_at}-${action.alert_key}-${action.action}`}>
+                            <Table.Td>{formatDateTime(action.created_at)}</Table.Td>
+                            <Table.Td>{action.alert_key}</Table.Td>
+                            <Table.Td>
+                              {mapAlertActionLabel(action.action)}
+                              {action.action === "snooze" && action.snooze_hours ? ` (${action.snooze_hours}ч)` : ""}
+                            </Table.Td>
+                            <Table.Td>{action.owner || "—"}</Table.Td>
+                            <Table.Td>{action.comment || "—"}</Table.Td>
+                            <Table.Td>{action.actor_user_id || "system"}</Table.Td>
+                          </Table.Tr>
+                        ))}
+                        {mapAlertActions.length === 0 && (
+                          <Table.Tr>
+                            <Table.Td colSpan={6}>
+                              <p style={{ margin: 0, color: "var(--muted)" }}>
+                                История действий пока пуста.
                               </p>
                             </Table.Td>
                           </Table.Tr>

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 )
 
@@ -14,8 +15,11 @@ type repository interface {
 	GetMapPerfSnapshot(ctx context.Context, dateFrom time.Time, dateTo time.Time) (MapPerfSnapshot, error)
 	ListMapPerfDailyMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time) ([]MapPerfDailyMetrics, error)
 	ListMapPerfNetworkMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time) ([]MapPerfNetworkMetrics, error)
+	ResetExpiredMapPerfAlertStates(ctx context.Context, now time.Time) error
 	ListMapPerfAlertStates(ctx context.Context) ([]MapPerfAlertState, error)
 	UpsertMapPerfAlertState(ctx context.Context, state MapPerfAlertState) error
+	InsertMapPerfAlertAction(ctx context.Context, action MapPerfAlertAction) error
+	ListRecentMapPerfAlertActions(ctx context.Context, limit int) ([]MapPerfAlertAction, error)
 }
 
 type Service struct {
@@ -145,6 +149,10 @@ func (s *Service) GetMapPerfReport(
 	days int,
 	now time.Time,
 ) (MapPerfReport, error) {
+	nowUTC := now.UTC()
+	if err := s.repository.ResetExpiredMapPerfAlertStates(ctx, nowUTC); err != nil {
+		return MapPerfReport{}, err
+	}
 	dateFrom, dateTo, normalizedDays := buildDateRange(days, now)
 	snapshot, err := s.repository.GetMapPerfSnapshot(ctx, dateFrom, dateTo)
 	if err != nil {
@@ -159,6 +167,10 @@ func (s *Service) GetMapPerfReport(
 		return MapPerfReport{}, err
 	}
 	alertStates, err := s.repository.ListMapPerfAlertStates(ctx)
+	if err != nil {
+		return MapPerfReport{}, err
+	}
+	alertActions, err := s.repository.ListRecentMapPerfAlertActions(ctx, 40)
 	if err != nil {
 		return MapPerfReport{}, err
 	}
@@ -206,7 +218,8 @@ func (s *Service) GetMapPerfReport(
 		alertStateByKey[state.AlertKey] = state
 	}
 	alerts := buildMapPerfAlerts(snapshot, interactionCoverage, trendDeltaPct)
-	alerts = applyMapPerfAlertStates(alerts, alertStateByKey, now.UTC())
+	alerts = applyMapPerfAlertStates(alerts, alertStateByKey, nowUTC)
+	actions := buildMapPerfAlertActionPoints(alertActions)
 
 	return MapPerfReport{
 		Summary: MapPerfSummary{
@@ -225,6 +238,7 @@ func (s *Service) GetMapPerfReport(
 		Network: network,
 		Alerts:  alerts,
 		History: buildMapPerfHistory(daily),
+		Actions: actions,
 	}, nil
 }
 
@@ -236,6 +250,17 @@ func (s *Service) UpdateMapPerfAlertState(ctx context.Context, input UpdateMapPe
 	action := input.Action
 	if action != "ack" && action != "snooze" && action != "reset" {
 		return validationError("action должен быть ack, snooze или reset.")
+	}
+	owner := strings.TrimSpace(input.Owner)
+	comment := strings.TrimSpace(input.Comment)
+	if len(owner) > 120 {
+		return validationError("owner слишком длинный (максимум 120 символов).")
+	}
+	if len(comment) > 500 {
+		return validationError("comment слишком длинный (максимум 500 символов).")
+	}
+	if action == "ack" && owner == "" {
+		return validationError("owner обязателен для ack.")
 	}
 
 	now := input.OccurredAt.UTC()
@@ -249,6 +274,8 @@ func (s *Service) UpdateMapPerfAlertState(ctx context.Context, input UpdateMapPe
 		SnoozedUntil:   nil,
 		AcknowledgedAt: nil,
 		AcknowledgedBy: input.ActorUserID,
+		Owner:          owner,
+		Comment:        comment,
 	}
 	switch action {
 	case "ack":
@@ -268,9 +295,31 @@ func (s *Service) UpdateMapPerfAlertState(ctx context.Context, input UpdateMapPe
 		nextState.AcknowledgedAt = &now
 	case "reset":
 		nextState.State = AlertStateActive
+		nextState.Owner = ""
+		nextState.Comment = ""
 	}
-
-	return s.repository.UpsertMapPerfAlertState(ctx, nextState)
+	if err := s.repository.UpsertMapPerfAlertState(ctx, nextState); err != nil {
+		return err
+	}
+	snoozeHours := 0
+	if action == "snooze" {
+		snoozeHours = input.SnoozeHours
+		if snoozeHours <= 0 {
+			snoozeHours = 24
+		}
+		if snoozeHours > 24*7 {
+			snoozeHours = 24 * 7
+		}
+	}
+	return s.repository.InsertMapPerfAlertAction(ctx, MapPerfAlertAction{
+		AlertKey:    alertKey,
+		Action:      action,
+		ActorUserID: input.ActorUserID,
+		SnoozeHours: snoozeHours,
+		CreatedAt:   now,
+		Owner:       owner,
+		Comment:     comment,
+	})
 }
 
 func classifyLatency(valueMs float64, goodThreshold float64, watchThreshold float64) string {
@@ -424,6 +473,8 @@ func applyMapPerfAlertStates(alerts []MapPerfAlert, states map[string]MapPerfAle
 					alert.AcknowledgedAt = state.AcknowledgedAt.UTC().Format(time.RFC3339)
 				}
 				alert.AcknowledgedBy = state.AcknowledgedBy
+				alert.Owner = state.Owner
+				alert.Comment = state.Comment
 				result = append(result, alert)
 				continue
 			}
@@ -434,10 +485,28 @@ func applyMapPerfAlertStates(alerts []MapPerfAlert, states map[string]MapPerfAle
 				alert.AcknowledgedAt = state.AcknowledgedAt.UTC().Format(time.RFC3339)
 			}
 			alert.AcknowledgedBy = state.AcknowledgedBy
+			alert.Owner = state.Owner
+			alert.Comment = state.Comment
 		default:
 			alert.State = AlertStateActive
 		}
 		result = append(result, alert)
+	}
+	return result
+}
+
+func buildMapPerfAlertActionPoints(actions []MapPerfAlertAction) []MapPerfAlertActionPoint {
+	result := make([]MapPerfAlertActionPoint, 0, len(actions))
+	for _, action := range actions {
+		result = append(result, MapPerfAlertActionPoint{
+			AlertKey:    action.AlertKey,
+			Action:      action.Action,
+			ActorUserID: action.ActorUserID,
+			SnoozeHours: action.SnoozeHours,
+			CreatedAt:   action.CreatedAt.UTC().Format(time.RFC3339),
+			Owner:       action.Owner,
+			Comment:     action.Comment,
+		})
 	}
 	return result
 }

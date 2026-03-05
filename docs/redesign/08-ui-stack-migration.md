@@ -94,6 +94,8 @@
 76. `W6-I` закрыт (`done`): добавлены авто-алерты по threshold breach (`watch/risk`) и компактная история статусов (`Active alerts` + `Alert history`) с local persistence и anti-spam fingerprint.
 77. `W6-J` закрыт (`done`): `Map performance` переведен на server-driven `alerts/history` (backend возвращает alert/history вместе с map-perf report), frontend удалил `localStorage`-источник и использует единый серверный источник для команды.
 78. `W6-K` закрыт (`done`): добавлены серверные action-controls для alert’ов (`ack/snooze/reset`) с хранением состояния в БД и UI-кнопками в `Active alerts` на `/admin/metrics`.
+79. `W6-L` закрыт (`done`): усилен lifecycle alert’ов — server-side reset просроченных snooze, audit trail действий (`ack/snooze/reset`) и UI-фильтры по статусам + таблица `Action history`.
+80. `W6-M` закрыт (`done`): добавлен accountable-слой для alert’ов — `owner/comment` в ack workflow (backend validation + state/audit persistence + UI поля/отображение в history).
 
 ## 3. Принципы миграции
 1. Без big-bang: переносим слой поэтапно, зона за зоной.

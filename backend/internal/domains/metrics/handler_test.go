@@ -16,6 +16,7 @@ type handlerRepositoryStub struct {
 	capturedCafeID       string
 	funnelCapturedCafeID string
 	lastAlertState       MapPerfAlertState
+	lastAlertAction      MapPerfAlertAction
 }
 
 func (r *handlerRepositoryStub) InsertEvents(ctx context.Context, events []EventInput) (int, error) {
@@ -70,9 +71,22 @@ func (r *handlerRepositoryStub) ListMapPerfAlertStates(ctx context.Context) ([]M
 	return nil, nil
 }
 
+func (r *handlerRepositoryStub) ResetExpiredMapPerfAlertStates(ctx context.Context, now time.Time) error {
+	return nil
+}
+
 func (r *handlerRepositoryStub) UpsertMapPerfAlertState(ctx context.Context, state MapPerfAlertState) error {
 	r.lastAlertState = state
 	return nil
+}
+
+func (r *handlerRepositoryStub) InsertMapPerfAlertAction(ctx context.Context, action MapPerfAlertAction) error {
+	r.lastAlertAction = action
+	return nil
+}
+
+func (r *handlerRepositoryStub) ListRecentMapPerfAlertActions(ctx context.Context, limit int) ([]MapPerfAlertAction, error) {
+	return nil, nil
 }
 
 func TestGetNorthStar_InvalidCafeID_ReturnsBadRequest(t *testing.T) {
@@ -257,7 +271,7 @@ func TestUpdateMapPerfAlertState_Ack_ReturnsOK(t *testing.T) {
 	router := gin.New()
 	router.POST("/api/admin/metrics/map-perf/alerts/:alert_key/state", handler.UpdateMapPerfAlertState)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/admin/metrics/map-perf/alerts/render_p95/state", strings.NewReader(`{"action":"ack"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/metrics/map-perf/alerts/render_p95/state", strings.NewReader(`{"action":"ack","owner":"ops","comment":"take ownership"}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -270,5 +284,11 @@ func TestUpdateMapPerfAlertState_Ack_ReturnsOK(t *testing.T) {
 	}
 	if repo.lastAlertState.State != AlertStateAcked {
 		t.Fatalf("expected acked state, got %q", repo.lastAlertState.State)
+	}
+	if repo.lastAlertAction.Action != "ack" {
+		t.Fatalf("expected ack action in audit log, got %q", repo.lastAlertAction.Action)
+	}
+	if repo.lastAlertAction.Owner != "ops" {
+		t.Fatalf("expected owner in audit log, got %q", repo.lastAlertAction.Owner)
 	}
 }

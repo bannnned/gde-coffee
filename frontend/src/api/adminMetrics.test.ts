@@ -151,6 +151,8 @@ describe("adminMetrics api", () => {
             target: "цель ≥ 55%",
             state: "snoozed",
             snoozed_until: "2026-02-15T12:00:00Z",
+            owner: "ops",
+            comment: "investigating",
           },
         ],
         history: [
@@ -161,6 +163,17 @@ describe("adminMetrics api", () => {
             first_interaction_p95_ms: 2800,
             interaction_coverage: 0.42,
             trend_delta_pct: 8.2,
+          },
+        ],
+        actions: [
+          {
+            alert_key: "coverage",
+            action: "snooze",
+            actor_user_id: "550e8400-e29b-41d4-a716-446655440000",
+            snooze_hours: 24,
+            created_at: "2026-02-14T12:00:00Z",
+            owner: "ops",
+            comment: "investigating",
           },
         ],
       },
@@ -180,17 +193,27 @@ describe("adminMetrics api", () => {
     expect(report.network[0]?.effective_type).toBe("4g");
     expect(report.alerts[0]?.key).toBe("coverage");
     expect(report.alerts[0]?.state).toBe("snoozed");
+    expect(report.alerts[0]?.owner).toBe("ops");
     expect(report.history[0]?.status).toBe("watch");
+    expect(report.actions[0]?.action).toBe("snooze");
+    expect(report.actions[0]?.comment).toBe("investigating");
   });
 
   it("posts map-perf alert state action", async () => {
     httpPostMock.mockResolvedValueOnce({ data: { status: "ok" } });
 
-    await setAdminMapPerfAlertState("render_p95", { action: "snooze", snooze_hours: 24 });
+    await setAdminMapPerfAlertState("render_p95", {
+      action: "snooze",
+      snooze_hours: 24,
+      owner: "ops",
+      comment: "temporary silence",
+    });
 
     expect(httpPostMock).toHaveBeenCalledWith("/api/admin/metrics/map-perf/alerts/render_p95/state", {
       action: "snooze",
       snooze_hours: 24,
+      owner: "ops",
+      comment: "temporary silence",
     });
   });
 });
