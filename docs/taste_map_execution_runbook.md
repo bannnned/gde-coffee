@@ -25,7 +25,7 @@
 
 | Step | Название | Статус | Дата | Ссылка на PR/commit |
 |---|---|---|---|---|
-| 1 | Контракт Taste Map v1 (docs + json) | [ ] | - | - |
+| 1 | Контракт Taste Map v1 (docs + json) | [x] | 2026-03-05 | - |
 | 2 | Миграции БД под taste-map | [ ] | - | - |
 | 3 | Backend domain + repositories | [ ] | - | - |
 | 4 | API onboarding | [ ] | - | - |
@@ -336,6 +336,47 @@ Open questions:
 
 Следующий шаг:
 - Step 1 (контракт и JSON-спецификации).
+
+## Step 1 - Contract + JSON specs
+Date: 2026-03-05
+Owner: Engineering
+
+Что сделали:
+- Создали основной контракт: docs/taste_map_v1_contract.md.
+- Добавили machine-readable спецификации:
+  - docs/taste_taxonomy_v1.json
+  - docs/taste_onboarding_v1.json
+- Зафиксировали draft DTO для 5 API endpoint-ов Taste Map.
+
+Ключевые решения:
+- Polarity для flavor/structure: positive + negative.
+- Preference/context/serving/milk: только positive.
+- Inference/version fields включены в контракт с первого шага.
+
+Что сознательно НЕ делали (scope guard):
+- Не меняли runtime-код backend/frontend.
+- Не добавляли SQL миграции (это Step 2).
+
+Измененные файлы:
+- docs/taste_map_v1_contract.md
+- docs/taste_taxonomy_v1.json
+- docs/taste_onboarding_v1.json
+- docs/taste_map_execution_runbook.md
+
+Проверки/тесты:
+- Валидация JSON через jq.
+- Ручная сверка JSON и markdown-контракта.
+
+Риски/долги:
+- Нужно утвердить уровень строгости negative hypotheses до начала Step 2.
+
+Open questions:
+- Негативные гипотезы в v1 или v1.1.
+- Нужен ли тег fermented_funky в v1.
+- Skip behavior для paired-preference и его влияние на confidence.
+
+Следующий шаг:
+- Step 2 (миграции БД).
 ```
 
 ---

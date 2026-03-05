@@ -1,0 +1,240 @@
+{
+  "contract_version": "taste_map_v1",
+  "taxonomy_version": "2026-03-05",
+  "locale": "ru-RU",
+  "groups": [
+    {
+      "code": "flavor_family",
+      "display_name": "Вкусовые семейства",
+      "allows_negative": true
+    },
+    {
+      "code": "structure",
+      "display_name": "Структура вкуса",
+      "allows_negative": true
+    },
+    {
+      "code": "brew_preference",
+      "display_name": "Предпочитаемый формат напитка",
+      "allows_negative": false
+    },
+    {
+      "code": "milk_preference",
+      "display_name": "Предпочтение по молоку",
+      "allows_negative": false
+    },
+    {
+      "code": "serving",
+      "display_name": "Температура подачи",
+      "allows_negative": false
+    },
+    {
+      "code": "context",
+      "display_name": "Контекст потребления",
+      "allows_negative": false
+    }
+  ],
+  "tags": [
+    {
+      "code": "fruity_berry",
+      "group": "flavor_family",
+      "display_name": "Фруктово-ягодный",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "ягоды, косточковые фрукты, джемовые ноты"
+    },
+    {
+      "code": "citrus",
+      "group": "flavor_family",
+      "display_name": "Цитрусовый",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "лимон, апельсин, грейпфрут"
+    },
+    {
+      "code": "floral",
+      "group": "flavor_family",
+      "display_name": "Цветочный",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "жасмин, цветочный аромат"
+    },
+    {
+      "code": "nutty_cocoa",
+      "group": "flavor_family",
+      "display_name": "Орехово-шоколадный",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "фундук, какао, молочный шоколад"
+    },
+    {
+      "code": "caramel_sweet",
+      "group": "flavor_family",
+      "display_name": "Карамельно-сладкий",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "карамель, ирис, тростниковый сахар"
+    },
+    {
+      "code": "spicy",
+      "group": "flavor_family",
+      "display_name": "Пряный",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "корица, специи"
+    },
+    {
+      "code": "roasted_bitter",
+      "group": "flavor_family",
+      "display_name": "Обжарочно-горький",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "темная обжарка, какао-нибс, выраженная горечь"
+    },
+    {
+      "code": "herbal_green",
+      "group": "flavor_family",
+      "display_name": "Травянистый",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "зелень, чайные ноты"
+    },
+
+    {
+      "code": "acidity_high",
+      "group": "structure",
+      "display_name": "Яркая кислотность",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "кислотность как заметная и доминирующая часть чашки"
+    },
+    {
+      "code": "acidity_low",
+      "group": "structure",
+      "display_name": "Низкая кислотность",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "мягкая кислотность"
+    },
+    {
+      "code": "sweetness_high",
+      "group": "structure",
+      "display_name": "Высокая сладость",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "ощутимая природная сладость"
+    },
+    {
+      "code": "bitterness_high",
+      "group": "structure",
+      "display_name": "Высокая горечь",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "заметная горечь"
+    },
+    {
+      "code": "body_light",
+      "group": "structure",
+      "display_name": "Легкое тело",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "чайное, легкое ощущение плотности"
+    },
+    {
+      "code": "body_heavy",
+      "group": "structure",
+      "display_name": "Плотное тело",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "сиропистость, насыщенная плотность"
+    },
+    {
+      "code": "aftertaste_long",
+      "group": "structure",
+      "display_name": "Долгое послевкусие",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "длительное послевкусие"
+    },
+    {
+      "code": "aftertaste_short",
+      "group": "structure",
+      "display_name": "Короткое послевкусие",
+      "allowed_polarity": ["positive", "negative"],
+      "description": "короткое, быстро исчезающее послевкусие"
+    },
+
+    {
+      "code": "espresso",
+      "group": "brew_preference",
+      "display_name": "Эспрессо",
+      "allowed_polarity": ["positive"],
+      "description": "предпочитает эспрессо-подачу"
+    },
+    {
+      "code": "milk_based",
+      "group": "brew_preference",
+      "display_name": "Молочные напитки",
+      "allowed_polarity": ["positive"],
+      "description": "предпочитает капучино/латте и аналогичные"
+    },
+    {
+      "code": "filter",
+      "group": "brew_preference",
+      "display_name": "Фильтр",
+      "allowed_polarity": ["positive"],
+      "description": "предпочитает filter/alternative brew"
+    },
+    {
+      "code": "cold",
+      "group": "brew_preference",
+      "display_name": "Холодные кофейные напитки",
+      "allowed_polarity": ["positive"],
+      "description": "предпочитает cold brew/iced форматы"
+    },
+
+    {
+      "code": "black_only",
+      "group": "milk_preference",
+      "display_name": "Черный кофе",
+      "allowed_polarity": ["positive"],
+      "description": "обычно без молока"
+    },
+    {
+      "code": "milk_ok",
+      "group": "milk_preference",
+      "display_name": "С молоком",
+      "allowed_polarity": ["positive"],
+      "description": "обычно с молоком"
+    },
+    {
+      "code": "plant_milk_preferred",
+      "group": "milk_preference",
+      "display_name": "Растительное молоко",
+      "allowed_polarity": ["positive"],
+      "description": "предпочтение растительного молока"
+    },
+
+    {
+      "code": "hot",
+      "group": "serving",
+      "display_name": "Горячая подача",
+      "allowed_polarity": ["positive"],
+      "description": "предпочтение горячих напитков"
+    },
+    {
+      "code": "iced",
+      "group": "serving",
+      "display_name": "Холодная подача",
+      "allowed_polarity": ["positive"],
+      "description": "предпочтение холодной подачи"
+    },
+
+    {
+      "code": "quick_pickup",
+      "group": "context",
+      "display_name": "Быстро взять с собой",
+      "allowed_polarity": ["positive"],
+      "description": "сценарий to-go и скорость"
+    },
+    {
+      "code": "work_focus",
+      "group": "context",
+      "display_name": "Для работы",
+      "allowed_polarity": ["positive"],
+      "description": "важен спокойный рабочий сценарий"
+    },
+    {
+      "code": "slow_weekend",
+      "group": "context",
+      "display_name": "Медленный выходной",
+      "allowed_polarity": ["positive"],
+      "description": "сценарий неспешного визита"
+    }
+  ]
+}
