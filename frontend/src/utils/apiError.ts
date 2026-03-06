@@ -1,5 +1,7 @@
 type ApiErrorPayload = {
+  code?: unknown;
   message?: unknown;
+  details?: unknown;
 };
 
 type ApiErrorResponse = {
@@ -55,4 +57,22 @@ export function extractApiErrorMessage(error: unknown, fallback: string): string
   }
 
   return fallback;
+}
+
+export function extractApiErrorCode(error: unknown): string | null {
+  const parsed = asApiError(error);
+  const code = parsed.response?.data?.code;
+  if (typeof code === "string" && code.trim()) {
+    return code;
+  }
+  return null;
+}
+
+export function extractApiErrorDetails(error: unknown): Record<string, unknown> | null {
+  const parsed = asApiError(error);
+  const details = parsed.response?.data?.details;
+  if (isRecord(details)) {
+    return details;
+  }
+  return null;
 }

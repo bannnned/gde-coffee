@@ -22,7 +22,12 @@ import {
   loadTasteOnboardingProgress,
   saveTasteOnboardingProgress,
 } from "../features/taste/model/onboardingProgress";
-import { extractApiErrorMessage, extractApiErrorStatus } from "../utils/apiError";
+import {
+  extractApiErrorCode,
+  extractApiErrorDetails,
+  extractApiErrorMessage,
+  extractApiErrorStatus,
+} from "../utils/apiError";
 import classes from "./TasteOnboardingPage.module.css";
 
 type AnswersMap = Record<string, unknown>;
@@ -316,6 +321,13 @@ export default function TasteOnboardingPage() {
       }
     } catch (error: unknown) {
       const statusCode = extractApiErrorStatus(error);
+      const errorCode = extractApiErrorCode(error);
+      const errorDetails = extractApiErrorDetails(error);
+      console.error("[TasteMap] GET /api/v1/taste/onboarding failed", {
+        status: statusCode,
+        code: errorCode,
+        details: errorDetails,
+      });
       if (statusCode === 404) {
         setLoadingState("feature-off");
       } else {
