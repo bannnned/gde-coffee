@@ -1,0 +1,203 @@
+.screen {
+  min-height: 100dvh;
+  padding-inline: var(--page-edge-padding);
+  padding-top: calc(var(--page-edge-padding) + var(--safe-top));
+  padding-bottom: calc(var(--page-edge-padding) + var(--safe-bottom));
+  background:
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 52%),
+    radial-gradient(circle at 90% 14%, color-mix(in srgb, var(--bg-accent-2) 80%, transparent), transparent 40%),
+    var(--bg);
+}
+
+.container {
+  width: min(720px, 100%);
+  margin-inline: auto;
+  display: grid;
+  gap: 16px;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerTitle {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.headerSpacer {
+  width: 40px;
+  height: 40px;
+}
+
+.progressWrap {
+  display: grid;
+  gap: 6px;
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.progressTrack {
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--color-brand-accent-strong));
+  transition: width var(--duration-base) var(--ease-standard);
+}
+
+.card {
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(160deg, var(--glass-grad-1), var(--glass-grad-2));
+  box-shadow: var(--shadow-2);
+  padding: clamp(16px, 3vw, 24px);
+  display: grid;
+  gap: 16px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  font-size: clamp(1.05rem, 3.6vw, 1.4rem);
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.optionGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.optionButton {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  color: var(--text);
+  font-size: 0.95rem;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
+}
+
+.optionButton[data-active="true"] {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+
+.rangeList {
+  display: grid;
+  gap: 14px;
+}
+
+.rangeItem {
+  display: grid;
+  gap: 8px;
+}
+
+.rangeLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.rangeValue {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.slider {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.pairCard {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.pairControls {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+}
+
+.skipButton {
+  min-width: 72px;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-status-error);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.successBlock {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .pairControls {
+    grid-template-columns: 1fr;
+  }
+
+  .skipButton {
+    min-width: 0;
+  }
+}

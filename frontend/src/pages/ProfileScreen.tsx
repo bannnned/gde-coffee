@@ -5,11 +5,13 @@ import {
   IconLogout,
   IconPlus,
   IconSettings,
+  IconSparkles,
 } from "@tabler/icons-react";
 import { useLocation, useNavigate, type Location as RouterLocation } from "react-router-dom";
 
 import { useAuth } from "../components/AuthGate";
 import { Button } from "../components/ui";
+import { isTasteMapV1Enabled } from "../features/taste/model/flags";
 import useProfileAccount from "../features/profile/model/useProfileAccount";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import { cn } from "../lib/utils";
@@ -53,6 +55,7 @@ export default function ProfileScreen() {
   const levelScore = Math.round(reputationProfile?.score ?? 0);
   const levelEventsCount = reputationProfile?.eventsCount ?? 0;
   const isFavoritesContext = backgroundLocation?.pathname?.startsWith("/favorites") ?? false;
+  const isTasteMapEnabled = isTasteMapV1Enabled();
 
   return (
     <div
@@ -274,36 +277,51 @@ export default function ProfileScreen() {
           </section>
 
           {user ? (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() =>
-                void handleLogout(() => {
-                  void navigate("/", { replace: true });
-                })
-              }
-              disabled={isLoggingOut}
-              className="h-11 rounded-full"
-              style={{
-                background:
-                  "linear-gradient(135deg, #B93030, #8E2222)",
-                color: "white",
-                border: "1px solid color-mix(in srgb, #7F1E1E 58%, #000 42%)",
-                boxShadow: "0 12px 24px color-mix(in srgb, #8E2222 36%, transparent)",
-              }}
-            >
-              {isLoggingOut ? (
-                <>
-                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  Выходим...
-                </>
-              ) : (
-                <>
-                  <IconLogout size={16} />
-                  Выйти
-                </>
-              )}
-            </Button>
+            <>
+              {isTasteMapEnabled ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    void navigate("/taste/onboarding");
+                  }}
+                  className="h-11 rounded-full"
+                >
+                  <IconSparkles size={16} />
+                  Карта вкуса
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() =>
+                  void handleLogout(() => {
+                    void navigate("/", { replace: true });
+                  })
+                }
+                disabled={isLoggingOut}
+                className="h-11 rounded-full"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #B93030, #8E2222)",
+                  color: "white",
+                  border: "1px solid color-mix(in srgb, #7F1E1E 58%, #000 42%)",
+                  boxShadow: "0 12px 24px color-mix(in srgb, #8E2222 36%, transparent)",
+                }}
+              >
+                {isLoggingOut ? (
+                  <>
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Выходим...
+                  </>
+                ) : (
+                  <>
+                    <IconLogout size={16} />
+                    Выйти
+                  </>
+                )}
+              </Button>
+            </>
           ) : null}
         </div>
       </div>

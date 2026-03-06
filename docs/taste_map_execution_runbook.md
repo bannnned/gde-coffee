@@ -30,8 +30,8 @@
 | 3 | Backend domain + repositories | [x] | 2026-03-05 | - |
 | 4 | API onboarding | [x] | 2026-03-05 | - |
 | 5 | API профиля и гипотез | [x] | 2026-03-05 | - |
-| 6 | Inference engine v1 + triggers | [ ] | - | - |
-| 7 | Frontend onboarding flow | [ ] | - | - |
+| 6 | Inference engine v1 + triggers | [x] | 2026-03-06 | - |
+| 7 | Frontend onboarding flow | [x] | 2026-03-06 | - |
 | 8 | Frontend экран "Профиль вкуса" | [ ] | - | - |
 | 9 | Интеграция в ranking + explainability | [ ] | - | - |
 | 10 | Метрики, e2e, rollout | [ ] | - | - |
@@ -577,6 +577,128 @@ Open questions:
 
 Следующий шаг:
 - Step 6 (Inference engine v1 + triggers) после ручной проверки Step 5 в релизном окружении и разборе open questions.
+
+## Step 6 - Inference engine v1 + triggers
+Date: 2026-03-06
+Owner: Engineering
+
+Что сделали:
+- Реализовали `taste inference v1` в backend (`service_inference.go`) с входами:
+  - onboarding baseline (через текущие `user_taste_tags` + профиль),
+  - reviews (`review_attributes.taste_tags`, drink, rating, summary),
+  - verified visits (через confidence в `visit_verifications`),
+  - hypothesis feedback (`accepted/dismissed` в `taste_hypotheses`).
+- Добавили пересчет профиля:
+  - build accumulators -> build candidates -> upsert `user_taste_tags`,
+  - reconcile гипотез (создание новых `new` и `expire` неактуальных).
+- Добавили логирование каждого прогона в `taste_inference_runs`:
+  - input/output snapshots,
+  - changed tags count,
+  - duration,
+  - статус `ok/failed` + error_text для fail-case.
+- Добавили триггеры запуска:
+  - best-effort сразу после `onboarding complete`,
+  - review-driven worker (poll-based пересчет для пользователей с новыми/обновленными отзывами),
+  - nightly batch worker (в UTC-час, configurable).
+- Добавили advisory lock по user_id (`pg_try_advisory_lock`) для защиты от параллельных пересчетов.
+
+Ключевые решения:
+- Для надежности текущей архитектуры использован poll-driven trigger на review activity, без врезки в существующий reviews inbox consumer.
+- Inference и воркеры включаются отдельным флагом `TASTE_INFERENCE_V1_ENABLED`.
+- Nightly окно конфигурируется `TASTE_INFERENCE_NIGHTLY_HOUR_UTC` (по умолчанию 03:00 UTC).
+
+Что сознательно НЕ делали (scope guard):
+- Не подключали персонализацию ранжирования discovery (это Step 9).
+- Не добавляли продуктовую аналитику/дашборды inference событий (это Step 10).
+- Не реализовывали отдельный API ручного запуска inference для админов.
+
+Измененные файлы:
+- backend/internal/domains/taste/service_inference.go
+- backend/internal/domains/taste/service_inference_test.go
+- backend/internal/domains/taste/repository_inference.go
+- backend/internal/domains/taste/repository_sql.go
+- backend/internal/domains/taste/service.go
+- backend/internal/domains/taste/handler.go
+- backend/internal/domains/taste/errors.go
+- backend/internal/domains/taste/flags.go
+- backend/main.go
+- docs/taste_map_execution_runbook.md
+
+Проверки/тесты:
+- `go test ./internal/domains/taste` - passed.
+- `go test ./... -run '^$'` (compile-only sanity check) - passed.
+
+Риски/долги:
+- Review-driven trigger пока poll-based, не event-driven по inbox consumer.
+- Маппинг review `taste_tags`/summary -> taxonomy эвристический, требует реальных продуктовых калибровок.
+- Нет отдельного админского visibility endpoint для диагностики inference quality per-user.
+
+Open questions:
+- Нужен ли переход на полноценный inbox consumer `taste.inference.v1` после стабилизации (вместо poll worker).
+- Какие пороги `score/confidence` считать продовыми для генерации гипотез (сейчас conservative defaults)?
+- Нужно ли вводить hard-cap на число одновременно активных hypotheses на пользователя (например, <= 5)?
+
+Следующий шаг:
+- Step 7 (Frontend onboarding flow), после ручной проверки inference на staging/production data.
+
+## Step 7 - Frontend onboarding flow
+Date: 2026-03-06
+Owner: Engineering
+
+Что сделали:
+- Реализовали полноценный UI-flow onboarding Taste Map в новом экране:
+  - `/taste/onboarding`
+  - динамический рендер шагов `single_choice`, `multi_choice`, `range`, `paired_preference`.
+- Подключили API:
+  - `GET /api/v1/taste/onboarding`
+  - `POST /api/v1/taste/onboarding/complete`
+- Добавили локальное сохранение прогресса onboarding в `localStorage`:
+  - восстанавливаем step + answers после перезахода;
+  - очищаем прогресс при успешном completion.
+- Добавили состояния `loading/error/retry` и success-screen после completion.
+- Подключили feature flag `taste_map_v1` на фронте:
+  - env `VITE_TASTE_MAP_V1_ENABLED`;
+  - при выключенном флаге экран и CTA скрываются/показывают недоступность.
+- Добавили вход в flow из профиля (кнопка `Карта вкуса` при включенном флаге).
+
+Ключевые решения:
+- Рендер шага полностью driven by contract из backend (без hardcode списка вопросов в UI).
+- Для `range/paired_preference` используем безопасные дефолты, чтобы не терять прогресс и не блокировать required-поля.
+- Валидация шага выполняется перед переходом `Дальше`, а перед submit делается полный проход по required шагам.
+
+Что сознательно НЕ делали (scope guard):
+- Не реализовывали экран `Профиль вкуса` и действия по hypotheses (это Step 8).
+- Не встраивали onboarding в обязательный post-registration redirect.
+- Не добавляли продуктовую аналитику событий onboarding (это Step 10).
+
+Измененные файлы:
+- frontend/src/api/taste.ts
+- frontend/src/features/taste/model/flags.ts
+- frontend/src/features/taste/model/onboardingProgress.ts
+- frontend/src/pages/TasteOnboardingPage.tsx
+- frontend/src/pages/TasteOnboardingPage.module.css
+- frontend/src/pages/TasteOnboardingPage.test.tsx
+- frontend/src/pages/TasteOnboardingPage.smoke.test.tsx
+- frontend/src/App.tsx
+- frontend/src/pages/ProfileScreen.tsx
+- docs/taste_map_execution_runbook.md
+
+Проверки/тесты:
+- `npm test` - passed.
+- `npm run build` (includes `tsc --noEmit`) - passed.
+
+Риски/долги:
+- Пока нет отдельного onboarding-progress sync между устройствами (храним локально в браузере).
+- Текущий flow не проверяет \"уже завершенный onboarding\" перед стартом (повторный проход разрешен).
+- Сообщение о выключенном флаге завязано на env и backend 404; нужна финальная продуктовая формулировка.
+
+Open questions:
+- Нужно ли автоматически предлагать onboarding сразу после регистрации/первого входа.
+- Нужно ли для optional шагов сохранять/отправлять `skip` как явный сигнал, или продолжать omit-политику.
+- Нужен ли `session_id` на фронте для strict idempotency completion retries при нестабильной сети.
+
+Следующий шаг:
+- Step 8 (Frontend экран \"Профиль вкуса\") после ручной проверки UX onboarding на мобиле и десктопе.
 ```
 
 ---

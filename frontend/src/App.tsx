@@ -25,6 +25,7 @@ const AdminNorthStarPage = lazy(() => import("./pages/AdminNorthStarPage"));
 const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage"));
 const ConfirmEmailChangePage = lazy(() => import("./pages/ConfirmEmailChangePage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const TasteOnboardingPage = lazy(() => import("./pages/TasteOnboardingPage"));
 
 function RouteLoader() {
   return (
@@ -87,6 +88,7 @@ function AppRoutes() {
           element={<ConfirmEmailChangePage />}
         />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/taste/onboarding" element={<TasteOnboardingPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

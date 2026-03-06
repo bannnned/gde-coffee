@@ -4,6 +4,8 @@ import "errors"
 
 var (
 	ErrTasteHypothesisNotFound = errors.New("taste hypothesis not found")
+	ErrInferenceBusy           = errors.New("taste inference is already running for user")
+	ErrInferenceUnavailable    = errors.New("taste inference repository is unavailable")
 )
 
 type validationError struct {

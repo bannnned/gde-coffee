@@ -261,6 +261,21 @@ func main() {
 	go func() { defer wg.Done(); reviewsHandler.Service().StartInboxWorker(workerCtx, 2*time.Second) }()
 	go func() { defer wg.Done(); reviewsHandler.Service().StartPhotoCleanupWorker(workerCtx, 15*time.Minute) }()
 	go func() { defer wg.Done(); reviewsHandler.Service().StartRatingRebuildWorker(workerCtx, 15*time.Minute) }()
+	if taste.TasteInferenceEnabledFromEnv() {
+		if tasteService := tasteHandler.Service(); tasteService != nil {
+			wg.Add(2)
+			go func() { defer wg.Done(); tasteService.StartReviewDrivenInferenceWorker(workerCtx, 2*time.Minute, 25) }()
+			go func() {
+				defer wg.Done()
+				tasteService.StartNightlyInferenceWorker(
+					workerCtx,
+					30*time.Minute,
+					100,
+					taste.TasteInferenceNightlyHourUTCFromEnv(),
+				)
+			}()
+		}
+	}
 
 	api := r.Group("/api")
 	api.GET("/geocode", cafesHandler.GeocodeLookup)

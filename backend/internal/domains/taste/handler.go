@@ -41,6 +41,13 @@ func NewDefaultHandler(pool *pgxpool.Pool, tasteMapEnabled bool) (*Handler, erro
 	return NewHandler(svc, tasteMapEnabled), nil
 }
 
+func (h *Handler) Service() *Service {
+	if svc, ok := h.service.(*Service); ok {
+		return svc
+	}
+	return nil
+}
+
 func (h *Handler) GetOnboarding(c *gin.Context) {
 	if !h.tasteMapEnabled {
 		httpx.RespondError(c, http.StatusNotFound, "feature_disabled", "Taste Map временно недоступен.", nil)

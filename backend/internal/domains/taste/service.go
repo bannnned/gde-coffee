@@ -192,6 +192,8 @@ func (s *Service) CompleteOnboarding(
 		return CompleteOnboardingResponse{}, err
 	}
 
+	s.runInferenceBestEffort(userID, "onboarding_complete")
+
 	return CompleteOnboardingResponse{
 		ContractVersion:  normalizeNonEmpty(s.spec.ContractVersion, TasteContractVersion),
 		InferenceVersion: profile.InferenceVersion,

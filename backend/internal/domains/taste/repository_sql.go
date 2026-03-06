@@ -285,4 +285,104 @@ where user_id = $1::uuid
 from public.taste_hypotheses
 where id = $1::uuid
   and user_id = $2::uuid`
+
+	sqlTouchUserTasteProfileRecomputed = `insert into public.user_taste_profile (
+	user_id,
+	inference_version,
+	last_recomputed_at,
+	metadata
+) values (
+	$1::uuid,
+	$2::text,
+	$3::timestamptz,
+	'{}'::jsonb
+)
+on conflict (user_id) do update set
+	inference_version = excluded.inference_version,
+	last_recomputed_at = excluded.last_recomputed_at,
+	updated_at = now()
+returning
+	user_id::text,
+	active_onboarding_version,
+	inference_version,
+	base_map_completed_at,
+	last_recomputed_at,
+	metadata,
+	created_at,
+	updated_at`
+
+	sqlSelectInferenceTaxonomy = `select
+	code,
+	coalesce('negative' = any(allowed_polarity), false) as allows_negative
+from public.taste_taxonomy
+where is_active = true`
+
+	sqlSelectInferenceReviewSignals = `select
+	r.id::text,
+	r.rating::int,
+	coalesce(ra.drink_id, '') as drink_id,
+	coalesce(ra.drink_name, '') as drink_name,
+	coalesce(ra.taste_tags, '{}'::text[]) as taste_tags,
+	coalesce(r.summary, '') as summary,
+	coalesce(vv.confidence, 'none') as visit_confidence,
+	coalesce(vv.verified_at is not null and vv.confidence in ('low', 'medium', 'high'), false) as visit_verified,
+	r.updated_at
+from public.reviews r
+left join public.review_attributes ra on ra.review_id = r.id
+left join public.visit_verifications vv on vv.review_id = r.id
+where r.user_id = $1::uuid
+  and r.status = 'published'
+  and r.updated_at >= $2::timestamptz
+order by r.updated_at desc
+limit $3`
+
+	sqlSelectInferenceHypothesisFeedback = `select
+	taste_code,
+	polarity,
+	status,
+	updated_at
+from public.taste_hypotheses
+where user_id = $1::uuid
+  and status in ('accepted', 'dismissed')
+  and updated_at >= $2::timestamptz
+order by updated_at desc`
+
+	sqlSelectAllUserTasteHypotheses = `select
+	id::text,
+	user_id::text,
+	taste_code,
+	polarity,
+	score::double precision,
+	confidence::double precision,
+	reason_json,
+	status,
+	dismiss_count,
+	cooldown_until,
+	created_at,
+	updated_at
+from public.taste_hypotheses
+where user_id = $1::uuid
+order by updated_at desc, created_at desc`
+
+	sqlSelectUsersNeedingReviewInference = `select
+	r.user_id::text
+from public.reviews r
+join public.user_taste_profile p on p.user_id = r.user_id
+where r.status = 'published'
+  and p.base_map_completed_at is not null
+  and r.updated_at > coalesce(p.last_recomputed_at, to_timestamp(0))
+group by r.user_id
+order by max(r.updated_at) asc
+limit $1`
+
+	sqlSelectUsersNeedingNightlyInference = `select
+	user_id::text
+from public.user_taste_profile
+where base_map_completed_at is not null
+  and (last_recomputed_at is null or last_recomputed_at < $1::timestamptz)
+order by coalesce(last_recomputed_at, to_timestamp(0)) asc
+limit $2`
+
+	sqlTryAdvisoryLockByKey     = `select pg_try_advisory_lock(hashtext($1))`
+	sqlReleaseAdvisoryLockByKey = `select pg_advisory_unlock(hashtext($1))`
 )
