@@ -12,7 +12,7 @@ import type {
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import classes from "./BottomSheet.module.css";
-import { appHaptics } from "../../../lib/haptics";
+import { appHaptics, type AppHapticPreset } from "../../../lib/haptics";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
 
 type BottomSheetProps = PropsWithChildren<{
@@ -40,12 +40,19 @@ const FLING_FAST_VELOCITY = 1200;
 const FLING_PROJECTION_FACTOR = 0.32;
 const VELOCITY_WINDOW_MS = 140;
 const DETENT_SELECTION_HAPTIC_COOLDOWN_MS = 110;
+const SNAP_HAPTIC_DELAY_MS = 48;
 const SNAP_STIFFNESS = 280;
 const SNAP_DAMPING = 24;
 const SNAP_MASS = 0.86;
 const MAX_LAUNCH_VELOCITY = 3200;
 
 const MotionSheet = motion.div;
+
+function resolveSnapHapticPreset(state: SheetState): AppHapticPreset {
+  if (state === "expanded") return "medium";
+  if (state === "peek") return "rigid";
+  return "light";
+}
 
 export default function BottomSheet({
   sheetRef,
@@ -74,6 +81,7 @@ export default function BottomSheet({
   const animationControlsRef = useRef<ReturnType<typeof animate> | null>(null);
   const launchVelocityRef = useRef(0);
   const pendingSnapHapticRef = useRef(false);
+  const snapHapticTimeoutRef = useRef<number | null>(null);
   const lastSelectionHapticAtRef = useRef(0);
   const currentDetentRef = useRef<SheetState>("mid");
   const snapCauseRef = useRef<SnapCause>("programmatic");
@@ -92,6 +100,14 @@ export default function BottomSheet({
     const observer = new ResizeObserver(() => update());
     observer.observe(node);
     return () => observer.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    return () => {
+      if (snapHapticTimeoutRef.current != null) {
+        window.clearTimeout(snapHapticTimeoutRef.current);
+      }
+    };
   }, []);
 
   const normalizedSheetState =
@@ -207,7 +223,14 @@ export default function BottomSheet({
         launchVelocityRef.current = 0;
         if (pendingSnapHapticRef.current) {
           pendingSnapHapticRef.current = false;
-          void appHaptics.trigger("light");
+          if (snapHapticTimeoutRef.current != null) {
+            window.clearTimeout(snapHapticTimeoutRef.current);
+          }
+          // Delay the snap haptic slightly so it is not swallowed by the last drag tick.
+          snapHapticTimeoutRef.current = window.setTimeout(() => {
+            snapHapticTimeoutRef.current = null;
+            void appHaptics.trigger(resolveSnapHapticPreset(targetDetent.state));
+          }, SNAP_HAPTIC_DELAY_MS);
         }
       },
     });

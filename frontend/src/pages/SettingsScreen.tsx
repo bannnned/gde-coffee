@@ -13,6 +13,7 @@
   IconMessageCircle,
   IconMoon,
   IconShieldCheck,
+  IconSparkles,
   IconSun,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState, type FocusEvent } from "react";
@@ -37,6 +38,7 @@ import {
 import { useAuth } from "../components/AuthGate";
 import TelegramLoginWidget from "../components/TelegramLoginWidget";
 import { Button as UIButton, Input } from "../components/ui";
+import { getTasteMapV1FlagRaw, isTasteMapV1Enabled } from "../features/taste/model/flags";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
 import useAppColorScheme from "../hooks/useAppColorScheme";
 import useAppHaptics from "../hooks/useAppHaptics";
@@ -250,6 +252,8 @@ export default function SettingsScreen() {
   const statusTone = isVerified ? "ok" : "warn";
   const userRole = (user?.role ?? "").toLowerCase();
   const canModerate = userRole === "admin" || userRole === "moderator";
+  const tasteMapFlagRaw = getTasteMapV1FlagRaw();
+  const isTasteMapEnabled = isTasteMapV1Enabled();
   const backgroundLocation = (
     location.state as { backgroundLocation?: RouterLocation } | null
   )?.backgroundLocation;
@@ -530,6 +534,13 @@ export default function SettingsScreen() {
       displayName: user?.displayName?.trim() || user?.name?.trim() || "",
     });
   }, [resetNameForm, user?.displayName, user?.name]);
+
+  useEffect(() => {
+    console.info("[TasteMap] VITE_TASTE_MAP_V1_ENABLED", {
+      raw: tasteMapFlagRaw,
+      parsed: isTasteMapEnabled,
+    });
+  }, [tasteMapFlagRaw, isTasteMapEnabled]);
 
   return (
     <main className={classes.screen} data-ui="settings-screen">
@@ -1047,6 +1058,34 @@ export default function SettingsScreen() {
                 </div>
               </div>
             )}
+
+            <div className={classes.section}>
+              <div className={classes.sectionHeader}>
+                <div className={classes.sectionTitleRow}>
+                  <IconSparkles size={18} />
+                  <h3 className={classes.sectionTitle}>Карта вкуса</h3>
+                </div>
+              </div>
+              <p className={classes.sectionDescription}>
+                Перейти в персональный профиль вкуса и обновить карту предпочтений.
+              </p>
+              <div className={classes.actionsRow}>
+                <UIButton
+                  type="button"
+                  variant="secondary"
+                  className={classes.actionButton}
+                  onClick={() => {
+                    void navigate("/taste/profile");
+                  }}
+                >
+                  Открыть профиль вкуса
+                </UIButton>
+              </div>
+              <p className={classes.panelMutedText} style={{ marginTop: 8 }}>
+                Флаг `VITE_TASTE_MAP_V1_ENABLED`: {tasteMapFlagRaw || "(пусто)"} · parsed:{" "}
+                {isTasteMapEnabled ? "on" : "off"}
+              </p>
+            </div>
 
             <div className={classes.section}>
               <div className={classes.sectionHeader}>
