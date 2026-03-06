@@ -141,6 +141,32 @@ func (h *Handler) GetMapPerf(c *gin.Context) {
 	c.JSON(http.StatusOK, report)
 }
 
+func (h *Handler) GetTasteMap(c *gin.Context) {
+	days := DefaultRangeDays
+	if rawDays := strings.TrimSpace(c.Query("days")); rawDays != "" {
+		value, err := strconv.Atoi(rawDays)
+		if err != nil || value <= 0 {
+			httpx.RespondError(c, http.StatusBadRequest, "invalid_argument", "days должен быть целым числом больше 0.", nil)
+			return
+		}
+		if value > MaxRangeDays {
+			value = MaxRangeDays
+		}
+		days = value
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+	defer cancel()
+
+	report, err := h.service.GetTasteMapReport(ctx, days, time.Now())
+	if err != nil {
+		httpx.RespondError(c, http.StatusInternalServerError, "internal", "Не удалось загрузить метрики Taste Map.", nil)
+		return
+	}
+
+	c.JSON(http.StatusOK, report)
+}
+
 func (h *Handler) UpdateMapPerfAlertState(c *gin.Context) {
 	alertKey := strings.TrimSpace(c.Param("alert_key"))
 	if alertKey == "" {
@@ -207,10 +233,8 @@ func readNorthStarRangeParams(c *gin.Context) (int, string, bool) {
 
 func normalizeEvent(raw ingestEventRequest, userID string, now time.Time) (EventInput, error) {
 	eventType := strings.ToLower(strings.TrimSpace(raw.EventType))
-	switch eventType {
-	case EventCafeCardOpen, EventReviewRead, EventRouteClick, EventCheckIn, EventReviewSubmit, EventMapFirstRender, EventMapFirstInteraction:
-	default:
-		return EventInput{}, validationError("event_type должен быть cafe_card_open, review_read, route_click, checkin_start, review_submit, map_first_render или map_first_interaction.")
+	if !isSupportedEventType(eventType) {
+		return EventInput{}, validationError("event_type не поддерживается.")
 	}
 
 	journeyID := strings.TrimSpace(raw.JourneyID)
@@ -235,12 +259,18 @@ func normalizeEvent(raw ingestEventRequest, userID string, now time.Time) (Event
 	}
 
 	cafeID := strings.TrimSpace(raw.CafeID)
-	if cafeID == "" || !validation.IsValidUUID(cafeID) {
-		return EventInput{}, validationError("cafe_id обязателен и должен быть UUID.")
+	if requiresCafeID(eventType) {
+		if cafeID == "" || !validation.IsValidUUID(cafeID) {
+			return EventInput{}, validationError("cafe_id обязателен и должен быть UUID.")
+		}
+	} else {
+		if cafeID != "" && !validation.IsValidUUID(cafeID) {
+			return EventInput{}, validationError("cafe_id должен быть UUID.")
+		}
 	}
 
 	reviewID := strings.TrimSpace(raw.ReviewID)
-	if eventType == EventReviewRead || eventType == EventReviewSubmit {
+	if requiresReviewID(eventType) {
 		if reviewID == "" || !validation.IsValidUUID(reviewID) {
 			return EventInput{}, validationError("review_id обязателен для review_read/review_submit и должен быть UUID.")
 		}
@@ -249,7 +279,7 @@ func normalizeEvent(raw ingestEventRequest, userID string, now time.Time) (Event
 	}
 
 	provider := strings.ToLower(strings.TrimSpace(raw.Provider))
-	if eventType == EventRouteClick {
+	if requiresProvider(eventType) {
 		if provider != Provider2GIS && provider != ProviderYandex {
 			return EventInput{}, validationError("provider для route_click должен быть 2gis или yandex.")
 		}
@@ -290,6 +320,51 @@ func normalizeEvent(raw ingestEventRequest, userID string, now time.Time) (Event
 		OccurredAt:    occurredAt,
 		Metadata:      meta,
 	}, nil
+}
+
+func isSupportedEventType(eventType string) bool {
+	switch eventType {
+	case EventCafeCardOpen,
+		EventReviewRead,
+		EventRouteClick,
+		EventCheckIn,
+		EventReviewSubmit,
+		EventMapFirstRender,
+		EventMapFirstInteraction,
+		EventTasteOnboardingStart,
+		EventTasteOnboardingDone,
+		EventTasteHypothesisShown,
+		EventTasteHypothesisDismissed,
+		EventTasteHypothesisConfirmed,
+		EventTasteProfileRecomputed,
+		EventTasteAPIError:
+		return true
+	default:
+		return false
+	}
+}
+
+func requiresCafeID(eventType string) bool {
+	switch eventType {
+	case EventTasteOnboardingStart,
+		EventTasteOnboardingDone,
+		EventTasteHypothesisShown,
+		EventTasteHypothesisDismissed,
+		EventTasteHypothesisConfirmed,
+		EventTasteProfileRecomputed,
+		EventTasteAPIError:
+		return false
+	default:
+		return true
+	}
+}
+
+func requiresReviewID(eventType string) bool {
+	return eventType == EventReviewRead || eventType == EventReviewSubmit
+}
+
+func requiresProvider(eventType string) bool {
+	return eventType == EventRouteClick
 }
 
 func validationError(message string) error {

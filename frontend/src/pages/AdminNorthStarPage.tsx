@@ -8,6 +8,7 @@ import {
   getAdminFunnel,
   getAdminMapPerf,
   getAdminNorthStar,
+  getAdminTasteMap,
   setAdminMapPerfAlertState,
   searchAdminCafesByName,
   type AdminCafeSearchItem,
@@ -17,6 +18,7 @@ import {
   type AdminMapPerfReport,
   type AdminMapPerfSummary,
   type AdminNorthStarReport,
+  type AdminTasteMapReport,
 } from "../api/adminMetrics";
 import { useAuth } from "../components/AuthGate";
 import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
@@ -222,6 +224,7 @@ export default function AdminNorthStarPage() {
   const [report, setReport] = useState<AdminNorthStarReport | null>(null);
   const [funnelReport, setFunnelReport] = useState<AdminFunnelReport | null>(null);
   const [mapPerfReport, setMapPerfReport] = useState<AdminMapPerfReport | null>(null);
+  const [tasteMapReport, setTasteMapReport] = useState<AdminTasteMapReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [alertActionKey, setAlertActionKey] = useState<string | null>(null);
@@ -286,6 +289,7 @@ export default function AdminNorthStarPage() {
       setReport(null);
       setFunnelReport(null);
       setMapPerfReport(null);
+      setTasteMapReport(null);
       setLoadError(null);
       return;
     }
@@ -297,19 +301,22 @@ export default function AdminNorthStarPage() {
         days,
         cafe_id: scope === "cafe" ? selectedCafeId ?? undefined : undefined,
       };
-      const [nextReport, nextFunnelReport, nextMapPerfReport] = await Promise.all([
+      const [nextReport, nextFunnelReport, nextMapPerfReport, nextTasteMapReport] = await Promise.all([
         getAdminNorthStar(params),
         getAdminFunnel(params),
         getAdminMapPerf({ days }),
+        getAdminTasteMap({ days }),
       ]);
       setReport(nextReport);
       setFunnelReport(nextFunnelReport);
       setMapPerfReport(nextMapPerfReport);
+      setTasteMapReport(nextTasteMapReport);
     } catch (error: unknown) {
       setLoadError(extractApiErrorMessage(error, "Не удалось загрузить метрики North Star."));
       setReport(null);
       setFunnelReport(null);
       setMapPerfReport(null);
+      setTasteMapReport(null);
     } finally {
       setLoading(false);
     }
@@ -348,6 +355,8 @@ export default function AdminNorthStarPage() {
 
   const mapPerfDaily = useMemo(() => mapPerfReport?.daily ?? [], [mapPerfReport?.daily]);
   const mapPerfNetwork = useMemo(() => mapPerfReport?.network ?? [], [mapPerfReport?.network]);
+  const tasteDaily = useMemo(() => tasteMapReport?.daily ?? [], [tasteMapReport?.daily]);
+  const tasteAlerts = useMemo(() => tasteMapReport?.alerts ?? [], [tasteMapReport?.alerts]);
   const maxDailyRenderP95 = useMemo(() => {
     return mapPerfDaily.reduce((max, point) => Math.max(max, point.first_render_p95_ms), 0);
   }, [mapPerfDaily]);
@@ -1189,6 +1198,164 @@ export default function AdminNorthStarPage() {
                             <Table.Td colSpan={6}>
                               <p style={{ margin: 0, color: "var(--muted)" }}>
                                 По network breakdown пока нет данных.
+                              </p>
+                            </Table.Td>
+                          </Table.Tr>
+                        )}
+                      </Table.Tbody>
+                    </Table>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ border: "1px solid var(--border)", borderRadius: 16, padding: 16 }}>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Taste Map health</p>
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                      onboarding / hypotheses / inference
+                    </p>
+                  </div>
+
+                  {scope === "cafe" && (
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                      Метрика считается на уровне продукта и не фильтруется по отдельной кофейне.
+                    </p>
+                  )}
+
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                    {[
+                      {
+                        key: "completion",
+                        label: "Onboarding completion",
+                        value: formatPercent(tasteMapReport?.summary.onboarding_completion_rate ?? 0),
+                      },
+                      {
+                        key: "confirm_rate",
+                        label: "Feedback confirm rate",
+                        value: formatPercent(tasteMapReport?.summary.feedback_confirm_rate ?? 0),
+                      },
+                      {
+                        key: "api_errors",
+                        label: "Taste API errors",
+                        value: String(tasteMapReport?.summary.api_errors ?? 0),
+                      },
+                      {
+                        key: "inference_failures",
+                        label: "Inference failure rate",
+                        value: formatPercent(tasteMapReport?.summary.inference_failure_rate ?? 0),
+                      },
+                      {
+                        key: "inference_p95",
+                        label: "Inference latency p95",
+                        value: formatMs(tasteMapReport?.summary.inference_latency_p95_ms ?? 0),
+                      },
+                    ].map((item) => (
+                      <div key={item.key} style={{ flex: 1, minWidth: 160 }}>
+                        <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: 12,
+                              color: "var(--muted)",
+                              textTransform: "uppercase",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {item.label}
+                          </p>
+                          <p style={{ margin: 0, fontSize: 22, fontWeight: 800, marginTop: 3 }}>
+                            {item.value}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                    Events: onboarding start {tasteMapReport?.summary.onboarding_started ?? 0} · completed{" "}
+                    {tasteMapReport?.summary.onboarding_completed ?? 0} · shown {tasteMapReport?.summary.hypothesis_shown ?? 0} ·
+                    dismissed {tasteMapReport?.summary.hypothesis_dismissed ?? 0} · confirmed {tasteMapReport?.summary.hypothesis_confirmed ?? 0}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                    Recompute: events {tasteMapReport?.summary.recompute_events ?? 0} · runs {tasteMapReport?.summary.inference_runs ?? 0} · failed{" "}
+                    {tasteMapReport?.summary.inference_failed_runs ?? 0}
+                  </p>
+
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Taste alerts</p>
+                    {tasteAlerts.length > 0 ? (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {tasteAlerts.map((item) => {
+                          const color = item.severity === "risk" ? "var(--color-danger, #dc2626)" : "var(--color-warning, #d97706)";
+                          return (
+                            <div
+                              key={item.key}
+                              style={{
+                                border: `1px solid color-mix(in srgb, ${color} 35%, var(--border))`,
+                                borderRadius: 12,
+                                padding: "8px 10px",
+                                display: "flex",
+                                flexWrap: "wrap",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 8,
+                              }}
+                            >
+                              <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>
+                                {item.label}: {item.value}
+                              </p>
+                              <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>
+                                target {item.target}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                        Активных алертов Taste Map нет.
+                      </p>
+                    )}
+                  </div>
+
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <p style={{ margin: 0, fontWeight: 700 }}>Taste daily trend</p>
+                    <Table striped highlightOnHover withTableBorder>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Дата</Table.Th>
+                          <Table.Th>Started</Table.Th>
+                          <Table.Th>Completed</Table.Th>
+                          <Table.Th>Shown</Table.Th>
+                          <Table.Th>Dismissed</Table.Th>
+                          <Table.Th>Confirmed</Table.Th>
+                          <Table.Th>API errors</Table.Th>
+                          <Table.Th>Inference failed/runs</Table.Th>
+                          <Table.Th>Inference p95</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {tasteDaily.map((point) => (
+                          <Table.Tr key={point.date}>
+                            <Table.Td>{formatDate(point.date)}</Table.Td>
+                            <Table.Td>{point.onboarding_started}</Table.Td>
+                            <Table.Td>{point.onboarding_completed}</Table.Td>
+                            <Table.Td>{point.hypothesis_shown}</Table.Td>
+                            <Table.Td>{point.hypothesis_dismissed}</Table.Td>
+                            <Table.Td>{point.hypothesis_confirmed}</Table.Td>
+                            <Table.Td>{point.api_errors}</Table.Td>
+                            <Table.Td>
+                              {point.inference_failed_runs}/{point.inference_runs} ({formatPercent(point.inference_failure_rate)})
+                            </Table.Td>
+                            <Table.Td>{formatMs(point.inference_p95_ms)}</Table.Td>
+                          </Table.Tr>
+                        ))}
+                        {tasteDaily.length === 0 && (
+                          <Table.Tr>
+                            <Table.Td colSpan={9}>
+                              <p style={{ margin: 0, color: "var(--muted)" }}>
+                                По Taste Map trend пока нет данных.
                               </p>
                             </Table.Td>
                           </Table.Tr>

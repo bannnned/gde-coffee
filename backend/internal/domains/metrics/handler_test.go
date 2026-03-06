@@ -67,6 +67,30 @@ func (r *handlerRepositoryStub) ListMapPerfNetworkMetrics(
 	return nil, nil
 }
 
+func (r *handlerRepositoryStub) GetTasteMapEventSnapshot(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) (TasteMapEventSnapshot, error) {
+	return TasteMapEventSnapshot{}, nil
+}
+
+func (r *handlerRepositoryStub) GetTasteInferenceSnapshot(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) (TasteInferenceSnapshot, error) {
+	return TasteInferenceSnapshot{}, nil
+}
+
+func (r *handlerRepositoryStub) ListTasteMapDailyMetrics(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) ([]TasteMapDailyMetrics, error) {
+	return nil, nil
+}
+
 func (r *handlerRepositoryStub) ListMapPerfAlertStates(ctx context.Context) ([]MapPerfAlertState, error) {
 	return nil, nil
 }
@@ -204,6 +228,31 @@ func TestGetMapPerf_ValidDays_ReturnsSummary(t *testing.T) {
 	}
 }
 
+func TestGetTasteMap_ValidDays_ReturnsSummary(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	repo := &handlerRepositoryStub{}
+	handler := NewHandler(NewService(repo))
+
+	router := gin.New()
+	router.GET("/api/admin/metrics/taste-map", handler.GetTasteMap)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/metrics/taste-map?days=14", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d, body=%s", rec.Code, rec.Body.String())
+	}
+
+	var report TasteMapReport
+	if err := json.Unmarshal(rec.Body.Bytes(), &report); err != nil {
+		t.Fatalf("response is not valid TasteMapReport JSON: %v", err)
+	}
+	if report.Summary.Days != 14 {
+		t.Fatalf("expected days=14, got %d", report.Summary.Days)
+	}
+}
+
 func TestNormalizeEvent_AcceptsNewEventTypes(t *testing.T) {
 	now := time.Date(2026, 2, 21, 12, 0, 0, 0, time.UTC)
 	_, err := normalizeEvent(ingestEventRequest{
@@ -245,6 +294,15 @@ func TestNormalizeEvent_AcceptsNewEventTypes(t *testing.T) {
 	}, "", now)
 	if err != nil {
 		t.Fatalf("map_first_interaction should be valid, got error: %v", err)
+	}
+
+	_, err = normalizeEvent(ingestEventRequest{
+		EventType: "taste_onboarding_started",
+		AnonID:    "anon_1",
+		JourneyID: "journey_taste",
+	}, "", now)
+	if err != nil {
+		t.Fatalf("taste_onboarding_started should be valid without cafe_id, got error: %v", err)
 	}
 }
 

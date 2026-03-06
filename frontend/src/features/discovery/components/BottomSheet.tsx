@@ -30,18 +30,20 @@ type BottomSheetProps = PropsWithChildren<{
 type SheetState = "peek" | "mid" | "expanded";
 type DetentPoint = { state: SheetState; height: number };
 type SnapCause = "gesture" | "programmatic";
+type VelocitySample = { y: number; t: number };
 
 const PEEK_HEIGHT_PX = 24;
 const SHEET_PADDING_PX = 6;
 const MID_HEADER_EXTRA_PX = 4;
-const FLING_COMMIT_VELOCITY = 920;
-const FLING_FAST_VELOCITY = 1520;
-const FLING_PROJECTION_FACTOR = 0.22;
+const FLING_COMMIT_VELOCITY = 620;
+const FLING_FAST_VELOCITY = 1200;
+const FLING_PROJECTION_FACTOR = 0.32;
+const VELOCITY_WINDOW_MS = 140;
 const DETENT_SELECTION_HAPTIC_COOLDOWN_MS = 110;
-const SNAP_STIFFNESS = 310;
-const SNAP_DAMPING = 31;
-const SNAP_MASS = 0.92;
-const MAX_LAUNCH_VELOCITY = 2400;
+const SNAP_STIFFNESS = 280;
+const SNAP_DAMPING = 24;
+const SNAP_MASS = 0.86;
+const MAX_LAUNCH_VELOCITY = 3200;
 
 const MotionSheet = motion.div;
 
@@ -75,6 +77,7 @@ export default function BottomSheet({
   const lastSelectionHapticAtRef = useRef(0);
   const currentDetentRef = useRef<SheetState>("mid");
   const snapCauseRef = useRef<SnapCause>("programmatic");
+  const velocitySamplesRef = useRef<VelocitySample[]>([]);
 
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -280,8 +283,19 @@ export default function BottomSheet({
     const isInteractive = Boolean(target.closest("button, a"));
     const threshold = isInteractive ? 10 : 7;
     let mode: "pending" | "drag" | "ignore" = "pending";
-    let lastClientY = startY;
-    let lastTs = performance.now();
+    const pushVelocitySample = (clientY: number, ts: number) => {
+      const samples = velocitySamplesRef.current;
+      samples.push({ y: clientY, t: ts });
+      const cutoff = ts - VELOCITY_WINDOW_MS;
+      while (samples.length > 0 && samples[0].t < cutoff) {
+        samples.shift();
+      }
+      if (samples.length > 8) {
+        samples.splice(0, samples.length - 8);
+      }
+    };
+    velocitySamplesRef.current = [];
+    pushVelocitySample(startY, performance.now());
 
     const handleMove = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
@@ -311,6 +325,7 @@ export default function BottomSheet({
       const next = startHeight - dy;
       const clamped = Math.max(heights.peek, Math.min(heights.expanded, next));
       visibleHeight.set(clamped);
+      pushVelocitySample(moveEvent.clientY, performance.now());
       const nextDetent = findNearestDetent(clamped).state;
       if (nextDetent !== currentDetentRef.current) {
         currentDetentRef.current = nextDetent;
@@ -320,17 +335,20 @@ export default function BottomSheet({
           void appHaptics.trigger("selection");
         }
       }
-      lastClientY = moveEvent.clientY;
-      lastTs = performance.now();
     };
 
     const handleUp = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
       if (mode === "drag") {
         const current = visibleHeight.get();
-        const nowTs = performance.now();
-        const dt = Math.max(1, nowTs - lastTs);
-        const velocityY = ((upEvent.clientY - lastClientY) / dt) * 1000; // Screen axis.
+        const releaseTs = performance.now();
+        pushVelocitySample(upEvent.clientY, releaseTs);
+        const samples = velocitySamplesRef.current;
+        const first = samples[0] ?? null;
+        const last = samples[samples.length - 1] ?? null;
+        const dt = first && last ? Math.max(1, last.t - first.t) : 1;
+        // Average velocity over recent gesture window feels closer to native inertial sheets.
+        const velocityY = first && last ? ((last.y - first.y) / dt) * 1000 : 0; // Screen axis.
         const velocityHeight = -velocityY; // Sheet axis: up swipe -> positive value.
         // Project release momentum to choose the most natural detent before spring settle.
         const projected = current + velocityHeight * FLING_PROJECTION_FACTOR;
@@ -346,6 +364,7 @@ export default function BottomSheet({
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleUp);
+      velocitySamplesRef.current = [];
       setIsDragging(false);
       if (pointerHost.releasePointerCapture) {
         try {

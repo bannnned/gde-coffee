@@ -14,7 +14,14 @@ vi.mock("./http", () => ({
   },
 }));
 
-import { getAdminFunnel, getAdminMapPerf, getAdminNorthStar, searchAdminCafesByName, setAdminMapPerfAlertState } from "./adminMetrics";
+import {
+  getAdminFunnel,
+  getAdminMapPerf,
+  getAdminNorthStar,
+  getAdminTasteMap,
+  searchAdminCafesByName,
+  setAdminMapPerfAlertState,
+} from "./adminMetrics";
 
 describe("adminMetrics api", () => {
   beforeEach(() => {
@@ -215,5 +222,71 @@ describe("adminMetrics api", () => {
       owner: "ops",
       comment: "temporary silence",
     });
+  });
+
+  it("loads taste-map report and parses summary/daily/alerts", async () => {
+    httpGetMock.mockResolvedValueOnce({
+      data: {
+        summary: {
+          from: "2026-03-01T00:00:00Z",
+          to: "2026-03-07T00:00:00Z",
+          days: 7,
+          onboarding_started: 120,
+          onboarding_completed: 84,
+          onboarding_completion_rate: 0.7,
+          hypothesis_shown: 260,
+          hypothesis_dismissed: 40,
+          hypothesis_confirmed: 90,
+          feedback_confirm_rate: 0.6923,
+          api_errors: 8,
+          recompute_events: 64,
+          inference_runs: 64,
+          inference_failed_runs: 3,
+          inference_failure_rate: 0.0468,
+          inference_latency_p50_ms: 920,
+          inference_latency_p95_ms: 2100,
+        },
+        daily: [
+          {
+            date: "2026-03-06",
+            onboarding_started: 20,
+            onboarding_completed: 14,
+            hypothesis_shown: 30,
+            hypothesis_dismissed: 5,
+            hypothesis_confirmed: 12,
+            api_errors: 1,
+            recompute_events: 10,
+            inference_runs: 10,
+            inference_failed_runs: 0,
+            inference_failure_rate: 0,
+            inference_p95_ms: 1750,
+          },
+        ],
+        alerts: [
+          {
+            key: "taste_inference_latency",
+            severity: "watch",
+            label: "Latency inference p95",
+            value: "3200 мс",
+            target: "< 2800 мс",
+          },
+        ],
+      },
+    });
+
+    const report = await getAdminTasteMap({ days: 7 });
+
+    expect(httpGetMock).toHaveBeenCalledWith("/api/admin/metrics/taste-map", {
+      params: {
+        days: 7,
+      },
+    });
+    expect(report.summary.onboarding_started).toBe(120);
+    expect(report.summary.onboarding_completion_rate).toBe(0.7);
+    expect(report.summary.inference_latency_p95_ms).toBe(2100);
+    expect(report.daily[0]?.date).toBe("2026-03-06");
+    expect(report.daily[0]?.recompute_events).toBe(10);
+    expect(report.alerts[0]?.key).toBe("taste_inference_latency");
+    expect(report.alerts[0]?.severity).toBe("watch");
   });
 });

@@ -629,3 +629,151 @@ order by first_render_events desc, effective_type asc`
 
 	return result, nil
 }
+
+func (r *Repository) GetTasteMapEventSnapshot(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) (TasteMapEventSnapshot, error) {
+	const query = `select
+	count(*) filter (where event_type = 'taste_onboarding_started')::int as onboarding_started,
+	count(*) filter (where event_type = 'taste_onboarding_completed')::int as onboarding_completed,
+	count(*) filter (where event_type = 'taste_hypothesis_shown')::int as hypothesis_shown,
+	count(*) filter (where event_type = 'taste_hypothesis_dismissed')::int as hypothesis_dismissed,
+	count(*) filter (where event_type = 'taste_hypothesis_confirmed')::int as hypothesis_confirmed,
+	count(*) filter (where event_type = 'taste_api_error')::int as api_errors,
+	count(*) filter (where event_type = 'taste_profile_recomputed')::int as recompute_events
+from public.product_metrics_events
+where occurred_at >= $1
+  and occurred_at < $2`
+
+	var snapshot TasteMapEventSnapshot
+	if err := r.pool.QueryRow(ctx, query, dateFrom.UTC(), dateTo.UTC()).Scan(
+		&snapshot.OnboardingStarted,
+		&snapshot.OnboardingCompleted,
+		&snapshot.HypothesisShown,
+		&snapshot.HypothesisDismissed,
+		&snapshot.HypothesisConfirmed,
+		&snapshot.APIErrors,
+		&snapshot.RecomputeEvents,
+	); err != nil {
+		return TasteMapEventSnapshot{}, err
+	}
+
+	return snapshot, nil
+}
+
+func (r *Repository) GetTasteInferenceSnapshot(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) (TasteInferenceSnapshot, error) {
+	const query = `with base as (
+	select
+		status,
+		duration_ms::double precision as duration_ms
+	from public.taste_inference_runs
+	where created_at >= $1
+	  and created_at < $2
+)
+select
+	count(*)::int as runs_total,
+	count(*) filter (where status = 'failed')::int as runs_failed,
+	coalesce(percentile_cont(0.5) within group (order by duration_ms) filter (where status = 'ok' and duration_ms > 0), 0)::double precision as latency_p50_ms,
+	coalesce(percentile_cont(0.95) within group (order by duration_ms) filter (where status = 'ok' and duration_ms > 0), 0)::double precision as latency_p95_ms
+from base`
+
+	var snapshot TasteInferenceSnapshot
+	if err := r.pool.QueryRow(ctx, query, dateFrom.UTC(), dateTo.UTC()).Scan(
+		&snapshot.RunsTotal,
+		&snapshot.RunsFailed,
+		&snapshot.LatencyP50Ms,
+		&snapshot.LatencyP95Ms,
+	); err != nil {
+		return TasteInferenceSnapshot{}, err
+	}
+
+	return snapshot, nil
+}
+
+func (r *Repository) ListTasteMapDailyMetrics(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) ([]TasteMapDailyMetrics, error) {
+	const query = `with days as (
+	select generate_series($1::date, ($2::date - interval '1 day')::date, interval '1 day')::date as day
+), events_daily as (
+	select
+		date_trunc('day', occurred_at)::date as day,
+		count(*) filter (where event_type = 'taste_onboarding_started')::int as onboarding_started,
+		count(*) filter (where event_type = 'taste_onboarding_completed')::int as onboarding_completed,
+		count(*) filter (where event_type = 'taste_hypothesis_shown')::int as hypothesis_shown,
+		count(*) filter (where event_type = 'taste_hypothesis_dismissed')::int as hypothesis_dismissed,
+		count(*) filter (where event_type = 'taste_hypothesis_confirmed')::int as hypothesis_confirmed,
+		count(*) filter (where event_type = 'taste_api_error')::int as api_errors,
+		count(*) filter (where event_type = 'taste_profile_recomputed')::int as recompute_events
+	from public.product_metrics_events
+	where occurred_at >= $1
+	  and occurred_at < $2
+	group by day
+), inference_daily as (
+	select
+		date_trunc('day', created_at)::date as day,
+		count(*)::int as inference_runs,
+		count(*) filter (where status = 'failed')::int as inference_failed_runs,
+		coalesce(percentile_cont(0.95) within group (order by duration_ms::double precision), 0)::double precision as inference_p95_ms
+	from public.taste_inference_runs
+	where created_at >= $1
+	  and created_at < $2
+	group by day
+)
+select
+	d.day,
+	coalesce(e.onboarding_started, 0)::int as onboarding_started,
+	coalesce(e.onboarding_completed, 0)::int as onboarding_completed,
+	coalesce(e.hypothesis_shown, 0)::int as hypothesis_shown,
+	coalesce(e.hypothesis_dismissed, 0)::int as hypothesis_dismissed,
+	coalesce(e.hypothesis_confirmed, 0)::int as hypothesis_confirmed,
+	coalesce(e.api_errors, 0)::int as api_errors,
+	coalesce(e.recompute_events, 0)::int as recompute_events,
+	coalesce(i.inference_runs, 0)::int as inference_runs,
+	coalesce(i.inference_failed_runs, 0)::int as inference_failed_runs,
+	coalesce(i.inference_p95_ms, 0)::double precision as inference_p95_ms
+from days d
+left join events_daily e on e.day = d.day
+left join inference_daily i on i.day = d.day
+order by d.day asc`
+
+	rows, err := r.pool.Query(ctx, query, dateFrom.UTC(), dateTo.UTC())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]TasteMapDailyMetrics, 0, 32)
+	for rows.Next() {
+		var row TasteMapDailyMetrics
+		if err := rows.Scan(
+			&row.Day,
+			&row.OnboardingStarted,
+			&row.OnboardingCompleted,
+			&row.HypothesisShown,
+			&row.HypothesisDismissed,
+			&row.HypothesisConfirmed,
+			&row.APIErrors,
+			&row.RecomputeEvents,
+			&row.InferenceRuns,
+			&row.InferenceFailedRuns,
+			&row.InferenceP95Ms,
+		); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}

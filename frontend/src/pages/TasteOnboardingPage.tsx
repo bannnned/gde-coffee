@@ -4,9 +4,10 @@ import {
   IconChevronRight,
   IconRefresh,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, type Location as RouterLocation } from "react-router-dom";
 
+import { createJourneyID, reportMetricEvent } from "../api/metrics";
 import {
   completeTasteOnboarding,
   getTasteOnboarding,
@@ -260,6 +261,8 @@ export default function TasteOnboardingPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const journeyIDRef = useRef<string>(createJourneyID("taste_onboarding"));
+  const startReportedVersionRef = useRef<string>("");
 
   const tasteMapEnabled = isTasteMapV1Enabled();
   const userID = (user?.id ?? "").trim();
@@ -300,6 +303,17 @@ export default function TasteOnboardingPage() {
       );
       setLoadingState("ready");
       setIsCompleted(false);
+      if (startReportedVersionRef.current !== response.onboarding_version) {
+        startReportedVersionRef.current = response.onboarding_version;
+        reportMetricEvent({
+          event_type: "taste_onboarding_started",
+          journey_id: journeyIDRef.current,
+          meta: {
+            onboarding_version: response.onboarding_version,
+            source: "taste_onboarding_page",
+          },
+        });
+      }
     } catch (error: unknown) {
       const statusCode = extractApiErrorStatus(error);
       if (statusCode === 404) {
@@ -307,6 +321,15 @@ export default function TasteOnboardingPage() {
       } else {
         setLoadError(extractApiErrorMessage(error, "Не удалось загрузить карту вкуса."));
         setLoadingState("error");
+        reportMetricEvent({
+          event_type: "taste_api_error",
+          journey_id: journeyIDRef.current,
+          meta: {
+            stage: "load_onboarding",
+            status_code: statusCode ?? 0,
+            source: "taste_onboarding_page",
+          },
+        });
       }
     }
   }, [status, tasteMapEnabled, userID]);
@@ -394,10 +417,28 @@ export default function TasteOnboardingPage() {
         answers: payload,
         client_completed_at: new Date().toISOString(),
       });
+      reportMetricEvent({
+        event_type: "taste_onboarding_completed",
+        journey_id: journeyIDRef.current,
+        meta: {
+          onboarding_version: onboarding.onboarding_version,
+          answers_count: payload.length,
+          source: "taste_onboarding_page",
+        },
+      });
       clearTasteOnboardingProgress(userID);
       setIsCompleted(true);
     } catch (error: unknown) {
       setSubmitError(extractApiErrorMessage(error, "Не удалось сохранить карту вкуса."));
+      reportMetricEvent({
+        event_type: "taste_api_error",
+        journey_id: journeyIDRef.current,
+        meta: {
+          stage: "complete_onboarding",
+          status_code: extractApiErrorStatus(error) ?? 0,
+          source: "taste_onboarding_page",
+        },
+      });
     } finally {
       setIsSubmitting(false);
     }

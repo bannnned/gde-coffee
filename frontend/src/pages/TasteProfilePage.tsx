@@ -6,9 +6,10 @@ import {
   IconRotate,
   IconX,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, type Location as RouterLocation } from "react-router-dom";
 
+import { createJourneyID, reportMetricEvent } from "../api/metrics";
 import {
   acceptTasteHypothesis,
   dismissTasteHypothesis,
@@ -59,6 +60,8 @@ export default function TasteProfilePage() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [payload, setPayload] = useState<TasteMapResponse | null>(null);
   const [busyHypothesisID, setBusyHypothesisID] = useState<string | null>(null);
+  const journeyIDRef = useRef<string>(createJourneyID("taste_profile"));
+  const shownHypothesisIDsRef = useRef<Set<string>>(new Set());
 
   const tasteMapEnabled = isTasteMapV1Enabled();
   const userID = (user?.id ?? "").trim();
@@ -86,6 +89,15 @@ export default function TasteProfilePage() {
       } else {
         setError(extractApiErrorMessage(err, "Не удалось загрузить профиль вкуса."));
         setLoadState("error");
+        reportMetricEvent({
+          event_type: "taste_api_error",
+          journey_id: journeyIDRef.current,
+          meta: {
+            stage: "load_profile",
+            status_code: statusCode ?? 0,
+            source: "taste_profile_page",
+          },
+        });
       }
     }
   }, [status, tasteMapEnabled, userID]);
@@ -116,6 +128,28 @@ export default function TasteProfilePage() {
   }, [payload?.active_tags]);
 
   const hypotheses = payload?.hypotheses ?? [];
+
+  useEffect(() => {
+    if (hypotheses.length === 0) {
+      return;
+    }
+    for (const item of hypotheses.slice(0, 8)) {
+      const hypothesisID = (item.id ?? "").trim();
+      if (!hypothesisID) continue;
+      if (shownHypothesisIDsRef.current.has(hypothesisID)) continue;
+      shownHypothesisIDsRef.current.add(hypothesisID);
+      reportMetricEvent({
+        event_type: "taste_hypothesis_shown",
+        journey_id: journeyIDRef.current,
+        meta: {
+          hypothesis_id: hypothesisID,
+          taste_code: item.taste_code,
+          polarity: item.polarity,
+          source: "taste_profile_page",
+        },
+      });
+    }
+  }, [hypotheses]);
 
   const insights = useMemo(() => {
     const lines: string[] = [];
@@ -171,6 +205,16 @@ export default function TasteProfilePage() {
           await acceptTasteHypothesis(hypothesis.id, { feedback_source: "profile_screen" });
           void appHaptics.trigger("success");
           setActionSuccess(`Гипотеза «${getTasteLabel(hypothesis.taste_code)}» подтверждена.`);
+          reportMetricEvent({
+            event_type: "taste_hypothesis_confirmed",
+            journey_id: journeyIDRef.current,
+            meta: {
+              hypothesis_id: hypothesis.id,
+              taste_code: hypothesis.taste_code,
+              polarity: hypothesis.polarity,
+              source: "taste_profile_page",
+            },
+          });
         } else {
           await dismissTasteHypothesis(hypothesis.id, {
             feedback_source: "profile_screen",
@@ -178,6 +222,17 @@ export default function TasteProfilePage() {
           });
           void appHaptics.trigger("warning");
           setActionSuccess(`Гипотеза «${getTasteLabel(hypothesis.taste_code)}» скрыта на cooldown.`);
+          reportMetricEvent({
+            event_type: "taste_hypothesis_dismissed",
+            journey_id: journeyIDRef.current,
+            meta: {
+              hypothesis_id: hypothesis.id,
+              taste_code: hypothesis.taste_code,
+              polarity: hypothesis.polarity,
+              reason_code: "not_me",
+              source: "taste_profile_page",
+            },
+          });
         }
         await loadTasteMap();
       } catch (err: unknown) {
@@ -185,6 +240,15 @@ export default function TasteProfilePage() {
         setActionError(
           extractApiErrorMessage(err, "Не удалось сохранить обратную связь по гипотезе."),
         );
+        reportMetricEvent({
+          event_type: "taste_api_error",
+          journey_id: journeyIDRef.current,
+          meta: {
+            stage: action === "accept" ? "accept_hypothesis" : "dismiss_hypothesis",
+            status_code: extractApiErrorStatus(err) ?? 0,
+            source: "taste_profile_page",
+          },
+        });
       } finally {
         setBusyHypothesisID(null);
       }

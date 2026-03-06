@@ -7,13 +7,20 @@ export type MetricEventType =
   | "checkin_start"
   | "review_submit"
   | "map_first_render"
-  | "map_first_interaction";
+  | "map_first_interaction"
+  | "taste_onboarding_started"
+  | "taste_onboarding_completed"
+  | "taste_hypothesis_shown"
+  | "taste_hypothesis_dismissed"
+  | "taste_hypothesis_confirmed"
+  | "taste_profile_recomputed"
+  | "taste_api_error";
 export type RouteProvider = "2gis" | "yandex";
 
 type MetricEventInput = {
   event_type: MetricEventType;
   journey_id: string;
-  cafe_id: string;
+  cafe_id?: string;
   review_id?: string;
   provider?: RouteProvider;
   occurred_at?: string;
@@ -66,14 +73,17 @@ export function createJourneyID(cafeID: string): string {
 export function reportMetricEvent(event: MetricEventInput): void {
   const journeyID = (event.journey_id || "").trim();
   const cafeID = (event.cafe_id || "").trim();
-  if (!journeyID || !cafeID) {
+  if (!journeyID) {
+    return;
+  }
+  if (requiresCafeID(event.event_type) && !cafeID) {
     return;
   }
 
   const payload: MetricEventPayload = {
     ...event,
     journey_id: journeyID,
-    cafe_id: cafeID,
+    cafe_id: cafeID || undefined,
     review_id: (event.review_id || "").trim() || undefined,
     provider: event.provider,
     anon_id: getOrCreateAnonID(),
@@ -93,4 +103,19 @@ export function reportMetricEvent(event: MetricEventInput): void {
     .catch(() => {
       // Analytics is best-effort and must not block user interactions.
     });
+}
+
+function requiresCafeID(eventType: MetricEventType): boolean {
+  switch (eventType) {
+    case "taste_onboarding_started":
+    case "taste_onboarding_completed":
+    case "taste_hypothesis_shown":
+    case "taste_hypothesis_dismissed":
+    case "taste_hypothesis_confirmed":
+    case "taste_profile_recomputed":
+    case "taste_api_error":
+      return false;
+    default:
+      return true;
+  }
 }

@@ -34,7 +34,7 @@
 | 7 | Frontend onboarding flow | [x] | 2026-03-06 | - |
 | 8 | Frontend экран "Профиль вкуса" | [x] | 2026-03-06 | - |
 | 9 | Интеграция в ranking + explainability | [x] | 2026-03-06 | - |
-| 10 | Метрики, e2e, rollout | [ ] | - | - |
+| 10 | Метрики, e2e, rollout | [x] | 2026-03-06 | - |
 
 ---
 
@@ -828,6 +828,82 @@ Open questions:
 
 Следующий шаг:
 - Step 10 (метрики, e2e, rollout).
+
+## Step 10 - Метрики, e2e, rollout
+Date: 2026-03-06
+Owner: Engineering
+
+Что сделали:
+- Закрыли analytics events Taste Map end-to-end:
+  - frontend: `taste_onboarding_started`, `taste_onboarding_completed`, `taste_hypothesis_shown`, `taste_hypothesis_confirmed`, `taste_hypothesis_dismissed`, `taste_api_error`;
+  - backend inference: `taste_profile_recomputed` при успешном run.
+- Расширили контракты и ingestion-пайплайн метрик:
+  - добавили новые event types в backend validation и SQL CHECK constraint (`product_metrics_events_type_chk`);
+  - добавили миграцию `000037_product_metrics_taste_events`.
+- Реализовали admin dashboard/report для Taste Map:
+  - новый endpoint `GET /api/admin/metrics/taste-map`;
+  - summary + daily + alerts (API errors, inference failures, inference latency, onboarding completion degradation);
+  - подключение в `AdminNorthStarPage` с отдельным блоком `Taste Map health`.
+- Добавили smoke-критический путь:
+  - `registration -> onboarding -> profile -> dismiss -> discovery explainability`.
+- Зафиксировали rollout-документацию:
+  - стадии `0/10/50/100`;
+  - go-live checklist;
+  - rollback plan через feature flags.
+- Добавили тест на frontend parser для `getAdminTasteMap`.
+
+Ключевые решения:
+- Вся analytics отправка best-effort и не блокирует UX.
+- Событие `taste_profile_recomputed` создается сервером из inference run, чтобы не зависеть от клиентского состояния.
+- Dashboard Taste Map живет рядом с North Star/Map Perf в одном admin-экране для единой операционной панели.
+- Rollback-first подход: первичное выключение ranking/inference/UI флагами без отката схемы БД.
+
+Что сознательно НЕ делали (scope guard):
+- Не внедряли внешнюю BI-систему (Looker/Metabase) на этом шаге.
+- Не добавляли дополнительные пользовательские пуши/уведомления по событиям Taste Map.
+- Не трогали пост-step cleanup (удаление runbook и редизайн cleanup) до команды после релизной проверки.
+
+Измененные файлы:
+- backend/internal/domains/metrics/types.go
+- backend/internal/domains/metrics/service.go
+- backend/internal/domains/metrics/repository.go
+- backend/internal/domains/metrics/handler.go
+- backend/internal/domains/metrics/handler_test.go
+- backend/internal/domains/metrics/service_test.go
+- backend/internal/domains/taste/service_inference.go
+- backend/internal/domains/taste/repository_inference.go
+- backend/main.go
+- backend/migrations/000037_product_metrics_taste_events.up.sql
+- backend/migrations/000037_product_metrics_taste_events.down.sql
+- frontend/src/api/metrics.ts
+- frontend/src/api/adminMetrics.ts
+- frontend/src/api/adminMetrics.test.ts
+- frontend/src/pages/TasteOnboardingPage.tsx
+- frontend/src/pages/TasteProfilePage.tsx
+- frontend/src/pages/AdminNorthStarPage.tsx
+- frontend/src/pages/TasteMapCriticalPath.smoke.test.tsx
+- docs/taste_map_rollout_v1.md
+- docs/taste_map_execution_runbook.md
+
+Проверки/тесты:
+- `go test ./internal/domains/metrics` - passed.
+- `go test ./internal/domains/taste` - passed.
+- `go test ./... -run '^$'` - passed.
+- `npm test` - passed.
+- `npm run build` (includes `tsc --noEmit`) - passed.
+
+Риски/долги:
+- Thresholds для Taste Map alerts пока статические; после 1-2 недель прод-данных потребуется калибровка.
+- `taste_api_error` метрика агрегируется на клиентских событиях и может недоучитывать ошибки при полном offline.
+- Нужен пост-релиз контроль noisy alerts (возможны ложные срабатывания на низком трафике).
+
+Open questions:
+- Нужна ли отдельная витрина для сравнения lift персонализации (control vs treatment) в админке.
+- Нужны ли алерты по confirm/dismiss drift для детекта деградации гипотез.
+- После релиза пройти ручную проверку сценария в проде и закрыть все Open questions шагов 7-10 отдельной записью.
+
+Следующий шаг:
+- После релизной проверки: выполнить раздел `4. Финал проекта` (удаление runbook + актуализация `docs/redesign/**`).
 ```
 
 ---

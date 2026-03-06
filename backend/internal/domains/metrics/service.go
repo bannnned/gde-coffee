@@ -15,6 +15,9 @@ type repository interface {
 	GetMapPerfSnapshot(ctx context.Context, dateFrom time.Time, dateTo time.Time) (MapPerfSnapshot, error)
 	ListMapPerfDailyMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time) ([]MapPerfDailyMetrics, error)
 	ListMapPerfNetworkMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time) ([]MapPerfNetworkMetrics, error)
+	GetTasteMapEventSnapshot(ctx context.Context, dateFrom time.Time, dateTo time.Time) (TasteMapEventSnapshot, error)
+	GetTasteInferenceSnapshot(ctx context.Context, dateFrom time.Time, dateTo time.Time) (TasteInferenceSnapshot, error)
+	ListTasteMapDailyMetrics(ctx context.Context, dateFrom time.Time, dateTo time.Time) ([]TasteMapDailyMetrics, error)
 	ResetExpiredMapPerfAlertStates(ctx context.Context, now time.Time) error
 	ListMapPerfAlertStates(ctx context.Context) ([]MapPerfAlertState, error)
 	UpsertMapPerfAlertState(ctx context.Context, state MapPerfAlertState) error
@@ -242,6 +245,80 @@ func (s *Service) GetMapPerfReport(
 	}, nil
 }
 
+func (s *Service) GetTasteMapReport(
+	ctx context.Context,
+	days int,
+	now time.Time,
+) (TasteMapReport, error) {
+	dateFrom, dateTo, normalizedDays := buildDateRange(days, now)
+
+	eventSnapshot, err := s.repository.GetTasteMapEventSnapshot(ctx, dateFrom, dateTo)
+	if err != nil {
+		return TasteMapReport{}, err
+	}
+	inferenceSnapshot, err := s.repository.GetTasteInferenceSnapshot(ctx, dateFrom, dateTo)
+	if err != nil {
+		return TasteMapReport{}, err
+	}
+	dailyRows, err := s.repository.ListTasteMapDailyMetrics(ctx, dateFrom, dateTo)
+	if err != nil {
+		return TasteMapReport{}, err
+	}
+
+	dailyByDate := make(map[string]TasteMapDailyMetrics, len(dailyRows))
+	for _, row := range dailyRows {
+		dailyByDate[row.Day.UTC().Format("2006-01-02")] = row
+	}
+
+	daily := make([]TasteMapDailyPoint, 0, normalizedDays)
+	for day := dateFrom; day.Before(dateTo); day = day.Add(24 * time.Hour) {
+		key := day.Format("2006-01-02")
+		row := dailyByDate[key]
+		daily = append(daily, TasteMapDailyPoint{
+			Date:                 key,
+			OnboardingStarted:    row.OnboardingStarted,
+			OnboardingCompleted:  row.OnboardingCompleted,
+			HypothesisShown:      row.HypothesisShown,
+			HypothesisDismissed:  row.HypothesisDismissed,
+			HypothesisConfirmed:  row.HypothesisConfirmed,
+			APIErrors:            row.APIErrors,
+			RecomputeEvents:      row.RecomputeEvents,
+			InferenceRuns:        row.InferenceRuns,
+			InferenceFailedRuns:  row.InferenceFailedRuns,
+			InferenceFailureRate: safeRate(row.InferenceFailedRuns, row.InferenceRuns),
+			InferenceP95Ms:       row.InferenceP95Ms,
+		})
+	}
+
+	feedbackTotal := eventSnapshot.HypothesisConfirmed + eventSnapshot.HypothesisDismissed
+	summary := TasteMapSummary{
+		From:                     dateFrom.Format(time.RFC3339),
+		To:                       dateTo.Format(time.RFC3339),
+		Days:                     normalizedDays,
+		OnboardingStarted:        eventSnapshot.OnboardingStarted,
+		OnboardingCompleted:      eventSnapshot.OnboardingCompleted,
+		OnboardingCompletionRate: safeRate(eventSnapshot.OnboardingCompleted, eventSnapshot.OnboardingStarted),
+		HypothesisShown:          eventSnapshot.HypothesisShown,
+		HypothesisDismissed:      eventSnapshot.HypothesisDismissed,
+		HypothesisConfirmed:      eventSnapshot.HypothesisConfirmed,
+		FeedbackConfirmRate:      safeRate(eventSnapshot.HypothesisConfirmed, feedbackTotal),
+		APIErrors:                eventSnapshot.APIErrors,
+		RecomputeEvents:          eventSnapshot.RecomputeEvents,
+		InferenceRuns:            inferenceSnapshot.RunsTotal,
+		InferenceFailedRuns:      inferenceSnapshot.RunsFailed,
+		InferenceFailureRate:     safeRate(inferenceSnapshot.RunsFailed, inferenceSnapshot.RunsTotal),
+		InferenceLatencyP50Ms:    inferenceSnapshot.LatencyP50Ms,
+		InferenceLatencyP95Ms:    inferenceSnapshot.LatencyP95Ms,
+	}
+
+	alerts := buildTasteMapAlerts(summary)
+	return TasteMapReport{
+		Summary: summary,
+		Daily:   daily,
+		Alerts:  alerts,
+	}, nil
+}
+
 func (s *Service) UpdateMapPerfAlertState(ctx context.Context, input UpdateMapPerfAlertStateInput) error {
 	alertKey := input.AlertKey
 	if !isSupportedAlertKey(alertKey) {
@@ -346,6 +423,70 @@ func classifyCoverage(value float64, goodThreshold float64, watchThreshold float
 		return "watch"
 	}
 	return "risk"
+}
+
+func buildTasteMapAlerts(summary TasteMapSummary) []TasteMapAlert {
+	alerts := make([]TasteMapAlert, 0, 4)
+
+	if summary.APIErrors >= 15 {
+		severity := "watch"
+		target := "< 15 за окно"
+		if summary.APIErrors >= 40 {
+			severity = "risk"
+			target = "< 40 за окно"
+		}
+		alerts = append(alerts, TasteMapAlert{
+			Key:      "taste_api_errors",
+			Severity: severity,
+			Label:    "Ошибки Taste API",
+			Value:    fmt.Sprintf("%d", summary.APIErrors),
+			Target:   target,
+		})
+	}
+
+	if summary.InferenceFailureRate >= 0.05 {
+		severity := "watch"
+		target := "< 5%"
+		if summary.InferenceFailureRate >= 0.15 {
+			severity = "risk"
+			target = "< 15%"
+		}
+		alerts = append(alerts, TasteMapAlert{
+			Key:      "taste_inference_failures",
+			Severity: severity,
+			Label:    "Ошибки inference",
+			Value:    fmt.Sprintf("%.1f%%", summary.InferenceFailureRate*100),
+			Target:   target,
+		})
+	}
+
+	if summary.InferenceLatencyP95Ms >= 2800 {
+		severity := "watch"
+		target := "< 2800 мс"
+		if summary.InferenceLatencyP95Ms >= 4500 {
+			severity = "risk"
+			target = "< 4500 мс"
+		}
+		alerts = append(alerts, TasteMapAlert{
+			Key:      "taste_inference_latency",
+			Severity: severity,
+			Label:    "Latency inference p95",
+			Value:    fmt.Sprintf("%.0f мс", summary.InferenceLatencyP95Ms),
+			Target:   target,
+		})
+	}
+
+	if summary.OnboardingStarted >= 20 && summary.OnboardingCompletionRate < 0.45 {
+		alerts = append(alerts, TasteMapAlert{
+			Key:      "taste_onboarding_completion",
+			Severity: "watch",
+			Label:    "Completion onboarding",
+			Value:    fmt.Sprintf("%.1f%%", summary.OnboardingCompletionRate*100),
+			Target:   ">= 45%",
+		})
+	}
+
+	return alerts
 }
 
 func severityFromStatus(status string) string {

@@ -3,21 +3,28 @@ package metrics
 import "time"
 
 const (
-	EventCafeCardOpen        = "cafe_card_open"
-	EventReviewRead          = "review_read"
-	EventRouteClick          = "route_click"
-	EventCheckIn             = "checkin_start"
-	EventReviewSubmit        = "review_submit"
-	EventMapFirstRender      = "map_first_render"
-	EventMapFirstInteraction = "map_first_interaction"
-	Provider2GIS             = "2gis"
-	ProviderYandex           = "yandex"
-	DefaultRangeDays         = 14
-	MaxRangeDays             = 90
-	MaxEventsPerIngest       = 50
-	AlertStateActive         = "active"
-	AlertStateAcked          = "acked"
-	AlertStateSnoozed        = "snoozed"
+	EventCafeCardOpen             = "cafe_card_open"
+	EventReviewRead               = "review_read"
+	EventRouteClick               = "route_click"
+	EventCheckIn                  = "checkin_start"
+	EventReviewSubmit             = "review_submit"
+	EventMapFirstRender           = "map_first_render"
+	EventMapFirstInteraction      = "map_first_interaction"
+	EventTasteOnboardingStart     = "taste_onboarding_started"
+	EventTasteOnboardingDone      = "taste_onboarding_completed"
+	EventTasteHypothesisShown     = "taste_hypothesis_shown"
+	EventTasteHypothesisDismissed = "taste_hypothesis_dismissed"
+	EventTasteHypothesisConfirmed = "taste_hypothesis_confirmed"
+	EventTasteProfileRecomputed   = "taste_profile_recomputed"
+	EventTasteAPIError            = "taste_api_error"
+	Provider2GIS                  = "2gis"
+	ProviderYandex                = "yandex"
+	DefaultRangeDays              = 14
+	MaxRangeDays                  = 90
+	MaxEventsPerIngest            = 50
+	AlertStateActive              = "active"
+	AlertStateAcked               = "acked"
+	AlertStateSnoozed             = "snoozed"
 )
 
 type EventInput struct {
@@ -96,6 +103,86 @@ type MapPerfSnapshot struct {
 	FirstInteractionEvents int
 	FirstInteractionP50Ms  float64
 	FirstInteractionP95Ms  float64
+}
+
+type TasteMapEventSnapshot struct {
+	OnboardingStarted   int
+	OnboardingCompleted int
+	HypothesisShown     int
+	HypothesisDismissed int
+	HypothesisConfirmed int
+	APIErrors           int
+	RecomputeEvents     int
+}
+
+type TasteInferenceSnapshot struct {
+	RunsTotal    int
+	RunsFailed   int
+	LatencyP50Ms float64
+	LatencyP95Ms float64
+}
+
+type TasteMapDailyMetrics struct {
+	Day                 time.Time
+	OnboardingStarted   int
+	OnboardingCompleted int
+	HypothesisShown     int
+	HypothesisDismissed int
+	HypothesisConfirmed int
+	APIErrors           int
+	RecomputeEvents     int
+	InferenceRuns       int
+	InferenceFailedRuns int
+	InferenceP95Ms      float64
+}
+
+type TasteMapSummary struct {
+	From                     string  `json:"from"`
+	To                       string  `json:"to"`
+	Days                     int     `json:"days"`
+	OnboardingStarted        int     `json:"onboarding_started"`
+	OnboardingCompleted      int     `json:"onboarding_completed"`
+	OnboardingCompletionRate float64 `json:"onboarding_completion_rate"`
+	HypothesisShown          int     `json:"hypothesis_shown"`
+	HypothesisDismissed      int     `json:"hypothesis_dismissed"`
+	HypothesisConfirmed      int     `json:"hypothesis_confirmed"`
+	FeedbackConfirmRate      float64 `json:"feedback_confirm_rate"`
+	APIErrors                int     `json:"api_errors"`
+	RecomputeEvents          int     `json:"recompute_events"`
+	InferenceRuns            int     `json:"inference_runs"`
+	InferenceFailedRuns      int     `json:"inference_failed_runs"`
+	InferenceFailureRate     float64 `json:"inference_failure_rate"`
+	InferenceLatencyP50Ms    float64 `json:"inference_latency_p50_ms"`
+	InferenceLatencyP95Ms    float64 `json:"inference_latency_p95_ms"`
+}
+
+type TasteMapDailyPoint struct {
+	Date                 string  `json:"date"`
+	OnboardingStarted    int     `json:"onboarding_started"`
+	OnboardingCompleted  int     `json:"onboarding_completed"`
+	HypothesisShown      int     `json:"hypothesis_shown"`
+	HypothesisDismissed  int     `json:"hypothesis_dismissed"`
+	HypothesisConfirmed  int     `json:"hypothesis_confirmed"`
+	APIErrors            int     `json:"api_errors"`
+	RecomputeEvents      int     `json:"recompute_events"`
+	InferenceRuns        int     `json:"inference_runs"`
+	InferenceFailedRuns  int     `json:"inference_failed_runs"`
+	InferenceFailureRate float64 `json:"inference_failure_rate"`
+	InferenceP95Ms       float64 `json:"inference_p95_ms"`
+}
+
+type TasteMapAlert struct {
+	Key      string `json:"key"`
+	Severity string `json:"severity"`
+	Label    string `json:"label"`
+	Value    string `json:"value"`
+	Target   string `json:"target"`
+}
+
+type TasteMapReport struct {
+	Summary TasteMapSummary      `json:"summary"`
+	Daily   []TasteMapDailyPoint `json:"daily"`
+	Alerts  []TasteMapAlert      `json:"alerts"`
 }
 
 type MapPerfDailyMetrics struct {

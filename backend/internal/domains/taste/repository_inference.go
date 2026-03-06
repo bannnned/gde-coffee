@@ -2,6 +2,8 @@ package taste
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -235,4 +237,69 @@ func (r *Repository) ReleaseUserInferenceLock(ctx context.Context, userID string
 	key := "taste.inference:" + strings.TrimSpace(userID)
 	var unlocked bool
 	_ = r.db.QueryRow(ctx, sqlReleaseAdvisoryLockByKey, key).Scan(&unlocked)
+}
+
+func (r *Repository) InsertTasteProfileRecomputedMetricEvent(
+	ctx context.Context,
+	userID string,
+	runID string,
+	trigger string,
+	durationMS int,
+	changedTags int,
+	occurredAt time.Time,
+) error {
+	normalizedUserID := strings.TrimSpace(userID)
+	if normalizedUserID == "" {
+		return nil
+	}
+	normalizedRunID := strings.TrimSpace(runID)
+	if normalizedRunID == "" {
+		return nil
+	}
+	metadataJSON, err := json.Marshal(map[string]any{
+		"run_id":             normalizedRunID,
+		"trigger":            strings.TrimSpace(trigger),
+		"duration_ms":        durationMS,
+		"changed_tags_count": changedTags,
+	})
+	if err != nil {
+		return err
+	}
+
+	clientEventID := fmt.Sprintf("taste_recompute:%s", normalizedRunID)
+	journeyID := fmt.Sprintf("taste_recompute_%s", normalizedRunID)
+
+	_, err = r.pool.Exec(
+		ctx,
+		`insert into public.product_metrics_events (
+			client_event_id,
+			event_type,
+			user_id,
+			anon_id,
+			journey_id,
+			cafe_id,
+			review_id,
+			provider,
+			occurred_at,
+			metadata
+		) values (
+			$1,
+			'taste_profile_recomputed',
+			$2::uuid,
+			'',
+			$3,
+			null,
+			null,
+			'',
+			$4,
+			$5::jsonb
+		)
+		on conflict do nothing`,
+		clientEventID,
+		normalizedUserID,
+		journeyID,
+		occurredAt.UTC(),
+		metadataJSON,
+	)
+	return err
 }

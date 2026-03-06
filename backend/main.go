@@ -354,6 +354,7 @@ func main() {
 	adminMetricsGroup.GET("/north-star", metricsHandler.GetNorthStar)
 	adminMetricsGroup.GET("/funnel", metricsHandler.GetFunnel)
 	adminMetricsGroup.GET("/map-perf", metricsHandler.GetMapPerf)
+	adminMetricsGroup.GET("/taste-map", metricsHandler.GetTasteMap)
 	adminMetricsGroup.POST("/map-perf/alerts/:alert_key/state", metricsHandler.UpdateMapPerfAlertState)
 
 	api.GET("/cafes/:id/photos", photosHandler.List)

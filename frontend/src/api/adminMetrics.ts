@@ -119,6 +119,55 @@ export type AdminMapPerfReport = {
   actions: AdminMapPerfActionPoint[];
 };
 
+export type AdminTasteMapSummary = {
+  from: string;
+  to: string;
+  days: number;
+  onboarding_started: number;
+  onboarding_completed: number;
+  onboarding_completion_rate: number;
+  hypothesis_shown: number;
+  hypothesis_dismissed: number;
+  hypothesis_confirmed: number;
+  feedback_confirm_rate: number;
+  api_errors: number;
+  recompute_events: number;
+  inference_runs: number;
+  inference_failed_runs: number;
+  inference_failure_rate: number;
+  inference_latency_p50_ms: number;
+  inference_latency_p95_ms: number;
+};
+
+export type AdminTasteMapDailyPoint = {
+  date: string;
+  onboarding_started: number;
+  onboarding_completed: number;
+  hypothesis_shown: number;
+  hypothesis_dismissed: number;
+  hypothesis_confirmed: number;
+  api_errors: number;
+  recompute_events: number;
+  inference_runs: number;
+  inference_failed_runs: number;
+  inference_failure_rate: number;
+  inference_p95_ms: number;
+};
+
+export type AdminTasteMapAlert = {
+  key: string;
+  severity: "watch" | "risk";
+  label: string;
+  value: string;
+  target: string;
+};
+
+export type AdminTasteMapReport = {
+  summary: AdminTasteMapSummary;
+  daily: AdminTasteMapDailyPoint[];
+  alerts: AdminTasteMapAlert[];
+};
+
 export type AdminCafeSearchItem = {
   id: string;
   name: string;
@@ -331,6 +380,74 @@ export async function setAdminMapPerfAlertState(
     owner: input.owner,
     comment: input.comment,
   });
+}
+
+export async function getAdminTasteMap(params?: { days?: number }): Promise<AdminTasteMapReport> {
+  const res = await http.get<unknown>("/api/admin/metrics/taste-map", {
+    params: {
+      days: params?.days,
+    },
+  });
+
+  const root = asRecord(res.data);
+  const summaryRaw = asRecord(root.summary);
+  const dailyRaw = asArray(root.daily);
+  const alertsRaw = asArray(root.alerts);
+
+  return {
+    summary: {
+      from: asString(summaryRaw.from),
+      to: asString(summaryRaw.to),
+      days: asNumber(summaryRaw.days),
+      onboarding_started: asNumber(summaryRaw.onboarding_started),
+      onboarding_completed: asNumber(summaryRaw.onboarding_completed),
+      onboarding_completion_rate: asNumber(summaryRaw.onboarding_completion_rate),
+      hypothesis_shown: asNumber(summaryRaw.hypothesis_shown),
+      hypothesis_dismissed: asNumber(summaryRaw.hypothesis_dismissed),
+      hypothesis_confirmed: asNumber(summaryRaw.hypothesis_confirmed),
+      feedback_confirm_rate: asNumber(summaryRaw.feedback_confirm_rate),
+      api_errors: asNumber(summaryRaw.api_errors),
+      recompute_events: asNumber(summaryRaw.recompute_events),
+      inference_runs: asNumber(summaryRaw.inference_runs),
+      inference_failed_runs: asNumber(summaryRaw.inference_failed_runs),
+      inference_failure_rate: asNumber(summaryRaw.inference_failure_rate),
+      inference_latency_p50_ms: asNumber(summaryRaw.inference_latency_p50_ms),
+      inference_latency_p95_ms: asNumber(summaryRaw.inference_latency_p95_ms),
+    },
+    daily: dailyRaw
+      .map((item) => {
+        const record = asRecord(item);
+        return {
+          date: asString(record.date),
+          onboarding_started: asNumber(record.onboarding_started),
+          onboarding_completed: asNumber(record.onboarding_completed),
+          hypothesis_shown: asNumber(record.hypothesis_shown),
+          hypothesis_dismissed: asNumber(record.hypothesis_dismissed),
+          hypothesis_confirmed: asNumber(record.hypothesis_confirmed),
+          api_errors: asNumber(record.api_errors),
+          recompute_events: asNumber(record.recompute_events),
+          inference_runs: asNumber(record.inference_runs),
+          inference_failed_runs: asNumber(record.inference_failed_runs),
+          inference_failure_rate: asNumber(record.inference_failure_rate),
+          inference_p95_ms: asNumber(record.inference_p95_ms),
+        };
+      })
+      .filter((item) => item.date),
+    alerts: alertsRaw
+      .map((item) => {
+        const record = asRecord(item);
+        const severityRaw = asString(record.severity);
+        const severity: "watch" | "risk" = severityRaw === "risk" ? "risk" : "watch";
+        return {
+          key: asString(record.key),
+          severity,
+          label: asString(record.label),
+          value: asString(record.value),
+          target: asString(record.target),
+        };
+      })
+      .filter((item) => item.key && item.label),
+  };
 }
 
 export async function searchAdminCafesByName(query: string, limit = 12): Promise<AdminCafeSearchItem[]> {

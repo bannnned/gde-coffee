@@ -36,6 +36,18 @@ type inferenceRepository interface {
 	CreateTasteInferenceRun(ctx context.Context, params CreateTasteInferenceRunParams) (TasteInferenceRun, error)
 }
 
+type inferenceMetricRecorder interface {
+	InsertTasteProfileRecomputedMetricEvent(
+		ctx context.Context,
+		userID string,
+		runID string,
+		trigger string,
+		durationMS int,
+		changedTags int,
+		occurredAt time.Time,
+	) error
+}
+
 type inferenceAccumulator struct {
 	Raw             float64
 	Count           int
@@ -201,6 +213,28 @@ func (s *Service) RunInference(ctx context.Context, userID string, trigger strin
 	if runErr != nil {
 		slog.Warn("taste inference run log failed", "user_id", normalizedUserID, "trigger", trigger, "error", runErr)
 		return TasteInferenceRun{}, nil
+	}
+
+	if recorder, ok := repo.(inferenceMetricRecorder); ok {
+		if err := recorder.InsertTasteProfileRecomputedMetricEvent(
+			ctx,
+			normalizedUserID,
+			run.ID,
+			normalizeNonEmpty(trigger, "manual"),
+			durationMS,
+			tagsChanged,
+			startedAt,
+		); err != nil {
+			slog.Warn(
+				"taste inference metrics event failed",
+				"user_id",
+				normalizedUserID,
+				"run_id",
+				run.ID,
+				"error",
+				err,
+			)
+		}
 	}
 
 	return run, nil

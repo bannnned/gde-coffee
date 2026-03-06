@@ -17,6 +17,9 @@ type serviceRepositoryStub struct {
 	mapPerfNetwork          []MapPerfNetworkMetrics
 	mapPerfAlertStates      []MapPerfAlertState
 	mapPerfAlertActions     []MapPerfAlertAction
+	tasteMapSnapshot        TasteMapEventSnapshot
+	tasteInferenceSnapshot  TasteInferenceSnapshot
+	tasteDaily              []TasteMapDailyMetrics
 	lastUpsertedAlertState  MapPerfAlertState
 	lastInsertedAlertAction MapPerfAlertAction
 	lastResetExpiredAt      time.Time
@@ -78,6 +81,36 @@ func (r *serviceRepositoryStub) ListMapPerfNetworkMetrics(
 	r.capturedDateFrom = dateFrom
 	r.capturedDateTo = dateTo
 	return r.mapPerfNetwork, nil
+}
+
+func (r *serviceRepositoryStub) GetTasteMapEventSnapshot(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) (TasteMapEventSnapshot, error) {
+	r.capturedDateFrom = dateFrom
+	r.capturedDateTo = dateTo
+	return r.tasteMapSnapshot, nil
+}
+
+func (r *serviceRepositoryStub) GetTasteInferenceSnapshot(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) (TasteInferenceSnapshot, error) {
+	r.capturedDateFrom = dateFrom
+	r.capturedDateTo = dateTo
+	return r.tasteInferenceSnapshot, nil
+}
+
+func (r *serviceRepositoryStub) ListTasteMapDailyMetrics(
+	ctx context.Context,
+	dateFrom time.Time,
+	dateTo time.Time,
+) ([]TasteMapDailyMetrics, error) {
+	r.capturedDateFrom = dateFrom
+	r.capturedDateTo = dateTo
+	return r.tasteDaily, nil
 }
 
 func (r *serviceRepositoryStub) ListMapPerfAlertStates(ctx context.Context) ([]MapPerfAlertState, error) {
@@ -279,6 +312,63 @@ func TestGetMapPerfReport_BuildsSummaryAndCoverage(t *testing.T) {
 	}
 	if !repo.lastResetExpiredAt.Equal(now.UTC()) {
 		t.Fatalf("expected reset-expired call with now, got %s", repo.lastResetExpiredAt)
+	}
+}
+
+func TestGetTasteMapReport_BuildsSummaryAndAlerts(t *testing.T) {
+	repo := &serviceRepositoryStub{
+		tasteMapSnapshot: TasteMapEventSnapshot{
+			OnboardingStarted:   40,
+			OnboardingCompleted: 20,
+			HypothesisShown:     60,
+			HypothesisDismissed: 15,
+			HypothesisConfirmed: 10,
+			APIErrors:           22,
+			RecomputeEvents:     35,
+		},
+		tasteInferenceSnapshot: TasteInferenceSnapshot{
+			RunsTotal:    30,
+			RunsFailed:   5,
+			LatencyP50Ms: 1300,
+			LatencyP95Ms: 3200,
+		},
+		tasteDaily: []TasteMapDailyMetrics{
+			{
+				Day:                 time.Date(2026, 3, 4, 0, 0, 0, 0, time.UTC),
+				OnboardingStarted:   8,
+				OnboardingCompleted: 4,
+				HypothesisShown:     12,
+				HypothesisDismissed: 2,
+				HypothesisConfirmed: 3,
+				APIErrors:           4,
+				RecomputeEvents:     6,
+				InferenceRuns:       5,
+				InferenceFailedRuns: 1,
+				InferenceP95Ms:      2900,
+			},
+		},
+	}
+	service := NewService(repo)
+	now := time.Date(2026, 3, 6, 12, 0, 0, 0, time.UTC)
+
+	report, err := service.GetTasteMapReport(context.Background(), 3, now)
+	if err != nil {
+		t.Fatalf("GetTasteMapReport returned error: %v", err)
+	}
+	if report.Summary.Days != 3 {
+		t.Fatalf("expected days=3, got %d", report.Summary.Days)
+	}
+	if report.Summary.OnboardingStarted != 40 || report.Summary.OnboardingCompleted != 20 {
+		t.Fatalf("unexpected onboarding summary: %+v", report.Summary)
+	}
+	if report.Summary.InferenceRuns != 30 || report.Summary.InferenceFailedRuns != 5 {
+		t.Fatalf("unexpected inference summary: %+v", report.Summary)
+	}
+	if len(report.Daily) != 3 {
+		t.Fatalf("expected 3 daily points, got %d", len(report.Daily))
+	}
+	if len(report.Alerts) == 0 {
+		t.Fatalf("expected at least one alert")
 	}
 }
 
