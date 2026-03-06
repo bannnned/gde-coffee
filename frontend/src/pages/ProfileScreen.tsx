@@ -283,12 +283,12 @@ export default function ProfileScreen() {
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    void navigate("/taste/onboarding");
+                    void navigate("/taste/profile");
                   }}
                   className="h-11 rounded-full"
                 >
                   <IconSparkles size={16} />
-                  Карта вкуса
+                  Профиль вкуса
                 </Button>
               ) : null}
               <Button

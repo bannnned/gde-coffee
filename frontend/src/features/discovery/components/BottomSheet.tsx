@@ -29,6 +29,7 @@ type BottomSheetProps = PropsWithChildren<{
 
 type SheetState = "peek" | "mid" | "expanded";
 type DetentPoint = { state: SheetState; height: number };
+type SnapCause = "gesture" | "programmatic";
 
 const PEEK_HEIGHT_PX = 24;
 const SHEET_PADDING_PX = 6;
@@ -40,6 +41,7 @@ const DETENT_SELECTION_HAPTIC_COOLDOWN_MS = 110;
 const SNAP_STIFFNESS = 310;
 const SNAP_DAMPING = 31;
 const SNAP_MASS = 0.92;
+const MAX_LAUNCH_VELOCITY = 2400;
 
 const MotionSheet = motion.div;
 
@@ -72,6 +74,7 @@ export default function BottomSheet({
   const pendingSnapHapticRef = useRef(false);
   const lastSelectionHapticAtRef = useRef(0);
   const currentDetentRef = useRef<SheetState>("mid");
+  const snapCauseRef = useRef<SnapCause>("programmatic");
 
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -177,12 +180,21 @@ export default function BottomSheet({
       detents[detents.length - 1];
     const target = targetDetent.height;
     animationControlsRef.current?.stop();
+    const initialVelocity =
+      snapCauseRef.current === "gesture"
+        ? Math.max(
+            -MAX_LAUNCH_VELOCITY,
+            Math.min(MAX_LAUNCH_VELOCITY, launchVelocityRef.current),
+          )
+        : 0;
+    // Consume gesture momentum once; all next re-runs are pure settle animations.
+    snapCauseRef.current = "programmatic";
     const controls = animate(visibleHeight, target, {
       type: "spring",
       stiffness: SNAP_STIFFNESS,
       damping: SNAP_DAMPING,
       mass: SNAP_MASS,
-      velocity: launchVelocityRef.current,
+      velocity: initialVelocity,
       restDelta: 0.4,
       restSpeed: 8,
       onComplete: () => {
@@ -227,6 +239,7 @@ export default function BottomSheet({
     if (effectiveSheetState !== "peek") return;
     const nextState: SheetState = disableMidState ? "expanded" : "mid";
     const rafId = window.requestAnimationFrame(() => {
+      snapCauseRef.current = "programmatic";
       setSheetState(nextState);
     });
     return () => {
@@ -253,6 +266,7 @@ export default function BottomSheet({
     animationControlsRef.current?.stop();
     animationControlsRef.current = null;
     launchVelocityRef.current = 0;
+    snapCauseRef.current = "programmatic";
     pendingSnapHapticRef.current = false;
     const pointerId = event.pointerId;
     const pointerHost = event.currentTarget;
@@ -321,6 +335,7 @@ export default function BottomSheet({
         // Project release momentum to choose the most natural detent before spring settle.
         const projected = current + velocityHeight * FLING_PROJECTION_FACTOR;
         launchVelocityRef.current = velocityHeight;
+        snapCauseRef.current = "gesture";
         pendingSnapHapticRef.current = true;
         setSheetState(resolveSnapState(projected, current, velocityHeight));
       }

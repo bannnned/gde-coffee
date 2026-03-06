@@ -32,7 +32,7 @@
 | 5 | API профиля и гипотез | [x] | 2026-03-05 | - |
 | 6 | Inference engine v1 + triggers | [x] | 2026-03-06 | - |
 | 7 | Frontend onboarding flow | [x] | 2026-03-06 | - |
-| 8 | Frontend экран "Профиль вкуса" | [ ] | - | - |
+| 8 | Frontend экран "Профиль вкуса" | [x] | 2026-03-06 | - |
 | 9 | Интеграция в ranking + explainability | [ ] | - | - |
 | 10 | Метрики, e2e, rollout | [ ] | - | - |
 
@@ -699,6 +699,71 @@ Open questions:
 
 Следующий шаг:
 - Step 8 (Frontend экран \"Профиль вкуса\") после ручной проверки UX onboarding на мобиле и десктопе.
+
+## Step 8 - Frontend экран "Профиль вкуса"
+Date: 2026-03-06
+Owner: Engineering
+
+Что сделали:
+- Реализовали новый экран `/taste/profile` с блоками:
+  - `Ваш вкус сейчас` (active tags);
+  - `Наши предположения` (actionable hypotheses);
+  - `Почему мы так думаем` (explainability/insights);
+  - `Обновить карту вкуса` с переходом в `/taste/onboarding`.
+- Подключили profile API и действия по гипотезам:
+  - `GET /api/v1/me/taste-map`
+  - `POST /api/v1/me/taste-hypotheses/:id/accept`
+  - `POST /api/v1/me/taste-hypotheses/:id/dismiss`
+- Добавили состояния `loading/error/retry`, `feature off`, `auth required`, `empty state`.
+- Добавили haptics на ключевые действия:
+  - selection на интеракциях,
+  - success/warning на accept/dismiss,
+  - error при неуспешном feedback.
+- Интегрировали экран в приложение:
+  - route `/taste/profile` в `App.tsx`;
+  - вход из профиля: кнопка `Профиль вкуса`.
+- Добавили тесты:
+  - component test для рендера + accept/retry;
+  - smoke тест на переход `Пройти карту заново`.
+
+Ключевые решения:
+- Экран построен как read-model поверх `GET /me/taste-map`, без дублирования логики inference на фронте.
+- Для объяснимости показываем метаданные (версия inference, время обновления, сигналы базы + причины гипотез).
+- После accept/dismiss выполняем рефреш профиля, чтобы UI всегда показывал актуальное состояние.
+
+Что сознательно НЕ делали (scope guard):
+- Не добавляли персонализацию ранжирования discovery и explainability карточек (это Step 9).
+- Не включали analytics события taste-profile (это Step 10).
+- Не меняли onboarding contract/DTO (это уже зафиксировано на предыдущих шагах).
+
+Измененные файлы:
+- frontend/src/api/taste.ts
+- frontend/src/features/taste/model/tasteLabels.ts
+- frontend/src/pages/TasteProfilePage.tsx
+- frontend/src/pages/TasteProfilePage.module.css
+- frontend/src/pages/TasteProfilePage.test.tsx
+- frontend/src/pages/TasteProfilePage.smoke.test.tsx
+- frontend/src/pages/ProfileScreen.tsx
+- frontend/src/App.tsx
+- docs/taste_map_execution_runbook.md
+
+Проверки/тесты:
+- `npm test` - passed.
+- `npm run build` (includes `tsc --noEmit`) - passed.
+
+Риски/долги:
+- Пока не добавлен визуальный diff test для layout в мобильных брейкпоинтах.
+- Список `tasteLabels` на фронте нужно синхронизировать при изменениях taxonomy v1/v2.
+- Нет серверного поля explainability severity/prioritization, в UI сейчас простой список строк.
+
+Open questions:
+- Нужен ли отдельный блок истории feedback (`accepted/dismissed`) на экране профиля вкуса.
+- Нужно ли давать пользователю ручную правку активных тегов (кроме accept/dismiss гипотез).
+- Должна ли кнопка `Профиль вкуса` вести на onboarding, если у пользователя еще нет baseline карты.
+- После релиза пройти ручную проверку flow и закрыть open questions этого шага отдельной записью.
+
+Следующий шаг:
+- Step 9 (интеграция taste profile в ranking + explainability выдачи).
 ```
 
 ---

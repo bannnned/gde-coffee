@@ -79,6 +79,50 @@ export type CompleteTasteOnboardingResponse = {
   };
 };
 
+export type TasteMapTag = {
+  taste_code: string;
+  polarity: "positive" | "negative";
+  score: number;
+  confidence: number;
+  source: string;
+};
+
+export type TasteMapHypothesis = {
+  id: string;
+  taste_code: string;
+  polarity: "positive" | "negative";
+  score: number;
+  confidence: number;
+  status: "new" | "accepted" | "dismissed" | "expired";
+  reason: string;
+  updated_at: string;
+  cooldown_until?: string;
+};
+
+export type TasteMapResponse = {
+  contract_version: string;
+  inference_version: string;
+  base_map: {
+    onboarding_version?: string;
+    completed_at?: string;
+  };
+  active_tags: TasteMapTag[];
+  hypotheses: TasteMapHypothesis[];
+  updated_at: string;
+};
+
+export type TasteHypothesisFeedbackRequest = {
+  feedback_source?: string;
+  reason_code?: string;
+};
+
+export type TasteHypothesisFeedbackResponse = {
+  id: string;
+  status: "accepted" | "dismissed";
+  cooldown_until?: string;
+  updated_at: string;
+};
+
 export async function getTasteOnboarding(): Promise<TasteOnboardingResponse> {
   const res = await http.get<TasteOnboardingResponse>("/api/v1/taste/onboarding");
   return res.data;
@@ -89,6 +133,33 @@ export async function completeTasteOnboarding(
 ): Promise<CompleteTasteOnboardingResponse> {
   const res = await http.post<CompleteTasteOnboardingResponse>(
     "/api/v1/taste/onboarding/complete",
+    payload,
+  );
+  return res.data;
+}
+
+export async function getMyTasteMap(): Promise<TasteMapResponse> {
+  const res = await http.get<TasteMapResponse>("/api/v1/me/taste-map");
+  return res.data;
+}
+
+export async function acceptTasteHypothesis(
+  hypothesisID: string,
+  payload: TasteHypothesisFeedbackRequest = {},
+): Promise<TasteHypothesisFeedbackResponse> {
+  const res = await http.post<TasteHypothesisFeedbackResponse>(
+    `/api/v1/me/taste-hypotheses/${encodeURIComponent(hypothesisID)}/accept`,
+    payload,
+  );
+  return res.data;
+}
+
+export async function dismissTasteHypothesis(
+  hypothesisID: string,
+  payload: TasteHypothesisFeedbackRequest = {},
+): Promise<TasteHypothesisFeedbackResponse> {
+  const res = await http.post<TasteHypothesisFeedbackResponse>(
+    `/api/v1/me/taste-hypotheses/${encodeURIComponent(hypothesisID)}/dismiss`,
     payload,
   );
   return res.data;
