@@ -44,6 +44,12 @@ Map style by color scheme:
 - `VITE_MAP_STYLE_URL` — legacy override for both schemes (kept for backward compatibility)
 - `VITE_MAP_CITY_LABEL_FONT_STACK` — optional comma-separated font stack for city/place labels
   (example: `Unbounded Regular,Noto Sans Regular,Open Sans Regular`; fonts must exist on the style `glyphs` endpoint)
+- `VITE_TASTE_MAP_V1_ENABLED` — feature flag for Taste Map UI (`1|true|yes|on` to enable)
+
+Important for Docker/Timeweb deploy:
+- `VITE_*` variables are compile-time for Vite and must be present during `npm run build`.
+- In this repo Dockerfile reads them from build args (`ARG`) and maps to frontend build env.
+- Runtime container env without build args will not change already built frontend bundle.
 
 ## Backend overview
 The backend serves:
