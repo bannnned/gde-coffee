@@ -486,7 +486,9 @@ export default function TasteOnboardingPage() {
         {!tasteMapEnabled || loadingState === "feature-off" ? (
           <section className={classes.card}>
             <p className={classes.title}>Карта вкуса временно недоступна</p>
-            <p className={classes.subtitle}>Функция выключена флагом `VITE_TASTE_MAP_V1_ENABLED`.</p>
+            <p className={classes.subtitle}>
+              Проверьте флаги фронта и бэка: `VITE_TASTE_MAP_V1_ENABLED=1` и `TASTE_MAP_V1_ENABLED=1`.
+            </p>
             <Button type="button" onClick={() => void navigate("/profile")}>Вернуться в профиль</Button>
           </section>
         ) : null}

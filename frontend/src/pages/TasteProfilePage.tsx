@@ -271,7 +271,7 @@ export default function TasteProfilePage() {
           <section className={classes.card}>
             <p className={classes.title}>Taste Map выключен</p>
             <p className={classes.subtitle}>
-              Включите `VITE_TASTE_MAP_V1_ENABLED=1`, чтобы использовать профиль вкуса.
+              Проверьте флаги фронта и бэка: `VITE_TASTE_MAP_V1_ENABLED=1` и `TASTE_MAP_V1_ENABLED=1`.
             </p>
             <Button type="button" onClick={() => void navigate("/profile")}>Вернуться в профиль</Button>
           </section>
