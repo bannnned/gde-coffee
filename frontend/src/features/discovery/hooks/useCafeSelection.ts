@@ -35,10 +35,40 @@ export default function useCafeSelection({
     if (c && onFocusLngLat) onFocusLngLat([c.longitude, c.latitude]);
 
     requestAnimationFrame(() => {
-      itemRefs.current[id]?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      });
+      const node = itemRefs.current[id];
+      if (!node) return;
+      // Keep selection scroll strictly inside the bottom-sheet list and never scroll viewport.
+      const scroller = node.closest<HTMLElement>('[data-sheet-scroll="true"]');
+      if (!scroller) {
+        node.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "nearest",
+        });
+        return;
+      }
+
+      const margin = 8;
+      const currentTop = scroller.scrollTop;
+      const viewportHeight = scroller.clientHeight;
+      const itemTop = node.offsetTop;
+      const itemBottom = itemTop + node.offsetHeight;
+      const viewportTop = currentTop;
+      const viewportBottom = currentTop + viewportHeight;
+
+      let nextTop = currentTop;
+      if (itemTop < viewportTop + margin) {
+        nextTop = Math.max(0, itemTop - margin);
+      } else if (itemBottom > viewportBottom - margin) {
+        nextTop = Math.max(0, itemBottom - viewportHeight + margin);
+      }
+
+      if (Math.abs(nextTop - currentTop) >= 1) {
+        scroller.scrollTo({
+          top: nextTop,
+          behavior: "smooth",
+        });
+      }
     });
   }
 

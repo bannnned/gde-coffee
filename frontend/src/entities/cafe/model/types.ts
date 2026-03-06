@@ -20,6 +20,7 @@ export type Cafe = {
   name: string;
   address: string;
   description?: string | null;
+  explainability?: string | null;
   latitude: number;
   longitude: number;
   amenities: Amenity[];

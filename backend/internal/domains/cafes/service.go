@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -18,9 +19,10 @@ import (
 )
 
 type Service struct {
-	repository *Repository
-	cfg        config.Config
-	client     *http.Client
+	repository             *Repository
+	cfg                    config.Config
+	client                 *http.Client
+	tasteMapRankingEnabled bool
 }
 
 func NewService(repository *Repository, cfg config.Config) *Service {
@@ -30,6 +32,7 @@ func NewService(repository *Repository, cfg config.Config) *Service {
 		client: &http.Client{
 			Timeout: cfg.Geocoding.Timeout,
 		},
+		tasteMapRankingEnabled: TasteMapRankingEnabledFromEnv(),
 	}
 }
 
@@ -41,6 +44,42 @@ func (s *Service) List(ctx context.Context, params ListParams) ([]model.CafeResp
 	if err := photos.AttachCafeCoverPhotos(ctx, s.repository.pool, items, s.cfg.Media); err != nil {
 		return nil, err
 	}
+
+	if !s.tasteMapRankingEnabled || params.UserID == nil {
+		return items, nil
+	}
+	userID := strings.TrimSpace(*params.UserID)
+	if userID == "" {
+		return items, nil
+	}
+
+	userSignals, err := s.repository.ListUserActiveTasteSignals(ctx, userID, 12)
+	if err != nil {
+		slog.Warn("taste ranking fallback to distance order: failed to load user signals", "user_id", userID, "error", err)
+		return items, nil
+	}
+	if len(userSignals) == 0 {
+		return items, nil
+	}
+
+	cafeIDs := make([]string, 0, len(items))
+	for _, item := range items {
+		id := strings.TrimSpace(item.ID)
+		if id == "" {
+			continue
+		}
+		cafeIDs = append(cafeIDs, id)
+	}
+	if len(cafeIDs) == 0 {
+		return items, nil
+	}
+
+	cafeTasteTokens, err := s.repository.ListCafeTasteTokens(ctx, cafeIDs)
+	if err != nil {
+		slog.Warn("taste ranking fallback to distance order: failed to load cafe taste tokens", "error", err)
+		return items, nil
+	}
+	items = applyTastePersonalization(items, userSignals, cafeTasteTokens)
 	return items, nil
 }
 

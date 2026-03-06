@@ -15,6 +15,13 @@ type Repository struct {
 	pool *pgxpool.Pool
 }
 
+type userTasteSignal struct {
+	TasteCode  string
+	Polarity   string
+	Score      float64
+	Confidence float64
+}
+
 func NewRepository(pool *pgxpool.Pool) *Repository {
 	return &Repository{pool: pool}
 }
@@ -136,6 +143,121 @@ LIMIT $5;`
 	}
 
 	return out, nil
+}
+
+func (r *Repository) ListUserActiveTasteSignals(
+	ctx context.Context,
+	userID string,
+	limit int,
+) ([]userTasteSignal, error) {
+	if strings.TrimSpace(userID) == "" {
+		return []userTasteSignal{}, nil
+	}
+	if limit <= 0 {
+		limit = 12
+	}
+
+	const query = `select
+	taste_code,
+	polarity,
+	score::double precision,
+	confidence::double precision
+from public.user_taste_tags
+where user_id = $1::uuid
+  and status = 'active'
+  and confidence > 0::numeric
+order by abs(score::double precision) * confidence::double precision desc, updated_at desc
+limit $2::int`
+
+	rows, err := r.pool.Query(ctx, query, strings.TrimSpace(userID), limit)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return []userTasteSignal{}, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make([]userTasteSignal, 0, limit)
+	for rows.Next() {
+		var row userTasteSignal
+		if err := rows.Scan(&row.TasteCode, &row.Polarity, &row.Score, &row.Confidence); err != nil {
+			return nil, err
+		}
+		row.TasteCode = strings.TrimSpace(strings.ToLower(row.TasteCode))
+		row.Polarity = strings.TrimSpace(strings.ToLower(row.Polarity))
+		if row.TasteCode == "" || row.Polarity == "" {
+			continue
+		}
+		result = append(result, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (r *Repository) ListCafeTasteTokens(
+	ctx context.Context,
+	cafeIDs []string,
+) (map[string][]string, error) {
+	result := make(map[string][]string, len(cafeIDs))
+	if len(cafeIDs) == 0 {
+		return result, nil
+	}
+
+	const query = `select
+	c.id::text,
+	coalesce(array_remove(array_agg(distinct lower(trim(coalesce(t.tag->>'key', '')))), ''), '{}'::text[]) as tag_keys,
+	coalesce(array_remove(array_agg(distinct lower(trim(coalesce(t.tag->>'label', '')))), ''), '{}'::text[]) as tag_labels
+from public.cafes c
+left join public.cafe_rating_snapshots crs on crs.cafe_id = c.id
+left join lateral (
+	select tag
+	from jsonb_array_elements(coalesce(crs.components->'specific_tags', '[]'::jsonb)) as tag
+	union all
+	select tag
+	from jsonb_array_elements(coalesce(crs.components->'descriptive_tags', '[]'::jsonb)) as tag
+) t on true
+where c.id = any($1::uuid[])
+group by c.id`
+
+	rows, err := r.pool.Query(ctx, query, cafeIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			cafeID string
+			keys   []string
+			labels []string
+		)
+		if err := rows.Scan(&cafeID, &keys, &labels); err != nil {
+			return nil, err
+		}
+		merged := make([]string, 0, len(keys)+len(labels))
+		for _, raw := range keys {
+			token := normalizeTasteToken(raw)
+			if token == "" {
+				continue
+			}
+			merged = append(merged, token)
+		}
+		for _, raw := range labels {
+			token := normalizeTasteToken(raw)
+			if token == "" {
+				continue
+			}
+			merged = append(merged, token)
+		}
+		result[strings.TrimSpace(cafeID)] = dedupeTasteTokens(merged)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (r *Repository) UpdateDescription(ctx context.Context, cafeID, description string) (string, error) {

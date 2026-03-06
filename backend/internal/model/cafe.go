@@ -10,17 +10,18 @@ type Cafe struct {
 }
 
 type CafeResponse struct {
-	ID            string              `json:"id"`
-	Name          string              `json:"name"`
-	Address       string              `json:"address"`
-	Description   *string             `json:"description,omitempty"`
-	Latitude      float64             `json:"latitude"`
-	Longitude     float64             `json:"longitude"`
-	Amenities     []string            `json:"amenities"`
-	DistanceM     float64             `json:"distance_m"`
-	IsFavorite    bool                `json:"is_favorite"`
-	CoverPhotoURL *string             `json:"cover_photo_url,omitempty"`
-	Photos        []CafePhotoResponse `json:"photos,omitempty"`
+	ID             string              `json:"id"`
+	Name           string              `json:"name"`
+	Address        string              `json:"address"`
+	Description    *string             `json:"description,omitempty"`
+	Explainability *string             `json:"explainability,omitempty"`
+	Latitude       float64             `json:"latitude"`
+	Longitude      float64             `json:"longitude"`
+	Amenities      []string            `json:"amenities"`
+	DistanceM      float64             `json:"distance_m"`
+	IsFavorite     bool                `json:"is_favorite"`
+	CoverPhotoURL  *string             `json:"cover_photo_url,omitempty"`
+	Photos         []CafePhotoResponse `json:"photos,omitempty"`
 }
 
 type CafePhotoResponse struct {

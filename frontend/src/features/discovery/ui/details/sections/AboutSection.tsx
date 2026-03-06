@@ -74,6 +74,7 @@ export default function AboutSection({
   onManagePhotos,
   canSaveDescription,
 }: AboutSectionProps) {
+  const tasteExplainability = (cafe.explainability ?? "").trim();
   const aboutMainSources = buildCafePhotoPictureSources(aboutMainPhoto?.url, [640, 1024, 1536]);
   const aboutThumbSizes = "108px";
 
@@ -206,6 +207,22 @@ export default function AboutSection({
         style={{ paddingInline: "var(--page-edge-padding)" }}
       >
         {ratingPanel}
+
+        {tasteExplainability ? (
+          <p
+            className="text-xs font-medium text-[var(--muted)]"
+            style={{
+              margin: 0,
+              borderRadius: 12,
+              border: "1px solid color-mix(in srgb, var(--glass-border) 82%, transparent)",
+              background:
+                "linear-gradient(135deg, color-mix(in srgb, var(--surface) 86%, transparent), color-mix(in srgb, var(--surface) 64%, transparent))",
+              padding: "8px 10px",
+            }}
+          >
+            {tasteExplainability}
+          </p>
+        ) : null}
 
         <p className="text-sm text-[var(--muted)]">
           {cafe.address}

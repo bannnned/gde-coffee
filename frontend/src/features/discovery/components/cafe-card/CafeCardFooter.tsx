@@ -25,6 +25,7 @@ export default function CafeCardFooter({
   cafe,
   ratingRefreshToken = 0,
 }: CafeCardFooterProps) {
+  const tasteExplainability = (cafe.explainability ?? "").trim();
   const lastAppliedRefreshTokenRef = useRef(0);
   const [ratingState, setRatingState] = useState<{
     cafeId: string;
@@ -235,6 +236,24 @@ export default function CafeCardFooter({
             )}
           </div>
         </div>
+        {tasteExplainability ? (
+          <p
+            style={{
+              margin: "6px 0 0",
+              fontSize: "0.72rem",
+              lineHeight: 1.3,
+              color: "color-mix(in srgb, var(--cafe-hero-subtitle-color) 94%, var(--text))",
+              textShadow: "0 1px 2px color-mix(in srgb, var(--cafe-hero-overlay-3) 14%, transparent)",
+              display: "-webkit-box",
+              WebkitBoxOrient: "vertical",
+              WebkitLineClamp: 2,
+              overflow: "hidden",
+            }}
+            title={tasteExplainability}
+          >
+            {tasteExplainability}
+          </p>
+        ) : null}
       </div>
     </div>
   );

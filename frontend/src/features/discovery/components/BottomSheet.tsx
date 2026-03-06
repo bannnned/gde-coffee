@@ -410,6 +410,7 @@ export default function BottomSheet({
         </div>
         <div
           className={classes.list}
+          data-sheet-scroll="true"
           data-empty={isListEmpty ? "true" : "false"}
           aria-hidden={effectiveSheetState === "peek"}
         >

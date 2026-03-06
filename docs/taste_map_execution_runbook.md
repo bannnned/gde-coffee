@@ -33,7 +33,7 @@
 | 6 | Inference engine v1 + triggers | [x] | 2026-03-06 | - |
 | 7 | Frontend onboarding flow | [x] | 2026-03-06 | - |
 | 8 | Frontend экран "Профиль вкуса" | [x] | 2026-03-06 | - |
-| 9 | Интеграция в ranking + explainability | [ ] | - | - |
+| 9 | Интеграция в ranking + explainability | [x] | 2026-03-06 | - |
 | 10 | Метрики, e2e, rollout | [ ] | - | - |
 
 ---
@@ -764,6 +764,70 @@ Open questions:
 
 Следующий шаг:
 - Step 9 (интеграция taste profile в ranking + explainability выдачи).
+
+## Step 9 - Интеграция в ranking + explainability
+Date: 2026-03-06
+Owner: Engineering
+
+Что сделали:
+- В backend добавили персонализацию выдачи `/api/cafes` по `user_taste_tags` под feature flag `taste_map_ranking_v1`:
+  - env: `TASTE_MAP_RANKING_V1_ENABLED`;
+  - при выключенном флаге логика остается прежней (сортировка по дистанции).
+- Реализовали слой taste-ranking в домене `cafes`:
+  - загрузка активных пользовательских taste-сигналов (`user_taste_tags`);
+  - загрузка taste-токенов кофейни из `cafe_rating_snapshots.components` (`specific_tags` + `descriptive_tags`);
+  - мягкий re-rank по совпадению/анти-совпадению вкусовых сигналов;
+  - генерация explainability-строки на карточку кофейни.
+- Расширили API response карточки кофейни:
+  - поле `explainability` в `CafeResponse` (omitempty).
+- Подключили explainability во frontend:
+  - в карточке кофейни в списке (`CafeCardFooter`);
+  - в деталях кофейни (`AboutSection`).
+- Добавили unit tests для алгоритма персонализации:
+  - кейс positive match поднимает релевантную кофейню выше;
+  - кейс negative match понижает кофейню и показывает соответствующее объяснение.
+
+Ключевые решения:
+- Персонализация реализована как post-processing поверх базовой сортировки по расстоянию: это уменьшает риск резких регрессий discovery UX.
+- Любая ошибка персонализации приводит к graceful fallback на прежний порядок без отказа endpoint-а.
+- Explainability формируется только при наличии валидных сигналов и реального taste-match.
+
+Что сознательно НЕ делали (scope guard):
+- Не меняли формулу rating snapshot (`rating_v2`) и не вмешивались в пересчет рейтингов.
+- Не внедряли ML/reranker модель, использовали rule-based matching v1.
+- Не добавляли analytics/dashboards по качеству персонализации (это Step 10).
+
+Измененные файлы:
+- backend/internal/model/cafe.go
+- backend/internal/domains/cafes/flags.go
+- backend/internal/domains/cafes/service.go
+- backend/internal/domains/cafes/repository.go
+- backend/internal/domains/cafes/taste_ranking.go
+- backend/internal/domains/cafes/taste_ranking_test.go
+- frontend/src/entities/cafe/model/types.ts
+- frontend/src/features/discovery/components/cafe-card/CafeCardFooter.tsx
+- frontend/src/features/discovery/ui/details/sections/AboutSection.tsx
+- docs/taste_map_execution_runbook.md
+
+Проверки/тесты:
+- `go test ./internal/domains/cafes` - passed.
+- `go test ./... -run '^$'` (compile-only sanity check) - passed.
+- `npm test` - passed.
+- `npm run build` (includes `tsc --noEmit`) - passed.
+
+Риски/долги:
+- Текущий matcher rule-based и зависит от словарей токенов; потребуется калибровка на реальных данных.
+- `specific_tags/descriptive_tags` не всегда содержат полные вкусовые сигналы для всех taxonomy-кодов.
+- Пока нет явной продуктовой метрики quality lift для personalized ranking.
+
+Open questions:
+- Нужен ли отдельный API-debug блок для explainability (например, matched tags + score) для модерации/поддержки.
+- Какой целевой лимит сдвига позиций считать безопасным в проде (сейчас мягкий буст на несколько позиций).
+- Нужно ли хранить/логировать факт применения персонализации per-request для аналитики rollout.
+- После релиза пройти ручную проверку влияния personalized выдачи в приложении и закрыть эти open questions отдельной записью.
+
+Следующий шаг:
+- Step 10 (метрики, e2e, rollout).
 ```
 
 ---
