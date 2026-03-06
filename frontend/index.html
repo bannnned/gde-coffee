@@ -58,10 +58,27 @@
       #app-splash .splash-wordmark {
         position: relative;
         z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.14em;
+        opacity: 0;
         max-width: 0;
         overflow: hidden;
         white-space: nowrap;
-        opacity: 0;
+      }
+
+      #app-splash .splash-prefix {
+        display: inline-block;
+      }
+
+      #app-splash .splash-roller {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        width: 5.2ch;
+        min-height: 1.12em;
+        overflow: hidden;
       }
     </style>
     <title>Где кофе</title>
@@ -73,7 +90,12 @@
           <img src="/logo.png" alt="" class="splash-logo" width="128" height="128" />
         </div>
         <div class="splash-wordmark">
-          где кофе<span class="splash-question">?</span>
+          <span class="splash-prefix">где</span>
+          <span class="splash-roller">
+            <span class="splash-phrase is-current">кофе</span>
+            <span class="splash-phrase is-next" aria-hidden="true"></span>
+          </span>
+          <span class="splash-question">?</span>
         </div>
       </div>
     </div>

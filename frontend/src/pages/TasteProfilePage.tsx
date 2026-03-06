@@ -27,12 +27,8 @@ import {
   getTasteLabel,
 } from "../features/taste/model/tasteLabels";
 import { appHaptics } from "../lib/haptics";
-import {
-  extractApiErrorCode,
-  extractApiErrorDetails,
-  extractApiErrorMessage,
-  extractApiErrorStatus,
-} from "../utils/apiError";
+import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
+import { extractApiErrorMessage, extractApiErrorStatus } from "../utils/apiError";
 import classes from "./TasteProfilePage.module.css";
 
 type LoadState = "idle" | "loading" | "ready" | "error" | "feature-off";
@@ -55,6 +51,7 @@ function toPercent(value: number): number {
 }
 
 export default function TasteProfilePage() {
+  useAllowBodyScroll();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, status, openAuthModal } = useAuth();
@@ -89,13 +86,6 @@ export default function TasteProfilePage() {
       setLoadState("ready");
     } catch (err: unknown) {
       const statusCode = extractApiErrorStatus(err);
-      const errorCode = extractApiErrorCode(err);
-      const errorDetails = extractApiErrorDetails(err);
-      console.error("[TasteMap] GET /api/v1/me/taste-map failed", {
-        status: statusCode,
-        code: errorCode,
-        details: errorDetails,
-      });
       if (statusCode === 404) {
         setLoadState("feature-off");
       } else {

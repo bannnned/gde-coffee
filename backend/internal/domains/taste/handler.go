@@ -50,7 +50,7 @@ func (h *Handler) Service() *Service {
 
 func (h *Handler) GetOnboarding(c *gin.Context) {
 	if !h.tasteMapEnabled {
-		h.respondFeatureDisabled(c)
+		httpx.RespondError(c, http.StatusNotFound, "feature_disabled", "Taste Map временно недоступен.", nil)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *Handler) GetOnboarding(c *gin.Context) {
 
 func (h *Handler) CompleteOnboarding(c *gin.Context) {
 	if !h.tasteMapEnabled {
-		h.respondFeatureDisabled(c)
+		httpx.RespondError(c, http.StatusNotFound, "feature_disabled", "Taste Map временно недоступен.", nil)
 		return
 	}
 
@@ -98,7 +98,7 @@ func (h *Handler) CompleteOnboarding(c *gin.Context) {
 
 func (h *Handler) GetMyTasteMap(c *gin.Context) {
 	if !h.tasteMapEnabled {
-		h.respondFeatureDisabled(c)
+		httpx.RespondError(c, http.StatusNotFound, "feature_disabled", "Taste Map временно недоступен.", nil)
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *Handler) DismissHypothesis(c *gin.Context) {
 
 func (h *Handler) handleHypothesisFeedback(c *gin.Context, accept bool) {
 	if !h.tasteMapEnabled {
-		h.respondFeatureDisabled(c)
+		httpx.RespondError(c, http.StatusNotFound, "feature_disabled", "Taste Map временно недоступен.", nil)
 		return
 	}
 
@@ -197,14 +197,4 @@ func bindOptionalJSON(c *gin.Context, out any) error {
 		return err
 	}
 	return nil
-}
-
-func (h *Handler) respondFeatureDisabled(c *gin.Context) {
-	httpx.RespondError(c, http.StatusNotFound, "feature_disabled", "Taste Map временно недоступен.", gin.H{
-		"flags": gin.H{
-			"TASTE_MAP_V1_ENABLED":         h.tasteMapEnabled,
-			"TASTE_INFERENCE_V1_ENABLED":   TasteInferenceEnabledFromEnv(),
-			"TASTE_MAP_RANKING_V1_ENABLED": TasteMapRankingEnabledFromEnv(),
-		},
-	})
 }

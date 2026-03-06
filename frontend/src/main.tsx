@@ -16,6 +16,7 @@ import {
   setStoredPalette,
   type PaletteName,
 } from './theme/palettes'
+import { SPLASH_REEL_ITEMS, type SplashPhraseItem } from './config/splashPhrases'
 
 function syncViewportInsetsCSSVars() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
@@ -351,8 +352,15 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 )
 
+const SPLASH_REEL_START_DELAY_MS = 1280
+const SPLASH_REEL_STEP_INTERVAL_MS = 560
+const SPLASH_REEL_TRANSITION_MS = 360
+
 const splashMountedAt = performance.now()
-const MIN_SPLASH_VISIBLE_MS = 2000
+const MIN_SPLASH_VISIBLE_MS = Math.min(
+  4200,
+  2200 + Math.max(0, SPLASH_REEL_ITEMS.length - 1) * SPLASH_REEL_STEP_INTERVAL_MS,
+)
 const SPLASH_FADE_FALLBACK_MS = 900
 const SPLASH_QUESTION_ANIMATION = 'splash-question-jiggle'
 
@@ -368,6 +376,96 @@ function bindSplashHaptics() {
   }
 
   splashQuestion.addEventListener('animationstart', handleQuestionAnimationStart, { once: true })
+}
+
+function bindSplashPhraseReel() {
+  if (typeof document === 'undefined') return
+  const roller = document.querySelector<HTMLElement>('.splash-roller')
+  const current = roller?.querySelector<HTMLElement>('.splash-phrase.is-current') ?? null
+  const next = roller?.querySelector<HTMLElement>('.splash-phrase.is-next') ?? null
+  if (!roller || !current || !next) return
+  if (SPLASH_REEL_ITEMS.length <= 1) return
+
+  let stepIndex = 0
+  let stepTimer = 0
+  let transitionTimer = 0
+
+  const sizer = document.createElement('span')
+  sizer.style.position = 'absolute'
+  sizer.style.visibility = 'hidden'
+  sizer.style.pointerEvents = 'none'
+  sizer.style.whiteSpace = 'nowrap'
+  sizer.style.left = '-9999px'
+  sizer.style.top = '-9999px'
+  sizer.style.fontFamily = 'var(--font-display)'
+  sizer.style.fontWeight = '700'
+  sizer.style.lineHeight = '1'
+  document.body.appendChild(sizer)
+
+  const applyPhrase = (target: HTMLElement, item: SplashPhraseItem) => {
+    target.textContent = item.text
+    if (item.size) {
+      target.style.fontSize = item.size
+    } else {
+      target.style.removeProperty('font-size')
+    }
+  }
+
+  const measurePhrase = (item: SplashPhraseItem) => {
+    sizer.textContent = item.text
+    if (item.size) {
+      sizer.style.fontSize = item.size
+    } else {
+      sizer.style.removeProperty('font-size')
+    }
+    const rect = sizer.getBoundingClientRect()
+    return {
+      width: Math.max(1, Math.ceil(rect.width + 2)),
+      height: Math.max(1, Math.ceil(rect.height + 2)),
+    }
+  }
+
+  const syncRollerSize = (item: SplashPhraseItem) => {
+    const nextSize = measurePhrase(item)
+    roller.style.width = `${nextSize.width}px`
+    roller.style.minHeight = `${nextSize.height}px`
+  }
+
+  const cleanup = () => {
+    if (stepTimer) window.clearTimeout(stepTimer)
+    if (transitionTimer) window.clearTimeout(transitionTimer)
+    sizer.remove()
+  }
+
+  applyPhrase(current, SPLASH_REEL_ITEMS[0]!)
+  syncRollerSize(SPLASH_REEL_ITEMS[0]!)
+
+  const runStep = () => {
+    if (!document.body.contains(roller)) {
+      cleanup()
+      return
+    }
+    if (stepIndex >= SPLASH_REEL_ITEMS.length - 1) {
+      cleanup()
+      return
+    }
+    stepIndex += 1
+    const item = SPLASH_REEL_ITEMS[stepIndex]!
+    applyPhrase(next, item)
+    syncRollerSize(item)
+    roller.dataset.rolling = 'true'
+    void appHaptics.trigger('selection')
+
+    transitionTimer = window.setTimeout(() => {
+      applyPhrase(current, item)
+      next.textContent = ''
+      next.style.removeProperty('font-size')
+      roller.dataset.rolling = 'false'
+      stepTimer = window.setTimeout(runStep, SPLASH_REEL_STEP_INTERVAL_MS)
+    }, SPLASH_REEL_TRANSITION_MS)
+  }
+
+  stepTimer = window.setTimeout(runStep, SPLASH_REEL_START_DELAY_MS)
 }
 
 const hideSplash = () => {
@@ -414,6 +512,7 @@ const hideSplash = () => {
 }
 
 bindSplashHaptics()
+bindSplashPhraseReel()
 
 if (document.readyState === 'complete') {
   hideSplash()

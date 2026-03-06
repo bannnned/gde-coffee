@@ -18,10 +18,6 @@ func TasteInferenceNightlyHourUTCFromEnv() int {
 	return envInt("TASTE_INFERENCE_NIGHTLY_HOUR_UTC", 3, 0, 23)
 }
 
-func TasteMapRankingEnabledFromEnv() bool {
-	return envBool("TASTE_MAP_RANKING_V1_ENABLED", false)
-}
-
 func envBool(key string, fallback bool) bool {
 	raw := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
 	switch raw {

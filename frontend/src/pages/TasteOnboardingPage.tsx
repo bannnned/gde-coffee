@@ -22,12 +22,8 @@ import {
   loadTasteOnboardingProgress,
   saveTasteOnboardingProgress,
 } from "../features/taste/model/onboardingProgress";
-import {
-  extractApiErrorCode,
-  extractApiErrorDetails,
-  extractApiErrorMessage,
-  extractApiErrorStatus,
-} from "../utils/apiError";
+import useAllowBodyScroll from "../hooks/useAllowBodyScroll";
+import { extractApiErrorMessage, extractApiErrorStatus } from "../utils/apiError";
 import classes from "./TasteOnboardingPage.module.css";
 
 type AnswersMap = Record<string, unknown>;
@@ -253,6 +249,7 @@ function computeStepProgress(stepIndex: number, total: number): number {
 }
 
 export default function TasteOnboardingPage() {
+  useAllowBodyScroll();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, status, openAuthModal } = useAuth();
@@ -321,13 +318,6 @@ export default function TasteOnboardingPage() {
       }
     } catch (error: unknown) {
       const statusCode = extractApiErrorStatus(error);
-      const errorCode = extractApiErrorCode(error);
-      const errorDetails = extractApiErrorDetails(error);
-      console.error("[TasteMap] GET /api/v1/taste/onboarding failed", {
-        status: statusCode,
-        code: errorCode,
-        details: errorDetails,
-      });
       if (statusCode === 404) {
         setLoadingState("feature-off");
       } else {

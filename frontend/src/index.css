@@ -762,8 +762,11 @@ body {
 
 .splash-lockup {
   --splash-word-size: clamp(30px, 8.6vw, 44px);
-  --splash-word-max-width: 9.6ch;
+  --splash-word-max-width: 24ch;
   --splash-word-gap: 10px;
+  --splash-roller-width: 5.2ch;
+  --splash-roller-height: 1.08em;
+  --splash-roller-shift: 106%;
   --splash-logo-scale-start: 0.96;
   --splash-logo-scale-peak: 1.18;
   --splash-ease-smooth: cubic-bezier(0.42, 0, 0.58, 1);
@@ -800,7 +803,9 @@ body {
   margin: 0;
   position: relative;
   z-index: 1;
-  display: inline-block;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.14em;
   max-width: 0;
   overflow: hidden;
   font-family: var(--font-display);
@@ -816,6 +821,63 @@ body {
   backface-visibility: hidden;
   will-change: max-width, opacity, margin-left, transform;
   animation: splash-wordmark-reveal 900ms var(--splash-ease-soft-out) 940ms both;
+}
+
+.splash-prefix {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.splash-roller {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  width: var(--splash-roller-width);
+  min-height: var(--splash-roller-height);
+  overflow: hidden;
+  vertical-align: baseline;
+  transition:
+    width 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    min-height 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.splash-phrase {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+  line-height: 1;
+  transform: translate3d(0, 0, 0);
+  transition:
+    transform 360ms cubic-bezier(0.24, 1, 0.32, 1),
+    opacity 320ms cubic-bezier(0.24, 1, 0.32, 1),
+    filter 320ms cubic-bezier(0.24, 1, 0.32, 1),
+    font-size 320ms cubic-bezier(0.24, 1, 0.32, 1);
+  will-change: transform, opacity, filter;
+}
+
+.splash-phrase.is-current {
+  position: relative;
+  opacity: 1;
+}
+
+.splash-phrase.is-next {
+  opacity: 0;
+  transform: translate3d(0, calc(-1 * var(--splash-roller-shift)), 0);
+}
+
+.splash-roller[data-rolling='true'] .splash-phrase.is-current {
+  opacity: 0.08;
+  filter: blur(0.4px);
+  transform: translate3d(0, var(--splash-roller-shift), 0);
+}
+
+.splash-roller[data-rolling='true'] .splash-phrase.is-next {
+  opacity: 1;
+  filter: blur(0);
+  transform: translate3d(0, 0, 0);
 }
 
 .splash-question {
