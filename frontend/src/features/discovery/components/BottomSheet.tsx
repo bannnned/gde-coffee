@@ -12,6 +12,7 @@ import type {
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import classes from "./BottomSheet.module.css";
+import { appHaptics } from "../../../lib/haptics";
 import { useLayoutMetrics } from "../layout/LayoutMetricsContext";
 
 type BottomSheetProps = PropsWithChildren<{
@@ -27,12 +28,18 @@ type BottomSheetProps = PropsWithChildren<{
 }>;
 
 type SheetState = "peek" | "mid" | "expanded";
+type DetentPoint = { state: SheetState; height: number };
 
-const SWIPE_VELOCITY = 1100;
-const SWIPE_VELOCITY_STRONG = 1700;
 const PEEK_HEIGHT_PX = 24;
 const SHEET_PADDING_PX = 6;
 const MID_HEADER_EXTRA_PX = 4;
+const FLING_COMMIT_VELOCITY = 920;
+const FLING_FAST_VELOCITY = 1520;
+const FLING_PROJECTION_FACTOR = 0.22;
+const DETENT_SELECTION_HAPTIC_COOLDOWN_MS = 110;
+const SNAP_STIFFNESS = 310;
+const SNAP_DAMPING = 31;
+const SNAP_MASS = 0.92;
 
 const MotionSheet = motion.div;
 
@@ -60,6 +67,11 @@ export default function BottomSheet({
   const headerRef = useRef<HTMLDivElement | null>(null);
   const lastAutoExpandTriggerRef = useRef(autoExpandTrigger);
   const [headerHeight, setHeaderHeight] = useState(PEEK_HEIGHT_PX);
+  const animationControlsRef = useRef<ReturnType<typeof animate> | null>(null);
+  const launchVelocityRef = useRef(0);
+  const pendingSnapHapticRef = useRef(false);
+  const lastSelectionHapticAtRef = useRef(0);
+  const currentDetentRef = useRef<SheetState>("mid");
 
   useLayoutEffect(() => {
     const node = headerRef.current;
@@ -103,25 +115,95 @@ export default function BottomSheet({
     return { mid, expanded, peek };
   }, [disableMidState, filtersBarHeight, headerHeight, hideHeaderContentInPeek, safeViewportHeight]);
 
+  const detents = useMemo<DetentPoint[]>(() => {
+    const base: DetentPoint[] = [
+      { state: "peek", height: heights.peek },
+      { state: "expanded", height: heights.expanded },
+    ];
+    if (!disableMidState && heights.mid > heights.peek + 1 && heights.mid < heights.expanded - 1) {
+      base.push({ state: "mid", height: heights.mid });
+    }
+    return base.sort((a, b) => a.height - b.height);
+  }, [disableMidState, heights.expanded, heights.mid, heights.peek]);
+
+  const findNearestDetent = useCallback(
+    (value: number): DetentPoint => {
+      const normalized = Number.isFinite(value) ? value : detents[0]?.height ?? heights.peek;
+      return detents.reduce((best, point) => {
+        if (Math.abs(point.height - normalized) < Math.abs(best.height - normalized)) {
+          return point;
+        }
+        return best;
+      }, detents[0] ?? { state: "peek" as const, height: heights.peek });
+    },
+    [detents, heights.peek],
+  );
+
+  const resolveSnapState = useCallback(
+    (projected: number, currentHeight: number, velocityHeight: number): SheetState => {
+      const currentDetent = findNearestDetent(currentHeight);
+      const currentIndex = Math.max(
+        0,
+        detents.findIndex((point) => point.state === currentDetent.state),
+      );
+      const direction = velocityHeight > 0 ? 1 : velocityHeight < 0 ? -1 : 0;
+      const absVelocity = Math.abs(velocityHeight);
+
+      // iOS-like fling: a fast gesture commits to the next (or extreme) detent in direction.
+      if (direction !== 0 && absVelocity >= FLING_FAST_VELOCITY) {
+        return direction > 0 ? detents[detents.length - 1].state : detents[0].state;
+      }
+      if (direction !== 0 && absVelocity >= FLING_COMMIT_VELOCITY) {
+        const nextIndex = Math.max(0, Math.min(detents.length - 1, currentIndex + direction));
+        return detents[nextIndex].state;
+      }
+      return findNearestDetent(projected).state;
+    },
+    [detents, findNearestDetent],
+  );
+
   const visibleHeight = useMotionValue(heights.mid);
   const translateY = useMotionValue(Math.max(0, heights.expanded - heights.mid));
 
   useLayoutEffect(() => {
-    const target =
-      effectiveSheetState === "expanded"
-        ? heights.expanded
-        : effectiveSheetState === "peek"
-          ? heights.peek
-          : heights.mid;
-    // Keep React state updates at snap points; live drag sync goes through CSS var only.
-    setSheetHeight(target);
+    if (!isDragging) {
+      currentDetentRef.current = effectiveSheetState;
+    }
+  }, [effectiveSheetState, isDragging]);
+
+  useLayoutEffect(() => {
+    const targetDetent =
+      detents.find((point) => point.state === effectiveSheetState) ??
+      detents[detents.length - 1];
+    const target = targetDetent.height;
+    animationControlsRef.current?.stop();
     const controls = animate(visibleHeight, target, {
       type: "spring",
-      stiffness: 300,
-      damping: 34,
+      stiffness: SNAP_STIFFNESS,
+      damping: SNAP_DAMPING,
+      mass: SNAP_MASS,
+      velocity: launchVelocityRef.current,
+      restDelta: 0.4,
+      restSpeed: 8,
+      onComplete: () => {
+        setSheetHeight(target);
+        setSheetHeightLive(target);
+        currentDetentRef.current = targetDetent.state;
+        launchVelocityRef.current = 0;
+        if (pendingSnapHapticRef.current) {
+          pendingSnapHapticRef.current = false;
+          void appHaptics.trigger("light");
+        }
+      },
     });
-    return () => controls.stop();
-  }, [effectiveSheetState, heights, setSheetHeight, visibleHeight]);
+    animationControlsRef.current = controls;
+    return () => {
+      controls.stop();
+      if (animationControlsRef.current === controls) {
+        animationControlsRef.current = null;
+      }
+    };
+  }, [detents, effectiveSheetState, setSheetHeight, setSheetHeightLive, visibleHeight]);
 
   useMotionValueEvent(visibleHeight, "change", (latest) => {
     // With fixed sheet height, dragging maps to a compositor-friendly translateY.
@@ -156,59 +238,6 @@ export default function BottomSheet({
     setLayoutSheetState(effectiveSheetState);
   }, [effectiveSheetState, setLayoutSheetState]);
 
-  const resolveSnapState = useCallback(
-    (projected: number, startState: SheetState, velocityY: number): SheetState => {
-      if (disableMidState) {
-        const deepPullZone = Math.max(
-          56,
-          Math.min(108, Math.round((heights.expanded - heights.peek) * 0.24)),
-        );
-        const peekSnapThreshold = heights.peek + deepPullZone;
-        if (velocityY > SWIPE_VELOCITY_STRONG) {
-          return "peek";
-        }
-        if (velocityY < -SWIPE_VELOCITY_STRONG) {
-          return "expanded";
-        }
-        return projected <= peekSnapThreshold ? "peek" : "expanded";
-      }
-
-      const peekBand = Math.max(
-        42,
-        Math.min(92, Math.round((heights.mid - heights.peek) * 0.48)),
-      );
-      const expandedBand = Math.max(
-        40,
-        Math.min(86, Math.round((heights.expanded - heights.mid) * 0.3)),
-      );
-      const toPeekThreshold = heights.peek + peekBand;
-      const toExpandedThreshold = heights.mid + expandedBand;
-
-      if (velocityY > SWIPE_VELOCITY_STRONG) {
-        return startState === "expanded" ? "mid" : "peek";
-      }
-      if (velocityY < -SWIPE_VELOCITY_STRONG) {
-        return startState === "peek" ? "mid" : "expanded";
-      }
-
-      if (startState === "expanded") {
-        if (projected <= heights.mid - 14) return "mid";
-        return "expanded";
-      }
-
-      if (startState === "peek") {
-        if (projected >= toExpandedThreshold + 22) return "expanded";
-        if (projected >= heights.mid - 10) return "mid";
-        return "peek";
-      }
-
-      if (projected <= toPeekThreshold) return "peek";
-      if (projected >= toExpandedThreshold) return "expanded";
-      return "mid";
-    },
-    [disableMidState, heights.expanded, heights.mid, heights.peek],
-  );
-
   const handleHeaderPointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
   ) => {
@@ -221,7 +250,10 @@ export default function BottomSheet({
     const startX = event.clientX;
     const startY = event.clientY;
     const startHeight = visibleHeight.get();
-    const startSheetState = effectiveSheetState;
+    animationControlsRef.current?.stop();
+    animationControlsRef.current = null;
+    launchVelocityRef.current = 0;
+    pendingSnapHapticRef.current = false;
     const pointerId = event.pointerId;
     const pointerHost = event.currentTarget;
     if (pointerHost.setPointerCapture) {
@@ -258,12 +290,22 @@ export default function BottomSheet({
         }
         mode = "drag";
         setIsDragging(true);
+        currentDetentRef.current = findNearestDetent(startHeight).state;
       }
       if (mode !== "drag") return;
       moveEvent.preventDefault();
       const next = startHeight - dy;
       const clamped = Math.max(heights.peek, Math.min(heights.expanded, next));
       visibleHeight.set(clamped);
+      const nextDetent = findNearestDetent(clamped).state;
+      if (nextDetent !== currentDetentRef.current) {
+        currentDetentRef.current = nextDetent;
+        const now = performance.now();
+        if (now - lastSelectionHapticAtRef.current >= DETENT_SELECTION_HAPTIC_COOLDOWN_MS) {
+          lastSelectionHapticAtRef.current = now;
+          void appHaptics.trigger("selection");
+        }
+      }
       lastClientY = moveEvent.clientY;
       lastTs = performance.now();
     };
@@ -272,15 +314,15 @@ export default function BottomSheet({
       if (upEvent.pointerId !== pointerId) return;
       if (mode === "drag") {
         const current = visibleHeight.get();
-        const offsetY = upEvent.clientY - startY;
         const nowTs = performance.now();
         const dt = Math.max(1, nowTs - lastTs);
-        const velocityY = ((upEvent.clientY - lastClientY) / dt) * 1000;
-        const projected =
-          Math.abs(velocityY) > SWIPE_VELOCITY
-            ? current - velocityY * 0.2
-            : current - offsetY * 0.2;
-        setSheetState(resolveSnapState(projected, startSheetState, velocityY));
+        const velocityY = ((upEvent.clientY - lastClientY) / dt) * 1000; // Screen axis.
+        const velocityHeight = -velocityY; // Sheet axis: up swipe -> positive value.
+        // Project release momentum to choose the most natural detent before spring settle.
+        const projected = current + velocityHeight * FLING_PROJECTION_FACTOR;
+        launchVelocityRef.current = velocityHeight;
+        pendingSnapHapticRef.current = true;
+        setSheetState(resolveSnapState(projected, current, velocityHeight));
       }
       cleanup();
     };
