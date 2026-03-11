@@ -761,42 +761,19 @@ body {
 }
 
 .splash-lockup {
-  --splash-word-size: clamp(30px, 8.6vw, 44px);
+  --splash-word-size: clamp(22px, 6.4vw, 34px);
   --splash-word-max-width: 24ch;
-  --splash-word-gap: 10px;
+  --splash-word-gap: 0px;
   --splash-roller-width: 5.2ch;
   --splash-roller-height: 1.08em;
   --splash-roller-shift: 106%;
-  --splash-logo-scale-start: 0.96;
-  --splash-logo-scale-peak: 1.18;
   --splash-ease-smooth: cubic-bezier(0.42, 0, 0.58, 1);
   --splash-ease-soft-out: cubic-bezier(0.22, 1, 0.36, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0;
-  min-height: 132px;
-}
-
-.splash-logo-wrap {
-  width: var(--splash-word-size);
-  height: var(--splash-word-size);
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transform: scale(var(--splash-logo-scale-start));
-  backface-visibility: hidden;
-  will-change: transform, opacity;
-  animation: splash-logo-sequence 1600ms var(--splash-ease-soft-out) 120ms both;
-}
-
-.splash-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  min-height: 92px;
 }
 
 .splash-wordmark {
@@ -820,7 +797,7 @@ body {
   margin-left: 0;
   backface-visibility: hidden;
   will-change: max-width, opacity, margin-left, transform;
-  animation: splash-wordmark-reveal 900ms var(--splash-ease-soft-out) 940ms both;
+  animation: splash-wordmark-reveal 520ms var(--splash-ease-soft-out) 180ms both;
 }
 
 .splash-prefix {
@@ -885,7 +862,7 @@ body {
   margin-left: 0.02em;
   transform-origin: 55% 75%;
   will-change: transform;
-  animation: splash-question-jiggle 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 1720ms both;
+  animation: splash-question-jiggle 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 1160ms both;
 }
 
 #app-splash.splash-fading {
@@ -897,29 +874,6 @@ body {
 
 #app-splash.splash-hidden {
   visibility: hidden;
-}
-
-@keyframes splash-logo-sequence {
-  0% {
-    opacity: 0;
-    transform: scale(var(--splash-logo-scale-start));
-  }
-  18% {
-    opacity: 1;
-    transform: scale(1.04);
-  }
-  36% {
-    opacity: 1;
-    transform: scale(var(--splash-logo-scale-peak));
-  }
-  54% {
-    opacity: 1;
-    transform: scale(var(--splash-logo-scale-peak));
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 
 @keyframes splash-wordmark-reveal {

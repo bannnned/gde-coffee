@@ -1,5 +1,6 @@
 /* @vitest-environment jsdom */
 import { fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -94,8 +95,17 @@ function DiscoveryStub() {
 }
 
 describe("Taste Map critical path smoke", () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
+    queryClient.clear();
     window.localStorage.clear();
     vi.stubEnv("VITE_TASTE_MAP_V1_ENABLED", "1");
     hapticsTriggerMock.mockResolvedValue(true);
@@ -163,6 +173,13 @@ describe("Taste Map critical path smoke", () => {
           confidence: 0.8,
           source: "behavior",
         },
+        {
+          taste_code: "nutty_cocoa",
+          polarity: "positive",
+          score: 0.58,
+          confidence: 0.74,
+          source: "onboarding",
+        },
       ],
       hypotheses: hasPendingHypothesis
         ? [
@@ -194,15 +211,17 @@ describe("Taste Map critical path smoke", () => {
 
   it("covers registration -> onboarding -> profile dismiss -> discovery explainability", async () => {
     render(
-      <MemoryRouter initialEntries={["/register"]}>
-        <Routes>
-          <Route path="/register" element={<RegistrationStub />} />
-          <Route path="/taste/onboarding" element={<TasteOnboardingPage />} />
-          <Route path="/profile" element={<ProfileHubStub />} />
-          <Route path="/taste/profile" element={<TasteProfilePage />} />
-          <Route path="/" element={<DiscoveryStub />} />
-        </Routes>
-      </MemoryRouter>,
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/register"]}>
+          <Routes>
+            <Route path="/register" element={<RegistrationStub />} />
+            <Route path="/taste/onboarding" element={<TasteOnboardingPage />} />
+            <Route path="/profile" element={<ProfileHubStub />} />
+            <Route path="/taste/profile" element={<TasteProfilePage />} />
+            <Route path="/" element={<DiscoveryStub />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Завершить регистрацию" }));
@@ -226,7 +245,12 @@ describe("Taste Map critical path smoke", () => {
     await screen.findByText("Профиль");
     fireEvent.click(screen.getByRole("button", { name: "В поиск" }));
 
-    await screen.findByText("Подходит вашему вкусу: чистая кислотность и фильтр-профиль.");
+    const tasteHintButton = await screen.findByRole("button", {
+      name: "Почему подходит по вкусу",
+    });
+    fireEvent.click(tasteHintButton);
+    await screen.findByText(/Любите:/i);
+    await screen.findByText("Здесь это часто отмечают в отзывах.");
     expect(dismissTasteHypothesisMock).toHaveBeenCalledTimes(1);
     expect(reportMetricEventMock).toHaveBeenCalledWith(
       expect.objectContaining({ event_type: "taste_onboarding_started" }),

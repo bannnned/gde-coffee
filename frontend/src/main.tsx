@@ -352,7 +352,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 )
 
-const SPLASH_REEL_START_DELAY_MS = 1280
+const SPLASH_REEL_START_DELAY_MS = 520
 const SPLASH_REEL_STEP_INTERVAL_MS = 560
 const SPLASH_REEL_TRANSITION_MS = 360
 
@@ -380,15 +380,19 @@ function bindSplashHaptics() {
 
 function bindSplashPhraseReel() {
   if (typeof document === 'undefined') return
+  const lockup = document.querySelector<HTMLElement>('.splash-lockup')
   const roller = document.querySelector<HTMLElement>('.splash-roller')
   const current = roller?.querySelector<HTMLElement>('.splash-phrase.is-current') ?? null
   const next = roller?.querySelector<HTMLElement>('.splash-phrase.is-next') ?? null
-  if (!roller || !current || !next) return
+  const prefix = document.querySelector<HTMLElement>('.splash-prefix')
+  if (!lockup || !roller || !current || !next || !prefix) return
   if (SPLASH_REEL_ITEMS.length <= 1) return
 
   let stepIndex = 0
   let stepTimer = 0
   let transitionTimer = 0
+  let activeItem = SPLASH_REEL_ITEMS[0]!
+  let adaptiveBasePx = 0
 
   const sizer = document.createElement('span')
   sizer.style.position = 'absolute'
@@ -402,22 +406,77 @@ function bindSplashPhraseReel() {
   sizer.style.lineHeight = '1'
   document.body.appendChild(sizer)
 
+  const parseSizeMultiplier = (size?: string) => {
+    if (!size) return 1
+    const numeric = Number.parseFloat(size)
+    if (!Number.isFinite(numeric) || numeric <= 0) return 1
+    return numeric
+  }
+
+  const textWidth = (text: string, fontSizePx: number) => {
+    sizer.textContent = text
+    sizer.style.fontSize = `${fontSizePx}px`
+    return Math.max(1, Math.ceil(sizer.getBoundingClientRect().width + 2))
+  }
+
+  const resolveAdaptiveBase = () => {
+    const viewportWidth = Math.max(280, window.visualViewport?.width ?? window.innerWidth)
+    const sidePadding = Math.max(24, Math.round(viewportWidth * 0.12))
+    const maxWordmarkWidth = Math.max(172, viewportWidth - sidePadding * 2)
+
+    const minBase = viewportWidth < 360 ? 19 : 21
+    const maxBase = viewportWidth < 360 ? 29 : 34
+    let low = minBase
+    let high = maxBase
+    let best = minBase
+
+    const prefixText = prefix.textContent?.trim() || 'где'
+    const questionText = '?'
+
+    for (let iteration = 0; iteration < 12; iteration += 1) {
+      const probe = (low + high) / 2
+      const prefixWidth = textWidth(prefixText, probe)
+      const questionWidth = textWidth(questionText, probe)
+      const maxPhraseWidth = SPLASH_REEL_ITEMS.reduce((widest, item) => {
+        const multiplier = parseSizeMultiplier(item.size)
+        return Math.max(widest, textWidth(item.text, probe * multiplier))
+      }, 0)
+      const gapsWidth = probe * 0.28
+      const totalWidth = prefixWidth + maxPhraseWidth + questionWidth + gapsWidth
+
+      if (totalWidth <= maxWordmarkWidth) {
+        best = probe
+        low = probe
+      } else {
+        high = probe
+      }
+    }
+
+    return {
+      basePx: Math.max(minBase, Math.min(maxBase, best)),
+      maxWidthPx: maxWordmarkWidth,
+    }
+  }
+
+  const refreshAdaptiveSizing = () => {
+    const { basePx, maxWidthPx } = resolveAdaptiveBase()
+    adaptiveBasePx = basePx
+    lockup.style.setProperty('--splash-word-size', `${basePx.toFixed(2)}px`)
+    lockup.style.setProperty('--splash-word-max-width', `${Math.round(maxWidthPx)}px`)
+  }
+
+  refreshAdaptiveSizing()
+
   const applyPhrase = (target: HTMLElement, item: SplashPhraseItem) => {
     target.textContent = item.text
-    if (item.size) {
-      target.style.fontSize = item.size
-    } else {
-      target.style.removeProperty('font-size')
-    }
+    const multiplier = parseSizeMultiplier(item.size)
+    target.style.fontSize = `${(adaptiveBasePx * multiplier).toFixed(2)}px`
   }
 
   const measurePhrase = (item: SplashPhraseItem) => {
     sizer.textContent = item.text
-    if (item.size) {
-      sizer.style.fontSize = item.size
-    } else {
-      sizer.style.removeProperty('font-size')
-    }
+    const multiplier = parseSizeMultiplier(item.size)
+    sizer.style.fontSize = `${(adaptiveBasePx * multiplier).toFixed(2)}px`
     const rect = sizer.getBoundingClientRect()
     return {
       width: Math.max(1, Math.ceil(rect.width + 2)),
@@ -434,11 +493,26 @@ function bindSplashPhraseReel() {
   const cleanup = () => {
     if (stepTimer) window.clearTimeout(stepTimer)
     if (transitionTimer) window.clearTimeout(transitionTimer)
+    window.removeEventListener('resize', handleResize)
+    window.visualViewport?.removeEventListener('resize', handleResize)
     sizer.remove()
   }
 
-  applyPhrase(current, SPLASH_REEL_ITEMS[0]!)
-  syncRollerSize(SPLASH_REEL_ITEMS[0]!)
+  const handleResize = () => {
+    if (!document.body.contains(roller)) {
+      cleanup()
+      return
+    }
+    refreshAdaptiveSizing()
+    applyPhrase(current, activeItem)
+    syncRollerSize(activeItem)
+  }
+
+  window.addEventListener('resize', handleResize, { passive: true })
+  window.visualViewport?.addEventListener('resize', handleResize)
+
+  applyPhrase(current, activeItem)
+  syncRollerSize(activeItem)
 
   const runStep = () => {
     if (!document.body.contains(roller)) {
@@ -458,6 +532,7 @@ function bindSplashPhraseReel() {
 
     transitionTimer = window.setTimeout(() => {
       applyPhrase(current, item)
+      activeItem = item
       next.textContent = ''
       next.style.removeProperty('font-size')
       roller.dataset.rolling = 'false'
