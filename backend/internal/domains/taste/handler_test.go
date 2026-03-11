@@ -167,7 +167,7 @@ func TestCompleteOnboarding_InternalError(t *testing.T) {
 	})
 	router.POST("/api/v1/taste/onboarding/complete", handler.CompleteOnboarding)
 
-	body := `{"onboarding_version":"onboarding_v1","answers":[{"question_id":"drink_format","value":"espresso"}]}`
+	body := `{"onboarding_version":"onboarding_v2","answers":[{"question_id":"drink_habit","value":"espresso"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/taste/onboarding/complete", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -234,7 +234,7 @@ func TestCompleteOnboarding_Success(t *testing.T) {
 	})
 	router.POST("/api/v1/taste/onboarding/complete", handler.CompleteOnboarding)
 
-	body := `{"onboarding_version":"onboarding_v1","answers":[{"question_id":"drink_format","value":"espresso"}]}`
+	body := `{"onboarding_version":"onboarding_v2","answers":[{"question_id":"drink_habit","value":"espresso"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/taste/onboarding/complete", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

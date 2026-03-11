@@ -39,7 +39,7 @@ func (r *Repository) CreateOnboardingSession(
 	userID string,
 	version string,
 ) (OnboardingSession, error) {
-	const defaultVersion = "onboarding_v1"
+	const defaultVersion = TasteOnboardingVersion
 	if strings.TrimSpace(version) == "" {
 		version = defaultVersion
 	}

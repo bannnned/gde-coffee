@@ -31,18 +31,18 @@ describe("TasteOnboardingPage smoke", () => {
 
     getTasteOnboardingMock.mockResolvedValue({
       contract_version: "taste_map_v1",
-      onboarding_version: "onboarding_v1",
+      onboarding_version: "onboarding_v2",
       locale: "ru-RU",
-      estimated_duration_sec: 55,
+      estimated_duration_sec: 45,
       steps: [
         {
-          id: "drink_format",
+          id: "drink_habit",
           type: "single_choice",
           required: true,
-          title: "Что вы чаще пьете?",
+          title: "Что вы обычно выбираете?",
           options: [
             { id: "espresso", label: "Эспрессо" },
-            { id: "filter", label: "Фильтр" },
+            { id: "filter", label: "Фильтр / воронка" },
           ],
         },
       ],
@@ -68,7 +68,7 @@ describe("TasteOnboardingPage smoke", () => {
       </MemoryRouter>,
     );
 
-    await screen.findByText("Что вы чаще пьете?");
+    await screen.findByText("Что вы обычно выбираете?");
     fireEvent.click(screen.getByRole("button", { name: "Эспрессо" }));
     fireEvent.click(screen.getByRole("button", { name: "Завершить" }));
 
@@ -80,9 +80,9 @@ describe("TasteOnboardingPage smoke", () => {
       answers: Array<{ question_id: string; value: unknown }>;
     };
 
-    expect(payload.onboarding_version).toBe("onboarding_v1");
+    expect(payload.onboarding_version).toBe("onboarding_v2");
     expect(payload.answers).toEqual([
-      { question_id: "drink_format", value: "espresso" },
+      { question_id: "drink_habit", value: "espresso" },
     ]);
   });
 });

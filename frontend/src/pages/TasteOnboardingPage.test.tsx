@@ -31,30 +31,28 @@ describe("TasteOnboardingPage", () => {
 
     getTasteOnboardingMock.mockResolvedValue({
       contract_version: "taste_map_v1",
-      onboarding_version: "onboarding_v1",
+      onboarding_version: "onboarding_v2",
       locale: "ru-RU",
-      estimated_duration_sec: 55,
+      estimated_duration_sec: 45,
       steps: [
         {
-          id: "drink_format",
+          id: "drink_habit",
           type: "single_choice",
           required: true,
-          title: "Что вы чаще пьете?",
+          title: "Что вы обычно выбираете?",
           options: [
-            { id: "espresso", label: "Эспрессо" },
-            { id: "filter", label: "Фильтр" },
+            { id: "milk_drinks", label: "Капучино / латте" },
+            { id: "filter", label: "Фильтр / воронка" },
           ],
         },
         {
-          id: "flavor_likes",
-          type: "multi_choice",
+          id: "profile_refine",
+          type: "single_choice",
           required: true,
-          min_choices: 1,
-          max_choices: 3,
-          title: "Какие вкусы нравятся?",
+          title: "Какой кофе приятнее?",
           options: [
-            { id: "citrus", label: "Цитрус" },
-            { id: "nutty_cocoa", label: "Шоколад" },
+            { id: "mellow_comfort", label: "Помягче и без резкой кислинки" },
+            { id: "bright_exploratory", label: "Поярче и интереснее" },
           ],
         },
       ],
@@ -70,19 +68,36 @@ describe("TasteOnboardingPage", () => {
       </MemoryRouter>,
     );
 
-    await screen.findByText("Что вы чаще пьете?");
+    await screen.findByText("Что вы обычно выбираете?");
 
     fireEvent.click(screen.getByRole("button", { name: "Дальше" }));
     expect(screen.getByText("Выберите один вариант.")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Эспрессо" }));
+    fireEvent.click(screen.getByRole("button", { name: "Фильтр / воронка" }));
     fireEvent.click(screen.getByRole("button", { name: "Дальше" }));
 
-    await screen.findByText("Какие вкусы нравятся?");
+    await screen.findByText("Что важнее в чашке?");
 
     await waitFor(() => {
       const cached = window.localStorage.getItem("gdeCoffeeTasteOnboardingProgress:u1");
       expect(cached).toBeTruthy();
     });
+  });
+
+  it("keeps friendlier wording for everyday drinkers on the final step", async () => {
+    render(
+      <MemoryRouter initialEntries={["/taste/onboarding"]}>
+        <Routes>
+          <Route path="/taste/onboarding" element={<TasteOnboardingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("Что вы обычно выбираете?");
+    fireEvent.click(screen.getByRole("button", { name: "Капучино / латте" }));
+    fireEvent.click(screen.getByRole("button", { name: "Дальше" }));
+
+    await screen.findByText("Какой кофе приятнее?");
+    expect(screen.getByRole("button", { name: "Помягче и без резкой кислинки" })).toBeTruthy();
   });
 });

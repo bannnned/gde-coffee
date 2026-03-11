@@ -9,7 +9,7 @@ import (
 
 const (
 	TasteContractVersion   = "taste_map_v1"
-	TasteOnboardingVersion = "onboarding_v1"
+	TasteOnboardingVersion = "onboarding_v2"
 )
 
 //go:embed contracts/taste_onboarding_v1.json
@@ -27,6 +27,8 @@ type onboardingStep struct {
 	ID         string                `json:"id"`
 	Type       string                `json:"type"`
 	Required   bool                  `json:"required"`
+	Title      string                `json:"title"`
+	Subtitle   string                `json:"subtitle"`
 	MinChoices int                   `json:"min_choices"`
 	MaxChoices int                   `json:"max_choices"`
 	Options    []onboardingOption    `json:"options"`

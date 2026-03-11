@@ -49,7 +49,7 @@ func TestRepositoryCreateOnboardingSession(t *testing.T) {
 				scanFn: func(dest ...any) error {
 					*dest[0].(*string) = "s1"
 					*dest[1].(*string) = "u1"
-					*dest[2].(*string) = "onboarding_v1"
+					*dest[2].(*string) = TasteOnboardingVersion
 					*dest[3].(*string) = StatusOnboardingStarted
 					*dest[4].(*[]byte) = []byte(`{}`)
 					*dest[5].(*time.Time) = now
@@ -73,7 +73,7 @@ func TestRepositoryCreateOnboardingSession(t *testing.T) {
 	if len(q.lastArgs) != 3 {
 		t.Fatalf("expected 3 sql args, got %d", len(q.lastArgs))
 	}
-	if got := q.lastArgs[1].(string); got != "onboarding_v1" {
+	if got := q.lastArgs[1].(string); got != TasteOnboardingVersion {
 		t.Fatalf("expected default onboarding version, got %q", got)
 	}
 	if got := q.lastArgs[2].(string); got != StatusOnboardingStarted {
@@ -93,7 +93,7 @@ func TestRepositoryCompleteOnboardingSession(t *testing.T) {
 				scanFn: func(dest ...any) error {
 					*dest[0].(*string) = "s1"
 					*dest[1].(*string) = "u1"
-					*dest[2].(*string) = "onboarding_v1"
+					*dest[2].(*string) = TasteOnboardingVersion
 					*dest[3].(*string) = StatusOnboardingCompleted
 					*dest[4].(*[]byte) = []byte(`{"ok":true}`)
 					*dest[5].(*time.Time) = now

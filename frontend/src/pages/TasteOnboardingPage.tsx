@@ -28,6 +28,7 @@ import classes from "./TasteOnboardingPage.module.css";
 
 type AnswersMap = Record<string, unknown>;
 type PairedChoice = "left" | "right" | "skip";
+type TastePersona = "everyday" | "enthusiast";
 
 type LoadingState = "idle" | "loading" | "ready" | "error" | "feature-off";
 
@@ -248,6 +249,108 @@ function computeStepProgress(stepIndex: number, total: number): number {
   return clamp(Math.round(((stepIndex + 1) / total) * 100), 0, 100);
 }
 
+function detectTastePersona(answers: AnswersMap): TastePersona {
+  let score = 0;
+
+  switch (answers.drink_habit) {
+    case "filter":
+    case "espresso":
+      score += 2;
+      break;
+    case "flat_white":
+    case "americano":
+      score += 1;
+      break;
+    case "milk_drinks":
+    case "sweet_special":
+      score -= 1;
+      break;
+    default:
+      break;
+  }
+
+  switch (answers.flavor_direction) {
+    case "bright_fruity":
+      score += 1;
+      break;
+    case "soft_balanced":
+      score -= 1;
+      break;
+    default:
+      break;
+  }
+
+  if (answers.taste_avoid === "too_sour") {
+    score -= 1;
+  }
+
+  switch (answers.coffee_style) {
+    case "mostly_black":
+    case "explore":
+      score += 1;
+      break;
+    case "only_milk":
+      score -= 1;
+      break;
+    default:
+      break;
+  }
+
+  return score >= 2 ? "enthusiast" : "everyday";
+}
+
+function getDisplayedStep(step: TasteOnboardingStep | undefined, answers: AnswersMap): TasteOnboardingStep | undefined {
+  if (!step) return step;
+  if (step.id !== "profile_refine") return step;
+
+  const persona = detectTastePersona(answers);
+  if (persona === "enthusiast") {
+    return {
+      ...step,
+      title: "Что важнее в чашке?",
+      subtitle: "Последний штрих, чтобы рекомендации точнее попадали в ваш профиль.",
+      options: (step.options ?? []).map((option) => {
+        switch (option.id) {
+          case "mellow_comfort":
+            return { ...option, label: "Низкая кислотность" };
+          case "dense_sweet":
+            return { ...option, label: "Плотное тело" };
+          case "creamy_soft":
+            return { ...option, label: "Мягкий молочный профиль" };
+          case "bright_exploratory":
+            return { ...option, label: "Чистая кислотность" };
+          case "balanced_clean":
+            return { ...option, label: "Сладость и баланс" };
+          default:
+            return option;
+        }
+      }),
+    };
+  }
+
+  return {
+    ...step,
+    title: "Какой кофе приятнее?",
+    subtitle: "Еще один быстрый вопрос, чтобы рекомендации были ближе к вашему вкусу.",
+    options: (step.options ?? []).map((option) => {
+      switch (option.id) {
+        case "mellow_comfort":
+          return { ...option, label: "Помягче и без резкой кислинки" };
+        case "dense_sweet":
+          return { ...option, label: "Плотный и насыщенный" };
+        case "creamy_soft":
+          return { ...option, label: "Понежнее, сливочный" };
+        case "bright_exploratory":
+          return { ...option, label: "Поярче и интереснее" };
+        case "balanced_clean":
+          return { ...option, label: "Сладко и без перегибов" };
+        default:
+          return option;
+      }
+    }),
+  };
+}
+
 export default function TasteOnboardingPage() {
   useAllowBodyScroll();
   const navigate = useNavigate();
@@ -275,6 +378,10 @@ export default function TasteOnboardingPage() {
   const steps = onboarding?.steps ?? [];
   const totalSteps = steps.length;
   const currentStep = steps[stepIndex];
+  const displayedCurrentStep = useMemo(
+    () => getDisplayedStep(currentStep, answers),
+    [answers, currentStep],
+  );
   const progress = computeStepProgress(stepIndex, totalSteps);
 
   const loadOnboarding = useCallback(async () => {
@@ -465,14 +572,14 @@ export default function TasteOnboardingPage() {
   }, [answers, currentStep, onboarding, stepIndex, submitAll]);
 
   const title = useMemo(() => {
-    if (!currentStep) return "Карта вкуса";
-    return currentStep.title?.trim() || "Выберите вариант";
-  }, [currentStep]);
+    if (!displayedCurrentStep) return "Карта вкуса";
+    return displayedCurrentStep.title?.trim() || "Выберите вариант";
+  }, [displayedCurrentStep]);
 
   const subtitle = useMemo(() => {
-    if (!currentStep) return "";
-    return currentStep.subtitle?.trim() || "Ответы помогут точнее подбирать кофейни и напитки.";
-  }, [currentStep]);
+    if (!displayedCurrentStep) return "";
+    return displayedCurrentStep.subtitle?.trim() || "Ответы помогут точнее подбирать кофейни и напитки.";
+  }, [displayedCurrentStep]);
 
   return (
     <div className={classes.screen} data-ui="taste-onboarding-screen">
@@ -547,7 +654,7 @@ export default function TasteOnboardingPage() {
 
               {currentStep?.type === "single_choice" ? (
                 <div className={classes.optionGrid}>
-                  {(currentStep.options ?? []).map((option) => {
+                  {(displayedCurrentStep?.options ?? []).map((option) => {
                     const selected = answers[currentStep.id] === option.id;
                     return (
                       <button
@@ -566,7 +673,7 @@ export default function TasteOnboardingPage() {
 
               {currentStep?.type === "multi_choice" ? (
                 <div className={classes.optionGrid}>
-                  {(currentStep.options ?? []).map((option) => {
+                  {(displayedCurrentStep?.options ?? []).map((option) => {
                     const selectedValues = Array.isArray(answers[currentStep.id])
                       ? (answers[currentStep.id] as string[])
                       : [];

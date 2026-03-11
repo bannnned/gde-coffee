@@ -473,6 +473,12 @@ function bindSplashPhraseReel() {
     target.style.fontSize = `${(adaptiveBasePx * multiplier).toFixed(2)}px`
   }
 
+  const setPhraseTransitionsEnabled = (enabled: boolean) => {
+    const value = enabled ? '' : 'none'
+    current.style.transition = value
+    next.style.transition = value
+  }
+
   const measurePhrase = (item: SplashPhraseItem) => {
     sizer.textContent = item.text
     const multiplier = parseSizeMultiplier(item.size)
@@ -531,9 +537,12 @@ function bindSplashPhraseReel() {
     void appHaptics.trigger('selection')
 
     transitionTimer = window.setTimeout(() => {
+      setPhraseTransitionsEnabled(false)
       applyPhrase(current, item)
       activeItem = item
       roller.dataset.rolling = 'false'
+      void roller.offsetHeight
+      setPhraseTransitionsEnabled(true)
       stepTimer = window.setTimeout(runStep, SPLASH_REEL_STEP_INTERVAL_MS)
     }, SPLASH_REEL_TRANSITION_MS)
   }

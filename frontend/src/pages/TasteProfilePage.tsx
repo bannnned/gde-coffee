@@ -23,7 +23,6 @@ import { Button } from "../components/ui";
 import { isTasteMapV1Enabled } from "../features/taste/model/flags";
 import {
   getPolarityLabel,
-  getSourceLabel,
   getTasteLabel,
 } from "../features/taste/model/tasteLabels";
 import { appHaptics } from "../lib/haptics";
@@ -45,9 +44,69 @@ function formatDate(value?: string): string {
   }).format(date);
 }
 
-function toPercent(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, Math.round(Math.abs(value) * 100)));
+function describeTag(tag: TasteMapTag): string {
+  if (tag.polarity === "negative") {
+    switch (tag.source) {
+      case "onboarding":
+        return "Поняли это по вашей карте вкуса.";
+      case "behavior":
+        return "Замечаем это по отзывам и визитам.";
+      case "explicit_feedback":
+        return "Учли после вашей обратной связи.";
+      default:
+        return "Будем реже советовать такой профиль.";
+    }
+  }
+
+  switch (tag.source) {
+    case "onboarding":
+      return "Добавили это после вашей карты вкуса.";
+    case "behavior":
+      return "Замечаем это по отзывам и визитам.";
+    case "explicit_feedback":
+      return "Учли после вашего подтверждения.";
+    default:
+      return "Это влияет на персональные рекомендации.";
+  }
+}
+
+function buildRecommendationInsights(
+  payload: TasteMapResponse | null,
+  activeTags: TasteMapTag[],
+  hypotheses: TasteMapHypothesis[],
+): string[] {
+  const lines: string[] = [];
+
+  if (payload?.base_map?.completed_at) {
+    lines.push("Сначала опираемся на вашу карту вкуса.")
+  } else {
+    lines.push("Базовую карту вкуса пока не проходили, поэтому профиль еще собирается.")
+  }
+
+  const behaviorSignals = activeTags.filter(
+    (tag) => tag.source === "behavior" || tag.source === "explicit_feedback",
+  );
+  if (behaviorSignals.length > 0) {
+    lines.push("Потом дополняем профиль по отзывам, визитам и вашей обратной связи.")
+  }
+
+  const topPositive = activeTags
+    .filter((tag) => tag.polarity === "positive")
+    .slice(0, 2)
+    .map((tag) => getTasteLabel(tag.taste_code).toLowerCase());
+  if (topPositive.length > 0) {
+    lines.push(`Сейчас сильнее всего влияют: ${topPositive.join(", ")}.`)
+  }
+
+  if (hypotheses.length > 0) {
+    lines.push("Если замечаем новый устойчивый паттерн, показываем его как предположение.")
+  }
+
+  if (lines.length === 0) {
+    lines.push("Профиль станет точнее после новых отзывов и ответов по вашим предпочтениям.")
+  }
+
+  return lines;
 }
 
 export default function TasteProfilePage() {
@@ -153,35 +212,10 @@ export default function TasteProfilePage() {
     }
   }, [hypotheses]);
 
-  const insights = useMemo(() => {
-    const lines: string[] = [];
-    lines.push(`Inference version: ${payload?.inference_version ?? "-"}`);
-    lines.push(`Последнее обновление: ${formatDate(payload?.updated_at)}`);
-
-    if (payload?.base_map?.completed_at) {
-      lines.push(`Карта вкуса пройдена: ${formatDate(payload.base_map.completed_at)}`);
-    } else {
-      lines.push("Базовая карта вкуса еще не завершена.");
-    }
-
-    if (payload?.base_map?.onboarding_version) {
-      lines.push(`Версия onboarding: ${payload.base_map.onboarding_version}`);
-    }
-
-    const reasons = (payload?.hypotheses ?? [])
-      .map((item) => item.reason?.trim())
-      .filter((item): item is string => Boolean(item));
-
-    if (reasons.length > 0) {
-      for (const reason of reasons.slice(0, 3)) {
-        lines.push(reason);
-      }
-    } else {
-      lines.push("Учитываем отзывы, проверенные визиты и подтвержденные вами гипотезы.");
-    }
-
-    return lines;
-  }, [payload]);
+  const insights = useMemo(
+    () => buildRecommendationInsights(payload, activeTags, hypotheses),
+    [activeTags, hypotheses, payload],
+  );
 
   const goBack = useCallback(() => {
     if (backgroundLocation) {
@@ -271,9 +305,9 @@ export default function TasteProfilePage() {
 
         {!tasteMapEnabled || loadState === "feature-off" ? (
           <section className={classes.card}>
-            <p className={classes.title}>Taste Map выключен</p>
+            <p className={classes.title}>Профиль вкуса временно недоступен</p>
             <p className={classes.subtitle}>
-              Проверьте флаги фронта и бэка: `VITE_TASTE_MAP_V1_ENABLED=1` и `TASTE_MAP_V1_ENABLED=1`.
+              Попробуйте открыть страницу чуть позже.
             </p>
             <Button type="button" onClick={() => void navigate("/profile")}>Вернуться в профиль</Button>
           </section>
@@ -328,7 +362,7 @@ export default function TasteProfilePage() {
           <>
             <section className={classes.card}>
               <p className={classes.title}>Ваш вкус сейчас</p>
-              <p className={classes.subtitle}>Активные теги влияют на персональные рекомендации.</p>
+              <p className={classes.subtitle}>Это то, на что мы сейчас опираемся в рекомендациях.</p>
               {activeTags.length === 0 ? (
                 <p className={classes.empty}>Пока нет активных тегов. Пройдите карту вкуса, чтобы запустить персонализацию.</p>
               ) : (
@@ -341,10 +375,7 @@ export default function TasteProfilePage() {
                           {getPolarityLabel(tag.polarity)}
                         </span>
                       </div>
-                      <p className={classes.metrics}>
-                        Сила: {toPercent(tag.score)}% · Уверенность: {toPercent(tag.confidence)}%
-                      </p>
-                      <p className={classes.metrics}>Источник: {getSourceLabel(tag.source)}</p>
+                      <p className={classes.metrics}>{describeTag(tag)}</p>
                     </article>
                   ))}
                 </div>
@@ -354,7 +385,7 @@ export default function TasteProfilePage() {
             <section className={classes.card}>
               <p className={classes.title}>Наши предположения</p>
               <p className={classes.subtitle}>
-                Подтвердите или скройте гипотезы, чтобы точнее настраивать ваш профиль.
+                Если что-то совпадает, подтвердите. Если нет, просто скройте.
               </p>
 
               {actionError ? <p className={classes.error}>{actionError}</p> : null}
@@ -378,7 +409,7 @@ export default function TasteProfilePage() {
                           {item.reason?.trim() || "Основано на ваших последних сигналах в отзывах и визитах."}
                         </p>
                         <p className={classes.meta}>
-                          Уверенность: {toPercent(item.confidence)}% · обновлено {formatDate(item.updated_at)}
+                          Обновили {formatDate(item.updated_at)}
                         </p>
                         <div className={classes.hypothesisActions}>
                           <Button
@@ -407,9 +438,9 @@ export default function TasteProfilePage() {
             </section>
 
             <section className={classes.card}>
-              <p className={classes.title}>Почему мы так думаем</p>
+              <p className={classes.title}>Что влияет на рекомендации</p>
               <p className={classes.subtitle}>
-                Объяснение формируется из вашей карты вкуса, отзывов, визитов и обратной связи по гипотезам.
+                Коротко показываем, из чего сейчас складывается ваш профиль.
               </p>
               <ul className={classes.insights}>
                 {insights.map((line) => (
@@ -421,7 +452,7 @@ export default function TasteProfilePage() {
             <section className={classes.card}>
               <p className={classes.title}>Обновить карту вкуса</p>
               <p className={classes.subtitle}>
-                Если предпочтения изменились, пройдите onboarding заново. Мы перезапишем базовые сигналы.
+                Если вкусы изменились, можно быстро пройти ее заново.
               </p>
               <div className={classes.footer}>
                 <Button
