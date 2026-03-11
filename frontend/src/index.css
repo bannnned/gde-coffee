@@ -620,6 +620,19 @@
 }
 
 /* Admin pages use .page-shell; make action buttons match Settings "Подключить" style. */
+.page-shell {
+  height: var(--app-vh);
+  min-height: var(--app-vh);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
+  padding-inline: var(--page-edge-padding);
+}
+
 .page-shell button.inline-flex.items-center.justify-center:not(.glass-action):not(.bg-danger):not([class*="bg-danger"]) {
   border-radius: 14px;
   border: 1px solid var(--glass-border) !important;

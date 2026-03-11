@@ -6,9 +6,9 @@ export type SplashPhraseItem = {
 // Edit only this list to change splash reel phrases and visual size.
 export const SPLASH_REEL_ITEMS: SplashPhraseItem[] = [
   { text: 'кофе', size: '1em' },
-  { text: 'флэт уайт', size: '0.9em' },
-  { text: 'фильтр', size: '0.96em' },
-  { text: 'не кислит', size: '0.98em' },
-  { text: 'уютно', size: '1em' },
-  { text: 'кофе', size: '1em' },
+  { text: 'V-60', size: '1em' },
+  { text: 'флэт', size: '1em' },
+  { text: 'дрип', size: '1em' },
+  { text: 'уют', size: '1em' },
+  { text: 'рядом', size: '1em' },
 ]
