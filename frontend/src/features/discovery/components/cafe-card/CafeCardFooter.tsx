@@ -14,6 +14,7 @@ import { resolveCafeDisplayRating } from "../../utils/ratingDisplay";
 type CafeCardFooterProps = {
   cafe: Cafe;
   ratingRefreshToken?: number;
+  showRoutes?: boolean;
 };
 
 const cafeRatingSnapshotCache = new Map<string, CafeRatingSnapshot>();
@@ -29,6 +30,7 @@ export function invalidateCafeCardRatingSnapshot(cafeId?: string) {
 export default function CafeCardFooter({
   cafe,
   ratingRefreshToken = 0,
+  showRoutes = true,
 }: CafeCardFooterProps) {
   const { user, status } = useAuth();
   const tasteMapEnabled = isTasteMapV1Enabled();
@@ -178,13 +180,130 @@ export default function CafeCardFooter({
         position: "absolute",
         left: 0,
         right: 0,
+        top: 0,
         bottom: 0,
-        padding: "0 var(--page-edge-padding)",
         zIndex: 3,
       }}
     >
+      {showTasteHint ? (
+        <div
+          style={{
+            position: "absolute",
+            top: "var(--page-edge-padding)",
+            right: showRoutes
+              ? "calc(var(--page-edge-padding) + 98px)"
+              : "var(--page-edge-padding)",
+            zIndex: 4,
+          }}
+        >
+          <Popover open={tastePopoverOpen} onOpenChange={setTastePopoverOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Почему подходит по вкусу"
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 30,
+                  height: 30,
+                  borderRadius: 999,
+                  border: "1px solid color-mix(in srgb, var(--glass-border) 92%, transparent)",
+                  background:
+                    "linear-gradient(135deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--surface) 74%, transparent))",
+                  color: "var(--cafe-hero-emphasis-color)",
+                  fontSize: "0.98rem",
+                  lineHeight: 1,
+                  cursor: "pointer",
+                  boxShadow:
+                    "0 4px 12px color-mix(in srgb, var(--color-surface-overlay-strong) 18%, transparent)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                }}
+              >
+                🎯
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="bottom"
+              align="end"
+              sideOffset={10}
+              onClick={(event) => event.stopPropagation()}
+              className="w-[min(280px,86vw)] rounded-2xl border border-[color:var(--glass-border)] bg-[color:var(--surface)] p-0 text-[color:var(--text)] shadow-[var(--glass-shadow)] backdrop-blur-md"
+            >
+              <div style={{ padding: "10px 12px 12px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    marginBottom: 6,
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "0.78rem",
+                      fontWeight: 700,
+                      color: "var(--cafe-hero-emphasis-color)",
+                    }}
+                  >
+                    Подбор по вкусу
+                  </p>
+                  <button
+                    type="button"
+                    aria-label="Закрыть подсказку"
+                    onClick={() => setTastePopoverOpen(false)}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "var(--muted)",
+                      padding: 0,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      lineHeight: 1,
+                    }}
+                  >
+                    <IconX size={14} />
+                  </button>
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "0.78rem",
+                    lineHeight: 1.35,
+                    color: "var(--text)",
+                  }}
+                >
+                  {tasteTooltipPayload?.likesLine}
+                </p>
+                <p
+                  style={{
+                    margin: "4px 0 0",
+                    fontSize: "0.76rem",
+                    lineHeight: 1.35,
+                    color: "var(--muted)",
+                  }}
+                >
+                  {tasteTooltipPayload?.contextLine}
+                </p>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      ) : null}
+
       <div
         style={{
+          position: "absolute",
+          left: "var(--page-edge-padding)",
+          right: "var(--page-edge-padding)",
+          bottom: 0,
           borderRadius: 14,
           border: "1px solid color-mix(in srgb, var(--glass-border) 82%, transparent)",
           background:
@@ -276,104 +395,6 @@ export default function CafeCardFooter({
                     {ratingSnapshot?.reviews_count ?? 0}
                   </p>
                 </div>
-                {showTasteHint ? (
-                  <Popover open={tastePopoverOpen} onOpenChange={setTastePopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Почему подходит по вкусу"
-                        onClick={(event) => event.stopPropagation()}
-                        onPointerDown={(event) => event.stopPropagation()}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: 28,
-                          height: 28,
-                          borderRadius: 999,
-                          border: "1px solid color-mix(in srgb, var(--glass-border) 92%, transparent)",
-                          background:
-                            "linear-gradient(135deg, color-mix(in srgb, var(--surface) 90%, transparent), color-mix(in srgb, var(--surface) 70%, transparent))",
-                          color: "var(--cafe-hero-emphasis-color)",
-                          fontSize: "0.95rem",
-                          lineHeight: 1,
-                          cursor: "pointer",
-                          boxShadow: "0 4px 12px color-mix(in srgb, var(--color-surface-overlay-strong) 16%, transparent)",
-                        }}
-                      >
-                        🎯
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      side="top"
-                      align="end"
-                      sideOffset={10}
-                      onClick={(event) => event.stopPropagation()}
-                      className="w-[min(280px,86vw)] rounded-2xl border border-[color:var(--glass-border)] bg-[color:var(--surface)] p-0 text-[color:var(--text)] shadow-[var(--glass-shadow)] backdrop-blur-md"
-                    >
-                      <div style={{ padding: "10px 12px 12px" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            justifyContent: "space-between",
-                            gap: 8,
-                            marginBottom: 6,
-                          }}
-                        >
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: "0.78rem",
-                              fontWeight: 700,
-                              color: "var(--cafe-hero-emphasis-color)",
-                            }}
-                          >
-                            Подбор по вкусу
-                          </p>
-                          <button
-                            type="button"
-                            aria-label="Закрыть подсказку"
-                            onClick={() => setTastePopoverOpen(false)}
-                            style={{
-                              border: "none",
-                              background: "transparent",
-                              color: "var(--muted)",
-                              padding: 0,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer",
-                              lineHeight: 1,
-                            }}
-                          >
-                            <IconX size={14} />
-                          </button>
-                        </div>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "0.78rem",
-                            lineHeight: 1.35,
-                            color: "var(--text)",
-                          }}
-                        >
-                          {tasteTooltipPayload?.likesLine}
-                        </p>
-                        <p
-                          style={{
-                            margin: "4px 0 0",
-                            fontSize: "0.76rem",
-                            lineHeight: 1.35,
-                            color: "var(--muted)",
-                          }}
-                        >
-                          {tasteTooltipPayload?.contextLine}
-                        </p>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ) : null}
               </>
             ) : (
               <Badge

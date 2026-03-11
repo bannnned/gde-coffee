@@ -353,8 +353,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 )
 
 const SPLASH_REEL_START_DELAY_MS = 520
-const SPLASH_REEL_STEP_INTERVAL_MS = 560
-const SPLASH_REEL_TRANSITION_MS = 360
+const SPLASH_REEL_STEP_INTERVAL_MS = 620
+const SPLASH_REEL_TRANSITION_MS = 420
 
 const splashMountedAt = performance.now()
 const MIN_SPLASH_VISIBLE_MS = Math.min(
@@ -533,8 +533,6 @@ function bindSplashPhraseReel() {
     transitionTimer = window.setTimeout(() => {
       applyPhrase(current, item)
       activeItem = item
-      next.textContent = ''
-      next.style.removeProperty('font-size')
       roller.dataset.rolling = 'false'
       stepTimer = window.setTimeout(runStep, SPLASH_REEL_STEP_INTERVAL_MS)
     }, SPLASH_REEL_TRANSITION_MS)

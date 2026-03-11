@@ -779,7 +779,7 @@ body {
   --splash-word-gap: 0px;
   --splash-roller-width: 5.2ch;
   --splash-roller-height: 1.08em;
-  --splash-roller-shift: 106%;
+  --splash-roller-shift: 92%;
   --splash-ease-smooth: cubic-bezier(0.42, 0, 0.58, 1);
   --splash-ease-soft-out: cubic-bezier(0.22, 1, 0.36, 1);
   display: inline-flex;
@@ -827,8 +827,8 @@ body {
   overflow: hidden;
   vertical-align: baseline;
   transition:
-    width 380ms cubic-bezier(0.22, 1, 0.36, 1),
-    min-height 380ms cubic-bezier(0.22, 1, 0.36, 1);
+    width 430ms var(--splash-ease-soft-out),
+    min-height 430ms var(--splash-ease-soft-out);
 }
 
 .splash-phrase {
@@ -841,10 +841,10 @@ body {
   line-height: 1;
   transform: translate3d(0, 0, 0);
   transition:
-    transform 360ms cubic-bezier(0.24, 1, 0.32, 1),
-    opacity 320ms cubic-bezier(0.24, 1, 0.32, 1),
-    filter 320ms cubic-bezier(0.24, 1, 0.32, 1),
-    font-size 320ms cubic-bezier(0.24, 1, 0.32, 1);
+    transform 420ms var(--splash-ease-soft-out),
+    opacity 360ms var(--splash-ease-smooth),
+    filter 360ms var(--splash-ease-smooth),
+    font-size 360ms var(--splash-ease-soft-out);
   will-change: transform, opacity, filter;
 }
 
@@ -859,13 +859,13 @@ body {
 }
 
 .splash-roller[data-rolling='true'] .splash-phrase.is-current {
-  opacity: 0.08;
-  filter: blur(0.4px);
+  opacity: 0.2;
+  filter: blur(0.18px);
   transform: translate3d(0, var(--splash-roller-shift), 0);
 }
 
 .splash-roller[data-rolling='true'] .splash-phrase.is-next {
-  opacity: 1;
+  opacity: 0.98;
   filter: blur(0);
   transform: translate3d(0, 0, 0);
 }

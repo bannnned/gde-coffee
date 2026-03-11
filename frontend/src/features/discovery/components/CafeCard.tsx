@@ -105,7 +105,11 @@ export default function CafeCard({
         onTouchStart={handlePhotoTouchStart}
         onTouchEnd={handlePhotoTouchEnd}
       >
-        <CafeCardFooter cafe={cafe} ratingRefreshToken={ratingRefreshToken} />
+        <CafeCardFooter
+          cafe={cafe}
+          ratingRefreshToken={ratingRefreshToken}
+          showRoutes={showRoutes}
+        />
       </CafeCardHero>
     </div>
   );
